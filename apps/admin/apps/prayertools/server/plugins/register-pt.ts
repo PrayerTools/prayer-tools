@@ -44,6 +44,10 @@ export default defineNitroPlugin(() => {
   for (const [appId, title, path, icon, requiredPermission, order] of rail) {
     registerRailItem({ appId, id: title.toLowerCase().replace(/\s+/g, '-'), title, path, icon, requiredPermission, order })
   }
+  // The library is used from inside campaigns and content and reached from
+  // Your sites, so it stays off the rail: its only rail item needs a
+  // permission no one holds.
+  registerRailItem({ appId: PT_LIBRARY_APP, id: 'library', title: 'Library', path: '/personal', requiredPermission: 'pt.library.rail' })
 
   registerAdminSection({ appId: 'pt', title: 'Sites', path: '/admin/pt/sites', icon: 'i-lucide-church', order: 20 })
   registerAdminSection({ appId: 'pt', title: 'Directory', path: '/admin/pt/directory', icon: 'i-lucide-list-checks', order: 21 })

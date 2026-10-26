@@ -1,10 +1,10 @@
 // Host-level app config: it outranks the layers' own (core declares `rail`
 // defaults and loads before prayer.tools' layers).
 export default defineAppConfig({
-  // The rail lists the current site's sections; switching sites is the header
-  // switcher's job, and org settings are not offered to site owners.
+  // The rail starts with Your sites on every page, then lists the current
+  // site's sections; org settings are not offered to site owners.
   rail: {
-    launcher: false,
+    launcher: { title: 'Your sites', icon: 'i-lucide-church', path: '/orgs' },
     orgSettings: false
   }
 })
