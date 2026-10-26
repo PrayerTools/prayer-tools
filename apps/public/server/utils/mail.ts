@@ -10,6 +10,7 @@ export interface PendingMail {
   to: string
   rendered: Rendered
   kind: string
+  unsubscribeUrl?: string | null
 }
 
 export async function prepareSiteMail(tx: Tx, orgId: string, to: string, kind: string, render: (ctx: SiteMailContext) => Rendered): Promise<PendingMail | null> {
@@ -29,6 +30,7 @@ export async function deliver(mail: PendingMail | null): Promise<void> {
     subject: mail.rendered.subject,
     html: mail.rendered.html,
     text: mail.rendered.text,
+    unsubscribeUrl: mail.unsubscribeUrl,
     meta: { org_id: mail.ctx.orgId, kind: mail.kind },
     tags: [mail.kind]
   })

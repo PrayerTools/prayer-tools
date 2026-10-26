@@ -198,6 +198,8 @@ export interface SignupResult {
   channelId: string
   verifyToken: string | null
   newSubscription: boolean
+  // The address became verified with this signup (Google / Apple sign-in, or a contact already verified on the site).
+  verifiedNow: boolean
 }
 
 export async function createWebSignup(tx: Tx, input: SignupInput): Promise<SignupResult> {
@@ -209,6 +211,7 @@ export async function createWebSignup(tx: Tx, input: SignupInput): Promise<Signu
   })
   let sub = await tx.selectFrom('pt_subscription').selectAll().where('contact_id', '=', contact.contactId).executeTakeFirst()
   const newSubscription = !sub
+  const wasVerified = !!sub?.verified_at
   let verifyToken: string | null = null
   const verified = input.preVerified || !!sub?.verified_at || contact.verified
   if (!sub) {
@@ -276,7 +279,7 @@ export async function createWebSignup(tx: Tx, input: SignupInput): Promise<Signu
     if (sub.referred_by) await bumpStat(tx, input.campaign.id, today, 'share_signups')
   }
   if (sub.verified_at && newSubscription) await bumpStat(tx, input.campaign.id, today, 'verifications')
-  return { subscription: sub, contactId: contact.contactId, channelId: contact.channelId, verifyToken, newSubscription }
+  return { subscription: sub, contactId: contact.contactId, channelId: contact.channelId, verifyToken, newSubscription, verifiedNow: !!sub.verified_at && !wasVerified }
 }
 
 // Global identity for a verified email address. `pt_intercessor` has no RLS;

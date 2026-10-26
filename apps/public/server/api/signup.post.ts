@@ -1,6 +1,7 @@
 // Web signup: creates or reuses the site's CRM contact, a subscription and
 // commitments in the campaign, grants the ticked consents and sends the
-// verification email. Google / Apple sign-in arrives already verified.
+// verification email. Google / Apple sign-in arrives already verified and gets
+// the welcome email instead.
 import { withOrg } from '@prayertools/shared/db/scope'
 import { createWebSignup, validateRuleForCampaign, type RuleInput } from '@prayertools/shared/subscriptions'
 import { findContactByEmail, normalizeEmail } from '@prayertools/shared/crm'
@@ -20,6 +21,7 @@ import { verifiedEmailFromIdToken } from '../utils/id-token'
 import { deliver, prepareSiteMail, type PendingMail } from '../utils/mail'
 import { grantPlatformNews } from '../utils/staff'
 import { forwardInBackground } from '../utils/analytics'
+import { prepareWelcomeMail } from '../utils/welcome'
 
 export default defineEventHandler(async (event) => {
   const ctx = siteContext(event)
@@ -110,6 +112,8 @@ export default defineEventHandler(async (event) => {
     if (res.verifyToken) {
       const token = res.verifyToken
       mail = await prepareSiteMail(tx, ctx.orgId, normalized, 'verify', m => verificationEmail(m, language, `${m.siteUrl}/verify/${token}`))
+    } else if (res.verifiedNow) {
+      mail = await prepareWelcomeMail(tx, ctx.orgId, res.subscription)
     }
     if (preVerified && res.newSubscription) {
       await recordEvent(tx, { campaignId: campaign.id, type: 'campaign_signup_verified', meta: { subscription_id: res.subscription.id } })
