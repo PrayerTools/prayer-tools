@@ -1,7 +1,9 @@
 <script setup lang="ts">
 // New campaign, or a relaunch: a new campaign on the same site that starts
-// from the previous one's answers and content.
-import { applyTemplate, campaignsOverlap, suggestedStartDate } from '@prayertools/shared/setup'
+// from the previous one's answers and content. A main campaign shows at the
+// site's address, one at a time; a side campaign runs beside it on fixed
+// dates at its own address.
+import { applyTemplate, overlappingCampaign, suggestedStartDate } from '@prayertools/shared/setup'
 import { addDays, todayIn } from '@prayertools/shared/dates'
 import type { SetupState } from '../../../components/PtSetupForm.vue'
 import type { PtCampaign } from '../../../utils/pt-campaign-ui'
@@ -16,12 +18,14 @@ const toast = usePtToast()
 const { data: previous } = useFetch<{ campaign: PtCampaign }>(() => `/api/pt/campaigns/${relaunchOf.value}`, { immediate: !!relaunchOf.value, key: `pt-relaunch-${relaunchOf.value}` })
 
 const templateKey = ref('generic')
+const kind = ref<'side' | null>(route.query.kind === 'side' ? 'side' : null)
 const name = ref('')
 const setup = ref<SetupState>({ start_mode: 'date', start_date: null, end_mode: 'date', end_date: null, length_days: null, goal: 'people', cadence: 'daily', track_time: false, goal_target: null, slot_min: null })
 watch(previous, (p) => {
   const c = p?.campaign
   if (!c) return
   templateKey.value = c.template_key ?? 'generic'
+  kind.value = c.kind
   name.value = c.name.replace(/\d{4}/, (y: string) => String(Number(y) + 1))
   setup.value = { start_mode: c.start_mode, start_date: null, end_mode: c.end_mode, end_date: null, length_days: c.length_days, goal: c.goal, cadence: c.cadence, track_time: c.track_time, goal_target: c.goal_target, slot_min: c.slot_min ?? null }
 }, { immediate: true })
@@ -56,20 +60,28 @@ watch([site, meta], ([s, m]) => {
   chooseTemplate(s.site.template_key ?? 'generic')
 }, { immediate: true })
 
-// A site runs one campaign at a time: the dates other campaigns hold, and the one these dates would overlap.
+// A site runs one main campaign at a time: the dates other main campaigns hold, and the one these dates would overlap.
 const { data: existing } = useFetch<{ campaigns: PtCampaign[] }>('/api/pt/campaigns', { key: 'pt-campaigns' })
-const booked = computed(() => (existing.value?.campaigns ?? []).filter(c => c.status !== 'ended'))
+const booked = computed(() => kind.value === 'side' ? [] : (existing.value?.campaigns ?? []).filter(c => c.status !== 'ended' && c.kind !== 'side'))
 const clash = computed(() => {
   const answers = applyTemplate(templateKey.value, { ...setup.value, end_date: setup.value.end_date ?? undefined })
   const mine = { ...answers, timezone: site.value?.site.timezone ?? 'UTC' }
-  return (existing.value?.campaigns ?? []).find(c => campaignsOverlap(mine, c)) ?? null
+  return overlappingCampaign(mine, kind.value, existing.value?.campaigns ?? [])
+})
+const kindItems = [
+  { value: 'main', label: 'Main campaign', description: 'Shows at your site\'s address. A site runs one main campaign at a time.' },
+  { value: 'side', label: 'Side campaign', description: 'Runs alongside your main campaign at its own address, with its own landing page and dates. Your home page links to it while it runs.' }
+]
+const kindValue = computed({
+  get: () => kind.value ?? 'main',
+  set: (v: string) => { kind.value = v === 'side' ? 'side' : null }
 })
 
 const saving = ref(false)
 async function create() {
   saving.value = true
   try {
-    const body: Record<string, unknown> = { ...setup.value, name: name.value, template_key: templateKey.value }
+    const body: Record<string, unknown> = { ...setup.value, name: name.value, template_key: templateKey.value, kind: kind.value }
     if (relaunchOf.value) body.relaunchOf = relaunchOf.value
     if (!setup.value.end_date) delete body.end_date
     const res = await $fetch<{ campaign: { id: string } }>('/api/pt/campaigns', { method: 'POST', body })
@@ -98,7 +110,7 @@ async function create() {
         {{ relaunchOf ? `Relaunch ${previous?.campaign?.name ?? ''}` : 'New campaign' }}
       </h1>
       <p class="text-sm text-muted">
-        A site runs one campaign at a time, so the dates can't overlap another campaign on this site.
+        A site runs one main campaign at a time, so main campaign dates can't overlap. A side campaign can run alongside it.
       </p>
     </header>
 
@@ -132,6 +144,17 @@ async function create() {
 
     <UCard>
       <div class="space-y-8">
+        <UFormField
+          v-if="!relaunchOf"
+          label="Where does it run?"
+          :ui="{ label: 'font-semibold' }"
+        >
+          <URadioGroup
+            v-model="kindValue"
+            :items="kindItems"
+            variant="card"
+          />
+        </UFormField>
         <section
           v-if="!relaunchOf"
           class="space-y-3"
@@ -181,6 +204,7 @@ async function create() {
           v-model="setup"
           :template-key="templateKey"
           :lock-template="false"
+          :dated="kind === 'side'"
         />
       </div>
       <template #footer>
@@ -191,7 +215,7 @@ async function create() {
           >
             These dates overlap {{ clash.name }} ({{ ptCampaignDates(clash) }}).
             <template v-if="clash.start_mode === 'join' || clash.end_mode !== 'date'">
-              It has no end date, so it holds every date from its start until it is ended.
+              It has no end date, so it holds every date from its start until it is ended. A side campaign can run alongside it.
             </template>
           </p>
           <UButton
@@ -199,7 +223,7 @@ async function create() {
             :label="relaunchOf ? 'Relaunch' : 'Create campaign'"
             size="lg"
             :loading="saving"
-            :disabled="name.trim().length < 2 || !!clash"
+            :disabled="name.trim().length < 2 || !!clash || (kind === 'side' && !relaunchOf && (!setup.start_date || !setup.end_date))"
             @click="create"
           />
         </div>

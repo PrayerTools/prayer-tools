@@ -34,6 +34,12 @@
     "starts_on": "Commence le {date}",
     "pray_today": "Prier aujourd'hui",
     "continue_praying": "Continuer la lecture et prier",
+    "side": {
+      "now": "Aussi en ce moment",
+      "soon": "Bientôt",
+      "dates": "{start} – {end}",
+      "open": "En savoir plus"
+    },
     "why": {
       "title": "Pourquoi nous prions"
     },

@@ -49,7 +49,7 @@ export function useSite() {
   }
 
   function shareUrl(referral?: string | null): string {
-    const base = `${site.value.url}${link('', [], { current: true })}`.replace(/\/$/, '') || site.value.url
+    const base = `${site.value.url}${link('', [], { current: !site.value.campaign?.side })}`.replace(/\/$/, '') || site.value.url
     return referral ? `${base}${base.includes('?') ? '&' : '?'}r=${encodeURIComponent(referral)}` : base
   }
 

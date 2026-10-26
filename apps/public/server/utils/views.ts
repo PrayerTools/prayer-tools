@@ -13,10 +13,11 @@ import { videoEmbed } from '@prayertools/shared/video'
 import type { TranslatableText, CampaignCta, SignupFieldKind } from '@prayertools/shared/db/schema'
 import type { CampaignRow } from '@prayertools/shared/subscriptions'
 import { platformConfig } from '@prayertools/shared/config'
+import { isSideCampaign } from '@prayertools/shared/setup'
 import type { PageView, SiteResponse } from '../../shared/view'
 import { useDb } from './db'
 import type { SiteContext } from './site-context'
-import { buildSiteView, campaignView, landingOf, loadSiteData, stateOf, type SiteData } from './site-data'
+import { buildSiteView, campaignView, landingSource, loadSiteData, sideCampaigns, stateOf, type SiteData } from './site-data'
 import { contentBlocks, contentVars, docHtml, formatDate, lastEntry } from './content'
 import { progressFor, statsFor } from './site-stats'
 import { managedSubscription, manageView } from './manage'
@@ -37,13 +38,20 @@ export async function buildSiteResponse(event: H3Event, ctx: SiteContext, fullPa
   const url = new URL(fullPath, 'http://x')
   return await withOrg(useDb(), ctx.orgId, async (tx) => {
     const data = await loadSiteData(tx)
-    if (draft) data.site = { ...data.site, landing: draft.landing, description: draft.description }
     const parsed = parseSitePath(url.pathname, data.site.languages, data.campaigns.map(c => c.slug))
     const lang = parsed.lang ?? data.site.default_language
     const def = data.site.default_language
-    const campaign = parsed.campaignSlug
+    let campaign = parsed.campaignSlug
       ? data.campaigns.find(c => c.slug === parsed.campaignSlug) ?? null
       : data.current?.campaign ?? null
+    // The editor's draft is the landing page of the page it previews.
+    if (draft && campaign && isSideCampaign(campaign)) {
+      const edited = { ...campaign, landing: draft.landing, description: draft.description }
+      data.campaigns = data.campaigns.map(c => c.id === edited.id ? edited : c)
+      campaign = edited
+    } else if (draft) {
+      data.site = { ...data.site, landing: draft.landing, description: draft.description }
+    }
     const site = await buildSiteView(tx, ctx, data, lang, campaign, url.pathname)
     if (draft) site.strings = withDraftStrings(site.strings, draft.strings)
     const cv = site.campaign
@@ -138,9 +146,10 @@ async function landingPage(tx: Parameters<typeof loadSiteData>[0], ctx: SiteCont
     const state = stateOf(data, campaign)
     if (state === 'between' || state === 'ended') return await betweenPage(tx, data, campaign, lang)
   }
-  const landing = landingOf(data.site)
+  const { landing, templateKey } = landingSource(data, campaign)
+  const side = !!campaign && isSideCampaign(campaign)
   const vars = campaign ? contentVars(data, ctx.name, campaign, lang) : undefined
-  const whyDoc = landingWhyDoc(landing.why, data.site.template_key, lang, def)
+  const whyDoc = landingWhyDoc(landing.why, templateKey, lang, def)
   const why = whyDoc ? docHtml({ [lang]: whyDoc }, lang, def, vars) : ''
   const custom = (landing.custom ?? []).map(s => ({
     id: s.id,
@@ -152,11 +161,13 @@ async function landingPage(tx: Parameters<typeof loadSiteData>[0], ctx: SiteCont
     buttonLabel: s.button_url ? textIn(s.button_label, lang, def) || null : null,
     buttonUrl: s.button_url ?? null
   })).filter(s => s.heading || s.html || s.video)
-  const stories = await tx
+  let storyQuery = tx
     .selectFrom('pt_story')
     .select(['id', 'body', 'name', 'use_name'])
     .where('published', '=', true)
     .where('may_publish', '=', true)
+  if (side) storyQuery = storyQuery.where('campaign_id', '=', campaign!.id)
+  const stories = await storyQuery
     .orderBy('published_at', 'desc')
     .limit(6)
     .execute()
@@ -166,7 +177,7 @@ async function landingPage(tx: Parameters<typeof loadSiteData>[0], ctx: SiteCont
     const blocks = await contentBlocks(tx, data, ctx.name, campaign, cv.todayEntry, lang, 3)
     if (blocks[0]) today = { day: cv.todayEntry, html: blocks[0].html, title: blocks[0].title }
   }
-  const sections = visibleSections(landing.hidden, data.site.template_key, {
+  const sections = visibleSections(landing.hidden, templateKey, {
     hasStories: landing.stories !== false && stories.length > 0,
     hasCustom: custom.length > 0,
     hasWhy: !!why,
@@ -175,7 +186,7 @@ async function landingPage(tx: Parameters<typeof loadSiteData>[0], ctx: SiteCont
   // In the admin editor, sections that are switched on but have nothing to
   // show yet appear as placeholders.
   const placeholders = ctx.editor
-    ? visibleSections(landing.hidden, data.site.template_key, { hasStories: true, hasCustom: true, hasWhy: true, appAvailable: true }).filter(s => !sections.includes(s))
+    ? visibleSections(landing.hidden, templateKey, { hasStories: true, hasCustom: true, hasWhy: true, appAvailable: true }).filter(s => !sections.includes(s))
     : []
   return {
     kind: 'landing',
@@ -187,7 +198,8 @@ async function landingPage(tx: Parameters<typeof loadSiteData>[0], ctx: SiteCont
     custom,
     prayingNow: data.settings.show_praying_now ? await prayingNow(tx) : 0,
     form: await signupForm(tx, data, lang, !!campaign),
-    placeholders
+    placeholders,
+    side: side ? [] : sideCampaigns(data)
   }
 }
 

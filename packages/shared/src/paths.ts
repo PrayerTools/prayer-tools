@@ -1,7 +1,8 @@
 // Public site URL shape: `/{lang?}/{campaign?}/{page}/{…}`. The language
 // segment is one of the site's languages; the campaign segment addresses a
-// past or future campaign (`/2025/stats`); with neither, the site's current
-// campaign in its default language is shown.
+// past or future campaign (`/2025/stats`) or a side campaign
+// (`/ramadan-2027`); with neither, the site's current campaign in its default
+// language is shown.
 import { isLanguage } from './languages'
 
 export const SITE_PAGES = [
