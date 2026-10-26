@@ -2,14 +2,14 @@
   "core": {
     "pkg": "@nuxtinator/core",
     "version": "^2.6.0",
-    "ref": "@nuxtinator/core@2.8.0",
+    "ref": "@nuxtinator/core@2.9.0",
     "source": "github:corsacca/nuxtinator/layers/core",
     "tagPrefix": "@nuxtinator/core@"
   },
   "tenancy": {
     "pkg": "@nuxtinator/tenancy",
     "version": "^3.3.0",
-    "ref": "@nuxtinator/tenancy@3.4.1",
+    "ref": "@nuxtinator/tenancy@3.4.2",
     "source": "github:corsacca/nuxtinator/layers/tenancy",
     "tagPrefix": "@nuxtinator/tenancy@"
   },
