@@ -1,5 +1,5 @@
 // Data retention: per-org anonymization (12 months unsubscribed or archived), unused identities, and
-// platform-wide expiry of raw analytics, old session partitions and My prayer tokens on the admin connection.
+// platform-wide expiry of raw analytics, old session partitions, the email log and My prayer tokens on the admin connection.
 import { sql } from 'kysely'
 import { forEachOrg } from '@prayertools/shared/db/scope'
 import { anonymizeSubscription, deleteIntercessorIfUnused } from '@prayertools/shared/subscriptions'
@@ -128,6 +128,14 @@ export async function maintainSessionPartitions(ctx: WorkerContext, log: Logger)
   return { dropped }
 }
 
+// The per-person email log is kept as long as prayer sessions.
+export async function purgeEmailLog(ctx: WorkerContext): Promise<number> {
+  const cutoff = monthsAgo(ctx.now(), SESSION_RETENTION_MONTHS)
+  return await deleteInBatches(ctx, async () => Number((await sql`
+    DELETE FROM pt_email_log WHERE id IN (SELECT id FROM pt_email_log WHERE sent_at < ${cutoff}::timestamptz LIMIT ${BATCH})
+  `.execute(ctx.admin)).numAffectedRows ?? 0))
+}
+
 export async function purgeMyTokens(ctx: WorkerContext): Promise<{ tokens: number, sessions: number }> {
   const now = ctx.now()
   const tokens = await ctx.admin.deleteFrom('pt_my_token').where('expires_at', '<', now).executeTakeFirst()
@@ -144,6 +152,7 @@ export async function runRetention(ctx: WorkerContext, log: Logger): Promise<Rec
   const intercessors = await deleteUnusedIntercessors(ctx)
   const raw = await purgeRawAnalytics(ctx)
   const parts = await maintainSessionPartitions(ctx, log)
+  const emails = await purgeEmailLog(ctx)
   const my = await purgeMyTokens(ctx)
   return {
     anonymized_unsubscribed: unsubscribed,
@@ -152,6 +161,7 @@ export async function runRetention(ctx: WorkerContext, log: Logger): Promise<Rec
     events_deleted: raw.events,
     visitor_days_deleted: raw.visitor_days,
     partitions_dropped: parts.dropped,
+    email_log_deleted: emails,
     my_tokens_deleted: my.tokens,
     my_sessions_deleted: my.sessions
   }

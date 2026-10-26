@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Shown on CRM contact pages (registered in the pt-crm-panels plugin): the
-// contact's subscription on this site, prayer times, prayer totals and
-// check-ins. Renders nothing outside a site, without pt.intercessors.read, or
+// contact's subscription on this site, prayer times, activity, prayer totals
+// and check-ins. Renders nothing outside a site, without pt.intercessors.read, or
 // for a contact with no subscription.
 const props = defineProps<{ recordId: string, recordType?: string }>()
 
@@ -213,6 +213,8 @@ async function remove() {
           </li>
         </ul>
       </div>
+
+      <PtContactActivity :record-id="recordId" />
 
       <div class="px-4 py-3">
         <h3 class="text-sm font-medium mb-1">

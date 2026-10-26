@@ -24,7 +24,7 @@ export default defineEventHandler(async (event) => {
       if (!sub?.contact_id || sub.anonymized_at) return null
       const email = await primaryEmailOf(tx, sub.contact_id)
       if (!email) return null
-      return await prepareSiteMail(tx, ctx.orgId, email.email, 'manage_link', m => manageLinkEmail(m, sub.language, manageUrl(m.siteUrl, ctx.orgId, sub.id, sub.manage_version)))
+      return await prepareSiteMail(tx, ctx.orgId, email.email, 'manage_link', m => manageLinkEmail(m, sub.language, manageUrl(m.siteUrl, ctx.orgId, sub.id, sub.manage_version)), sub.id)
     })
     background(event, deliver(mail))
   }

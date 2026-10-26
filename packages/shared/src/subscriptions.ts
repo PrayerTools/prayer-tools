@@ -411,6 +411,7 @@ export async function anonymizeSubscription(tx: Tx, subscriptionId: string, now:
   const sub = await tx.selectFrom('pt_subscription').select(['contact_id', 'anonymized_at']).where('id', '=', subscriptionId).executeTakeFirst()
   if (!sub || sub.anonymized_at) return false
   await tx.deleteFrom('pt_commitment').where('subscription_id', '=', subscriptionId).execute()
+  await tx.deleteFrom('pt_email_log').where('subscription_id', '=', subscriptionId).execute()
   if (sub.contact_id) {
     const channels = await tx.selectFrom('crm_contact_channels').select('channel_id').where('record_id', '=', sub.contact_id).execute()
     await tx.deleteFrom('crm_contact_channels').where('record_id', '=', sub.contact_id).execute()

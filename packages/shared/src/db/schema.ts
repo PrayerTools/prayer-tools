@@ -440,6 +440,17 @@ export interface PtCheckinTable {
   responded_at: NullableTimestamp
 }
 
+export interface PtEmailLogTable {
+  id: Generated<string>
+  org_id: Generated<string>
+  subscription_id: string
+  campaign_id: string | null
+  kind: string
+  subject: string
+  day: number | null
+  sent_at: Timestamp
+}
+
 export interface PtPrayerSessionTable {
   id: string
   org_id: Generated<string>
@@ -587,6 +598,7 @@ export interface PtTables {
   pt_commitment: PtCommitmentTable
   pt_reminder_sent: PtReminderSentTable
   pt_checkin: PtCheckinTable
+  pt_email_log: PtEmailLogTable
   pt_prayer_session: PtPrayerSessionTable
   pt_person_total: PtPersonTotalTable
   pt_stat_daily: PtStatDailyTable

@@ -11,6 +11,7 @@ import { primaryEmailOf } from '@prayertools/shared/crm'
 import { isSuppressed } from '@prayertools/shared/email/suppression'
 import { loadSiteMailContext, reminderEmail, type SiteMailContext } from '@prayertools/shared/email/templates'
 import type { OutgoingMail } from '@prayertools/shared/email/transport'
+import { logEmails, type EmailLogEntry } from '@prayertools/shared/email/log'
 import { prayUrl } from '@prayertools/shared/links'
 import type { WorkerContext } from './context'
 import { personLanguage, personLinks, siteMail, siteRow } from './mail'
@@ -96,6 +97,7 @@ export async function oldestDueAgeMs(ctx: WorkerContext, now: Date): Promise<num
 
 interface Prepared {
   mail: OutgoingMail
+  sent: EmailLogEntry
   localDate: string
   next: Date | null
 }
@@ -208,13 +210,14 @@ async function prepare(tx: Tx, claimed: Claimed, now: Date, mailCtx: Map<string,
     manageUrl: links.manageUrl,
     unsubscribeUrl: links.unsubscribeUrl
   })
-  return { outcome: 'send', prepared: { mail: siteMail(ctx, email.email, rendered, 'reminder', links.unsubscribeUrl), localDate, next } }
+  const sent: EmailLogEntry = { subscriptionId: sub.id, kind: 'reminder', subject: rendered.subject, campaignId: campaign.id, day, sentAt: now }
+  return { outcome: 'send', prepared: { mail: siteMail(ctx, email.email, rendered, 'reminder', links.unsubscribeUrl), sent, localDate, next } }
 }
 
 async function handleOne(ctx: WorkerContext, claimed: Claimed, now: Date, mailCtx: Map<string, Promise<SiteMailContext>>, log: Logger): Promise<Outcome> {
   const step = await withOrg(ctx.app, claimed.org_id, tx => prepare(tx, claimed, now, mailCtx))
   if (step.outcome !== 'send') return step.outcome
-  const { mail, localDate, next } = step.prepared
+  const { mail, sent, localDate, next } = step.prepared
   try {
     await ctx.sendMail(mail)
   } catch (err) {
@@ -223,7 +226,10 @@ async function handleOne(ctx: WorkerContext, claimed: Claimed, now: Date, mailCt
     log.error('reminders.send_failed', { site: claimed.org_id, commitment: claimed.id, err })
     return 'failed'
   }
-  await withOrg(ctx.app, claimed.org_id, tx => advance(tx, claimed.id, claimed.next_reminder_utc, next))
+  await withOrg(ctx.app, claimed.org_id, async (tx) => {
+    await advance(tx, claimed.id, claimed.next_reminder_utc, next)
+    await logEmails(tx, [sent])
+  })
   return 'sent'
 }
 

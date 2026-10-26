@@ -2,6 +2,7 @@
 import { withOrg } from '@prayertools/shared/db/scope'
 import { primaryEmailOf } from '@prayertools/shared/crm'
 import { isSuppressed } from '@prayertools/shared/email/suppression'
+import { logEmails } from '@prayertools/shared/email/log'
 import { checkinEmail, loadSiteMailContext } from '@prayertools/shared/email/templates'
 import type { CheckinKind } from '@prayertools/shared/db/schema'
 import { hashToken, randomToken } from '@prayertools/shared/tokens'
@@ -49,6 +50,7 @@ export async function checkinEmailJob(ctx: JobContext, payload: Record<string, u
     const links = personLinks(mctx, sub)
     const rendered = checkinEmail(mctx, lang, { ...checkinUrls(mctx.siteUrl, token), ...links }, { reminder: kind === 'reminder' })
     await ctx.sendMail(siteMail(mctx, email.email, rendered, 'checkin', links.unsubscribeUrl))
+    await logEmails(tx, [{ subscriptionId: sub.id, kind: 'checkin', subject: rendered.subject, sentAt: ctx.now() }])
     await ctx.saveProgress({ sent: true, checkin_id: row.id })
     return { checkin_id: row.id }
   })

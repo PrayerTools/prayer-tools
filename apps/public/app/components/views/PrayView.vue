@@ -61,6 +61,38 @@ const sessionId = ref('')
 let personal: string | null = null
 let timer: ReturnType<typeof setInterval> | null = null
 
+// Reloading or reopening a day within 3 hours continues the same session, so
+// it counts as one prayer.
+const SESSION_REUSE_MS = 3 * 3600_000
+const SESSION_PREFIX = 'pt_session:'
+interface StoredSession { id: string, at: number, amen?: boolean }
+
+function sessionKey(): string {
+  return `${SESSION_PREFIX}${site.value.orgId}:${site.value.campaign?.id}:${props.page.day}`
+}
+
+function storedSession(): StoredSession | null {
+  try {
+    const s = JSON.parse(localStorage.getItem(sessionKey()) ?? 'null') as StoredSession | null
+    return s && typeof s.id === 'string' && Date.now() - s.at < SESSION_REUSE_MS ? s : null
+  } catch {
+    return null
+  }
+}
+
+function saveSession(s: StoredSession) {
+  try {
+    for (const key of Object.keys(localStorage)) {
+      if (!key.startsWith(SESSION_PREFIX) || key === sessionKey()) continue
+      const old = JSON.parse(localStorage.getItem(key) ?? 'null') as StoredSession | null
+      if (!old || Date.now() - old.at >= SESSION_REUSE_MS) localStorage.removeItem(key)
+    }
+    localStorage.setItem(sessionKey(), JSON.stringify(s))
+  } catch {
+    // storage blocked
+  }
+}
+
 async function ping() {
   if (document.visibilityState === 'hidden' || amened.value || !site.value.campaign) return
   try {
@@ -76,7 +108,6 @@ async function ping() {
 }
 
 onMounted(async () => {
-  sessionId.value = crypto.randomUUID()
   const hash = new URLSearchParams(location.hash.slice(1))
   personal = hash.get('p')
   if (personal) {
@@ -102,6 +133,10 @@ onMounted(async () => {
       return
     }
   }
+  const stored = storedSession()
+  sessionId.value = stored?.id ?? crypto.randomUUID()
+  amened.value = !!stored?.amen
+  if (!stored) saveSession({ id: sessionId.value, at: Date.now() })
   void ping()
   timer = setInterval(ping, 30_000)
   document.addEventListener('visibilitychange', onVisible)
@@ -121,6 +156,7 @@ function onVisible() {
 
 async function amen() {
   amened.value = true
+  saveSession({ ...(storedSession() ?? { id: sessionId.value, at: Date.now() }), amen: true })
   try {
     await $fetch('/api/pray/amen', { method: 'POST', body: { id: sessionId.value } })
   } catch {

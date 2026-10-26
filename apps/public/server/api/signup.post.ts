@@ -82,7 +82,7 @@ export default defineEventHandler(async (event) => {
       const existing = await findContactByEmail(tx, normalized)
       const sub = existing ? await tx.selectFrom('pt_subscription').selectAll().where('contact_id', '=', existing.contactId).executeTakeFirst() : null
       if (sub?.verified_at) {
-        const mail = await prepareSiteMail(tx, ctx.orgId, normalized, 'manage_link', m => manageLinkEmail(m, sub.language, manageUrl(m.siteUrl, ctx.orgId, sub.id, sub.manage_version)))
+        const mail = await prepareSiteMail(tx, ctx.orgId, normalized, 'manage_link', m => manageLinkEmail(m, sub.language, manageUrl(m.siteUrl, ctx.orgId, sub.id, sub.manage_version)), sub.id)
         return { known: true as const, mail }
       }
     }
@@ -109,7 +109,7 @@ export default defineEventHandler(async (event) => {
     let mail: PendingMail | null = null
     if (res.verifyToken) {
       const token = res.verifyToken
-      mail = await prepareSiteMail(tx, ctx.orgId, normalized, 'verify', m => verificationEmail(m, language, `${m.siteUrl}/verify/${token}`))
+      mail = await prepareSiteMail(tx, ctx.orgId, normalized, 'verify', m => verificationEmail(m, language, `${m.siteUrl}/verify/${token}`), res.subscription.id)
     }
     if (preVerified && res.newSubscription) {
       await recordEvent(tx, { campaignId: campaign.id, type: 'campaign_signup_verified', meta: { subscription_id: res.subscription.id } })

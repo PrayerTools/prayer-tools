@@ -15,6 +15,10 @@ async function commitmentRow(orgId: string, id: string) {
   return await withOrg(env.admin, orgId, tx => tx.selectFrom('pt_commitment').selectAll().where('id', '=', id).executeTakeFirstOrThrow())
 }
 
+async function emailLog(orgId: string, subscriptionId: string) {
+  return await withOrg(env.admin, orgId, tx => tx.selectFrom('pt_email_log').select(['kind', 'day', 'campaign_id', 'sent_at']).where('subscription_id', '=', subscriptionId).orderBy('sent_at').execute())
+}
+
 async function sentDates(orgId: string, commitmentId: string): Promise<string[]> {
   const rows = await withOrg(env.admin, orgId, tx => tx.selectFrom('pt_reminder_sent').select('local_date').where('commitment_id', '=', commitmentId).orderBy('local_date').execute())
   return rows.map(r => r.local_date)
@@ -53,6 +57,9 @@ describe('reminder sweep', () => {
     c = await commitmentRow(orgId, id)
     expect(c.next_reminder_utc?.toISOString()).toBe('2026-03-09T11:00:00.000Z')
     expect(await sentDates(orgId, id)).toEqual(['2026-03-07', '2026-03-08'])
+    const log = await emailLog(orgId, subscriptionId)
+    expect(log.map(l => [l.kind, l.day, l.campaign_id])).toEqual([['reminder', 7, campaignId], ['reminder', 8, campaignId]])
+    expect(log[0]!.sent_at.toISOString()).toBe('2026-03-07T12:00:30.000Z')
   })
 
   it('never sends the same day twice (dedupe on pt_reminder_sent)', async () => {
@@ -227,6 +234,7 @@ describe('reminder sweep', () => {
     expect(c.next_reminder_utc?.toISOString()).toBe('2026-03-06T12:00:00.000Z')
     expect(c.claimed_at).not.toBeNull()
     expect(await sentDates(orgId, id)).toEqual([])
+    expect(await emailLog(orgId, subscriptionId)).toEqual([])
     expect(res.lagMs).toBeGreaterThan(0)
   })
 

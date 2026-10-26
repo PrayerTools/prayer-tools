@@ -36,6 +36,10 @@ export const PT_LABELS = {
     top: 'Top of the page', why: 'Why we pray', custom: 'Custom sections', stories: 'Stories', how: 'How it works', signup: 'Sign up to pray',
     today: 'Today\'s prayer', share: 'Invite others to pray', contact: 'Contact us', app: 'Pray with the app'
   } as Record<string, string>,
+  emailKind: {
+    reminder: 'Prayer reminder', checkin: 'Check-in', thank_you: 'Thank-you', verify: 'Confirm email', manage_link: 'Manage link', site_email: 'Site email'
+  } as Record<string, string>,
+  sessionSource: { porch: 'on the website', manage: 'from the manage page', app: 'in the app', email: 'from an email' } as Record<string, string>,
   role: { 'admin': 'Owner', 'pt-editor': 'Editor', 'pt-translator': 'Translator', 'pt-viewer': 'Viewer', 'member': 'Member' } as Record<string, string>,
   roleDescription: {
     'admin': 'Team, domains, sending identity, deleting the site, and everything an editor can do.',
