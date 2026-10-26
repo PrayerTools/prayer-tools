@@ -14,7 +14,8 @@ Rebuild of prayer.tools campaigns. Today: WordPress multisite + Disciple.Tools +
 
 - **Site** — the long-lived thing that owns the URL and domains, team, branding, email identity, languages, landing page and subscribers.
 - **Campaign** — a dated instance on a site (Ramadan 2025, Ramadan 2026): setup answers, dates, prayer content, goal, commitments, stats. Relaunching is a new campaign on the same site; past campaigns stay reachable.
-- Public pages show the site's current campaign. "Site" is a word for champions; intercessors see campaigns.
+- **Main and side campaigns** — a site runs one main campaign at a time (dates can't overlap), so its root address is unambiguous. A side campaign (Ramadan beside an ongoing campaign, a crisis response) runs alongside on fixed dates at its own address, `/{slug}`, with its own landing page (see [campaign-setup.md](campaign-setup.md)).
+- Public pages show the site's current main campaign. "Site" is a word for champions; intercessors see campaigns.
 
 ## Components
 
@@ -99,4 +100,3 @@ Admin app, public server, worker and a shared package (domain logic, types, emai
 
 - Sending identity for site email — leaning: platform domain by default, optional verified custom sending domain (see [admin-app.md](admin-app.md)).
 - Setup answers (start, end, goal, cadence) live on the campaign, so a relaunch can change them — confirm.
-- At most one current campaign per site (dates can't overlap), so the site's root address is unambiguous — confirm.

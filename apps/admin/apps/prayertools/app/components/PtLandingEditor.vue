@@ -3,13 +3,14 @@
 // writes the "why" text and custom sections, hides sections they don't need,
 // and chooses whether published stories show. Section headings and standard
 // text can be reworded per language; the preview beside the editor shows
-// unsaved changes.
-import type { TiptapDoc, TranslatableText } from '@prayertools/shared/db/schema'
+// unsaved changes. With `campaignId` it edits a side campaign's own landing
+// page; section headings and standard text stay the site's.
+import type { SiteLanding, TiptapDoc, TranslatableText } from '@prayertools/shared/db/schema'
 import { isEmptyDoc } from '@prayertools/shared/tiptap'
 import { isTemplateWhy, templateWhyDoc } from '@prayertools/shared/i18n/landing'
 import { videoEmbed } from '@prayertools/shared/video'
 
-const props = withDefaults(defineProps<{ saveLabel?: string }>(), { saveLabel: 'Save landing page' })
+const props = withDefaults(defineProps<{ saveLabel?: string, campaignId?: string }>(), { saveLabel: 'Save landing page', campaignId: undefined })
 const emit = defineEmits<{ saved: [] }>()
 
 interface CustomSection {
@@ -22,11 +23,24 @@ interface CustomSection {
   button_label?: TranslatableText
   button_url?: string
 }
-interface Story { id: string, name: string | null, body: string, use_name: boolean, published: boolean }
+interface Story { id: string, name: string | null, body: string, use_name: boolean, published: boolean, campaign_id: string | null }
 
-const { data: site, refresh, can } = usePtSite()
+const { data: site, refresh: refreshSite, can } = usePtSite()
 const { data: meta } = usePtMeta()
 const toast = usePtToast()
+
+interface SideCampaign { id: string, slug: string, name: string, template_key: string | null, landing: SiteLanding | null, description: TranslatableText | null }
+const { data: campaignData, refresh: refreshCampaign } = useFetch<{ campaign: SideCampaign }>(() => `/api/pt/campaigns/${props.campaignId}`, { immediate: !!props.campaignId, key: `pt-campaign-${props.campaignId}` })
+const campaign = computed(() => props.campaignId ? campaignData.value?.campaign ?? null : null)
+// What this editor edits: the site's landing page, or a side campaign's.
+const source = computed(() => {
+  const s = site.value
+  if (!s) return null
+  if (!props.campaignId) return { landing: (s.site.landing ?? {}) as SiteLanding, description: s.site.description, templateKey: s.site.template_key, url: s.url }
+  const c = campaign.value
+  return c ? { landing: c.landing ?? {}, description: c.description, templateKey: c.template_key, url: `${s.url}/${c.slug}` } : null
+})
+const refresh = () => props.campaignId ? refreshCampaign() : refreshSite()
 
 const lang = ref('en')
 watch(site, (s) => {
@@ -43,13 +57,14 @@ const stories = ref(true)
 const custom = ref<CustomSection[]>([])
 const description = ref<TranslatableText | null>(null)
 const openIds = ref<string[]>([])
-watch(site, (s) => {
-  if (!s) return
-  why.value = withTemplateWhy((s.site.landing?.why ?? {}) as Record<string, TiptapDoc>, s.site.template_key, s.site.languages, s.site.default_language)
-  hidden.value = [...(s.site.landing?.hidden ?? meta.value?.templates.find(t => t.key === s.site.template_key)?.hiddenSections ?? [])]
-  stories.value = s.site.landing?.stories !== false
-  custom.value = JSON.parse(JSON.stringify(s.site.landing?.custom ?? []))
-  description.value = s.site.description
+watch(source, (src) => {
+  const s = site.value
+  if (!s || !src) return
+  why.value = withTemplateWhy((src.landing.why ?? {}) as Record<string, TiptapDoc>, src.templateKey, s.site.languages, s.site.default_language)
+  hidden.value = [...(src.landing.hidden ?? meta.value?.templates.find(t => t.key === src.templateKey)?.hiddenSections ?? [])]
+  stories.value = src.landing.stories !== false
+  custom.value = JSON.parse(JSON.stringify(src.landing.custom ?? []))
+  description.value = src.description
   openIds.value = custom.value.filter(c => !c.heading.values[s.site.default_language]).map(c => c.id)
 }, { immediate: true })
 
@@ -64,13 +79,13 @@ function withTemplateWhy(own: Record<string, TiptapDoc>, templateKey: string | n
   }
   return out
 }
-const whyIsStandard = computed(() => isTemplateWhy(why.value[lang.value] as TiptapDoc | null | undefined, site.value?.site.template_key, lang.value))
+const whyIsStandard = computed(() => isTemplateWhy(why.value[lang.value] as TiptapDoc | null | undefined, source.value?.templateKey, lang.value))
 
 const whyDoc = computed({
   get: () => why.value[lang.value] ?? null,
   set: (v) => { why.value = { ...why.value, [lang.value]: v } }
 })
-const whyGuidance = computed(() => ptLandingGuidance('why', site.value?.site.template_key))
+const whyGuidance = computed(() => ptLandingGuidance('why', source.value?.templateKey))
 
 // Section headings and standard text: the site's own wording per language
 // over the standard wording, which the preview reports for each language it
@@ -144,7 +159,7 @@ const { data: storyData, execute: loadStories } = useFetch<{ stories: Story[] }>
 watch(() => can('pt.intercessors.read'), (ok) => {
   if (ok) loadStories()
 }, { immediate: true })
-const landingStories = computed(() => (storyData.value?.stories ?? []).filter(s => s.published))
+const landingStories = computed(() => (storyData.value?.stories ?? []).filter(s => s.published && (!props.campaignId || s.campaign_id === props.campaignId)))
 
 function addSection() {
   const l = site.value!.site.default_language
@@ -240,7 +255,8 @@ async function save() {
       toast.ok('Translation saved')
       return
     }
-    await $fetch('/api/pt/site', { method: 'PATCH', body: { description: description.value, landing: { why: why.value, hidden: hidden.value, stories: stories.value, custom: custom.value } } })
+    const body = { description: description.value, landing: { why: why.value, hidden: hidden.value, stories: stories.value, custom: custom.value } }
+    await $fetch(props.campaignId ? `/api/pt/campaigns/${props.campaignId}` : '/api/pt/site', { method: 'PATCH', body })
     await saveWording()
     await refresh()
     toast.ok('Landing page saved')
@@ -255,7 +271,7 @@ async function save() {
 // Translators save only the current language, one field at a time.
 async function saveTranslation() {
   const l = lang.value
-  const put = (body: Record<string, unknown>) => $fetch('/api/pt/site/translation', { method: 'PUT', body: { lang: l, ...body } })
+  const put = (body: Record<string, unknown>) => $fetch('/api/pt/site/translation', { method: 'PUT', body: { lang: l, campaignId: props.campaignId, ...body } })
   if (description.value?.values[l] !== undefined) await put({ field: 'description', value: description.value.values[l] })
   if (why.value[l]) await put({ field: 'why', value: why.value[l] })
   for (const s of custom.value) {
@@ -280,7 +296,7 @@ async function translateWhy() {
 
 <template>
   <div
-    v-if="site"
+    v-if="site && source"
     class="space-y-6"
   >
     <div class="flex flex-wrap items-start justify-between gap-4">
@@ -296,7 +312,7 @@ async function translateWhy() {
           class="w-44"
         />
         <UButton
-          :href="site.url"
+          :href="source?.url ?? site.url"
           target="_blank"
           variant="soft"
           icon="i-lucide-external-link"
@@ -333,7 +349,7 @@ async function translateWhy() {
           </template>
           <template #default>
             <div
-              v-if="PT_LANDING_TEXT_FIELDS[s.key]"
+              v-if="PT_LANDING_TEXT_FIELDS[s.key] && !campaignId"
               class="space-y-3"
             >
               <UFormField
@@ -393,7 +409,7 @@ async function translateWhy() {
                   :languages="site.site.languages"
                   :default-language="site.site.default_language"
                   label="Short description"
-                  help="Shown under the site name, and used in link previews and the Prayer.Tools directory."
+                  :help="campaignId ? 'Shown under the site name on this campaign\'s page, and used in its link previews.' : 'Shown under the site name, and used in link previews and the Prayer.Tools directory.'"
                   multiline
                   :source-locked="!canWrite"
                 />
@@ -421,7 +437,7 @@ async function translateWhy() {
                 v-if="whyIsStandard"
                 class="text-xs text-(--ui-text-muted)"
               >
-                This is the {{ PT_LABELS.template[site.site.template_key ?? ''] ?? 'template' }} template's standard text. Visitors see it until you change it.
+                This is the {{ PT_LABELS.template[source?.templateKey ?? ''] ?? 'template' }} template's standard text. Visitors see it until you change it.
               </p>
             </div>
 
@@ -667,6 +683,7 @@ async function translateWhy() {
       <PtLandingPreview
         ref="preview"
         :site-url="site!.url"
+        :campaign-slug="campaign?.slug"
         :lang="lang"
         :default-language="site!.site.default_language"
         :draft="draft"

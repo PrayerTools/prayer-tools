@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // The setup answers (start, end, goal and, unless withCadence is false,
 // cadence), each explained. A template pre-fills them; answers the template
-// fixes are shown but locked.
+// fixes are shown but locked, and `dated` (side campaigns) locks a start and
+// an end date.
 export interface SetupState {
   start_mode: 'date' | 'join'
   start_date: string | null
@@ -15,12 +16,20 @@ export interface SetupState {
   slot_min: number | null
 }
 
-const props = withDefaults(defineProps<{ templateKey?: string, lockTemplate?: boolean, withCadence?: boolean }>(), { templateKey: 'generic', lockTemplate: true, withCadence: true })
+const props = withDefaults(defineProps<{ templateKey?: string, lockTemplate?: boolean, withCadence?: boolean, dated?: boolean }>(), { templateKey: 'generic', lockTemplate: true, withCadence: true, dated: false })
 const state = defineModel<SetupState>({ required: true })
 const { data: meta } = usePtMeta()
 
 const template = computed(() => meta.value?.templates.find(t => t.key === props.templateKey))
-const open = (k: string) => !props.lockTemplate || !template.value || template.value.open.includes(k)
+const open = (k: string) => {
+  if (props.dated && (k === 'start_mode' || k === 'end_mode')) return false
+  return !props.lockTemplate || !template.value || template.value.open.includes(k)
+}
+watch([() => props.dated, () => state.value.start_mode, () => state.value.end_mode], ([dated]) => {
+  if (!dated) return
+  if (state.value.start_mode !== 'date') state.value.start_mode = 'date'
+  if (state.value.end_mode !== 'date') state.value.end_mode = 'date'
+}, { immediate: true })
 
 const startItems = [
   { value: 'date', label: PT_LABELS.startMode.date, description: 'Everyone prays on the same calendar, from the same first day.' },
@@ -78,7 +87,7 @@ const lengthLabel = computed(() => {
       <UFormField
         label="When does it start?"
         :ui="{ label: 'text-base font-semibold' }"
-        :help="!open('start_mode') ? 'Set by the template.' : undefined"
+        :help="props.dated ? 'A side campaign has a start date and an end date.' : !open('start_mode') ? 'Set by the template.' : undefined"
       >
         <URadioGroup
           v-model="state.start_mode"

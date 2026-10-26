@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { applyTemplate, campaignLength, campaignStatus, campaignsOverlap, defaultDuration, displayLength, durationOptions, durationRule, pickCurrentCampaign, slotMinutes, suggestCampaignSlug, validateSetup, type CampaignDates } from '../src/setup'
+import { applyTemplate, campaignLength, campaignStatus, campaignsOverlap, defaultDuration, displayLength, durationOptions, durationRule, overlappingCampaign, pickCurrentCampaign, slotMinutes, suggestCampaignSlug, suggestSideSlug, validateSetup, type CampaignDates } from '../src/setup'
 
 const NY = 'America/New_York'
 
-function c(p: Partial<CampaignDates> & { id?: string }): CampaignDates & { id: string } {
+function c(p: Partial<CampaignDates> & { id?: string, kind?: 'side' | null }): CampaignDates & { id: string, kind?: 'side' | null } {
   return { id: p.id ?? 'x', start_mode: 'date', start_date: '2026-03-01', end_mode: 'date', end_date: '2026-03-30', length_days: null, cadence: 'daily', timezone: NY, ended_at: null, ...p }
 }
 
@@ -52,6 +52,41 @@ describe('pickCurrentCampaign', () => {
   it('else the most recently ended one', () => {
     expect(pickCurrentCampaign([older, past], now)).toEqual({ campaign: past, state: 'between' })
     expect(pickCurrentCampaign([], now)).toBeNull()
+  })
+
+  it('never picks a side campaign', () => {
+    const ongoing = c({ id: 'ongoing', start_date: '2025-01-01', end_mode: 'none', end_date: null })
+    const ramadan = c({ id: 'ramadan', kind: 'side', start_date: '2026-06-10', end_date: '2026-07-09' })
+    expect(pickCurrentCampaign([ongoing, ramadan], now)).toEqual({ campaign: ongoing, state: 'active' })
+    expect(pickCurrentCampaign([past, ramadan], now)).toEqual({ campaign: past, state: 'between' })
+    expect(pickCurrentCampaign([ramadan], now)).toBeNull()
+  })
+})
+
+describe('side campaigns', () => {
+  const ongoing = c({ id: 'ongoing', start_date: '2025-01-01', end_mode: 'none', end_date: null })
+  const ramadan = c({ start_date: '2027-02-08', end_date: '2027-03-09' })
+
+  it('overlap any campaign; main campaigns only clash with main campaigns', () => {
+    expect(overlappingCampaign(ramadan, 'side', [ongoing])).toBeNull()
+    expect(overlappingCampaign(ramadan, null, [ongoing])).toBe(ongoing)
+    expect(overlappingCampaign(ramadan, null, [{ ...ramadan, id: 'other', kind: 'side' }])).toBeNull()
+  })
+
+  it('need a start date and an end date', () => {
+    const answers = { start_mode: 'date', start_date: '2027-02-08', end_mode: 'date', end_date: '2027-03-09', length_days: null, goal: 'people', cadence: 'daily', track_time: false } as const
+    expect(validateSetup(answers, 'side')).toEqual([])
+    expect(validateSetup({ ...answers, end_mode: 'none', end_date: null }, 'side')).toContain('end_mode')
+    expect(validateSetup({ ...answers, end_mode: 'none', end_date: null })).toEqual([])
+  })
+
+  it('take their address from the name', () => {
+    expect(suggestSideSlug('Ramadan 2027', '2027-02-08', [])).toBe('ramadan-2027')
+    expect(suggestSideSlug('Prière pour Haïti', '2026-09-01', [])).toBe('priere-pour-haiti-2026')
+    expect(suggestSideSlug('Ramadan 2027', '2027-02-08', ['ramadan-2027'])).toBe('ramadan-2027-2')
+    expect(suggestSideSlug('Pray', '2026-09-01', [])).toBe('pray-2026')
+    expect(suggestSideSlug('Stats 2026', '2026-09-01', [])).toBe('stats-2026')
+    expect(suggestSideSlug('…', '2026-09-01', [])).toBe('2026')
   })
 })
 

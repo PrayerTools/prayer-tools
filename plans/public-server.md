@@ -24,6 +24,7 @@ Host middleware resolves the site from the hostname (`site_domain`), runs inside
 
 - Landing, signup and coverage, daily prayer content, stats, contact / stories — per campaign, per language
 - Past campaigns reachable (e.g. `/2025/stats`)
+- Side campaigns at their own address (e.g. `/ramadan-2027`), with their own landing page (see [campaign-setup.md](campaign-setup.md))
 - Subscriber manage page (see below)
 - Calendar feed (webcal subscription) and one-off `.ics`
 - Embeddable signup / coverage widget for external sites (replaces the WordPress shortcodes)
@@ -48,6 +49,8 @@ Sections in a fixed order; the section list and defaults live in code, and the s
 9. Link to the mobile app, once the app exists
 
 Templates set which sections show by default and pre-fill guidance text.
+
+While a side campaign is upcoming or running, the site's landing page shows a card for it under the top section, linking to its own landing page. A side campaign's landing page has the same sections with its own content.
 
 ## Rendering and caching
 

@@ -1,7 +1,8 @@
 // Creates a campaign on the site. `relaunchOf` starts from a previous
 // campaign's answers and reuses its libraries (copies the site edited carry
-// over; followed libraries pick up their latest published version).
-import { suggestCampaignSlug } from '@prayertools/shared/setup'
+// over; followed libraries pick up their latest published version), its kind,
+// and a side campaign's landing page.
+import { suggestCampaignSlug, suggestSideSlug } from '@prayertools/shared/setup'
 import { jsonb } from '@prayertools/shared/db/json'
 import { parseText } from '@prayertools/shared/translatable'
 
@@ -25,23 +26,28 @@ export default definePtHandler('pt.campaigns.write', async (event, tx, ctx) => {
       b.end_date = new Date(Date.parse(b.start_date) + days * 86_400_000).toISOString().slice(0, 10)
     }
   }
-  const answers = ptSetupFromBody(b, templateKey, base as never)
+  const kind = previous ? previous.kind : ptCampaignKind(b.kind)
+  const answers = ptSetupFromBody(b, templateKey, base as never, kind)
   const extras = ptCampaignExtras(b)
   const timezone = (extras.timezone as string) ?? site.timezone
-  await ptAssertNoOverlap(tx, { ...answers, timezone })
+  await ptAssertNoOverlap(tx, { ...answers, timezone }, kind)
+  const name = (extras.name as string) ?? previous?.name ?? ctx.orgName
   const taken = (await tx.selectFrom('pt_campaign').select('slug').execute()).map(r => r.slug)
-  const slug = (extras.slug as string) ?? suggestCampaignSlug(answers.start_date, taken)
+  const slug = (extras.slug as string) ?? (kind === 'side' ? suggestSideSlug(name, answers.start_date, taken) : suggestCampaignSlug(answers.start_date, taken))
   if (taken.includes(slug)) ptBadRequest('That campaign address is already used on this site.')
   const created = await tx.insertInto('pt_campaign').values({
     slug,
-    name: (extras.name as string) ?? previous?.name ?? ctx.orgName,
+    name,
     template_key: templateKey,
+    kind,
     ...answers,
     timezone,
     goal_target: (extras.goal_target as number | null | undefined) ?? previous?.goal_target ?? null,
     slot_min: 'slot_min' in extras ? extras.slot_min as number | null : (previous?.slot_min ?? null),
     end_message: b.end_message ? jsonb(parseText(b.end_message)) : (previous?.end_message ? jsonb(previous.end_message) : null),
-    cta: jsonb(b.cta ? ptCta(b.cta) : (previous?.cta ?? {}))
+    cta: jsonb(b.cta ? ptCta(b.cta) : (previous?.cta ?? {})),
+    landing: previous?.landing ? jsonb(previous.landing) : null,
+    description: previous?.description ? jsonb(previous.description) : null
   } as never).returningAll().executeTakeFirstOrThrow()
   if (previous) {
     const libs = await tx.selectFrom('pt_campaign_library').select(['site_library_id', 'position']).where('campaign_id', '=', previous.id).execute()

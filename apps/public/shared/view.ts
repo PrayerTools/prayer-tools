@@ -12,6 +12,8 @@ export interface CampaignView {
   name: string
   state: CampaignState
   isCurrent: boolean
+  // Runs beside the main campaign at its own address.
+  side: boolean
   goal: Goal
   goalTarget: number | null
   cadence: Cadence
@@ -26,6 +28,15 @@ export interface CampaignView {
   // 24/7 coverage campaigns: minutes in one coverage slot.
   slotMinutes: number | null
   todayEntry: number
+}
+
+// A side campaign the main landing page points to.
+export interface SideCampaignView {
+  slug: string
+  name: string
+  state: 'upcoming' | 'active'
+  startDate: string | null
+  endDate: string | null
 }
 
 export interface SiteView {
@@ -180,7 +191,7 @@ export interface MyView {
 }
 
 export type PageView =
-  | { kind: 'landing', sections: string[], progress: GoalProgressView | null, why: string, today: { day: number, html: string, title: string } | null, stories: StoryView[], custom: CustomSectionView[], prayingNow: number, form: SignupFormView, placeholders: string[] }
+  | { kind: 'landing', sections: string[], progress: GoalProgressView | null, why: string, today: { day: number, html: string, title: string } | null, stories: StoryView[], custom: CustomSectionView[], prayingNow: number, form: SignupFormView, placeholders: string[], side: SideCampaignView[] }
   | { kind: 'between', stats: StatsView | null, endMessage: string, cta: { label: string, url: string } | null }
   | { kind: 'archived' }
   | { kind: 'not_started', startDate: string }

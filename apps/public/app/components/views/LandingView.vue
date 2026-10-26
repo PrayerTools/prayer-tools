@@ -2,7 +2,7 @@
 import type { PageView } from '~~/shared/view'
 
 const props = defineProps<{ page: Extract<PageView, { kind: 'landing' }> }>()
-const { site, link, st, num, date } = useSite()
+const { site, link, campaignLink, st, num, date } = useSite()
 const { t } = useI18n()
 const has = (s: string) => props.page.sections.includes(s)
 const placeholder = (s: string) => props.page.placeholders?.includes(s)
@@ -41,6 +41,17 @@ const imageStyle = computed(() => site.value.image ? { objectPosition: `${site.v
       </div>
       <p v-if="site.image?.credit" class="absolute bottom-1 end-3 text-xs opacity-80">{{ site.image.credit }}</p>
     </section>
+
+    <div v-if="page.side.length" class="max-w-3xl mx-auto px-4 pt-10 space-y-3">
+      <NuxtLink v-for="c in page.side" :key="c.slug" :to="campaignLink(c.slug)" class="flex items-center gap-4 rounded-xl border-2 border-(--brand) bg-white p-5 hover:bg-stone-50">
+        <div class="min-w-0 flex-1">
+          <p class="text-sm font-semibold uppercase tracking-wide text-(--brand)">{{ c.state === 'active' ? t('landing.side.now') : t('landing.side.soon') }}</p>
+          <p class="text-xl font-bold">{{ c.name }}</p>
+          <p v-if="c.startDate && c.endDate" class="text-sm text-stone-600">{{ t('landing.side.dates', { start: date(c.startDate), end: date(c.endDate) }) }}</p>
+        </div>
+        <span class="inline-flex shrink-0 items-center gap-1 font-medium text-(--brand)">{{ t('landing.side.open') }}<UIcon name="i-lucide-arrow-right" class="size-4 rtl:rotate-180" /></span>
+      </NuxtLink>
+    </div>
 
     <div class="max-w-3xl mx-auto px-4 py-10 space-y-14">
       <EditorPlaceholder v-if="placeholder('why')" section="why" :title="st('landing.why.title')" />

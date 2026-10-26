@@ -34,6 +34,12 @@
     "starts_on": "Starts on {date}",
     "pray_today": "Pray today",
     "continue_praying": "Keep reading and pray",
+    "side": {
+      "now": "Also happening now",
+      "soon": "Coming up",
+      "dates": "{start} – {end}",
+      "open": "Find out more"
+    },
     "why": {
       "title": "Why we pray"
     },

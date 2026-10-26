@@ -37,6 +37,7 @@ async function submit() {
         may_platform: state.mayPlatform,
         use_name: (state.mayPublish || state.mayPlatform) && state.useName === 'name',
         language: site.value.lang,
+        campaign: site.value.campaign?.id,
         turnstile: state.turnstile
       }
     })

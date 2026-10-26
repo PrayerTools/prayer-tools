@@ -16,8 +16,8 @@ const groups = computed(() => {
     .map(state => ({ state, items: list.filter(c => c.status === state) }))
     .filter(g => g.items.length)
 })
-// A running campaign with no end date holds every future date, so no new campaign fits until it is ended.
-const blocker = computed(() => data.value?.campaigns.find(c => c.status === 'active' && c.end_mode !== 'date') ?? null)
+// A running main campaign with no end date holds every future date, so only a side campaign fits until it is ended.
+const blocker = computed(() => data.value?.campaigns.find(c => c.kind !== 'side' && c.status === 'active' && c.end_mode !== 'date') ?? null)
 const blockedOpen = ref(false)
 const serving = (c: PtCampaign) => site.value?.currentCampaign?.id === c.id
 const resultsUrl = (c: PtCampaign) => site.value ? `${site.value.url}/${c.slug}/stats` : undefined
@@ -59,7 +59,8 @@ async function doConfirm() {
         </h1>
         <p class="text-sm text-muted max-w-xl">
           A campaign is one round of prayer on your site, like Ramadan 2026. Each has its own dates and setup.
-          A site runs one campaign at a time, so campaign dates can't overlap.
+          A site runs one main campaign at a time, so main campaign dates can't overlap.
+          A side campaign, like Ramadan beside an ongoing campaign, runs alongside it at its own address with its own landing page.
           Relaunching creates a new campaign on the same site; past campaigns stay online with their results.
         </p>
       </div>
@@ -119,6 +120,12 @@ async function doConfirm() {
                   variant="outline"
                   label="On the site now"
                 />
+                <UBadge
+                  v-if="c.kind === 'side'"
+                  color="neutral"
+                  variant="outline"
+                  label="Side campaign"
+                />
               </div>
               <p class="text-sm text-muted">
                 {{ ptCampaignDates(c) }} · <span class="font-mono">/{{ c.slug }}</span>
@@ -159,7 +166,7 @@ async function doConfirm() {
               :label="canEdit ? 'Edit' : 'Open'"
             />
             <UButton
-              v-if="canEdit && c.status === 'ended' && !blocker"
+              v-if="canEdit && c.status === 'ended' && (!blocker || c.kind === 'side')"
               :to="`/site/campaigns/new?relaunch=${c.id}`"
               size="sm"
               variant="outline"
@@ -184,6 +191,15 @@ async function doConfirm() {
               icon="i-lucide-trash-2"
               label="Delete"
               @click="ask('delete', c)"
+            />
+            <UButton
+              v-if="c.kind === 'side'"
+              :to="{ path: '/site/landing', query: { campaign: c.id } }"
+              size="sm"
+              variant="ghost"
+              color="neutral"
+              icon="i-lucide-panels-top-left"
+              label="Landing page"
             />
             <UButton
               :to="{ path: '/site/stats', query: { campaign: c.id } }"
@@ -232,7 +248,7 @@ async function doConfirm() {
       v-if="blocker"
       v-model:open="blockedOpen"
       :title="`${blocker.name} has no end date`"
-      description="A site runs one campaign at a time, and this one keeps running until it is ended. To run another campaign, create a new site for it."
+      description="A site runs one main campaign at a time, and this one keeps running until it is ended. Another campaign with fixed dates, like Ramadan, can run alongside it as a side campaign."
     >
       <template #footer>
         <div class="flex justify-end gap-2 w-full">
@@ -244,8 +260,14 @@ async function doConfirm() {
           />
           <UButton
             to="/orgs/new"
-            icon="i-lucide-plus"
+            color="neutral"
+            variant="outline"
             label="Create a new site"
+          />
+          <UButton
+            :to="{ path: '/site/campaigns/new', query: { kind: 'side' } }"
+            icon="i-lucide-plus"
+            label="New side campaign"
           />
         </div>
       </template>

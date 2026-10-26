@@ -34,6 +34,12 @@
     "starts_on": "تبدأ في {date}",
     "pray_today": "صلِّ اليوم",
     "continue_praying": "تابع القراءة وصلِّ",
+    "side": {
+      "now": "يجري الآن أيضًا",
+      "soon": "قريبًا",
+      "dates": "{start} – {end}",
+      "open": "اعرف المزيد"
+    },
     "why": {
       "title": "لماذا نصلي"
     },

@@ -19,6 +19,8 @@ export type StartMode = 'date' | 'join'
 export type EndMode = 'date' | 'none' | 'days'
 export type Goal = 'people' | 'prayer_time' | 'coverage'
 export type Cadence = 'daily' | 'weekly'
+// Stored only for side campaigns; NULL is the site's main campaign.
+export type CampaignKind = 'side'
 export type SubscriptionStatus = 'active' | 'inactive' | 'completed' | 'unsubscribed'
 export type Delivery = 'email' | 'app'
 export type CommitmentKind = 'recurring' | 'dates'
@@ -325,6 +327,7 @@ export interface PtCampaignTable {
   slug: string
   name: string
   template_key: string | null
+  kind: CampaignKind | null
   start_mode: StartMode
   start_date: NullableDateOnly
   end_mode: EndMode
@@ -338,6 +341,9 @@ export interface PtCampaignTable {
   timezone: string
   end_message: Json<TranslatableText | null> | null
   cta: JsonDefault<CampaignCta>
+  // A side campaign's own landing page; the main campaign uses the site's.
+  landing: Json<SiteLanding | null> | null
+  description: Json<TranslatableText | null> | null
   ended_at: NullableTimestamp
   created_at: Timestamp
   updated_at: Timestamp
