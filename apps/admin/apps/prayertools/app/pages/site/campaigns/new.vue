@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // New campaign, or a relaunch: a new campaign on the same site that starts
 // from the previous one's answers and content.
-import { suggestedStartDate } from '@prayertools/shared/setup'
+import { applyTemplate, campaignsOverlap, suggestedStartDate } from '@prayertools/shared/setup'
 import { addDays, todayIn } from '@prayertools/shared/dates'
 import type { SetupState } from '../../../components/PtSetupForm.vue'
 import type { PtCampaign } from '../../../utils/pt-campaign-ui'
@@ -56,6 +56,15 @@ watch([site, meta], ([s, m]) => {
   chooseTemplate(s.site.template_key ?? 'generic')
 }, { immediate: true })
 
+// A site runs one campaign at a time: the dates other campaigns hold, and the one these dates would overlap.
+const { data: existing } = useFetch<{ campaigns: PtCampaign[] }>('/api/pt/campaigns', { key: 'pt-campaigns' })
+const booked = computed(() => (existing.value?.campaigns ?? []).filter(c => c.status !== 'ended'))
+const clash = computed(() => {
+  const answers = applyTemplate(templateKey.value, { ...setup.value, end_date: setup.value.end_date ?? undefined })
+  const mine = { ...answers, timezone: site.value?.site.timezone ?? 'UTC' }
+  return (existing.value?.campaigns ?? []).find(c => campaignsOverlap(mine, c)) ?? null
+})
+
 const saving = ref(false)
 async function create() {
   saving.value = true
@@ -89,9 +98,28 @@ async function create() {
         {{ relaunchOf ? `Relaunch ${previous?.campaign?.name ?? ''}` : 'New campaign' }}
       </h1>
       <p class="text-sm text-muted">
-        Dates may not overlap another campaign on this site.
+        A site runs one campaign at a time, so the dates can't overlap another campaign on this site.
       </p>
     </header>
+
+    <UAlert
+      v-if="booked.length"
+      icon="i-lucide-calendar-range"
+      variant="subtle"
+      color="neutral"
+      title="Dates already taken"
+    >
+      <template #description>
+        <ul class="space-y-0.5">
+          <li
+            v-for="c in booked"
+            :key="c.id"
+          >
+            {{ c.name }}: {{ ptCampaignDates(c) }}
+          </li>
+        </ul>
+      </template>
+    </UAlert>
 
     <UAlert
       v-if="relaunchOf"
@@ -156,13 +184,22 @@ async function create() {
         />
       </div>
       <template #footer>
-        <div class="flex justify-end">
+        <div class="flex items-center justify-end gap-3 flex-wrap">
+          <p
+            v-if="clash"
+            class="text-sm text-error"
+          >
+            These dates overlap {{ clash.name }} ({{ ptCampaignDates(clash) }}).
+            <template v-if="clash.start_mode === 'join' || clash.end_mode !== 'date'">
+              It has no end date, so it holds every date from its start until it is ended.
+            </template>
+          </p>
           <UButton
             :icon="relaunchOf ? 'i-lucide-rotate-ccw' : 'i-lucide-plus'"
             :label="relaunchOf ? 'Relaunch' : 'Create campaign'"
             size="lg"
             :loading="saving"
-            :disabled="name.trim().length < 2"
+            :disabled="name.trim().length < 2 || !!clash"
             @click="create"
           />
         </div>

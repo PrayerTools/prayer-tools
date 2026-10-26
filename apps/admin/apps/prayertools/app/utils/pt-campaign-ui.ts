@@ -25,6 +25,7 @@ export interface PtCampaign extends SetupState {
   template_key: string | null
   timezone: string
   status: 'upcoming' | 'active' | 'ended'
+  ended_at: string | null
   end_message: TranslatableText | null
   cta: { url?: string, label?: TranslatableText } | null
   commitments: number

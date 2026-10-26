@@ -16,6 +16,9 @@ const groups = computed(() => {
     .map(state => ({ state, items: list.filter(c => c.status === state) }))
     .filter(g => g.items.length)
 })
+// A running campaign with no end date holds every future date, so no new campaign fits until it is ended.
+const blocker = computed(() => data.value?.campaigns.find(c => c.status === 'active' && c.end_mode !== 'date') ?? null)
+const blockedOpen = ref(false)
 const serving = (c: PtCampaign) => site.value?.currentCampaign?.id === c.id
 const resultsUrl = (c: PtCampaign) => site.value ? `${site.value.url}/${c.slug}/stats` : undefined
 
@@ -56,14 +59,16 @@ async function doConfirm() {
         </h1>
         <p class="text-sm text-muted max-w-xl">
           A campaign is one round of prayer on your site, like Ramadan 2026. Each has its own dates and setup.
+          A site runs one campaign at a time, so campaign dates can't overlap.
           Relaunching creates a new campaign on the same site; past campaigns stay online with their results.
         </p>
       </div>
       <UButton
         v-if="canEdit"
-        to="/site/campaigns/new"
+        :to="blocker ? undefined : '/site/campaigns/new'"
         icon="i-lucide-plus"
         :label="data?.campaigns.length ? 'New campaign' : 'Create the first campaign'"
+        @click="blockedOpen = !!blocker"
       />
     </header>
 
@@ -154,7 +159,7 @@ async function doConfirm() {
               :label="canEdit ? 'Edit' : 'Open'"
             />
             <UButton
-              v-if="canEdit && c.status === 'ended'"
+              v-if="canEdit && c.status === 'ended' && !blocker"
               :to="`/site/campaigns/new?relaunch=${c.id}`"
               size="sm"
               variant="outline"
@@ -222,6 +227,29 @@ async function doConfirm() {
         </div>
       </UCard>
     </section>
+
+    <UModal
+      v-if="blocker"
+      v-model:open="blockedOpen"
+      :title="`${blocker.name} has no end date`"
+      description="A site runs one campaign at a time, and this one keeps running until it is ended. To run another campaign, create a new site for it."
+    >
+      <template #footer>
+        <div class="flex justify-end gap-2 w-full">
+          <UButton
+            color="neutral"
+            variant="ghost"
+            label="Cancel"
+            @click="blockedOpen = false"
+          />
+          <UButton
+            to="/orgs/new"
+            icon="i-lucide-plus"
+            label="Create a new site"
+          />
+        </div>
+      </template>
+    </UModal>
 
     <UModal
       v-model:open="confirm.open"
