@@ -1,6 +1,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { sql } from 'kysely'
 import { withOrg } from '@prayertools/shared/db/scope'
+import { jsonb } from '@prayertools/shared/db/json'
 import { addDays, todayIn } from '@prayertools/shared/dates'
 import { ANONYMIZED_NAME } from '@prayertools/shared/subscriptions'
 import type { HostnameStatus } from '@prayertools/shared/cloudflare'
@@ -116,6 +117,22 @@ describe('data retention', () => {
     expect(tokens).toHaveLength(1)
     // An identity with a device is kept.
     expect(await env.admin.selectFrom('pt_intercessor').select('id').where('id', '=', intercessor.id).executeTakeFirst()).toBeDefined()
+  })
+
+  it('deletes signup requests nobody confirmed in time', async () => {
+    const { orgId } = await createSite(env)
+    const campaignId = await createCampaign(env, orgId, { endMode: 'none' })
+    const sub = await createSubscriber(env, orgId, campaignId)
+    await withOrg(env.admin, orgId, tx => tx.insertInto('pt_signup_request').values([
+      { subscription_id: sub.subscriptionId, campaign_id: campaignId, token_hash: uid(), request: jsonb({ kept: false }), expires_at: new Date(Date.now() - 1000) },
+      { subscription_id: sub.subscriptionId, campaign_id: campaignId, token_hash: uid(), request: jsonb({ kept: true }), expires_at: new Date(Date.now() + 3600_000) }
+    ]).execute())
+
+    const ctx = testCtx(env)
+    const res = await runRetention(ctx, ctx.log)
+    expect(res.signup_requests_deleted).toBeGreaterThanOrEqual(1)
+    const left = await withOrg(env.admin, orgId, tx => tx.selectFrom('pt_signup_request').select('request').execute())
+    expect(left.map(r => r.request)).toEqual([{ kept: true }])
   })
 
   it('computes the partition cutoff 24 months back', () => {

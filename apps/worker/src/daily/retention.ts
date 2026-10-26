@@ -146,6 +146,12 @@ export async function purgeMyTokens(ctx: WorkerContext): Promise<{ tokens: numbe
   return { tokens: Number(tokens.numDeletedRows ?? 0), sessions: Number(sessions.numDeletedRows ?? 0) }
 }
 
+// Prayer times the signup form asked for that nobody confirmed in time.
+export async function purgeSignupRequests(ctx: WorkerContext): Promise<number> {
+  const res = await ctx.admin.deleteFrom('pt_signup_request').where('expires_at', '<', ctx.now()).executeTakeFirst()
+  return Number(res.numDeletedRows ?? 0)
+}
+
 export async function runRetention(ctx: WorkerContext, log: Logger): Promise<Record<string, number>> {
   const unsubscribed = await anonymizeUnsubscribed(ctx, log)
   const archived = await anonymizeArchivedSites(ctx, log)
@@ -154,6 +160,7 @@ export async function runRetention(ctx: WorkerContext, log: Logger): Promise<Rec
   const parts = await maintainSessionPartitions(ctx, log)
   const emails = await purgeEmailLog(ctx)
   const my = await purgeMyTokens(ctx)
+  const requests = await purgeSignupRequests(ctx)
   return {
     anonymized_unsubscribed: unsubscribed,
     anonymized_archived: archived,
@@ -163,6 +170,7 @@ export async function runRetention(ctx: WorkerContext, log: Logger): Promise<Rec
     partitions_dropped: parts.dropped,
     email_log_deleted: emails,
     my_tokens_deleted: my.tokens,
-    my_sessions_deleted: my.sessions
+    my_sessions_deleted: my.sessions,
+    signup_requests_deleted: requests
   }
 }

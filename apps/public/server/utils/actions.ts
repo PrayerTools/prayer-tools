@@ -4,8 +4,8 @@ import type { H3Event } from 'h3'
 import { withOrg } from '@prayertools/shared/db/scope'
 import { parseLink, personalToken } from '@prayertools/shared/links'
 import { hashToken } from '@prayertools/shared/tokens'
-import { recordActivity, setSubscriptionStatus, verifySubscription } from '@prayertools/shared/subscriptions'
-import { primaryEmailOf } from '@prayertools/shared/crm'
+import { createWebSignup, recordActivity, setSubscriptionStatus, verifySubscription } from '@prayertools/shared/subscriptions'
+import { findContactByEmail, primaryEmailOf } from '@prayertools/shared/crm'
 import { recordEvent } from '@prayertools/shared/stats'
 import { sitePath } from '@prayertools/shared/paths'
 import { campaignStatus } from '@prayertools/shared/setup'
@@ -17,7 +17,8 @@ import { forwardInBackground } from './analytics'
 import { deliver } from './mail'
 import { background } from './request'
 import { prepareWelcomeMail } from './welcome'
-import { loadSiteData } from './site-data'
+import { loadSiteData, stateOf } from './site-data'
+import { takeSignupRequest } from './signup-request'
 
 // Renders another page path in place of the requested one.
 export function rewriteView(event: H3Event, path: string, status = 200): void {
@@ -47,10 +48,10 @@ export async function verifyLink(event: H3Event, ctx: SiteContext, token: string
     if (firstTime) await recordEvent(tx, { campaignId: latest?.campaign_id ?? null, type: 'campaign_signup_verified', meta: { subscription_id: sub.id } })
     const welcome = firstTime ? await prepareWelcomeMail(tx, ctx.orgId, sub) : null
     const campaign = data.campaigns.find(c => c.id === latest?.campaign_id)
-    const upcoming = campaign && campaignStatus(campaign) === 'upcoming'
-      ? { slug: data.current?.campaign.id === campaign.id ? null : campaign.slug }
+    const joined = campaign
+      ? { slug: data.current?.campaign.id === campaign.id ? null : campaign.slug, upcoming: campaignStatus(campaign) === 'upcoming' }
       : null
-    return { sub, defaultLanguage: data.site.default_language, campaignId: latest?.campaign_id ?? null, email: email?.email ?? null, firstTime, welcome, upcoming }
+    return { sub, defaultLanguage: data.site.default_language, campaignId: latest?.campaign_id ?? null, email: email?.email ?? null, firstTime, welcome, joined }
   })
   if (!result) return
   const { sub } = result
@@ -65,10 +66,40 @@ export async function verifyLink(event: H3Event, ctx: SiteContext, token: string
       metadata: { subscription_id: sub.id }
     })
   }
-  // A campaign that has not started yet has nothing to pray, so its subscribers land on its signup page.
-  const path = result.upcoming
-    ? sitePath({ lang: sub.language, defaultLang: result.defaultLanguage, campaignSlug: result.upcoming.slug, page: 'signup' })
-    : sitePath({ lang: sub.language, defaultLang: result.defaultLanguage, page: 'pray' })
+  // Subscribers land on the campaign they just joined: its prayer page, or its
+  // signup page when it has not started yet and has nothing to pray.
+  const path = sitePath({ lang: sub.language, defaultLang: result.defaultLanguage, campaignSlug: result.joined?.slug, page: result.joined?.upcoming ? 'signup' : 'pray' })
+  return sendRedirect(event, `${path}?confirmed=1`, 302)
+}
+
+// Confirm link from the email sent when the signup form asked for prayer
+// times for an address already confirmed on the site: adds them and lands on
+// the campaign, like a first confirmation.
+export async function addTimesLink(event: H3Event, ctx: SiteContext, token: string) {
+  const result = await withOrg(useDb(), ctx.orgId, async (tx) => {
+    const taken = await takeSignupRequest(tx, token)
+    if (!taken) return null
+    const data = await loadSiteData(tx)
+    const campaign = data.campaigns.find(c => c.id === taken.campaignId)
+    const state = campaign ? stateOf(data, campaign) : null
+    if (!campaign || (state !== 'active' && state !== 'upcoming') || data.site.status === 'archived') return null
+    const contact = await findContactByEmail(tx, taken.request.email)
+    const owner = contact ? await tx.selectFrom('pt_subscription').select('id').where('contact_id', '=', contact.contactId).executeTakeFirst() : null
+    if (owner?.id !== taken.subscriptionId) return null
+    const res = await createWebSignup(tx, { ...taken.request, campaign, preVerified: true })
+    return {
+      sub: res.subscription,
+      welcome: await prepareWelcomeMail(tx, ctx.orgId, res.subscription),
+      defaultLanguage: data.site.default_language,
+      slug: data.current?.campaign.id === campaign.id ? null : campaign.slug,
+      upcoming: state === 'upcoming'
+    }
+  })
+  if (!result) return sendRedirect(event, '/notice/link_invalid', 302)
+  const { sub } = result
+  setManageCookie(event, ctx.orgId, sub.id, sub.manage_version)
+  background(event, deliver(result.welcome))
+  const path = sitePath({ lang: sub.language, defaultLang: result.defaultLanguage, campaignSlug: result.slug, page: result.upcoming ? 'signup' : 'pray' })
   return sendRedirect(event, `${path}?confirmed=1`, 302)
 }
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ManageView } from '~~/shared/view'
+import type { ManageCampaignView, ManageView } from '~~/shared/view'
 import { timezones, type CommitmentInput } from '~/utils/commitment'
 
 const props = defineProps<{ manage: ManageView | null }>()
@@ -14,10 +14,8 @@ const confirmDelete = ref(false)
 const profile = reactive({ name: props.manage?.name ?? '', language: props.manage?.language ?? site.value.lang, timezone: props.manage?.timezone ?? 'UTC' })
 const tzItems = timezones()
 const languageItems = computed(() => site.value.languages.map(l => ({ label: l.native, value: l.code })))
-const campaign = computed(() => site.value.campaign)
 // A personal-start campaign holds one prayer time per person, which carries their progress.
-const hasPersonalTime = computed(() => campaign.value?.startMode === 'join' && !!props.manage?.commitments.some(c => c.campaignId === campaign.value?.id))
-const canAdd = computed(() => !!campaign.value && (campaign.value.state === 'active' || campaign.value.state === 'upcoming') && props.manage?.status !== 'unsubscribed' && !hasPersonalTime.value)
+const canAdd = (c: ManageCampaignView) => c.state !== 'ended' && props.manage?.status !== 'unsubscribed' && !(c.personal && c.commitments.length)
 
 async function call(path: string, method: 'POST' | 'PATCH' | 'DELETE', body?: Record<string, unknown>, message = t('manage.saved')) {
   busy.value = true
@@ -32,7 +30,7 @@ async function call(path: string, method: 'POST' | 'PATCH' | 'DELETE', body?: Re
   }
 }
 
-const add = (input: CommitmentInput) => call('commitments', 'POST', { ...input, campaign: campaign.value?.id })
+const add = (campaignId: string, input: CommitmentInput) => call('commitments', 'POST', { ...input, campaign: campaignId })
 const update = (id: string, input: CommitmentInput) => call(`commitments/${id}`, 'PATCH', { ...input })
 const pause = (id: string, paused: boolean) => call(`commitments/${id}`, 'PATCH', { paused })
 const remove = (id: string) => call(`commitments/${id}`, 'DELETE', undefined, t('manage.removed'))
@@ -77,20 +75,24 @@ async function deleteData() {
 
       <section aria-labelledby="times-title" class="space-y-4">
         <h2 id="times-title" class="text-xl font-semibold">{{ t('manage.times') }}</h2>
-        <CommitmentList
-          :commitments="manage.commitments"
-          :duration-rule="campaign?.durationRule ?? 'hidden'"
-          :durations="campaign?.durations ?? []"
-          :default-duration="campaign?.defaultDuration ?? 15"
-          :can-add="canAdd"
-          :lang="site.lang"
-          ics-base="/api/manage/commitments"
-          :busy="busy"
-          @add="add"
-          @update="update"
-          @pause="pause"
-          @remove="remove"
-        />
+        <p v-if="!manage.campaigns.length" class="text-stone-600">{{ t('manage.no_times') }}</p>
+        <section v-for="c in manage.campaigns" :key="c.id" :aria-labelledby="`campaign-${c.id}`" class="space-y-3">
+          <h3 :id="`campaign-${c.id}`" class="font-semibold">{{ c.name }}</h3>
+          <CommitmentList
+            :commitments="c.commitments"
+            :duration-rule="c.durationRule"
+            :durations="c.durations"
+            :default-duration="c.defaultDuration"
+            :can-add="canAdd(c)"
+            :lang="site.lang"
+            ics-base="/api/manage/commitments"
+            :busy="busy"
+            @add="(input: CommitmentInput) => add(c.id, input)"
+            @update="update"
+            @pause="pause"
+            @remove="remove"
+          />
+        </section>
         <p class="text-sm">
           <UButton variant="link" icon="i-lucide-calendar-sync" :href="manage.icsUrl" external :label="t('manage.subscribe_calendar')" />
         </p>

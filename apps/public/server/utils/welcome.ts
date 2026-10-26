@@ -5,7 +5,7 @@ import { primaryEmailOf } from '@prayertools/shared/crm'
 import { todayIn } from '@prayertools/shared/dates'
 import { prayerTimeLines, welcomeEmail } from '@prayertools/shared/email/templates'
 import { manageUrl, personalToken, prayUrl, unsubscribeUrl } from '@prayertools/shared/links'
-import { pickCurrentCampaign } from '@prayertools/shared/setup'
+import { isSideCampaign, pickCurrentCampaign } from '@prayertools/shared/setup'
 import { normalizeCampaign, type SubscriptionRow } from '@prayertools/shared/subscriptions'
 import { prepareSiteMail, type PendingMail } from './mail'
 
@@ -30,7 +30,7 @@ export async function prepareWelcomeMail(tx: Tx, orgId: string, sub: Subscriptio
     times,
     prayUrl: prayUrl(m.siteUrl, campaign.id === current ? null : campaign.slug, null, lang === site.default_language ? null : lang, orgId, sub.id),
     calendarUrl: `${m.siteUrl}/ics/${personalToken(orgId, sub.id)}.ics`,
-    shareUrl: sub.referral_code ? `${m.siteUrl}/?r=${encodeURIComponent(sub.referral_code)}` : null,
+    shareUrl: sub.referral_code ? `${m.siteUrl}/${isSideCampaign(campaign) ? campaign.slug : ''}?r=${encodeURIComponent(sub.referral_code)}` : null,
     manageUrl: manageUrl(m.siteUrl, orgId, sub.id, sub.manage_version),
     unsubscribeUrl: unsubscribeUrl(m.siteUrl, orgId, sub.id)
   }), sub.id)

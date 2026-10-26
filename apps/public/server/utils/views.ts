@@ -23,7 +23,7 @@ import { progressFor, statsFor } from './site-stats'
 import { managedSubscription, manageView } from './manage'
 import { withDraftStrings, type LandingDraft } from './editor'
 
-const PRIVATE_PAGES = new Set(['manage', 'm', 'u', 'verify', 'notice', 'checkin'])
+const PRIVATE_PAGES = new Set(['manage', 'm', 'u', 'verify', 'add', 'notice', 'checkin'])
 const ARCHIVED_ALLOWED = new Set(['manage', 'm', 'u', 'verify', 'notice'])
 export const NOTICE_KEYS = new Set([
   'checkin_yes', 'checkin_sometimes', 'checkin_no', 'link_invalid', 'unsubscribed', 'verify_invalid', 'deleted', 'not_found'
@@ -94,7 +94,7 @@ export async function buildSiteResponse(event: H3Event, ctx: SiteContext, fullPa
           break
         case 'manage': {
           const sub = await managedSubscription(tx, event, ctx.orgId)
-          page = { kind: 'manage', manage: sub ? await manageView(tx, ctx, sub, data.campaigns, lang, def) : null }
+          page = { kind: 'manage', manage: sub ? await manageView(tx, ctx, sub, data.campaigns, data.settings.default_duration_min, lang, def) : null }
           break
         }
         case 'm':
@@ -112,6 +112,9 @@ export async function buildSiteResponse(event: H3Event, ctx: SiteContext, fullPa
         }
         case 'verify':
           page = { kind: 'notice', key: 'verify_invalid' }
+          break
+        case 'add':
+          page = { kind: 'notice', key: 'link_invalid' }
           break
         case 'notice': {
           const key = parsed.rest[0] ?? ''

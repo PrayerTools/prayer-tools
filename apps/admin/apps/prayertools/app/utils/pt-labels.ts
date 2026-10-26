@@ -37,7 +37,7 @@ export const PT_LABELS = {
     today: 'Today\'s prayer', share: 'Invite others to pray', contact: 'Contact us', app: 'Pray with the app'
   } as Record<string, string>,
   emailKind: {
-    reminder: 'Prayer reminder', checkin: 'Check-in', thank_you: 'Thank-you', verify: 'Confirm email', manage_link: 'Manage link', site_email: 'Site email'
+    reminder: 'Prayer reminder', checkin: 'Check-in', thank_you: 'Thank-you', verify: 'Confirm email', add_times: 'Confirm new prayer times', manage_link: 'Manage link', site_email: 'Site email'
   } as Record<string, string>,
   sessionSource: { porch: 'on the website', manage: 'from the manage page', app: 'in the app', email: 'from an email' } as Record<string, string>,
   role: { 'admin': 'Owner', 'pt-editor': 'Editor', 'pt-translator': 'Translator', 'pt-viewer': 'Viewer', 'member': 'Member' } as Record<string, string>,

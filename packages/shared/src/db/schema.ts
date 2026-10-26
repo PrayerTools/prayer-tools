@@ -446,6 +446,19 @@ export interface PtCheckinTable {
   responded_at: NullableTimestamp
 }
 
+// What the signup form asked for, kept until the address's owner confirms it
+// (see `SignupRequest` in the public server).
+export interface PtSignupRequestTable {
+  id: Generated<string>
+  org_id: Generated<string>
+  subscription_id: string
+  campaign_id: string
+  token_hash: string
+  request: Json<Record<string, unknown>>
+  expires_at: Timestamp
+  created_at: Timestamp
+}
+
 export interface PtEmailLogTable {
   id: Generated<string>
   org_id: Generated<string>
@@ -604,6 +617,7 @@ export interface PtTables {
   pt_commitment: PtCommitmentTable
   pt_reminder_sent: PtReminderSentTable
   pt_checkin: PtCheckinTable
+  pt_signup_request: PtSignupRequestTable
   pt_email_log: PtEmailLogTable
   pt_prayer_session: PtPrayerSessionTable
   pt_person_total: PtPersonTotalTable

@@ -155,6 +155,19 @@ export interface CommitmentView {
   endsOn: string | null
 }
 
+// One campaign on the manage page with the person's prayer times in it.
+export interface ManageCampaignView {
+  id: string
+  name: string
+  state: 'upcoming' | 'active' | 'ended'
+  // Start-anytime campaigns hold one prayer time per person.
+  personal: boolean
+  durationRule: 'required' | 'optional' | 'hidden'
+  durations: number[]
+  defaultDuration: number
+  commitments: CommitmentView[]
+}
+
 export interface ManageView {
   subscriptionId: string
   name: string
@@ -164,7 +177,7 @@ export interface ManageView {
   status: SubscriptionStatus
   verified: boolean
   referralCode: string
-  commitments: CommitmentView[]
+  campaigns: ManageCampaignView[]
   consents: { key: string, label: string, granted: boolean }[]
   icsUrl: string
   prayUrl: string

@@ -312,6 +312,29 @@ export function manageLinkEmail(ctx: SiteMailContext, lang: string, manageUrl: s
   }
 }
 
+// Sent when the signup form asks for prayer times for an address already
+// confirmed on the site: the times are added only once its owner confirms.
+export function addTimesEmail(ctx: SiteMailContext, lang: string, d: { campaignName: string, times: string[], confirmUrl: string }): Rendered {
+  const vars = { site: ctx.siteName, campaign: d.campaignName }
+  const html = heading(emailT(lang, 'add.heading'))
+    + paragraph(emailT(lang, 'add.body', vars))
+    + `<ul style="margin:0 0 16px;padding-inline-start:20px;font-size:15px;line-height:1.6;">${d.times.map(t => `<li>${escapeHtml(t)}</li>`).join('')}</ul>`
+    + button(ctx, d.confirmUrl, emailT(lang, 'add.button'))
+    + `<p style="margin:0;font-size:13px;color:#71717a;">${escapeHtml(emailT(lang, 'add.ignore'))}</p>`
+  const text = [
+    emailT(lang, 'add.heading'),
+    emailT(lang, 'add.body', vars),
+    d.times.map(t => `- ${t}`).join('\n'),
+    `${emailT(lang, 'add.button')}: ${d.confirmUrl}`,
+    emailT(lang, 'add.ignore')
+  ].join('\n\n')
+  return {
+    subject: emailT(lang, 'add.subject', vars),
+    html: layout(ctx, lang, html, { hideMy: true }),
+    text: text + footerText(ctx, lang, { hideMy: true })
+  }
+}
+
 export function acknowledgementEmail(ctx: SiteMailContext, lang: string, kind: 'contact' | 'story'): Rendered {
   const vars = { site: ctx.siteName }
   const body = paragraph(emailT(lang, `${kind}.body`, vars))

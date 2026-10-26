@@ -9,7 +9,7 @@ import { useDb } from '../utils/db'
 import { NOT_FOUND_CACHE, PRIVATE_CACHE, limit, requestHost, setCache } from '../utils/request'
 import { buildSiteContext, resolveSiteCached } from '../utils/site-context'
 import { previewCookieMatches } from '../utils/cookies'
-import { checkinAnswer, exchangeManageLink, legacyFuel, legacyManage, previewLink, unsubscribePost, verifyLink } from '../utils/actions'
+import { addTimesLink, checkinAnswer, exchangeManageLink, legacyFuel, legacyManage, previewLink, unsubscribePost, verifyLink } from '../utils/actions'
 import { editorAccess, editorFrameAncestors } from '../utils/editor'
 import { exchangeMyToken } from '../utils/my-auth'
 
@@ -123,6 +123,7 @@ export default defineEventHandler(async (event) => {
   if (!isGet) return
   if (first === 'm' && second && segs.length === 2) return await exchangeManageLink(event, ctx, second)
   if (first === 'verify' && second && segs.length === 2) return await verifyLink(event, ctx, second)
+  if (first === 'add' && second && segs.length === 2) return await addTimesLink(event, ctx, second)
   if (first === 'checkin' && second && third && segs.length === 3) return await checkinAnswer(event, ctx, second, third)
   if (first === 'subscriptions_app' && second === 'manage') return await legacyManage(event, ctx, third ?? '')
   if (segs.includes('fuel')) {
