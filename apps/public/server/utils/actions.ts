@@ -14,6 +14,9 @@ import { useDb } from './db'
 import type { SiteContext } from './site-context'
 import { setManageCookie, setPreviewCookie } from './cookies'
 import { forwardInBackground } from './analytics'
+import { deliver } from './mail'
+import { background } from './request'
+import { prepareWelcomeMail } from './welcome'
 import { loadSiteData } from './site-data'
 
 // Renders another page path in place of the requested one.
@@ -42,16 +45,18 @@ export async function verifyLink(event: H3Event, ctx: SiteContext, token: string
     const email = sub.contact_id ? await primaryEmailOf(tx, sub.contact_id) : null
     const firstTime = !before.verified_at
     if (firstTime) await recordEvent(tx, { campaignId: latest?.campaign_id ?? null, type: 'campaign_signup_verified', meta: { subscription_id: sub.id } })
+    const welcome = firstTime ? await prepareWelcomeMail(tx, ctx.orgId, sub) : null
     const campaign = data.campaigns.find(c => c.id === latest?.campaign_id)
     const upcoming = campaign && campaignStatus(campaign) === 'upcoming'
       ? { slug: data.current?.campaign.id === campaign.id ? null : campaign.slug }
       : null
-    return { sub, defaultLanguage: data.site.default_language, campaignId: latest?.campaign_id ?? null, email: email?.email ?? null, firstTime, upcoming }
+    return { sub, defaultLanguage: data.site.default_language, campaignId: latest?.campaign_id ?? null, email: email?.email ?? null, firstTime, welcome, upcoming }
   })
   if (!result) return
   const { sub } = result
   setManageCookie(event, ctx.orgId, sub.id, sub.manage_version)
   if (result.firstTime) {
+    background(event, deliver(result.welcome))
     forwardInBackground(event, { orgId: ctx.orgId, slug: ctx.slug, host: ctx.host }, {
       event_type: 'campaign_signup_verified',
       email: result.email,

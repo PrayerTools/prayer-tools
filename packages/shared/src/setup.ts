@@ -2,8 +2,9 @@
 // that pre-fill them, and everything that follows from them (length, status,
 // which commitment fields are asked). Options and defaults live here; a
 // campaign stores its answers.
-import type { Cadence, EndMode, Goal, StartMode } from './db/schema'
+import type { Cadence, CampaignKind, EndMode, Goal, StartMode } from './db/schema'
 import { addDays, daysBetween, isIsoDate, todayIn } from './dates'
+import { campaignSlugError } from './paths'
 
 export const START_MODES: readonly StartMode[] = ['date', 'join']
 export const END_MODES: readonly EndMode[] = ['date', 'none', 'days']
@@ -130,8 +131,10 @@ export function applyTemplate(key: string, chosen: Partial<SetupAnswers>): Setup
   return merged
 }
 
-export function validateSetup(a: SetupAnswers): string[] {
+export function validateSetup(a: SetupAnswers, kind: CampaignKind | null = null): string[] {
   const errors: string[] = []
+  // Side campaigns run on fixed dates beside the main campaign.
+  if (kind === 'side' && (a.start_mode !== 'date' || a.end_mode !== 'date')) errors.push('end_mode')
   if (!START_MODES.includes(a.start_mode)) errors.push('start_mode')
   if (!END_MODES.includes(a.end_mode)) errors.push('end_mode')
   if (!GOALS.includes(a.goal)) errors.push('goal')
@@ -227,16 +230,23 @@ export function defaultDuration(c: CampaignSlots, siteDefault: number): number {
   return options.find(d => d >= siteDefault) ?? options[options.length - 1]!
 }
 
-// The site's current campaign: the active one, else the next upcoming one
-// (signup opens before the start), else the most recent ended one (the site
-// is between campaigns).
 export interface CampaignLike extends CampaignDates {
   id: string
+  kind?: CampaignKind | null
   created_at?: Date | string
 }
 
+// A side campaign runs beside the main campaign at its own address
+// (`/ramadan-2027`) and never takes the site's root address.
+export function isSideCampaign(c: { kind?: CampaignKind | null }): boolean {
+  return c.kind === 'side'
+}
+
+// The site's current campaign, from its main campaigns: the active one, else
+// the next upcoming one (signup opens before the start), else the most recent
+// ended one (the site is between campaigns).
 export function pickCurrentCampaign<T extends CampaignLike>(campaigns: T[], now: Date = new Date()): { campaign: T, state: 'upcoming' | 'active' | 'between' } | null {
-  const withStatus = campaigns.map(c => ({ c, s: campaignStatus(c, now) }))
+  const withStatus = campaigns.filter(c => !isSideCampaign(c)).map(c => ({ c, s: campaignStatus(c, now) }))
   const active = withStatus.filter(x => x.s === 'active')
   if (active.length) {
     active.sort((a, b) => (b.c.start_date ?? '').localeCompare(a.c.start_date ?? ''))
@@ -253,7 +263,7 @@ function endKey(c: CampaignLike): string {
   return c.end_date ?? (c.ended_at ? new Date(c.ended_at).toISOString().slice(0, 10) : '')
 }
 
-// Campaign date ranges on one site may not overlap, so the site's root
+// Main campaign date ranges on one site may not overlap, so the site's root
 // address always shows one campaign. Personal-start campaigns and open-ended
 // ones occupy everything from their start onwards.
 export function campaignsOverlap(a: CampaignDates, b: CampaignDates): boolean {
@@ -267,9 +277,31 @@ export function campaignsOverlap(a: CampaignDates, b: CampaignDates): boolean {
   return as <= be && bs <= ae
 }
 
+// The main campaign a new or edited campaign's dates would clash with. Side
+// campaigns may overlap any campaign.
+export function overlappingCampaign<T extends CampaignLike>(dates: CampaignDates, kind: CampaignKind | null, others: T[]): T | null {
+  if (kind === 'side') return null
+  return others.find(o => !isSideCampaign(o) && campaignsOverlap(dates, o)) ?? null
+}
+
 // URL slug for a new campaign: the start year, suffixed when already taken.
 export function suggestCampaignSlug(startDate: string | null, taken: string[], now: Date = new Date()): string {
   const base = (startDate ?? now.toISOString()).slice(0, 4)
+  if (!taken.includes(base)) return base
+  for (let i = 2; i < 100; i++) {
+    const s = `${base}-${i}`
+    if (!taken.includes(s)) return s
+  }
+  return `${base}-${Date.now()}`
+}
+
+// URL slug for a new side campaign, from its name: `Ramadan 2027` becomes
+// `ramadan-2027`; a name without a year gets the start year.
+export function suggestSideSlug(name: string, startDate: string | null, taken: string[], now: Date = new Date()): string {
+  const year = (startDate ?? now.toISOString()).slice(0, 4)
+  let base = name.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30).replace(/-+$/, '')
+  if (!/\d{4}/.test(base)) base = base ? `${base}-${year}` : year
+  if (campaignSlugError(base)) base = `${base}-${year}`
   if (!taken.includes(base)) return base
   for (let i = 2; i < 100; i++) {
     const s = `${base}-${i}`

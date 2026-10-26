@@ -1,27 +1,33 @@
 import type { Transaction } from 'kysely'
 import type { Database } from '#core/server/database/schema'
-import { applyTemplate, campaignsOverlap, DEFAULT_SLOT_MIN, SLOT_OPTIONS, validateSetup, type SetupAnswers } from '@prayertools/shared/setup'
+import { applyTemplate, DEFAULT_SLOT_MIN, overlappingCampaign, SLOT_OPTIONS, validateSetup, type SetupAnswers } from '@prayertools/shared/setup'
+import type { CampaignKind } from '@prayertools/shared/db/schema'
 import { campaignSlugError } from '@prayertools/shared/paths'
 import { isValidTimezone } from '@prayertools/shared/dates'
 import { parseText } from '@prayertools/shared/translatable'
 
-export function ptSetupFromBody(b: Record<string, unknown>, templateKey: string, base?: Partial<SetupAnswers>): SetupAnswers {
+export function ptSetupFromBody(b: Record<string, unknown>, templateKey: string, base?: Partial<SetupAnswers>, kind: CampaignKind | null = null): SetupAnswers {
   const chosen: Partial<SetupAnswers> = { ...base }
   for (const k of ['start_mode', 'start_date', 'end_mode', 'end_date', 'length_days', 'goal', 'cadence', 'track_time'] as const) {
     if (k in b) (chosen as Record<string, unknown>)[k] = b[k]
   }
   const answers = applyTemplate(templateKey, chosen)
-  const errors = validateSetup(answers)
-  if (errors.length) ptBadRequest('Please check the campaign setup.', { errors })
+  const errors = validateSetup(answers, kind)
+  if (errors.length) ptBadRequest(kind === 'side' ? 'A side campaign needs a start date and an end date.' : 'Please check the campaign setup.', { errors })
   return answers
 }
 
-export async function ptAssertNoOverlap(tx: Transaction<Database>, answers: SetupAnswers & { timezone: string }, exceptId?: string) {
+export async function ptAssertNoOverlap(tx: Transaction<Database>, answers: SetupAnswers & { timezone: string }, kind: CampaignKind | null, exceptId?: string) {
+  if (kind === 'side') return
   let q = tx.selectFrom('pt_campaign').selectAll().where('ended_at', 'is', null)
   if (exceptId) q = q.where('id', '!=', exceptId)
   const others = (await q.execute()).map(ptCampaignOut)
-  const clash = others.find(o => campaignsOverlap(answers, o))
-  if (clash) ptBadRequest(`These dates overlap "${clash.name}". A site runs one campaign at a time.`)
+  const clash = overlappingCampaign(answers, kind, others)
+  if (clash) ptBadRequest(`These dates overlap "${clash.name}". A site runs one main campaign at a time; a side campaign can run alongside it.`)
+}
+
+export function ptCampaignKind(input: unknown): CampaignKind | null {
+  return input === 'side' ? 'side' : null
 }
 
 export function ptCampaignExtras(b: Record<string, unknown>) {

@@ -703,11 +703,12 @@
       },
       "Campaign": {
         "type": "object",
-        "required": ["id", "slug", "name", "status", "goal", "goal_target", "cadence", "start_mode", "start_date", "end_date", "length_days", "timezone", "duration", "duration_options", "default_duration_min", "slot_minutes"],
+        "required": ["id", "slug", "name", "kind", "status", "goal", "goal_target", "cadence", "start_mode", "start_date", "end_date", "length_days", "timezone", "duration", "duration_options", "default_duration_min", "slot_minutes"],
         "properties": {
           "id": { "type": "string", "format": "uuid" },
           "slug": { "type": "string" },
           "name": { "type": "string" },
+          "kind": { "type": "string", "enum": ["main", "side"], "description": "`main`: the site's own campaigns, one at a time, shown at the site's address. `side`: runs beside the main campaign on fixed dates, at `/{slug}`; never `current_campaign`." },
           "status": { "type": "string", "enum": ["upcoming", "active", "ended"] },
           "goal": { "type": "string", "enum": ["people", "prayer_time", "coverage"] },
           "goal_target": { "type": ["integer", "null"] },

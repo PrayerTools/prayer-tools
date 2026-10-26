@@ -2,7 +2,7 @@
 import type { Selectable } from 'kysely'
 import type { Tx } from '@prayertools/shared/db/scope'
 import type { PtSiteTable, SiteBranding, SiteLanding, SiteShare, TranslatableText } from '@prayertools/shared/db/schema'
-import { campaignLength, campaignStatus, defaultDuration, durationOptions, durationRule, pickCurrentCampaign, slotMinutes } from '@prayertools/shared/setup'
+import { campaignLength, campaignStatus, defaultDuration, durationOptions, durationRule, isSideCampaign, pickCurrentCampaign, slotMinutes } from '@prayertools/shared/setup'
 import { entryNumber } from '@prayertools/shared/schedule'
 import { todayIn } from '@prayertools/shared/dates'
 import { normalizeCampaign, type CampaignRow } from '@prayertools/shared/subscriptions'
@@ -13,7 +13,7 @@ import { heroAlt, heroImage } from '@prayertools/shared/hero-images'
 import { brandColor } from '@prayertools/shared/colors'
 import { goOrigin, platformConfig, platformOrigin } from '@prayertools/shared/config'
 import { EDITABLE_SITE_STRINGS } from '@prayertools/shared/site-strings'
-import type { CampaignState, CampaignView, SiteView } from '../../shared/view'
+import type { CampaignState, CampaignView, SideCampaignView, SiteView } from '../../shared/view'
 import type { SiteContext } from './site-context'
 import { editorDefaults } from './editor'
 
@@ -58,6 +58,7 @@ export function campaignView(data: SiteData, c: CampaignRow): CampaignView {
     name: c.name,
     state,
     isCurrent: data.current?.campaign.id === c.id,
+    side: isSideCampaign(c),
     goal: c.goal,
     goalTarget: c.goal_target,
     cadence: c.cadence,
@@ -127,7 +128,7 @@ export async function buildSiteView(tx: Tx, ctx: SiteContext, data: SiteData, la
     logoUrl: branding.logo_url ?? null,
     image,
     shareImageUrl: branding.share_image_url ?? image?.url ?? null,
-    description: textIn(site.description as TranslatableText | null, lang, def),
+    description: textIn(landingSource(data, campaign).description, lang, def) || textIn(site.description as TranslatableText | null, lang, def),
     status: site.status,
     preview: ctx.preview,
     editor: ctx.editor ? { adminOrigin: new URL(cfg.adminUrl).origin, defaults: editorDefaults(uiLanguage(lang)) } : null,
@@ -150,6 +151,18 @@ export async function buildSiteView(tx: Tx, ctx: SiteContext, data: SiteData, la
   }
 }
 
-export function landingOf(site: SiteRow): SiteLanding {
-  return (site.landing ?? {}) as SiteLanding
+// The landing page a campaign shows: a side campaign's own, else the site's.
+export function landingSource(data: SiteData, campaign: CampaignRow | null): { landing: SiteLanding, description: TranslatableText | null, templateKey: string | null } {
+  if (campaign && isSideCampaign(campaign)) {
+    return { landing: (campaign.landing ?? {}) as SiteLanding, description: campaign.description as TranslatableText | null, templateKey: campaign.template_key }
+  }
+  return { landing: (data.site.landing ?? {}) as SiteLanding, description: data.site.description as TranslatableText | null, templateKey: data.site.template_key }
+}
+
+// Side campaigns open for signup or running now, soonest first.
+export function sideCampaigns(data: SiteData, now: Date = new Date()): SideCampaignView[] {
+  return data.campaigns
+    .filter(c => isSideCampaign(c) && campaignStatus(c, now) !== 'ended')
+    .sort((a, b) => (a.start_date ?? '').localeCompare(b.start_date ?? ''))
+    .map(c => ({ slug: c.slug, name: c.name, state: campaignStatus(c, now) === 'upcoming' ? 'upcoming' : 'active', startDate: c.start_date, endDate: c.end_date }))
 }

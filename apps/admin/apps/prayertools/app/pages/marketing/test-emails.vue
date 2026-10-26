@@ -16,6 +16,7 @@ const sending = ref<string | null>(null)
 
 const EMAILS = [
   { kind: 'verification', title: 'Confirm your email', description: 'Sent right after someone signs up on the web.' },
+  { kind: 'welcome', title: 'Welcome', description: 'Sent once someone confirms their email. Lists their prayer times with links to pray, add them to a calendar and invite others.' },
   { kind: 'reminder', title: 'Prayer reminder', description: 'Sent at each person\'s prayer time. Links to the day\'s prayer content.' },
   { kind: 'checkin', title: 'Check-in', description: 'Asks people who stopped praying in an ongoing campaign whether they want to continue.' },
   { kind: 'thanks', title: 'End-of-campaign thank-you', description: 'Sent when a campaign ends, with your message and call to action.' },

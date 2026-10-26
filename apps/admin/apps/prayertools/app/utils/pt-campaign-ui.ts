@@ -23,6 +23,8 @@ export interface PtCampaign extends SetupState {
   slug: string
   name: string
   template_key: string | null
+  // 'side' runs beside the main campaign at its own address; null is a main campaign.
+  kind: 'side' | null
   timezone: string
   status: 'upcoming' | 'active' | 'ended'
   ended_at: string | null

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-// One campaign: its numbers, setup answers, address and end-of-campaign message.
+// One campaign: its numbers, setup answers, address and end-of-campaign
+// message; a side campaign also links to its own landing page.
 import type { SetupState } from '../../../components/PtSetupForm.vue'
 import type { PtCampaign } from '../../../utils/pt-campaign-ui'
 
@@ -105,6 +106,12 @@ async function remove() {
             variant="outline"
             label="On the site now"
           />
+          <UBadge
+            v-if="data.campaign.kind === 'side'"
+            color="neutral"
+            variant="outline"
+            label="Side campaign"
+          />
         </div>
         <p class="text-sm text-muted">
           {{ ptCampaignDates(data.campaign) }}
@@ -114,6 +121,14 @@ async function remove() {
         </p>
       </div>
       <div class="flex items-center gap-2 flex-wrap">
+        <UButton
+          v-if="data.campaign.kind === 'side'"
+          :to="{ path: '/site/landing', query: { campaign: id } }"
+          variant="outline"
+          color="neutral"
+          icon="i-lucide-panels-top-left"
+          label="Landing page"
+        />
         <UButton
           :to="campaignUrl"
           target="_blank"
@@ -199,6 +214,15 @@ async function remove() {
     </div>
 
     <UAlert
+      v-if="data.campaign.kind === 'side'"
+      color="neutral"
+      variant="subtle"
+      icon="i-lucide-split"
+      title="Runs alongside your main campaign"
+      :description="`It has its own address and landing page, ${campaignUrl.replace(/^https?:\/\//, '')}. While it is upcoming or running, your home page links to it.`"
+    />
+
+    <UAlert
       v-if="contentShort"
       color="warning"
       variant="subtle"
@@ -265,6 +289,7 @@ async function remove() {
             v-model="setup"
             :template-key="data.campaign.template_key ?? 'generic'"
             :lock-template="false"
+            :dated="data.campaign.kind === 'side'"
           />
         </fieldset>
       </div>

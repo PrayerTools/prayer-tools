@@ -23,6 +23,18 @@ There are no campaign types. A campaign is described by four setup answers; temp
 - **Before a campaign starts** signup is open and reminders begin on the start date.
 - **Between campaigns** the site shows the final results and the end-of-campaign call to action, and offers "Notify me when this campaign runs again" (the site-updates consent) in place of signup; those people are the audience for the relaunch invitation.
 
+## Main and side campaigns
+
+- A site runs one **main** campaign at a time; main campaign dates can't overlap. The current main campaign owns the site's root address.
+- A **side** campaign runs alongside, e.g. Ramadan on a site with an ongoing campaign, so champions don't create a site per event. It may overlap any campaign and never becomes the current campaign.
+- A side campaign needs a start date and an end date.
+- It lives at `/{slug}` (signup, pray, stats and coverage under it). Its address comes from its name and year, e.g. `/ramadan-2027`.
+- It has its own landing page: why text, custom sections, description and its own stories. Section headings, the signup form, consent options and branding are the site's.
+- While it is upcoming or running, the site's landing page shows a card linking to it. Only the landing page does.
+- Intercessors keep one subscription per site, with commitments in each campaign they join. There is no option to pause main-campaign reminders during a side campaign.
+- Relaunching a side campaign keeps it a side campaign and copies its landing page.
+- Site email audiences can pick any campaign by name, as well as the current main campaign and past campaigns.
+
 ## Goals and commitments
 
 Signup is built around the reminder (Doxa model): the intercessor says when they want to be reminded, not when they sign up to pray.

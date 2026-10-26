@@ -5,7 +5,7 @@ import { sql } from 'kysely'
 import { withOrg, type Tx } from '@prayertools/shared/db/scope'
 import { hashToken, shortCode } from '@prayertools/shared/tokens'
 import { normalizeCampaign, type CampaignRow, type CommitmentRow, type SubscriptionRow } from '@prayertools/shared/subscriptions'
-import { campaignStatus, defaultDuration, durationOptions, durationRule, slotMinutes } from '@prayertools/shared/setup'
+import { campaignStatus, defaultDuration, durationOptions, durationRule, isSideCampaign, slotMinutes } from '@prayertools/shared/setup'
 import { toIsoDate } from '@prayertools/shared/dates'
 import { useDb } from './db'
 
@@ -105,6 +105,7 @@ export function campaignJson(c: CampaignRow, siteDefaultDuration: number) {
     id: c.id,
     slug: c.slug,
     name: c.name,
+    kind: isSideCampaign(c) ? 'side' : 'main',
     status: campaignStatus(c),
     goal: c.goal,
     goal_target: c.goal_target,

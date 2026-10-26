@@ -34,6 +34,12 @@
     "starts_on": "Começa em {date}",
     "pray_today": "Ore hoje",
     "continue_praying": "Continue lendo e ore",
+    "side": {
+      "now": "Também acontecendo agora",
+      "soon": "Em breve",
+      "dates": "{start} – {end}",
+      "open": "Saiba mais"
+    },
     "why": {
       "title": "Por que oramos"
     },

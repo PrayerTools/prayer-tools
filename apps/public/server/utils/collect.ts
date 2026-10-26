@@ -5,6 +5,7 @@ import type { Tx } from '@prayertools/shared/db/scope'
 import { bumpDim, bumpStat, recordEvent, recordVisitor } from '@prayertools/shared/stats'
 import { todayIn } from '@prayertools/shared/dates'
 import { pickCurrentCampaign } from '@prayertools/shared/setup'
+import { parseSitePath } from '@prayertools/shared/paths'
 import { normalizeCampaign, type CampaignRow } from '@prayertools/shared/subscriptions'
 
 export const WEB_EVENTS = new Set(['pageview', 'campaign_shared', 'language_switched', 'signup_cta_clicked', 'app_link_clicked'])
@@ -33,14 +34,26 @@ function hostOf(url: string | null): string | null {
   }
 }
 
-export async function currentCampaignOf(tx: Tx): Promise<{ id: string, timezone: string } | null> {
+// The campaign a page belongs to: the one its address names (a past or side
+// campaign), else the site's current campaign.
+export async function campaignOfPage(tx: Tx, url: string | null): Promise<{ id: string, timezone: string } | null> {
   const rows = (await tx.selectFrom('pt_campaign').selectAll().execute()).map(normalizeCampaign) as CampaignRow[]
-  const c = pickCurrentCampaign(rows)?.campaign
+  let named: CampaignRow | undefined
+  if (url) {
+    try {
+      const site = await tx.selectFrom('pt_site').select('languages').executeTakeFirst()
+      const slug = parseSitePath(new URL(url).pathname, site?.languages ?? [], rows.map(r => r.slug)).campaignSlug
+      named = rows.find(r => r.slug === slug)
+    } catch {
+      named = undefined
+    }
+  }
+  const c = named ?? pickCurrentCampaign(rows)?.campaign
   return c ? { id: c.id, timezone: c.timezone } : null
 }
 
 export async function recordCollect(tx: Tx, orgId: string, siteTimezone: string, e: CollectInput): Promise<string | null> {
-  const campaign = await currentCampaignOf(tx)
+  const campaign = await campaignOfPage(tx, e.url)
   const cid = campaign?.id ?? null
   const day = todayIn(campaign?.timezone ?? siteTimezone)
   const vh = e.anonymousId ? visitorHash(orgId, e.anonymousId) : null
