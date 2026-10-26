@@ -28,7 +28,7 @@ Where champions and their teams build and run sites and their campaigns. Everyth
 - Every rail entry means "this, for the current site". Switching sites is the header switcher's job; it says "Sites" and "New site", never "Organizations". The rail starts collapsed (Nuxtinator's default).
 - **Sections with several pages use in-page tabs:** Content (prayer content, libraries); Landing page (page, stories, share); Email (emails, test emails and push); Settings (settings, domains); Library (images and blocks, templates); a campaign (overview, content, emails, stats for that campaign).
 - **Multi-site sends are never in the rail or top-level navigation:** "Send to several sites…" is in the overflow menu of a site's Email list and on each Library template, and only when the user can send on at least two sites.
-- **The CRM and the inbox keep their own in-page navigation.** Champions never see the CRM's schema builder or permissions matrix (to do: site owners still see them; see the README).
+- **The CRM and the inbox keep their own in-page navigation.** Champions never see the CRM's schema builder or permissions matrix: `crm.schema.manage` is withheld from the `admin` role.
 
 - One login; after login, **Your sites** lists every site the user belongs to: name, live address, role, status (draft / published / archived), the current or next campaign, and the people count. Pending invites show at the top; with no sites, the page starts onboarding. No subsites, no per-site logins.
 - Per-site roles and invites from Nuxtinator's tenancy layer:
