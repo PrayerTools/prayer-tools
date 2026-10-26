@@ -173,7 +173,7 @@ function html_to_doc( string $html, string $lang, int $day ): array {
     $dom->loadHTML( '<?xml encoding="utf-8"?><body>' . $html . '</body>' );
     libxml_clear_errors();
     $body = $dom->getElementsByTagName( 'body' )->item( 0 );
-    return [ 'type' => 'doc', 'content' => blocks( $body, $day ) ];
+    return [ 'type' => 'doc', 'content' => scripture( blocks( $body, $day ) ) ];
 }
 
 function blocks( DOMNode $parent, int $day ): array {
@@ -294,6 +294,144 @@ function tidy( array $nodes ): array {
         $clean[] = $n;
     }
     return $clean;
+}
+
+// ── Scripture ───────────────────────────────────────────────────────────
+
+// A Bible reference as the plugins write it in each language, e.g.
+// "1 John 4:16", "Jean 3 :21", "Johannes 3,21", "متی ۳:۵", and a translation.
+const NUM = '[0-9٠-٩۰-۹]+';
+const VERSES = '\s?[:,]\s?' . NUM . '[ab]?(?:\s?[-–]\s?(?:' . NUM . ':)?' . NUM . '[ab]?)?(?:\s?[,.&+]\s?' . NUM . '[ab]?(?:[-–]' . NUM . '[ab]?)?)*';
+const BOOK = '(?:[1-5]\.?\s?)?\p{L}[\p{L}\p{M}.-]*';
+const REF = BOOK . '(?:\s\p{L}[\p{L}\p{M}.]*){0,2}\s*' . NUM . '(?:' . VERSES . ')?';
+const TRANSLATION = '\p{Lu}[\p{Lu}0-9]{1,9}(?![\p{L}0-9])';
+const OPEN_QUOTE = '[“"«„「『]';
+const CLOSE_QUOTE = '[”"»“」』]';
+
+// Turns quoted Bible passages into Scripture (`verse`) blocks:
+// a reference block like "Genesis 1:1-25 (ESV)" followed by the passage, and
+// a quotation followed by its reference within a paragraph line.
+function scripture( array $blocks ): array {
+    $out = [];
+    for ( $i = 0; $i < count( $blocks ); $i++ ) {
+        $b = $blocks[ $i ];
+        $next = $blocks[ $i + 1 ] ?? null;
+        if ( ( $ref = ref_block( $b ) ) && $next && ! ref_block( $next )
+            && ( $next['type'] === 'paragraph' || $next['type'] === 'heading' && $next['attrs']['level'] === 4 ) ) {
+            $out[] = verse( $ref[1], $ref[2], [ [ 'type' => 'paragraph', 'content' => $next['content'] ] ] );
+            $i++;
+        } elseif ( $b['type'] === 'paragraph' ) {
+            array_push( $out, ...quoted_verses( $b['content'] ) );
+        } else {
+            $out[] = $b;
+        }
+    }
+    return $out;
+}
+
+// The reference and translation of a block holding only those, or null.
+function ref_block( array $b ): ?array {
+    $ok = in_array( $b['type'], [ 'paragraph', 'heading' ], true )
+        && preg_match( '/^(' . REF . ')\s*[(（](' . TRANSLATION . ')[)）]$/u', plain( $b['content'] ?? [] ), $m );
+    return $ok ? $m : null;
+}
+
+// Splits a paragraph's lines into paragraphs and verses. A quotation followed
+// by its reference, e.g. «…» (Luc 11 : 9), becomes a verse when it starts the
+// line or a sentence; text around it stays in the paragraph. A quotation alone
+// on a line takes its reference from the line before, as in "…from Romans 12:".
+function quoted_verses( array $inline ): array {
+    $lines = [ [] ];
+    foreach ( $inline as $n ) {
+        if ( $n['type'] === 'hardBreak' ) $lines[] = [];
+        else $lines[ count( $lines ) - 1 ][] = $n;
+    }
+    $out = [];
+    $run = [];
+    $flush = function () use ( &$out, &$run ) {
+        if ( $run ) $out[] = [ 'type' => 'paragraph', 'content' => array_merge( ...array_map( fn ( $l, $k ) => $k ? [ [ 'type' => 'hardBreak' ], ...$l ] : $l, $run, array_keys( $run ) ) ) ];
+        $run = [];
+    };
+    foreach ( $lines as $k => $line ) {
+        $text = unmarked( $line ) ? preg_replace( '/[\x{200E}\x{200F}]/u', '', plain( $line ) ) : null;
+        $found = $text !== null ? cited( $text ) : null;
+        if ( ! $found && $text !== null && $k > 0 && preg_match( '/^' . OPEN_QUOTE . '(.+)' . CLOSE_QUOTE . '\s*\.?$/us', $text, $m )
+            && preg_match( '/(?:^|\s)((?:\p{Lu}[\p{L}\p{M}.-]*\s){0,2}' . BOOK . '\s' . NUM . '(?:' . VERSES . ')?)\s*[:：]$/u', plain( $lines[ $k - 1 ] ), $r ) ) {
+            $found = [ '', $m[1], $r[1], '', '' ];
+        }
+        if ( ! $found ) {
+            $run[] = $line;
+            continue;
+        }
+        [ $lead, $body, $ref, $translation, $rest ] = $found;
+        if ( trim( $lead ) !== '' ) $run[] = [ text_node( trim( $lead ), [] ) ];
+        $flush();
+        $out[] = verse( $ref, $translation, [ [ 'type' => 'paragraph', 'content' => [ text_node( trim( $body ), [] ) ] ] ] );
+        if ( trim( $rest ) !== '' ) $run[] = [ text_node( trim( $rest ), [] ) ];
+    }
+    $flush();
+    return $out;
+}
+
+// The first quotation in a line that starts the line or a sentence and is
+// followed by a reference: [ text before, quotation, reference, translation, text after ].
+function cited( string $text ): ?array {
+    preg_match_all( '/(?:^|[.!?؟。！？](\s*))(' . OPEN_QUOTE . ')\s?(?![.,;:!?()]\s)/u', $text, $opens, PREG_OFFSET_CAPTURE );
+    $ref = '/(?:' . CLOSE_QUOTE . '?\s*[.,]?\s*[(（]\s*(' . REF . ')(?:\s+(' . TRANSLATION . '))?\s*[)）]'
+        . '|' . CLOSE_QUOTE . '\s*[.,]?\s*(' . BOOK . '(?:\s\p{L}[\p{L}\p{M}.]*){0,2}\s*' . NUM . VERSES . '))'
+        . '\s*[.。۔]?\s*(' . TRANSLATION . ')?\s*\.?/u';
+    foreach ( $opens[0] as $i => [ $match, $at ] ) {
+        [ $open, $quote ] = $opens[2][ $i ];
+        // A quote mark right after a full stop opens a quotation only if the quotes before it are paired.
+        if ( $quote > 0 && ( $opens[1][ $i ][0] ?? '' ) === '' && preg_match_all( '/[“”"«»„「」『』]/u', substr( $text, 0, $quote ) ) % 2 ) continue;
+        $start = $at + strlen( $match );
+        $from = $start;
+        do {
+            if ( ! preg_match( $ref, $text, $r, PREG_OFFSET_CAPTURE, $from ) ) continue 2;
+            $body = substr( $text, $start, $r[0][1] - $start );
+            $from = $r[0][1] + max( 1, strlen( $r[0][0] ) );
+        } while ( ! preg_match( '/\p{L}/u', $body ) );
+        if ( closed_early( $open, $body ) ) continue;
+        return [
+            substr( $text, 0, $quote ),
+            $body,
+            ( $r[1][0] ?? '' ) !== '' ? $r[1][0] : $r[3][0],
+            ( $r[2][0] ?? '' ) !== '' ? $r[2][0] : ( $r[4][0] ?? '' ),
+            substr( $text, $r[0][1] + strlen( $r[0][0] ) ),
+        ];
+    }
+    return null;
+}
+
+// Whether a quotation opened with $open closes partway through $body, so the
+// reference after it belongs to a later quotation.
+function closed_early( string $open, string $body ): bool {
+    $close = [ '“' => '”', '"' => '"', '«' => '»', '„' => '“', '「' => '」', '『' => '』' ][ $open ];
+    $chars = mb_str_split( $body );
+    $depth = 1;
+    foreach ( $chars as $i => $c ) {
+        // A straight quote opens a nested quotation after a space or colon, and closes one otherwise.
+        $opens = $open === $close
+            ? preg_match( '/[\s:]/u', $chars[ $i - 1 ] ?? ' ' ) && ! preg_match( '/\s/u', $chars[ $i + 1 ] ?? ' ' )
+            : true;
+        if ( $c === $open && $opens ) $depth++;
+        elseif ( $c === $close ) $depth--;
+        if ( $depth === 0 && preg_match( '/\p{L}/u', mb_substr( $body, $i + 1 ) ) ) return true;
+    }
+    return false;
+}
+
+function verse( string $reference, string $translation, array $content ): array {
+    return [ 'type' => 'verse', 'attrs' => [ 'reference' => trim( $reference ), 'translation' => $translation !== '' ? $translation : null ], 'content' => $content ];
+}
+
+function plain( array $inline ): string {
+    return trim( implode( '', array_map( fn ( $n ) => $n['text'] ?? '', $inline ) ) );
+}
+
+function unmarked( array $inline ): bool {
+    foreach ( $inline as $n ) if ( $n['type'] !== 'text' || ! empty( $n['marks'] ) ) return false;
+    return (bool) $inline;
 }
 
 // ── Entry point ─────────────────────────────────────────────────────────
