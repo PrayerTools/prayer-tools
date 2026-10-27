@@ -87,20 +87,35 @@ function resetEmail() {
   signature.value = s.site.email_identity?.signature ?? null
 }
 
-watch(site, (s) => {
+type Site = NonNullable<typeof site.value>
+function detailsOf(s: Site) {
+  return { name: s.org.name, purpose: s.site.purpose ?? 'place', place_name: s.site.place_name ?? '', place_wording: { ...s.site.place_wording }, people_group: s.site.people_group ?? '', latitude: s.site.latitude, longitude: s.site.longitude }
+}
+function languagesOf(s: Site) {
+  return { languages: [...s.site.languages], default_language: s.site.default_language, timezone: s.site.timezone }
+}
+function languagesNow() {
+  return { languages: languages.value, default_language: defaultLanguage.value, timezone: timezone.value }
+}
+function resetLanguages() {
+  const s = site.value
   if (!s) return
-  Object.assign(details, { name: s.org.name, purpose: s.site.purpose ?? 'place', place_name: s.site.place_name ?? '', place_wording: { ...s.site.place_wording }, people_group: s.site.people_group ?? '', latitude: s.site.latitude, longitude: s.site.longitude })
   languages.value = [...s.site.languages]
   defaultLanguage.value = s.site.default_language
   timezone.value = s.site.timezone
-  resetLook()
-  resetEmail()
-  settings.value = { ...s.site.settings }
-}, { immediate: true })
+}
+// Compares form values ignoring key order and empty values, so an untouched form never counts as changed.
+function canonical(v: unknown): string {
+  return JSON.stringify(v, (_k, x: unknown) => {
+    if (!x || typeof x !== 'object' || Array.isArray(x)) return x
+    const o = x as Record<string, unknown>
+    return Object.fromEntries(Object.keys(o).sort().filter(k => o[k] !== undefined && o[k] !== null && o[k] !== '').map(k => [k, o[k]]))
+  })
+}
 
 const purposeItems = computed(() => Object.entries(PT_LABELS.purpose).map(([value, label]) => ({ value, label, description: PT_LABELS.purposeDescription[value] })))
 
-// Behaviour: booleans save on toggle; numbers save with their own button.
+// Behaviour: booleans save on toggle; numbers save with the rest of General.
 function settingValue(key: string) {
   return settings.value[key] ?? meta.value?.settingDefaults[key]
 }
@@ -113,8 +128,44 @@ async function saveSetting(key: string, value: boolean | number | null) {
 const numberSettings = computed(() => Object.entries(meta.value?.settingDefaults ?? {}).filter(([, def]) => typeof def === 'number').map(([key]) => key))
 const booleanSettings = computed(() => Object.entries(meta.value?.settingDefaults ?? {}).filter(([, def]) => typeof def === 'boolean').map(([key]) => key))
 const numberDraft = ref<Record<string, number | null>>({})
-watch([settings, meta], () => {
+function resetNumbers() {
   numberDraft.value = Object.fromEntries(numberSettings.value.map(k => [k, settingValue(k) as number]))
+}
+watch(meta, resetNumbers, { immediate: true })
+
+// General: the about, languages and number settings save together.
+const detailsDirty = computed(() => !!site.value && canonical(details) !== canonical(detailsOf(site.value)))
+const languagesDirty = computed(() => !!site.value && canonical(languagesNow()) !== canonical(languagesOf(site.value)))
+const numbersDirty = computed(() => numberSettings.value.some(k => numberDraft.value[k] !== settingValue(k)))
+const generalDirty = computed(() => detailsDirty.value || languagesDirty.value || numbersDirty.value)
+const languagesValid = computed(() => languages.value.length > 0 && languages.value.includes(defaultLanguage.value))
+const savingGeneral = ref(false)
+async function saveGeneral() {
+  savingGeneral.value = true
+  const ok = await patchSite({
+    ...(detailsDirty.value ? { ...details, place_name: details.place_name || null, people_group: details.people_group || null } : {}),
+    ...(languagesDirty.value ? { languages: languages.value, default_language: defaultLanguage.value, timezone: timezone.value } : {}),
+    ...(numbersDirty.value ? { settings: Object.fromEntries(numberSettings.value.map(k => [k, numberDraft.value[k] ?? meta.value?.settingDefaults[k]])) } : {})
+  })
+  if (ok) resetGeneral()
+  savingGeneral.value = false
+}
+function resetGeneral() {
+  if (site.value) Object.assign(details, detailsOf(site.value))
+  resetLanguages()
+  resetNumbers()
+}
+
+// When a save reloads the site, sections without unsaved edits take the new values.
+watch(site, (s, prev) => {
+  if (!s) return
+  if (!prev || canonical(details) === canonical(detailsOf(prev))) Object.assign(details, detailsOf(s))
+  if (!prev || canonical(languagesNow()) === canonical(languagesOf(prev))) resetLanguages()
+  if (!prev || comparable(branding.value) === comparable(prev.site.branding)) resetLook()
+  if (!prev || comparable({ ...identity.value, signature: signature.value }) === comparable(prev.site.email_identity)) resetEmail()
+  const numbersClean = !prev || !numbersDirty.value
+  settings.value = { ...s.site.settings }
+  if (numbersClean) resetNumbers()
 }, { immediate: true })
 
 // Look
@@ -134,7 +185,7 @@ const brandingDirty = computed(() => comparable(branding.value) !== comparable(s
 const savingLook = ref(false)
 async function saveLook() {
   savingLook.value = true
-  await patchSite({ branding: branding.value })
+  if (await patchSite({ branding: branding.value })) resetLook()
   savingLook.value = false
 }
 
@@ -143,7 +194,7 @@ const emailDirty = computed(() => comparable({ ...identity.value, signature: sig
 const savingEmail = ref(false)
 async function saveEmail() {
   savingEmail.value = true
-  await patchSite({ email_identity: { ...identity.value, signature: signature.value } })
+  if (await patchSite({ email_identity: { ...identity.value, signature: signature.value } })) resetEmail()
   savingEmail.value = false
 }
 
@@ -160,16 +211,35 @@ watch(site, (s) => {
   if (s) wordingLang.value = s.site.default_language
 }, { immediate: true })
 const wording = ref<Record<string, string>>({})
-watch([strings, wordingLang], () => {
-  wording.value = Object.fromEntries((strings.value?.strings ?? []).filter(s => s.language === wordingLang.value).map(s => [s.key, s.value]))
-}, { immediate: true })
-async function saveWording(key: string) {
+const savedWording = computed<Record<string, string>>(() => Object.fromEntries((strings.value?.strings ?? []).filter(s => s.language === wordingLang.value).map(s => [s.key, s.value])))
+function resetWording() {
+  wording.value = { ...savedWording.value }
+}
+watch(savedWording, resetWording, { immediate: true })
+const changedWording = computed(() => EDITABLE.map(e => e.key).filter(k => (wording.value[k] ?? '') !== (savedWording.value[k] ?? '')))
+const wordingDirty = computed(() => changedWording.value.length > 0)
+// Switching language asks first when the current language has unsaved edits.
+const wordingLangModel = computed({
+  get: () => wordingLang.value,
+  set: (v: string) => {
+    allowLeave().then((ok) => {
+      if (ok) wordingLang.value = v
+    })
+  }
+})
+const savingWording = ref(false)
+async function saveWording() {
+  savingWording.value = true
   try {
-    await $fetch('/api/pt/strings', { method: 'PUT', body: { key, language: wordingLang.value, value: wording.value[key] ?? '' } })
+    for (const key of changedWording.value) {
+      await $fetch('/api/pt/strings', { method: 'PUT', body: { key, language: wordingLang.value, value: wording.value[key] ?? '' } })
+    }
     await refreshStrings()
     toast.ok('Saved')
   } catch (err) {
     toast.fail(err)
+  } finally {
+    savingWording.value = false
   }
 }
 
@@ -227,6 +297,17 @@ async function deleteSite() {
     toast.fail(err)
   }
 }
+// Unsaved edits on the open tab block switching tabs or leaving the page.
+const contactForm = useTemplateRef<{ dirty: boolean, reset: () => void }>('contactForm')
+const TAB_EDITS: Record<string, { dirty: () => boolean, discard: () => void }> = {
+  details: { dirty: () => generalDirty.value, discard: resetGeneral },
+  look: { dirty: () => brandingDirty.value, discard: resetLook },
+  email: { dirty: () => emailDirty.value, discard: resetEmail },
+  contact: { dirty: () => !!contactForm.value?.dirty, discard: () => contactForm.value?.reset() },
+  wording: { dirty: () => wordingDirty.value, discard: resetWording }
+}
+const allowLeave = usePtUnsavedGuard(() => !!TAB_EDITS[tab.value]?.dirty(), () => TAB_EDITS[tab.value]?.discard())
+
 const { data: exportsLog } = useFetch<{ exports: { id: string, row_count: number, created_at: string, display_name: string, email: string }[] }>('/api/pt/exports', { key: 'pt-exports', immediate: false })
 watch(tab, (t) => {
   if (t === 'status' && can('pt.site.manage')) refreshNuxtData('pt-exports')
@@ -251,6 +332,7 @@ watch(tab, (t) => {
       v-model="tab"
       :items="tabs"
       :content="false"
+      activation-mode="manual"
       class="w-full"
     />
 
@@ -270,7 +352,7 @@ watch(tab, (t) => {
           </h2>
         </template>
         <form
-          @submit.prevent="patchSite({ ...details, place_name: details.place_name || null, people_group: details.people_group || null })"
+          @submit.prevent="saveGeneral"
         >
           <fieldset
             :disabled="!can('pt.site.write')"
@@ -317,10 +399,6 @@ watch(tab, (t) => {
                 class="w-full"
               />
             </UFormField>
-            <UButton
-              type="submit"
-              label="Save"
-            />
           </fieldset>
         </form>
       </UCard>
@@ -375,11 +453,6 @@ watch(tab, (t) => {
               class="w-full sm:w-72"
             />
           </UFormField>
-          <UButton
-            label="Save"
-            :disabled="!languages.length || !languages.includes(defaultLanguage)"
-            @click="patchSite({ languages, default_language: defaultLanguage, timezone })"
-          />
         </fieldset>
       </UCard>
 
@@ -411,17 +484,19 @@ watch(tab, (t) => {
                 :max="240"
                 :disabled="!can('pt.site.write')"
               />
-              <UButton
-                v-if="numberDraft[key] !== settingValue(key)"
-                size="sm"
-                label="Save"
-                :loading="savingSetting === key"
-                @click="saveSetting(key, numberDraft[key] ?? null)"
-              />
             </div>
           </UFormField>
         </div>
       </UCard>
+
+      <PtSaveBar
+        v-if="can('pt.site.write')"
+        :dirty="generalDirty"
+        :saving="savingGeneral"
+        :disabled="!languagesValid"
+        @save="saveGeneral"
+        @discard="resetGeneral"
+      />
     </template>
 
     <template v-else-if="tab === 'look'">
@@ -544,25 +619,14 @@ watch(tab, (t) => {
         </fieldset>
       </UCard>
 
-      <div
+      <PtSaveBar
         v-if="can('pt.site.write')"
-        class="flex items-center gap-3"
-      >
-        <UButton
-          icon="i-lucide-save"
-          label="Save look"
-          :loading="savingLook"
-          :disabled="!brandingDirty"
-          @click="saveLook"
-        />
-        <UButton
-          v-if="brandingDirty"
-          variant="ghost"
-          color="neutral"
-          label="Discard changes"
-          @click="resetLook"
-        />
-      </div>
+        :dirty="brandingDirty"
+        :saving="savingLook"
+        label="Save look"
+        @save="saveLook"
+        @discard="resetLook"
+      />
     </template>
 
     <template v-else-if="tab === 'email' && can('pt.site.manage')">
@@ -638,80 +702,78 @@ watch(tab, (t) => {
         </div>
       </UCard>
 
-      <div class="flex items-center gap-3">
-        <UButton
-          icon="i-lucide-save"
-          label="Save email"
-          :loading="savingEmail"
-          :disabled="!emailDirty"
-          @click="saveEmail"
-        />
-        <UButton
-          v-if="emailDirty"
-          variant="ghost"
-          color="neutral"
-          label="Discard changes"
-          @click="resetEmail"
-        />
-      </div>
+      <PtSaveBar
+        :dirty="emailDirty"
+        :saving="savingEmail"
+        label="Save email"
+        @save="saveEmail"
+        @discard="resetEmail"
+      />
     </template>
 
-    <PtContactFormSettings v-else-if="tab === 'contact'" />
+    <PtContactFormSettings
+      v-else-if="tab === 'contact'"
+      ref="contactForm"
+    />
 
-    <UCard v-else-if="tab === 'wording'">
-      <template #header>
-        <div class="flex items-center justify-between gap-3 flex-wrap">
-          <h2 class="font-semibold">
-            Wording on your site
-          </h2>
-          <USelect
-            v-model="wordingLang"
-            :items="site.site.languages.map(l => ({ label: languageName(meta, l), value: l }))"
-            class="w-44"
-          />
-        </div>
-      </template>
-      <div class="space-y-4">
-        <p class="text-sm text-(--ui-text-muted)">
-          Headings and text on the landing page are edited on the
-          <ULink
-            :to="`/@${site.org.slug}/site/landing`"
-            class="text-(--ui-primary)"
-          >Landing page</ULink>.
-        </p>
-        <div
-          v-for="e in EDITABLE"
-          :key="e.key"
-          class="flex items-end gap-2"
-        >
-          <UFormField
-            :label="e.label"
-            class="flex-1"
+    <template v-else-if="tab === 'wording'">
+      <UCard>
+        <template #header>
+          <div class="flex items-center justify-between gap-3 flex-wrap">
+            <h2 class="font-semibold">
+              Wording on your site
+            </h2>
+            <USelect
+              v-model="wordingLangModel"
+              :items="site.site.languages.map(l => ({ label: languageName(meta, l), value: l }))"
+              class="w-44"
+            />
+          </div>
+        </template>
+        <div class="space-y-4">
+          <p class="text-sm text-(--ui-text-muted)">
+            Headings and text on the landing page are edited on the
+            <ULink
+              :to="`/@${site.org.slug}/site/landing`"
+              class="text-(--ui-primary)"
+            >Landing page</ULink>.
+          </p>
+          <div
+            v-for="e in EDITABLE"
+            :key="e.key"
+            class="flex items-end gap-2"
           >
-            <UTextarea
-              v-if="e.multiline"
-              v-model="wording[e.key]"
-              :rows="2"
-              autoresize
-              placeholder="Standard wording"
-              class="w-full"
-            />
-            <UInput
-              v-else
-              v-model="wording[e.key]"
-              placeholder="Standard wording"
-              class="w-full"
-            />
-          </UFormField>
-          <UButton
-            size="sm"
-            variant="soft"
-            label="Save"
-            @click="saveWording(e.key)"
-          />
+            <UFormField
+              :label="e.label"
+              class="flex-1"
+            >
+              <UTextarea
+                v-if="e.multiline"
+                v-model="wording[e.key]"
+                :rows="2"
+                autoresize
+                placeholder="Standard wording"
+                class="w-full"
+              />
+              <UInput
+                v-else
+                v-model="wording[e.key]"
+                placeholder="Standard wording"
+                class="w-full"
+              />
+            </UFormField>
+          </div>
         </div>
-      </div>
-    </UCard>
+      </UCard>
+
+      <PtSaveBar
+        :dirty="wordingDirty"
+        :saving="savingWording"
+        label="Save wording"
+        @save="saveWording"
+        @discard="resetWording"
+      />
+    </template>
 
     <template v-else-if="tab === 'status'">
       <UCard>

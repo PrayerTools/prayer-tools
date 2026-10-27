@@ -91,6 +91,8 @@ async function save() {
     saving.value = false
   }
 }
+
+defineExpose({ dirty, reset })
 </script>
 
 <template>
@@ -339,21 +341,13 @@ async function save() {
       </div>
     </UCard>
 
-    <div class="flex items-center gap-3">
-      <UButton
-        icon="i-lucide-save"
-        label="Save contact form"
-        :loading="saving"
-        :disabled="!dirty"
-        @click="save"
-      />
-      <UButton
-        v-if="dirty"
-        variant="ghost"
-        color="neutral"
-        label="Discard changes"
-        @click="reset"
-      />
-    </div>
+    <PtSaveBar
+      v-if="can('pt.site.write') || can('pt.content.translate')"
+      :dirty="dirty"
+      :saving="saving"
+      label="Save contact form"
+      @save="save"
+      @discard="reset"
+    />
   </div>
 </template>
