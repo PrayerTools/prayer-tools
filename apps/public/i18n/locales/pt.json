@@ -16,7 +16,8 @@
     "loading": "Carregando…",
     "or": "ou",
     "save": "Salvar",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "ok": "OK"
   },
   "preview": {
     "banner": "Pré-visualização — este site ainda não foi publicado. Só quem tem o link de pré-visualização pode vê-lo."
@@ -162,6 +163,7 @@
     "days": "Quais dias",
     "time": "Horário do lembrete",
     "time_help": "Enviamos o lembrete neste horário.",
+    "time_placeholder": "Escolha um horário",
     "duration": "Por quanto tempo você vai orar?",
     "duration_placeholder": "Escolha uma duração",
     "remove": "Remover",

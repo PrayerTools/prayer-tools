@@ -16,7 +16,8 @@
     "loading": "Cargando…",
     "or": "o",
     "save": "Guardar",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "ok": "Aceptar"
   },
   "preview": {
     "banner": "Vista previa: este sitio aún no está publicado. Solo las personas con el enlace de vista previa pueden verlo."
@@ -162,6 +163,7 @@
     "days": "Qué días",
     "time": "Hora del recordatorio",
     "time_help": "Enviamos el recordatorio a esta hora.",
+    "time_placeholder": "Elige una hora",
     "duration": "¿Cuánto tiempo vas a orar?",
     "duration_placeholder": "Elige una duración",
     "remove": "Quitar",

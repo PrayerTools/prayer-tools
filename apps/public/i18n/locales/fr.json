@@ -16,7 +16,8 @@
     "loading": "Chargement…",
     "or": "ou",
     "save": "Enregistrer",
-    "cancel": "Annuler"
+    "cancel": "Annuler",
+    "ok": "OK"
   },
   "preview": {
     "banner": "Aperçu — ce site n'est pas encore publié. Seules les personnes disposant du lien d'aperçu peuvent le voir."
@@ -162,6 +163,7 @@
     "days": "Quels jours",
     "time": "Heure du rappel",
     "time_help": "Nous envoyons le rappel à cette heure-là.",
+    "time_placeholder": "Choisissez une heure",
     "duration": "Combien de temps allez-vous prier ?",
     "duration_placeholder": "Choisir une durée",
     "remove": "Retirer",

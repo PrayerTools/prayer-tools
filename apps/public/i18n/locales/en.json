@@ -16,7 +16,8 @@
     "loading": "Loading…",
     "or": "or",
     "save": "Save",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "ok": "OK"
   },
   "preview": {
     "banner": "Preview — this site is not published yet. Only people with the preview link can see it."
@@ -162,6 +163,7 @@
     "days": "Which days",
     "time": "Reminder time",
     "time_help": "We send the reminder at this time.",
+    "time_placeholder": "Choose a time",
     "duration": "How long will you pray?",
     "duration_placeholder": "Choose a duration",
     "remove": "Remove",
