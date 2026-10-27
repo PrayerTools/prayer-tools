@@ -60,7 +60,7 @@ useHead(() => {
         <LazyViewsSignupView v-else-if="view.page.kind === 'signup'" :form="view.page.form" />
         <LazyViewsStatsView v-else-if="view.page.kind === 'stats'" :stats="view.page.stats" />
         <LazyViewsCoverageView v-else-if="view.page.kind === 'coverage'" :progress="view.page.progress" />
-        <LazyViewsContactView v-else-if="view.page.kind === 'contact'" />
+        <LazyViewsContactView v-else-if="view.page.kind === 'contact'" :fields="view.page.fields" />
         <LazyViewsStoriesView v-else-if="view.page.kind === 'stories'" />
         <LazyViewsManageView v-else-if="view.page.kind === 'manage'" :manage="view.page.manage" />
         <LazyViewsLinkExpiredView v-else-if="view.page.kind === 'link_expired'" :token="view.page.token" />

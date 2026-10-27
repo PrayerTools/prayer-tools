@@ -212,7 +212,7 @@ export type PageView =
   | { kind: 'signup', form: SignupFormView }
   | { kind: 'stats', stats: StatsView }
   | { kind: 'coverage', progress: GoalProgressView | null }
-  | { kind: 'contact' }
+  | { kind: 'contact', fields: SignupFieldView[] }
   | { kind: 'stories' }
   | { kind: 'manage', manage: ManageView | null }
   | { kind: 'link_expired', token: string }

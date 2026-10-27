@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // Site settings: general (details, languages, behaviour), look, email,
-// wording, and status (publishing, directory, exports, deleting).
+// contact form, wording, and status (publishing, directory, exports, deleting).
 // Only values that differ from the code defaults are stored.
 import type { TranslatableText } from '@prayertools/shared/db/schema'
 import { DEFAULT_BRAND_COLOR } from '@prayertools/shared/colors'
@@ -20,6 +20,7 @@ const tabs = computed(() => [
   { label: 'General', value: 'details', icon: 'i-lucide-info' },
   { label: 'Look', value: 'look', icon: 'i-lucide-palette' },
   ...(can('pt.site.manage') ? [{ label: 'Email', value: 'email', icon: 'i-lucide-mail' }] : []),
+  { label: 'Contact form', value: 'contact', icon: 'i-lucide-message-square' },
   { label: 'Wording', value: 'wording', icon: 'i-lucide-type' },
   ...(can('pt.site.manage') ? [{ label: 'Status', value: 'status', icon: 'i-lucide-power' }] : [])
 ])
@@ -38,6 +39,7 @@ const TAB_INTRO: Record<string, string> = {
   details: 'What your site is about, its languages and how it behaves.',
   look: 'Your site’s colors and images.',
   email: 'How reminders and site emails appear in people’s inboxes, and where replies go.',
+  contact: 'What your contact form asks, and who is notified of new messages.',
   wording: 'Change the standard wording on your site. Leave a field empty to use the standard wording.',
   status: 'Publish or archive the site, list it in the Prayer.Tools directory, or delete it.'
 }
@@ -253,7 +255,7 @@ watch(tab, (t) => {
     />
 
     <UAlert
-      v-if="!can('pt.site.write') && tab !== 'wording'"
+      v-if="!can('pt.site.write') && tab !== 'wording' && tab !== 'contact'"
       color="neutral"
       variant="subtle"
       icon="i-lucide-lock"
@@ -653,6 +655,8 @@ watch(tab, (t) => {
         />
       </div>
     </template>
+
+    <PtContactFormSettings v-else-if="tab === 'contact'" />
 
     <UCard v-else-if="tab === 'wording'">
       <template #header>

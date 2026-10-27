@@ -86,7 +86,13 @@ export async function buildSiteResponse(event: H3Event, ctx: SiteContext, fullPa
             : { kind: 'not_found' }
           break
         case 'contact':
-          page = { kind: 'contact' }
+          page = { kind: 'contact', fields: (data.site.contact_form.fields ?? []).map(f => ({
+            key: f.key,
+            kind: f.kind,
+            label: textIn(f.label, lang, def),
+            required: f.required,
+            options: f.options.map(o => ({ key: o.key, label: textIn(o.label, lang, def) }))
+          })) }
           break
         case 'stories':
         case 'story':

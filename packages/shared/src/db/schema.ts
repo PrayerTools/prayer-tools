@@ -288,6 +288,21 @@ export interface SiteOnboarding {
   completed?: boolean
 }
 
+// The public contact form's extra questions, and who is notified of new
+// messages. Without `notify_user_ids` the site's admins are notified.
+export interface ContactFormField {
+  key: string
+  kind: SignupFieldKind
+  label: TranslatableText
+  options: { key: string, label: TranslatableText }[]
+  required: boolean
+}
+
+export interface SiteContactForm {
+  fields?: ContactFormField[]
+  notify_user_ids?: string[]
+}
+
 export interface PtSiteTable {
   org_id: string
   status: Generated<SiteStatus>
@@ -307,6 +322,7 @@ export interface PtSiteTable {
   share: JsonDefault<SiteShare>
   settings: JsonDefault<Record<string, unknown>>
   onboarding: JsonDefault<SiteOnboarding>
+  contact_form: JsonDefault<SiteContactForm>
   template_key: string | null
   preview_token_hash: string | null
   published_at: NullableTimestamp
@@ -779,6 +795,22 @@ export interface InboxMessagesTable {
   updated_at: Timestamp
 }
 
+export interface NotificationsTable {
+  id: Generated<string>
+  org_id: Generated<string>
+  user_id: string
+  app_id: string
+  title: string
+  body: string | null
+  icon: string | null
+  link: string
+  actor_id: string | null
+  email_mode: Generated<'immediate' | 'digest' | 'none'>
+  created_at: Generated<Date>
+  read_at: NullableTimestamp
+  emailed_at: NullableTimestamp
+}
+
 export interface LayerTables {
   users: UsersTable
   orgs: OrgsTable
@@ -791,6 +823,7 @@ export interface LayerTables {
   crm_record_activity: CrmRecordActivityTable
   inbox_conversations: InboxConversationsTable
   inbox_messages: InboxMessagesTable
+  notifications: NotificationsTable
 }
 
 export type DB = PtTables & LayerTables
