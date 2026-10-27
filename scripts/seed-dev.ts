@@ -83,14 +83,14 @@ async function site(seed: SiteSeed, libraryId: string) {
       purpose: 'place', place_name: seed.place, latitude: 33.5, longitude: 36.3,
       languages: sql`${`{${seed.languages.join(',')}}`}::text[]`, default_language: seed.languages[0]!, timezone: tz,
       branding: jsonb({ color: '#2f6f5e' }),
-      landing: jsonb({ why: { en: textDoc(`Why pray for ${seed.place}? Because every person matters to God.`) } }),
       template_key: seed.campaign.template,
       published_at: seed.status === 'published' ? new Date() : null
     }).execute()
     const campaign = await tx.insertInto('pt_campaign').values({
       slug: start.slice(0, 4), name: seed.campaign.name, template_key: seed.campaign.template,
       start_mode: 'date', start_date: start, end_mode: 'date', end_date: addDays(start, seed.campaign.days - 1),
-      goal: seed.campaign.goal, cadence: 'daily', timezone: tz, goal_target: seed.campaign.goal === 'people' ? 100 : null
+      goal: seed.campaign.goal, cadence: 'daily', timezone: tz, goal_target: seed.campaign.goal === 'people' ? 100 : null,
+      landing: jsonb({ why: { en: textDoc(`Why pray for ${seed.place}? Because every person matters to God.`) } })
     }).returning('id').executeTakeFirstOrThrow()
     const sl = await tx.insertInto('pt_site_library').values({ library_id: libraryId, title: 'Ramadan 30 days (sample)', cadence: 'daily' }).returning('id').executeTakeFirstOrThrow()
     await tx.insertInto('pt_campaign_library').values({ campaign_id: campaign.id, site_library_id: sl.id, position: 0 }).execute()

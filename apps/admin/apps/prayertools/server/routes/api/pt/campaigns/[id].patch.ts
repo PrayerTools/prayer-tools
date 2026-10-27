@@ -1,10 +1,12 @@
 // Edits a campaign's setup answers, name, address, goal target, end message
-// and call to action, and a side campaign's landing page. Existing
-// commitments keep their windows.
+// and call to action, and its landing page, images and share messages. A side
+// campaign also has its own short description; the main campaign uses the
+// site's. Existing commitments keep their windows.
 import { jsonb } from '@prayertools/shared/db/json'
 import { parseText } from '@prayertools/shared/translatable'
 import { contentLength } from '@prayertools/shared/content'
 import { isTemplateWhy } from '@prayertools/shared/i18n/landing'
+import type { CampaignBranding } from '@prayertools/shared/db/schema'
 
 export default definePtHandler('pt.campaigns.write', async (event, tx, ctx) => {
   const id = getRouterParam(event, 'id')!
@@ -29,17 +31,26 @@ export default definePtHandler('pt.campaigns.write', async (event, tx, ctx) => {
   }
   if ('end_message' in b) patch.end_message = b.end_message ? jsonb(parseText(b.end_message)) : null
   if ('cta' in b) patch.cta = jsonb(ptCta(b.cta))
-  if ('landing' in b || 'description' in b) {
-    if (c.kind !== 'side') ptBadRequest('The main campaign uses the site\'s landing page.')
-    ptNeed(ctx, 'pt.site.write')
-    if ('description' in b) patch.description = b.description ? jsonb(parseText(b.description)) : null
-    if ('landing' in b) {
-      const landing = ptLanding(b.landing)
-      // The template's standard "why" text shows by default, so it is not stored.
-      if (landing.why) landing.why = Object.fromEntries(Object.entries(landing.why).filter(([lang, doc]) => !isTemplateWhy(doc, c.template_key, lang)))
-      patch.landing = jsonb(landing)
-    }
+  if (['landing', 'description', 'branding', 'share_image_url', 'share'].some(k => k in b)) ptNeed(ctx, 'pt.site.write')
+  if ('description' in b) {
+    if (c.kind !== 'side') ptBadRequest('The main campaign uses the site\'s description.')
+    patch.description = b.description ? jsonb(parseText(b.description)) : null
   }
+  if ('landing' in b) {
+    const landing = ptLanding(b.landing)
+    // The template's standard "why" text shows by default, so it is not stored.
+    const templateKey = c.kind === 'side' ? c.template_key : (await ptSite(tx)).template_key
+    if (landing.why) landing.why = Object.fromEntries(Object.entries(landing.why).filter(([lang, doc]) => !isTemplateWhy(doc, templateKey, lang)))
+    patch.landing = jsonb(landing)
+  }
+  // `branding` sets the hero image and `share_image_url` the link-preview image; each keeps the other.
+  if ('branding' in b || 'share_image_url' in b) {
+    const current = (c.branding ?? {}) as CampaignBranding
+    const hero = 'branding' in b ? ptCampaignBranding(b.branding) : current
+    const shareImage = 'share_image_url' in b ? ptCampaignBranding({ share_image_url: b.share_image_url }).share_image_url : current.share_image_url
+    patch.branding = jsonb(ptCampaignBranding({ ...hero, share_image_url: shareImage }))
+  }
+  if ('share' in b) patch.share = jsonb(ptShare(b.share))
   if (Object.keys(patch).length) await tx.updateTable('pt_campaign').set({ ...patch, updated_at: new Date() } as never).where('id', '=', id).execute()
   return { ok: true }
 })

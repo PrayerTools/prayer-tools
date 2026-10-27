@@ -193,7 +193,6 @@ async function doConfirm() {
               @click="ask('delete', c)"
             />
             <UButton
-              v-if="c.kind === 'side'"
               :to="{ path: '/site/landing', query: { campaign: c.id } }"
               size="sm"
               variant="ghost"

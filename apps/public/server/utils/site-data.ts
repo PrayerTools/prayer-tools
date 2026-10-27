@@ -1,7 +1,7 @@
 // Site and campaign data every page needs, read inside the site's org.
 import type { Selectable } from 'kysely'
 import type { Tx } from '@prayertools/shared/db/scope'
-import type { PtSiteTable, SiteBranding, SiteLanding, SiteShare, TranslatableText } from '@prayertools/shared/db/schema'
+import type { CampaignBranding, CampaignLanding, CampaignShare, PtSiteTable, SiteBranding, TranslatableText } from '@prayertools/shared/db/schema'
 import { campaignLength, campaignStatus, defaultDuration, durationOptions, durationRule, isSideCampaign, pickCurrentCampaign, slotMinutes } from '@prayertools/shared/setup'
 import { entryNumber } from '@prayertools/shared/schedule'
 import { todayIn } from '@prayertools/shared/dates'
@@ -97,7 +97,7 @@ export function feedbackConfig(): SiteView['feedback'] {
 }
 
 // Library hero images take their alt text from code unless the site wrote its own.
-function heroView(branding: SiteBranding, lang: string, def: string): SiteView['image'] {
+export function heroView(branding: CampaignBranding, lang: string, def: string): SiteView['image'] {
   if (!branding.image_url) return null
   const known = heroImage(branding.image_url)
   const alt = textIn(branding.image_alt, lang, def) || (known ? heroAlt(known, lang) : '')
@@ -108,11 +108,12 @@ export async function buildSiteView(tx: Tx, ctx: SiteContext, data: SiteData, la
   const { site } = data
   const def = site.default_language
   const branding = (site.branding ?? {}) as SiteBranding
-  const share = (site.share ?? {}) as SiteShare
+  const look = (campaign?.branding ?? {}) as CampaignBranding
+  const share = (campaign?.share ?? {}) as CampaignShare
   const bc = brandColor(branding.color)
   const cv = campaign ? campaignView(data, campaign) : null
   const cfg = platformConfig()
-  const image = heroView(branding, lang, def)
+  const image = heroView(look, lang, def)
   return {
     orgId: ctx.orgId,
     slug: ctx.slug,
@@ -127,7 +128,7 @@ export async function buildSiteView(tx: Tx, ctx: SiteContext, data: SiteData, la
     brand: { color: bc.color, text: bc.textColor },
     logoUrl: branding.logo_url ?? null,
     image,
-    shareImageUrl: branding.share_image_url ?? image?.url ?? null,
+    shareImageUrl: look.share_image_url ?? image?.url ?? null,
     description: textIn(landingSource(data, campaign).description, lang, def) || textIn(site.description as TranslatableText | null, lang, def),
     status: site.status,
     preview: ctx.preview,
@@ -151,12 +152,14 @@ export async function buildSiteView(tx: Tx, ctx: SiteContext, data: SiteData, la
   }
 }
 
-// The landing page a campaign shows: a side campaign's own, else the site's.
-export function landingSource(data: SiteData, campaign: CampaignRow | null): { landing: SiteLanding, description: TranslatableText | null, templateKey: string | null } {
+// A campaign's landing page. A side campaign has its own description and
+// template; the main campaign uses the site's.
+export function landingSource(data: SiteData, campaign: CampaignRow | null): { landing: CampaignLanding, description: TranslatableText | null, templateKey: string | null } {
+  const landing = (campaign?.landing ?? {}) as CampaignLanding
   if (campaign && isSideCampaign(campaign)) {
-    return { landing: (campaign.landing ?? {}) as SiteLanding, description: campaign.description as TranslatableText | null, templateKey: campaign.template_key }
+    return { landing, description: campaign.description as TranslatableText | null, templateKey: campaign.template_key }
   }
-  return { landing: (data.site.landing ?? {}) as SiteLanding, description: data.site.description as TranslatableText | null, templateKey: data.site.template_key }
+  return { landing, description: data.site.description as TranslatableText | null, templateKey: data.site.template_key }
 }
 
 // Side campaigns open for signup or running now, soonest first.

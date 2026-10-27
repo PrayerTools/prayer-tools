@@ -1,7 +1,9 @@
 // Creates a campaign on the site. `relaunchOf` starts from a previous
 // campaign's answers and reuses its libraries (copies the site edited carry
 // over; followed libraries pick up their latest published version), its kind,
-// and a side campaign's landing page.
+// landing page, images and share messages. Any other campaign takes its
+// images and share messages from the latest main campaign, and a main
+// campaign its landing page too, so the site's root page keeps its look.
 import { suggestCampaignSlug, suggestSideSlug } from '@prayertools/shared/setup'
 import { jsonb } from '@prayertools/shared/db/json'
 import { parseText } from '@prayertools/shared/translatable'
@@ -35,6 +37,8 @@ export default definePtHandler('pt.campaigns.write', async (event, tx, ctx) => {
   const taken = (await tx.selectFrom('pt_campaign').select('slug').execute()).map(r => r.slug)
   const slug = (extras.slug as string) ?? (kind === 'side' ? suggestSideSlug(name, answers.start_date, taken) : suggestCampaignSlug(answers.start_date, taken))
   if (taken.includes(slug)) ptBadRequest('That campaign address is already used on this site.')
+  const look = previous ?? await tx.selectFrom('pt_campaign').select(['landing', 'branding', 'share']).where('kind', 'is', null)
+    .orderBy('start_date', ob => ob.desc().nullsLast()).orderBy('created_at', 'desc').executeTakeFirst()
   const created = await tx.insertInto('pt_campaign').values({
     slug,
     name,
@@ -46,7 +50,9 @@ export default definePtHandler('pt.campaigns.write', async (event, tx, ctx) => {
     slot_min: 'slot_min' in extras ? extras.slot_min as number | null : (previous?.slot_min ?? null),
     end_message: b.end_message ? jsonb(parseText(b.end_message)) : (previous?.end_message ? jsonb(previous.end_message) : null),
     cta: jsonb(b.cta ? ptCta(b.cta) : (previous?.cta ?? {})),
-    landing: previous?.landing ? jsonb(previous.landing) : null,
+    landing: jsonb(look && (previous || kind !== 'side') ? look.landing : {}),
+    branding: jsonb(look?.branding ?? {}),
+    share: jsonb(look?.share ?? {}),
     description: previous?.description ? jsonb(previous.description) : null
   } as never).returningAll().executeTakeFirstOrThrow()
   if (previous) {

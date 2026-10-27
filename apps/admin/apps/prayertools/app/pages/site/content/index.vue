@@ -30,32 +30,13 @@ interface Lib {
   staleCount: number
 }
 
-interface Campaign {
-  id: string
-  name: string
-  status: string
-  cadence: 'daily' | 'weekly'
-  timezone: string
-  start_mode: 'date' | 'join'
-  start_date: string | null
-  end_mode: 'date' | 'none' | 'days'
-  end_date: string | null
-  length_days: number | null
-}
-
 interface Entry { source: string, doc: Record<string, any> | null, stale: boolean, edited: boolean, languages: string[] }
 
 const { data: site, can } = usePtSite()
 const { data: meta } = usePtMeta()
 const toast = usePtToast()
-const route = useRoute()
 
-const { data: campaigns } = useFetch<{ campaigns: Campaign[] }>('/api/pt/campaigns', { key: 'pt-campaigns' })
-const campaignId = ref<string | undefined>(typeof route.query.campaign === 'string' ? route.query.campaign : undefined)
-watch([campaigns, site], () => {
-  if (!campaignId.value) campaignId.value = site.value?.currentCampaign?.id ?? campaigns.value?.campaigns[0]?.id
-}, { immediate: true })
-const campaign = computed(() => campaigns.value?.campaigns.find(c => c.id === campaignId.value))
+const { id: campaignId, campaign, campaigns, status: campaignsStatus } = usePtCampaign()
 
 const { data: content, refresh } = useFetch<{ libraries: Lib[], languages: string[], defaultLanguage: string }>('/api/pt/content', {
   query: computed(() => ({ campaign: campaignId.value })),
@@ -350,16 +331,15 @@ function sourceBadge(l: Lib): { label: string, color: 'info' | 'warning' | 'neut
 
 <template>
   <div class="max-w-6xl mx-auto space-y-6">
-    <PtCampaignTabs
-      v-if="typeof route.query.campaign === 'string'"
-      :campaign-id="route.query.campaign"
-    />
-    <PtContentTabs v-else />
+    <PtContentTabs />
     <header class="flex flex-wrap items-start justify-between gap-4">
       <div>
-        <h1 class="text-2xl font-semibold">
-          Prayer content
-        </h1>
+        <div class="flex flex-wrap items-center gap-3">
+          <h1 class="text-2xl font-semibold">
+            Prayer content
+          </h1>
+          <PtCampaignSwitcher />
+        </div>
         <p
           v-if="summary"
           class="mt-1 max-w-2xl text-sm text-(--ui-text-muted)"
@@ -367,17 +347,10 @@ function sourceBadge(l: Lib): { label: string, color: 'info' | 'warning' | 'neut
           {{ summary }}
         </p>
       </div>
-      <USelect
-        v-if="(campaigns?.campaigns.length ?? 0) > 1"
-        v-model="campaignId"
-        :items="campaigns!.campaigns.map(c => ({ label: c.name, value: c.id }))"
-        class="w-64"
-        aria-label="Campaign"
-      />
     </header>
 
     <UEmpty
-      v-if="campaigns && !campaigns.campaigns.length"
+      v-if="campaignsStatus !== 'pending' && !campaigns.length"
       icon="i-lucide-calendar-plus"
       title="No campaign yet"
       description="Create a campaign first. Its dates decide how many days of prayers to write."

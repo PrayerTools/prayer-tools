@@ -45,13 +45,20 @@ export async function buildSiteResponse(event: H3Event, ctx: SiteContext, fullPa
       ? data.campaigns.find(c => c.slug === parsed.campaignSlug) ?? null
       : data.current?.campaign ?? null
     // The editor's draft is the landing page of the page it previews.
-    if (draft && campaign && isSideCampaign(campaign)) {
-      const edited = { ...campaign, landing: draft.landing, description: draft.description }
+    if (draft && campaign) {
+      const side = isSideCampaign(campaign)
+      const edited = {
+        ...campaign,
+        landing: draft.landing,
+        ...(side ? { description: draft.description } : {}),
+        ...(draft.branding ? { branding: draft.branding } : {})
+      }
       data.campaigns = data.campaigns.map(c => c.id === edited.id ? edited : c)
+      if (data.current?.campaign.id === edited.id) data.current = { ...data.current, campaign: edited }
       campaign = edited
-    } else if (draft) {
-      data.site = { ...data.site, landing: draft.landing, description: draft.description }
+      if (!side) data.site = { ...data.site, description: draft.description }
     }
+    if (draft?.brand) data.site = { ...data.site, branding: { ...(data.site.branding ?? {}), ...draft.brand } }
     const site = await buildSiteView(tx, ctx, data, lang, campaign, url.pathname)
     if (draft) site.strings = withDraftStrings(site.strings, draft.strings)
     const cv = site.campaign

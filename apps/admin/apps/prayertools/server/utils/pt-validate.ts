@@ -1,4 +1,4 @@
-import type { TranslatableText, LandingCustomSection, SiteBranding, SiteEmailIdentity, SiteLanding, SiteShare, TiptapDoc } from '@prayertools/shared/db/schema'
+import type { TranslatableText, LandingCustomSection, CampaignBranding, CampaignLanding, CampaignShare, SiteBranding, SiteEmailIdentity, TiptapDoc } from '@prayertools/shared/db/schema'
 import { parseText } from '@prayertools/shared/translatable'
 import { parseHex } from '@prayertools/shared/colors'
 import { HIDEABLE_SECTIONS } from '@prayertools/shared/landing'
@@ -38,7 +38,13 @@ export function ptBranding(input: unknown): SiteBranding {
   return clean({
     color,
     logo_url: url(b.logo_url),
-    logo_asset_id: str(b.logo_asset_id, 40),
+    logo_asset_id: str(b.logo_asset_id, 40)
+  })
+}
+
+export function ptCampaignBranding(input: unknown): CampaignBranding {
+  const b = (input ?? {}) as Record<string, unknown>
+  return clean({
     image_url: url(b.image_url),
     image_asset_id: str(b.image_asset_id, 40),
     image_alt: parseText(b.image_alt) ?? undefined,
@@ -64,7 +70,7 @@ export function ptIdentity(input: unknown): SiteEmailIdentity {
   })
 }
 
-export function ptLanding(input: unknown): SiteLanding {
+export function ptLanding(input: unknown): CampaignLanding {
   const l = (input ?? {}) as Record<string, unknown>
   const why: Record<string, TiptapDoc> = {}
   for (const [lang, doc] of Object.entries((l.why ?? {}) as Record<string, unknown>)) {
@@ -95,7 +101,7 @@ export function ptLanding(input: unknown): SiteLanding {
   return clean({ why, hidden, custom, stories: typeof l.stories === 'boolean' ? l.stories : undefined })
 }
 
-export function ptShare(input: unknown): SiteShare {
+export function ptShare(input: unknown): CampaignShare {
   const s = (input ?? {}) as Record<string, unknown>
   return clean({ messages: parseText(s.messages) ?? undefined })
 }

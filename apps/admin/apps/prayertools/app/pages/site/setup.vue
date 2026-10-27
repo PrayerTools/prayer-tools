@@ -218,7 +218,8 @@ function openPicker(target: 'image' | 'logo') {
 watch(site, (s) => {
   if (!s) return
   color.value = s.site.branding?.color ?? s.brand.color
-  image.value = s.site.branding?.image_url ? { url: s.site.branding.image_url, alt: s.site.branding.image_alt?.values?.[s.site.default_language] ?? '', credit: s.site.branding.image_credit ?? null } : null
+  const hero = s.currentCampaign?.branding
+  image.value = hero?.image_url ? { url: hero.image_url, alt: hero.image_alt?.values?.[s.site.default_language] ?? '', credit: hero.image_credit ?? null } : null
   logo.value = s.site.branding?.logo_url ? { url: s.site.branding.logo_url, assetId: s.site.branding.logo_asset_id ?? null } : null
 }, { immediate: true })
 const preview = ref<string | null>(null)
@@ -230,9 +231,17 @@ async function saveLook(): Promise<boolean> {
     await $fetch('/api/pt/site', {
       method: 'PATCH',
       body: {
-        branding: { ...(site.value?.site.branding ?? {}), color: color.value, image_url: image.value?.url, image_alt: image.value && !heroImage(image.value.url) ? { source: lang, values: { [lang]: image.value.alt } } : undefined, image_credit: image.value?.credit ?? undefined, logo_url: logo.value?.url, logo_asset_id: logo.value?.assetId ?? undefined }
+        branding: { ...(site.value?.site.branding ?? {}), color: color.value, logo_url: logo.value?.url, logo_asset_id: logo.value?.assetId ?? undefined }
       }
     })
+    if (existingCampaign.value) {
+      await $fetch(`/api/pt/campaigns/${existingCampaign.value.id}`, {
+        method: 'PATCH',
+        body: {
+          branding: { image_url: image.value?.url, image_alt: image.value && !heroImage(image.value.url) ? { source: lang, values: { [lang]: image.value.alt } } : undefined, image_credit: image.value?.credit ?? undefined }
+        }
+      })
+    }
     await refreshSite()
     toast.ok('Saved')
     return true
@@ -657,7 +666,8 @@ async function publish() {
     </UCard>
 
     <PtLandingEditor
-      v-else-if="step === 'landing'"
+      v-else-if="step === 'landing' && existingCampaign"
+      :campaign-id="existingCampaign.id"
       save-label="Save and continue"
       @saved="go('publish')"
     >

@@ -1,11 +1,8 @@
 <script setup lang="ts">
 definePageMeta({ middleware: 'auth' })
 
-const route = useRoute()
 const { data: site, can } = usePtSite()
-const { data: campaigns } = useFetch<{ campaigns: { id: string, name: string }[] }>('/api/pt/campaigns', { key: 'pt-campaigns' })
-const campaignId = ref<string | undefined>(typeof route.query.campaign === 'string' ? route.query.campaign : undefined)
-watch([campaigns, site], () => { if (!campaignId.value) campaignId.value = site.value?.currentCampaign?.id ?? campaigns.value?.campaigns[0]?.id }, { immediate: true })
+const { id: campaignId } = usePtCampaign()
 
 const { data, pending, error } = useFetch<{
   totals: Record<string, number>
@@ -64,15 +61,14 @@ const DIM_ICONS: Record<string, string> = { country: 'i-lucide-globe', source: '
 
 <template>
   <div class="max-w-6xl mx-auto space-y-6">
-    <PtCampaignTabs
-      v-if="typeof route.query.campaign === 'string'"
-      :campaign-id="route.query.campaign"
-    />
     <header class="flex flex-wrap items-start justify-between gap-4">
       <div>
-        <h1 class="text-2xl font-bold">
-          Stats
-        </h1>
+        <div class="flex flex-wrap items-center gap-3">
+          <h1 class="text-2xl font-bold">
+            Stats
+          </h1>
+          <PtCampaignSwitcher />
+        </div>
         <p class="text-sm text-(--ui-text-muted)">
           <template v-if="campaign">
             {{ campaign.name }}: {{ ptFormatDate(campaign.start_date) }} – {{ campaign.end_date ? ptFormatDate(campaign.end_date) : 'ongoing' }}
@@ -90,13 +86,6 @@ const DIM_ICONS: Record<string, string> = { country: 'i-lucide-globe', source: '
           color="neutral"
           label="Export intercessors"
           @click="downloadIntercessors"
-        />
-        <USelect
-          v-if="campaigns?.campaigns.length"
-          v-model="campaignId"
-          :items="campaigns.campaigns.map(c => ({ label: c.name, value: c.id }))"
-          class="w-64"
-          aria-label="Campaign"
         />
       </div>
     </header>

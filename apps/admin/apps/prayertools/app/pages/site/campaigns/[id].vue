@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // One campaign: its numbers, setup answers, address and end-of-campaign
-// message; a side campaign also links to its own landing page.
+// message. Opening it makes it the campaign the other campaign pages edit.
 import type { SetupState } from '../../../components/PtSetupForm.vue'
 import type { PtCampaign } from '../../../utils/pt-campaign-ui'
 
@@ -10,6 +10,8 @@ const route = useRoute()
 const id = computed(() => String(route.params.id))
 const { data: site, can } = usePtSite()
 const toast = usePtToast()
+const { select } = usePtCampaign()
+watch(id, v => select(v), { immediate: true })
 const { data, refresh } = useFetch<{ campaign: PtCampaign & { entries: number | null, contentEntries: number }, libraries: { siteLibraryId: string, title: string, entryCount: number }[] }>(() => `/api/pt/campaigns/${id.value}`, { key: computed(() => `pt-campaign-${id.value}`) })
 
 const form = reactive({ name: '', slug: '', timezone: 'UTC' })
@@ -80,7 +82,6 @@ async function remove() {
     v-if="data && site"
     class="max-w-4xl mx-auto space-y-6"
   >
-    <PtCampaignTabs :campaign-id="id" />
     <header class="flex flex-wrap items-start justify-between gap-4">
       <div class="min-w-0">
         <UButton
@@ -122,8 +123,7 @@ async function remove() {
       </div>
       <div class="flex items-center gap-2 flex-wrap">
         <UButton
-          v-if="data.campaign.kind === 'side'"
-          :to="{ path: '/site/landing', query: { campaign: id } }"
+          to="/site/landing"
           variant="outline"
           color="neutral"
           icon="i-lucide-panels-top-left"

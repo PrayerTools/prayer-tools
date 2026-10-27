@@ -29,7 +29,7 @@ There are no campaign types. A campaign is described by four setup answers; temp
 - A **side** campaign runs alongside, e.g. Ramadan on a site with an ongoing campaign, so champions don't create a site per event. It may overlap any campaign and never becomes the current campaign.
 - A side campaign needs a start date and an end date.
 - It lives at `/{slug}` (signup, pray, stats and coverage under it). Its address comes from its name and year, e.g. `/ramadan-2027`.
-- It has its own landing page: why text, custom sections, description and its own stories. Section headings, the signup form, consent options and branding are the site's.
+- Like every campaign, it has its own landing page, hero image, share image and share messages. It also has its own description and its own stories. Section headings, the signup form, consent options, color and logo are the site's.
 - While it is upcoming or running, the site's landing page shows a card linking to it. Only the landing page does.
 - Intercessors keep one subscription per site, with commitments in each campaign they join. There is no option to pause main-campaign reminders during a side campaign.
 - Relaunching a side campaign keeps it a side campaign and copies its landing page.
