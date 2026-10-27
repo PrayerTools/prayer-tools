@@ -114,7 +114,7 @@ export default defineNuxtConfig({
         '@tiptap/core', '@tiptap/vue-3', '@tiptap/vue-3/menus', '@tiptap/starter-kit', '@tiptap/pm/state', '@tiptap/pm/view',
         '@tiptap/pm/model', '@tiptap/extension-code', '@tiptap/extension-horizontal-rule', '@tiptap/extension-image',
         '@tiptap/extension-mention', '@tiptap/extension-placeholder', '@tiptap/extension-drag-handle-vue-3',
-        '@tiptap/markdown', '@tiptap/suggestion'
+        '@tiptap/markdown', '@tiptap/suggestion', 'dompurify'
       ]
     },
     server: {
