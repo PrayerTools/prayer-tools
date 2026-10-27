@@ -15,6 +15,22 @@ const signupIntro = computed(() => campaign.value?.state === 'upcoming' && campa
   : st('landing.signup.intro', { site: site.value.name }))
 
 const imageStyle = computed(() => site.value.image ? { objectPosition: `${site.value.image.fx * 100}% ${site.value.image.fy * 100}%` } : {})
+
+const sharePrompt = ref(false)
+const joined = ref(false)
+const needsVerify = ref(false)
+const verifyPrompt = ref(false)
+const formKey = ref(0)
+const signupEmail = useState<string | null>('pt-signup-email', () => null)
+
+function onJoined(verify: boolean) {
+  joined.value = true
+  needsVerify.value = verify
+  formKey.value++
+  document.getElementById('signup')?.scrollIntoView({ behavior: 'smooth' })
+  if (verify) verifyPrompt.value = true
+  else if (site.value.settings.sharePrompts) setTimeout(() => (sharePrompt.value = true), 1200)
+}
 </script>
 
 <template>
@@ -99,9 +115,11 @@ const imageStyle = computed(() => site.value.image ? { objectPosition: `${site.v
             <h2 id="signup-title" class="text-2xl font-bold">{{ st('landing.signup.title') }}</h2>
             <p class="mt-2 text-stone-600">{{ signupIntro }}</p>
           </div>
-          <div class="px-5 py-6 sm:px-8">
+          <div class="px-5 py-6 sm:px-8 space-y-6">
+            <UAlert v-if="joined && needsVerify" color="warning" variant="soft" icon="i-lucide-mail" :title="t('pray.check_email_title')" :description="t('pray.check_email_body_not_started')" role="status" />
+            <UAlert v-else-if="joined" color="success" variant="soft" icon="i-lucide-check" :title="st('signup.success')" role="status" />
             <UAlert v-if="!page.form.open || !campaign" color="neutral" variant="soft" icon="i-lucide-info" :title="t('signup.closed')" />
-            <LazySignupForm v-else :form="page.form" hydrate-on-visible />
+            <LazySignupForm v-else :key="formKey" :form="page.form" hydrate-on-visible @joined="onJoined" />
           </div>
         </div>
       </div>
@@ -139,5 +157,18 @@ const imageStyle = computed(() => site.value.image ? { objectPosition: `${site.v
         <AppLinks />
       </section>
     </div>
+
+    <UModal v-model:open="verifyPrompt" :title="t('pray.verify_prompt_title')" :description="signupEmail ? t('pray.verify_prompt_body_email', { email: signupEmail }) : t('pray.verify_prompt_body')">
+      <template #body>
+        <div class="flex items-start gap-4">
+          <UIcon name="i-lucide-mail-check" class="size-10 shrink-0 text-primary" />
+          <p class="text-stone-700">{{ t('pray.verify_prompt_spam') }}</p>
+        </div>
+      </template>
+      <template #footer>
+        <UButton :label="t('pray.verify_prompt_ok')" @click="verifyPrompt = false" />
+      </template>
+    </UModal>
+    <SharePrompt v-model:open="sharePrompt" :title="t('share.prompt_title')" :description="t('share.prompt_body')" />
   </div>
 </template>
