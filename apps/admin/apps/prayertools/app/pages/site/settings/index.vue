@@ -288,7 +288,10 @@ const DIRECTORY_TEXT: Record<string, string> = {
   unlisted: 'Your site is not in the directory. It stays reachable by its link.'
 }
 const deleteConfirm = ref('')
-const deleteOpen = ref(false)
+const deleteRow = useSettingsRow('pt-delete-site')
+watch(deleteRow.open, (open) => {
+  if (open) deleteConfirm.value = ''
+})
 async function deleteSite() {
   try {
     await $fetch('/api/pt/site', { method: 'DELETE', body: { confirm: deleteConfirm.value } })
@@ -306,7 +309,7 @@ const TAB_EDITS: Record<string, { dirty: () => boolean, discard: () => void }> =
   contact: { dirty: () => !!contactForm.value?.dirty, discard: () => contactForm.value?.reset() },
   wording: { dirty: () => wordingDirty.value, discard: resetWording }
 }
-const allowLeave = usePtUnsavedGuard(() => !!TAB_EDITS[tab.value]?.dirty(), () => TAB_EDITS[tab.value]?.discard())
+const allowLeave = useUnsavedGuard(() => !!TAB_EDITS[tab.value]?.dirty(), () => TAB_EDITS[tab.value]?.discard())
 
 const { data: exportsLog } = useFetch<{ exports: { id: string, row_count: number, created_at: string, display_name: string, email: string }[] }>('/api/pt/exports', { key: 'pt-exports', immediate: false })
 watch(tab, (t) => {
@@ -320,14 +323,10 @@ watch(tab, (t) => {
     class="max-w-4xl mx-auto space-y-6"
   >
     <PtSettingsTabs />
-    <header>
-      <h1 class="text-2xl font-bold">
-        Settings
-      </h1>
-      <p class="text-sm text-muted max-w-2xl">
-        {{ TAB_INTRO[tab] }}
-      </p>
-    </header>
+    <h1 class="text-2xl font-bold">
+      Settings
+      <InfoTip :text="TAB_INTRO[tab]" />
+    </h1>
     <UTabs
       v-model="tab"
       :items="tabs"
@@ -375,17 +374,16 @@ watch(tab, (t) => {
                 :ui="{ fieldset: 'grid grid-cols-1 sm:grid-cols-2 gap-2' }"
               />
             </UFormField>
-            <UFormField
-              label="Location"
-              description="Where the people you pray for are. Its name fills content placeholders like {place}."
-            >
+            <UFormField>
+              <template #label>
+                Location <InfoTip text="Where the people you pray for are. Its name fills content placeholders like {place}." />
+              </template>
               <PtLocationSearch v-model="location" />
             </UFormField>
-            <UFormField
-              v-if="details.place_name"
-              label="How your place is written"
-              description="Its name in each language, and how to say “in” and “of” it."
-            >
+            <UFormField v-if="details.place_name">
+              <template #label>
+                How your place is written <InfoTip text="Its name in each language, and how to say “in” and “of” it." />
+              </template>
               <PtPlaceWording
                 v-model="details.place_wording"
                 :place-name="details.place_name"
@@ -399,28 +397,20 @@ watch(tab, (t) => {
                 class="w-full"
               />
             </UFormField>
+            <UFormField>
+              <template #label>
+                Dates, goal and content <InfoTip text="Each campaign has its own start, end, goal and rhythm." />
+              </template>
+              <UButton
+                to="/site/campaigns"
+                variant="outline"
+                color="neutral"
+                icon="i-lucide-calendar-range"
+                label="Campaigns"
+              />
+            </UFormField>
           </fieldset>
         </form>
-      </UCard>
-
-      <UCard>
-        <div class="flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <h2 class="font-semibold">
-              Dates, goal and content
-            </h2>
-            <p class="text-sm text-muted">
-              Each campaign has its own start, end, goal and rhythm.
-            </p>
-          </div>
-          <UButton
-            to="/site/campaigns"
-            variant="outline"
-            color="neutral"
-            icon="i-lucide-calendar-range"
-            label="Campaigns"
-          />
-        </div>
       </UCard>
 
       <UCard>
@@ -433,20 +423,20 @@ watch(tab, (t) => {
           :disabled="!can('pt.site.write')"
           class="space-y-5"
         >
-          <UFormField
-            label="Languages"
-            description="The public site's language switcher, signup languages, and which languages content should exist in."
-          >
+          <UFormField>
+            <template #label>
+              Languages <InfoTip text="The public site's language switcher, signup languages, and which languages content should exist in." />
+            </template>
             <PtLanguagePicker
               v-model="languages"
               v-model:default="defaultLanguage"
               :disabled="!can('pt.site.write')"
             />
           </UFormField>
-          <UFormField
-            label="Time zone"
-            description="Used for campaign dates and the daily schedule."
-          >
+          <UFormField>
+            <template #label>
+              Time zone <InfoTip text="Used for campaign dates and the daily schedule." />
+            </template>
             <USelectMenu
               v-model="timezone"
               :items="ptTimezones()"
@@ -489,7 +479,7 @@ watch(tab, (t) => {
         </div>
       </UCard>
 
-      <PtSaveBar
+      <SaveBar
         v-if="can('pt.site.write')"
         :dirty="generalDirty"
         :saving="savingGeneral"
@@ -504,10 +494,17 @@ watch(tab, (t) => {
         <template #header>
           <h2 class="font-semibold">
             Branding
+            <InfoTip>
+              <p>Your color is used for buttons and highlights on your site and in emails.</p>
+              <p>
+                The image for link previews is on the
+                <ULink
+                  to="/site/landing/share"
+                  class="underline"
+                >Share</ULink> page.
+              </p>
+            </InfoTip>
           </h2>
-          <p class="text-sm text-muted">
-            Your color is used for buttons and highlights on your site and in emails.
-          </p>
         </template>
         <fieldset
           :disabled="!can('pt.site.write')"
@@ -519,14 +516,15 @@ watch(tab, (t) => {
             <UFormField
               v-for="s in IMAGE_SLOTS"
               :key="s.slot"
-              :label="s.label"
-              :description="s.help"
             >
+              <template #label>
+                {{ s.label }} <InfoTip :text="s.help" />
+              </template>
               <div class="space-y-2">
                 <div
                   v-if="branding[s.key]"
-                  class="rounded-md overflow-hidden border border-default"
-                  :class="s.slot === 'logo' ? 'h-32 bg-elevated p-4' : 'aspect-video'"
+                  class="rounded-md overflow-hidden border border-(--ui-border)"
+                  :class="s.slot === 'logo' ? 'h-32 bg-(--ui-bg-elevated) p-4' : 'aspect-video'"
                 >
                   <img
                     :src="branding[s.key]"
@@ -538,7 +536,7 @@ watch(tab, (t) => {
                 </div>
                 <div
                   v-else
-                  class="h-32 rounded-md border border-dashed border-accented flex flex-col items-center justify-center gap-1 text-muted"
+                  class="h-32 rounded-md border border-dashed border-(--ui-border-accented) flex flex-col items-center justify-center gap-1 text-(--ui-text-muted)"
                 >
                   <UIcon
                     name="i-lucide-image"
@@ -570,12 +568,12 @@ watch(tab, (t) => {
 
           <div
             v-if="branding.image_url"
-            class="space-y-5 border-t border-default pt-5"
+            class="space-y-5 border-t border-(--ui-border) pt-5"
           >
-            <UFormField
-              label="Focal point of the hero image"
-              description="Keeps the important part visible when phones crop the image."
-            >
+            <UFormField>
+              <template #label>
+                Focal point of the hero image <InfoTip text="Keeps the important part visible when phones crop the image." />
+              </template>
               <div class="grid grid-cols-2 gap-4 max-w-md">
                 <USlider
                   v-model="branding.focal_x"
@@ -609,17 +607,10 @@ watch(tab, (t) => {
               </UFormField>
             </template>
           </div>
-          <p class="text-xs text-muted">
-            The image for link previews is on the
-            <ULink
-              to="/site/landing/share"
-              class="underline"
-            >Share</ULink> page.
-          </p>
         </fieldset>
       </UCard>
 
-      <PtSaveBar
+      <SaveBar
         v-if="can('pt.site.write')"
         :dirty="brandingDirty"
         :saving="savingLook"
@@ -634,18 +625,18 @@ watch(tab, (t) => {
         <template #header>
           <h2 class="font-semibold">
             Email identity
+            <InfoTip>
+              <p>How reminders and site emails appear in people's inboxes. They are sent from a Prayer.Tools address with your site's name, and replies go to you.</p>
+              <p>Sending from your own domain (with DKIM/SPF records) is planned; for now all mail uses the Prayer.Tools domain so bounces and complaints are tracked.</p>
+            </InfoTip>
           </h2>
-          <p class="text-sm text-muted">
-            How reminders and site emails appear in people's inboxes. They are sent from a Prayer.Tools address with your
-            site's name, and replies go to you.
-          </p>
         </template>
         <div class="space-y-5">
           <div class="grid sm:grid-cols-2 gap-4">
-            <UFormField
-              label="From name"
-              :description="`Leave empty to use “${site.org.name}”.`"
-            >
+            <UFormField>
+              <template #label>
+                From name <InfoTip :text="`Leave empty to use “${site.org.name}”.`" />
+              </template>
               <UInput
                 v-model="identity.from_name"
                 :placeholder="site.org.name"
@@ -653,20 +644,20 @@ watch(tab, (t) => {
                 class="w-full"
               />
             </UFormField>
-            <UFormField
-              label="Sending address"
-              description="Before the @ of the Prayer.Tools sending domain."
-            >
+            <UFormField>
+              <template #label>
+                Sending address <InfoTip text="Before the @ of the Prayer.Tools sending domain." />
+              </template>
               <UInput
                 v-model="identity.from_local"
                 :placeholder="site.org.slug"
                 class="w-full font-mono"
               />
             </UFormField>
-            <UFormField
-              label="Reply-to address"
-              :description="site.inboxAddress ? `Leave empty to get replies in this site's inbox (${site.inboxAddress}).` : 'Replies to your emails go here.'"
-            >
+            <UFormField>
+              <template #label>
+                Reply-to address <InfoTip :text="site.inboxAddress ? `Leave empty to get replies in this site's inbox (${site.inboxAddress}).` : 'Replies to your emails go here.'" />
+              </template>
               <UInput
                 v-model="identity.reply_to"
                 type="email"
@@ -674,10 +665,10 @@ watch(tab, (t) => {
                 class="w-full"
               />
             </UFormField>
-            <UFormField
-              label="Logo in emails (URL)"
-              description="Leave empty to use your site logo."
-            >
+            <UFormField>
+              <template #label>
+                Logo in emails (URL) <InfoTip text="Leave empty to use your site logo." />
+              </template>
               <UInput
                 v-model="identity.logo_url"
                 :placeholder="branding.logo_url"
@@ -693,16 +684,10 @@ watch(tab, (t) => {
             help="Added to the end of your emails, in each language."
             multiline
           />
-          <UAlert
-            color="neutral"
-            variant="subtle"
-            icon="i-lucide-info"
-            description="Sending from your own domain (with DKIM/SPF records) is planned; for now all mail uses the Prayer.Tools domain so bounces and complaints are tracked."
-          />
         </div>
       </UCard>
 
-      <PtSaveBar
+      <SaveBar
         :dirty="emailDirty"
         :saving="savingEmail"
         label="Save email"
@@ -722,6 +707,13 @@ watch(tab, (t) => {
           <div class="flex items-center justify-between gap-3 flex-wrap">
             <h2 class="font-semibold">
               Wording on your site
+              <InfoTip>
+                Headings and text on the landing page are edited on the
+                <ULink
+                  :to="`/@${site.org.slug}/site/landing`"
+                  class="text-(--ui-primary)"
+                >Landing page</ULink>.
+              </InfoTip>
             </h2>
             <USelect
               v-model="wordingLangModel"
@@ -731,13 +723,6 @@ watch(tab, (t) => {
           </div>
         </template>
         <div class="space-y-4">
-          <p class="text-sm text-(--ui-text-muted)">
-            Headings and text on the landing page are edited on the
-            <ULink
-              :to="`/@${site.org.slug}/site/landing`"
-              class="text-(--ui-primary)"
-            >Landing page</ULink>.
-          </p>
           <div
             v-for="e in EDITABLE"
             :key="e.key"
@@ -766,7 +751,7 @@ watch(tab, (t) => {
         </div>
       </UCard>
 
-      <PtSaveBar
+      <SaveBar
         :dirty="wordingDirty"
         :saving="savingWording"
         label="Save wording"
@@ -776,41 +761,30 @@ watch(tab, (t) => {
     </template>
 
     <template v-else-if="tab === 'status'">
-      <UCard>
-        <template #header>
-          <div class="flex items-center justify-between">
-            <h2 class="font-semibold">
-              Status
-            </h2>
+      <SettingsGroup title="Publishing">
+        <SettingsRow label="Status">
+          <span class="inline-flex items-center gap-2">
             <UBadge
               :label="PT_LABELS.siteStatus[site.site.status]"
               :color="ptStatusColor(site.site.status)"
               variant="subtle"
+              size="sm"
             />
-          </div>
-        </template>
-        <div class="space-y-3">
-          <p
-            v-if="site.site.status === 'draft'"
-            class="text-sm text-muted"
-          >
-            Only people with the preview link can see a draft. Publish when you're ready for people to sign up.
-          </p>
-          <p
-            v-else-if="site.site.status === 'published'"
-            class="text-sm text-muted"
-          >
-            The site is live at <span class="font-mono">{{ site.url }}</span>. Archive it when it's over for good: the
-            site then shows a short “this campaign has ended” page, with no signup and no reminders.
-          </p>
-          <p
-            v-else
-            class="text-sm text-muted"
-          >
-            Archived{{ site.site.archived_at ? ` on ${ptFormatDate(site.site.archived_at)}` : '' }}. Visitors see a short
-            “this campaign has ended” page; no signup and no reminders. Un-archive it to open signup again.
-          </p>
-          <div class="flex flex-wrap gap-2">
+            <InfoTip>
+              <template v-if="site.site.status === 'draft'">
+                Only people with the preview link can see a draft. Publish when you're ready for people to sign up.
+              </template>
+              <template v-else-if="site.site.status === 'published'">
+                The site is live at <span class="font-mono">{{ site.url }}</span>. Archive it when it's over for good: the
+                site then shows a short “this campaign has ended” page, with no signup and no reminders.
+              </template>
+              <template v-else>
+                Archived{{ site.site.archived_at ? ` on ${ptFormatDate(site.site.archived_at)}` : '' }}. Visitors see a short
+                “this campaign has ended” page; no signup and no reminders. Un-archive it to open signup again.
+              </template>
+            </InfoTip>
+          </span>
+          <template #actions>
             <UButton
               v-if="site.site.status === 'draft'"
               label="Publish"
@@ -833,6 +807,14 @@ watch(tab, (t) => {
               :loading="statusBusy"
               @click="setStatus('unarchive')"
             />
+          </template>
+        </SettingsRow>
+
+        <SettingsRow
+          label="Preview link"
+          value="Lets anyone with the link see the site, even as a draft."
+        >
+          <template #actions>
             <UButton
               label="Get a preview link"
               color="neutral"
@@ -840,50 +822,40 @@ watch(tab, (t) => {
               icon="i-lucide-eye"
               @click="preview"
             />
-          </div>
-          <div
+          </template>
+          <template
             v-if="previewUrl"
-            class="flex items-center gap-2"
+            #footer
           >
-            <UInput
-              :model-value="previewUrl"
-              readonly
-              class="flex-1 font-mono"
-            />
-            <UButton
-              icon="i-lucide-copy"
-              aria-label="Copy preview link"
-              @click="copy(previewUrl)"
-            />
-          </div>
-        </div>
-      </UCard>
+            <div class="flex items-center gap-2">
+              <UInput
+                :model-value="previewUrl"
+                readonly
+                class="flex-1 font-mono"
+              />
+              <UButton
+                icon="i-lucide-copy"
+                aria-label="Copy preview link"
+                @click="copy(previewUrl)"
+              />
+            </div>
+          </template>
+        </SettingsRow>
 
-      <UCard>
-        <template #header>
-          <div class="flex items-center justify-between">
-            <h2 class="font-semibold">
-              Prayer.Tools directory
-            </h2>
+        <SettingsRow label="Prayer.Tools directory">
+          <span class="inline-flex items-center gap-2">
             <UBadge
               :label="site.directory ? (PT_LABELS.directoryStatus[site.directory.status] ?? site.directory.status) : 'Not listed'"
               :color="site.directory ? ptStatusColor(site.directory.status) : 'neutral'"
               variant="subtle"
+              size="sm"
             />
-          </div>
-        </template>
-        <div class="space-y-3">
-          <p class="text-sm text-muted">
-            {{ DIRECTORY_TEXT[site.directory?.status ?? 'none'] ?? DIRECTORY_TEXT.none }}
-            Your site stays reachable by its link either way.
-          </p>
-          <p
-            v-if="(!site.directory || site.directory.status === 'unlisted') && site.site.status !== 'published'"
-            class="text-xs text-muted"
-          >
-            Publish the site before asking to be listed.
-          </p>
-          <div class="flex gap-2">
+            <InfoTip>
+              {{ DIRECTORY_TEXT[site.directory?.status ?? 'none'] ?? DIRECTORY_TEXT.none }}
+              Your site stays reachable by its link either way.
+            </InfoTip>
+          </span>
+          <template #actions>
             <UButton
               v-if="!site.directory || site.directory.status === 'unlisted'"
               icon="i-lucide-list-plus"
@@ -900,61 +872,79 @@ watch(tab, (t) => {
               :loading="directoryBusy"
               @click="directory(false)"
             />
-          </div>
-        </div>
-      </UCard>
-
-      <UCard v-if="exportsLog?.exports.length">
-        <template #header>
-          <h2 class="font-semibold">
-            Intercessor exports
-          </h2>
-          <p class="text-sm text-muted">
-            Every download of intercessors' details.
-          </p>
-        </template>
-        <ul class="text-sm divide-y divide-default">
-          <li
-            v-for="e in exportsLog.exports"
-            :key="e.id"
-            class="flex items-center gap-2 py-2 first:pt-0 last:pb-0"
+          </template>
+          <template
+            v-if="(!site.directory || site.directory.status === 'unlisted') && site.site.status !== 'published'"
+            #footer
           >
-            <UIcon
-              name="i-lucide-download"
-              class="text-muted shrink-0"
-            />
-            <span class="flex-1 min-w-0">
-              {{ e.display_name }} <span class="text-muted">({{ e.email }})</span>
-            </span>
-            <span class="text-muted whitespace-nowrap">
-              {{ e.row_count }} rows · {{ ptFormatDate(e.created_at, { dateStyle: 'medium', timeStyle: 'short' }) }}
-            </span>
-          </li>
-        </ul>
-      </UCard>
+            <p class="text-xs text-(--ui-text-muted)">
+              Publish the site before asking to be listed.
+            </p>
+          </template>
+        </SettingsRow>
 
-      <UCard
-        v-if="isOwner"
-        :ui="{ root: 'ring-error/40' }"
+        <SettingsRow
+          v-if="isOwner"
+          label="Delete site"
+          value="Removes the site, its campaigns, intercessors and stats for good."
+          :open="deleteRow.open.value"
+        >
+          <template
+            v-if="!deleteRow.open.value"
+            #actions
+          >
+            <UButton
+              color="error"
+              variant="outline"
+              label="Delete…"
+              @click="deleteRow.toggle"
+            />
+          </template>
+          <template #panel>
+            <div class="space-y-4 max-w-md">
+              <UAlert
+                color="warning"
+                :title="`This permanently deletes ${site.org.name}, including everyone who signed up and all stats.`"
+              />
+              <UFormField :label="`Type ${site.org.slug} to confirm`">
+                <UInput
+                  v-model="deleteConfirm"
+                  class="w-full"
+                  autocomplete="off"
+                  autofocus
+                />
+              </UFormField>
+              <div class="flex gap-2">
+                <UButton
+                  label="Delete forever"
+                  color="error"
+                  icon="i-lucide-trash-2"
+                  :disabled="deleteConfirm !== site.org.slug"
+                  @click="deleteSite"
+                />
+                <UButton
+                  label="Cancel"
+                  color="neutral"
+                  variant="ghost"
+                  @click="deleteRow.close"
+                />
+              </div>
+            </div>
+          </template>
+        </SettingsRow>
+      </SettingsGroup>
+
+      <SettingsGroup
+        v-if="exportsLog?.exports.length"
+        title="Intercessor exports"
       >
-        <template #header>
-          <h2 class="font-semibold text-error">
-            Delete site
-          </h2>
-        </template>
-        <div class="space-y-3">
-          <p class="text-sm text-muted">
-            Deletes the site, its campaigns, intercessors and stats for good. This can't be undone.
-          </p>
-          <UButton
-            color="error"
-            variant="outline"
-            icon="i-lucide-trash-2"
-            label="Delete site"
-            @click="deleteOpen = true"
-          />
-        </div>
-      </UCard>
+        <SettingsRow
+          v-for="e in exportsLog.exports"
+          :key="e.id"
+          :label="e.display_name"
+          :value="`${e.email} · ${e.row_count} rows · ${ptFormatDate(e.created_at, { dateStyle: 'medium', timeStyle: 'short' })}`"
+        />
+      </SettingsGroup>
     </template>
 
     <PtImagePicker
@@ -973,61 +963,14 @@ watch(tab, (t) => {
       }"
     />
 
-    <UModal
+    <ConfirmModal
       v-model:open="archiveOpen"
       title="Archive this site?"
       description="The site will show a short “this campaign has ended” page. Signup closes and reminders stop. You can un-archive it later."
-    >
-      <template #footer>
-        <div class="flex justify-end gap-2 w-full">
-          <UButton
-            label="Cancel"
-            color="neutral"
-            variant="ghost"
-            @click="archiveOpen = false"
-          />
-          <UButton
-            label="Archive"
-            color="warning"
-            icon="i-lucide-archive"
-            :loading="statusBusy"
-            @click="setStatus('archive')"
-          />
-        </div>
-      </template>
-    </UModal>
-
-    <UModal
-      v-model:open="deleteOpen"
-      title="Delete this site?"
-      :description="`This permanently deletes ${site.org.name}, including everyone who signed up and all stats.`"
-    >
-      <template #body>
-        <UFormField :label="`Type ${site.org.slug} to confirm`">
-          <UInput
-            v-model="deleteConfirm"
-            class="w-full"
-            autocomplete="off"
-          />
-        </UFormField>
-      </template>
-      <template #footer>
-        <div class="flex justify-end gap-2 w-full">
-          <UButton
-            label="Cancel"
-            color="neutral"
-            variant="ghost"
-            @click="deleteOpen = false"
-          />
-          <UButton
-            label="Delete forever"
-            color="error"
-            icon="i-lucide-trash-2"
-            :disabled="deleteConfirm !== site.org.slug"
-            @click="deleteSite"
-          />
-        </div>
-      </template>
-    </UModal>
+      confirm-label="Archive"
+      color="primary"
+      :loading="statusBusy"
+      @confirm="setStatus('archive')"
+    />
   </div>
 </template>

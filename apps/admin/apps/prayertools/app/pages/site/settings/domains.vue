@@ -14,12 +14,14 @@ const rawToast = useToast()
 const hostname = ref('')
 const adding = ref(false)
 const busy = ref<string | null>(null)
+const addRow = useSettingsRow('pt-add-domain')
 
 async function add() {
   adding.value = true
   try {
     await $fetch('/api/pt/domains', { method: 'POST', body: { hostname: hostname.value } })
     hostname.value = ''
+    addRow.close()
     toast.ok('Domain added', 'Now add the DNS records below at your domain provider.')
     await refresh()
   } catch (err) {
@@ -82,16 +84,16 @@ async function copy(text: string) {
     class="max-w-3xl mx-auto space-y-6"
   >
     <PtSettingsTabs />
-    <header>
-      <h1 class="text-2xl font-bold">
-        Domains
-      </h1>
-      <p class="text-sm text-muted">
-        Your site always works at <span class="font-mono">{{ site.subdomainUrl.replace(/^https?:\/\//, '') }}</span>.
-        You can also use a domain you own, like <span class="font-mono">pray.yourchurch.org</span>. Once it's active it
-        becomes the main address and the prayer.tools address redirects to it.
-      </p>
-    </header>
+    <h1 class="text-2xl font-bold">
+      Domains
+      <InfoTip>
+        <p>
+          Your site always works at its prayer.tools address. You can also use a domain you own, like
+          <span class="font-mono">pray.yourchurch.org</span>.
+        </p>
+        <p>Once it's active it becomes the main address and the prayer.tools address redirects to it.</p>
+      </InfoTip>
+    </h1>
 
     <UAlert
       v-if="!can('pt.site.manage')"
@@ -101,95 +103,71 @@ async function copy(text: string) {
       title="Only site owners can manage domains."
     />
 
-    <template v-else>
-      <UCard>
-        <form
-          class="space-y-2"
-          @submit.prevent="add"
-        >
-          <div class="flex gap-2 flex-wrap">
-            <UInput
-              v-model="hostname"
-              placeholder="pray.example.org"
-              aria-label="Your domain"
-              class="flex-1 min-w-60 font-mono"
-            />
-            <UButton
-              type="submit"
-              icon="i-lucide-plus"
-              label="Add domain"
-              :loading="adding"
-              :disabled="!hostname.trim()"
-            />
-          </div>
-          <p class="text-xs text-muted">
-            Use a subdomain such as pray.yourchurch.org. A site can have up to three.
-          </p>
-        </form>
-      </UCard>
+    <SettingsGroup
+      v-else
+      title="Addresses"
+    >
+      <SettingsRow
+        label="Prayer.Tools address"
+        :value="site.subdomainUrl.replace(/^https?:\/\//, '')"
+      />
 
-      <UCard
+      <SettingsRow
         v-for="d in site.domains"
         :key="d.id"
+        :label="d.hostname"
       >
-        <div class="space-y-4">
-          <div class="flex items-start justify-between gap-3 flex-wrap">
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="font-mono font-semibold">{{ d.hostname }}</span>
-                <UBadge
-                  :label="PT_LABELS.domainStatus[d.status] ?? d.status"
-                  :color="ptStatusColor(d.status)"
-                  variant="subtle"
-                />
-              </div>
-              <p class="text-xs text-muted mt-1">
-                <template v-if="d.activated_at">
-                  Active since {{ ptFormatDate(d.activated_at) }}.
-                </template>
-                <template v-if="d.last_checked_at">
-                  Last checked {{ ptFormatDate(d.last_checked_at, { dateStyle: 'medium', timeStyle: 'short' }) }}.
-                </template>
-              </p>
-            </div>
-            <div class="flex gap-2">
-              <UButton
-                size="sm"
-                variant="outline"
-                color="neutral"
-                icon="i-lucide-refresh-cw"
-                label="Check now"
-                :loading="busy === d.id"
-                @click="check(d)"
-              />
-              <UButton
-                size="sm"
-                variant="ghost"
-                color="error"
-                icon="i-lucide-trash-2"
-                aria-label="Remove domain"
-                @click="removeTarget = d"
-              />
-            </div>
-          </div>
-
-          <UAlert
-            v-if="d.status === 'failing'"
-            color="error"
+        <span class="inline-flex items-center gap-2">
+          <UBadge
+            :label="PT_LABELS.domainStatus[d.status] ?? d.status"
+            :color="ptStatusColor(d.status)"
             variant="subtle"
-            icon="i-lucide-triangle-alert"
-            title="This domain no longer points to Prayer.Tools"
-            description="Emails and share links use your prayer.tools address until it's fixed. Check the DNS records below."
+            size="sm"
           />
-
-          <div
-            v-if="d.status !== 'active'"
-            class="space-y-3 text-sm"
-          >
-            <p>At your domain provider, add {{ records(d).length > 1 ? 'these DNS records' : 'this DNS record' }}:</p>
+          <template v-if="d.activated_at">Active since {{ ptFormatDate(d.activated_at) }}.</template>
+          <template v-if="d.last_checked_at">Last checked {{ ptFormatDate(d.last_checked_at, { dateStyle: 'medium', timeStyle: 'short' }) }}.</template>
+        </span>
+        <template #actions>
+          <UButton
+            variant="outline"
+            color="neutral"
+            icon="i-lucide-refresh-cw"
+            label="Check now"
+            :loading="busy === d.id"
+            @click="check(d)"
+          />
+          <UButton
+            variant="outline"
+            color="error"
+            label="Remove"
+            @click="removeTarget = d"
+          />
+        </template>
+        <template
+          v-if="d.status !== 'active'"
+          #footer
+        >
+          <div class="space-y-3 text-sm">
+            <UAlert
+              v-if="d.status === 'failing'"
+              color="error"
+              variant="subtle"
+              icon="i-lucide-triangle-alert"
+              title="This domain no longer points to Prayer.Tools"
+            />
+            <p>
+              At your domain provider, add {{ records(d).length > 1 ? 'these DNS records' : 'this DNS record' }}
+              <InfoTip>
+                <p>The TXT records, when shown, prove you own the domain and let us issue its certificate.</p>
+                <p>Changes can take from a few minutes to a few hours; then press “Check now”. We also check every day and email you if a domain stops pointing to us.</p>
+                <p v-if="d.status === 'failing'">
+                  Until it's fixed, emails and share links use your prayer.tools address.
+                </p>
+              </InfoTip>
+            </p>
             <div class="overflow-x-auto">
               <table class="w-full text-left text-sm">
-                <thead class="text-xs text-muted">
+                <thead class="text-xs text-(--ui-text-muted)">
                   <tr>
                     <th class="py-1 pe-4">
                       Type
@@ -228,37 +206,70 @@ async function copy(text: string) {
                 </tbody>
               </table>
             </div>
-            <p class="text-xs text-muted">
-              The TXT records, when shown, prove you own the domain and let us issue its certificate. Changes can take
-              from a few minutes to a few hours; then press “Check now”. We also check every day and email you if a
-              domain stops pointing to us.
-            </p>
           </div>
-        </div>
-      </UCard>
-    </template>
+        </template>
+      </SettingsRow>
 
-    <UModal
+      <SettingsRow
+        label="Your own domain"
+        :value="site.domains.length ? undefined : 'None yet'"
+        :open="addRow.open.value"
+      >
+        <template
+          v-if="!addRow.open.value"
+          #actions
+        >
+          <UButton
+            color="neutral"
+            variant="outline"
+            icon="i-lucide-plus"
+            label="Add domain"
+            @click="addRow.toggle"
+          />
+        </template>
+        <template #panel>
+          <form
+            class="space-y-4 max-w-md"
+            @submit.prevent="add"
+          >
+            <UFormField>
+              <template #label>
+                Domain <InfoTip text="Use a subdomain such as pray.yourchurch.org. A site can have up to three." />
+              </template>
+              <UInput
+                v-model="hostname"
+                placeholder="pray.example.org"
+                autofocus
+                class="w-full font-mono"
+              />
+            </UFormField>
+            <div class="flex gap-2">
+              <UButton
+                type="submit"
+                label="Add domain"
+                :loading="adding"
+                :disabled="!hostname.trim()"
+              />
+              <UButton
+                color="neutral"
+                variant="ghost"
+                label="Cancel"
+                :disabled="adding"
+                @click="addRow.close"
+              />
+            </div>
+          </form>
+        </template>
+      </SettingsRow>
+    </SettingsGroup>
+
+    <ConfirmModal
       v-model:open="removeOpen"
       :title="`Remove ${removeTarget?.hostname}?`"
       description="The domain stops serving your site right away. Your prayer.tools address keeps working."
-    >
-      <template #footer>
-        <div class="flex justify-end gap-2 w-full">
-          <UButton
-            color="neutral"
-            variant="ghost"
-            label="Cancel"
-            @click="removeTarget = null"
-          />
-          <UButton
-            color="error"
-            label="Remove domain"
-            :loading="!!removeTarget && busy === removeTarget.id"
-            @click="remove"
-          />
-        </div>
-      </template>
-    </UModal>
+      confirm-label="Remove domain"
+      :loading="!!removeTarget && busy === removeTarget.id"
+      @confirm="remove"
+    />
   </div>
 </template>

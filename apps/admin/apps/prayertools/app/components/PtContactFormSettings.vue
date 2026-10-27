@@ -31,7 +31,7 @@ const admins = computed(() => members.value.filter(m => m.admin))
 const memberItems = computed(() => members.value.map(m => ({ label: m.name, description: m.email, value: m.id })))
 const notifyItems = computed(() => [
   { value: 'admins', label: 'All admins', description: admins.value.map(m => m.name).join(', ') || 'This site has no admins who can open the inbox.' },
-  { value: 'chosen', label: 'Specific people', description: 'Anyone on the team who can open the inbox.' }
+  { value: 'chosen', label: 'Specific people' }
 ])
 
 const body = computed(() => ({ fields: fields.value, notify_user_ids: notifyMode.value === 'chosen' ? chosen.value : [] }))
@@ -103,12 +103,12 @@ defineExpose({ dirty, reset })
     <UCard>
       <template #header>
         <h2 class="font-semibold">
-          Notify
+          Who to notify on new submissions
+          <InfoTip>
+            <p>Who hears about new contact messages. They see them in the notification bell and the inbox, and get them in their daily email digest.</p>
+            <p>You can choose anyone on the team who can open the inbox.</p>
+          </InfoTip>
         </h2>
-        <p class="text-sm text-muted">
-          Who hears about new contact messages. They see them in the notification bell and the inbox, and get them in
-          their daily email digest.
-        </p>
       </template>
       <div class="space-y-4">
         <URadioGroup
@@ -138,11 +138,8 @@ defineExpose({ dirty, reset })
         <div>
           <h2 class="text-lg font-semibold">
             Custom questions
+            <InfoTip :text="`The form always asks for a name, an email address and a message. Add up to ${MAX_FIELDS} questions of your own; the answers appear under the message in your inbox.`" />
           </h2>
-          <p class="text-sm text-muted">
-            The form always asks for a name, an email address and a message. Add up to {{ MAX_FIELDS }} questions of your
-            own; the answers appear under the message in your inbox.
-          </p>
         </div>
         <UDropdownMenu
           v-if="can('pt.site.write')"
@@ -160,7 +157,7 @@ defineExpose({ dirty, reset })
         v-if="!fields.length"
         variant="subtle"
       >
-        <p class="text-sm text-muted">
+        <p class="text-sm text-(--ui-text-muted)">
           No questions yet.
         </p>
       </UCard>
@@ -230,7 +227,7 @@ defineExpose({ dirty, reset })
           />
           <div
             v-if="f.kind === 'select'"
-            class="space-y-3 border-s-2 border-default ps-4"
+            class="space-y-3 border-s-2 border-(--ui-border) ps-4"
           >
             <div class="text-sm font-medium">
               Options
@@ -277,10 +274,8 @@ defineExpose({ dirty, reset })
       <template #header>
         <h2 class="font-semibold">
           Preview
+          <InfoTip text="How the contact page looks to visitors, including changes you haven't saved." />
         </h2>
-        <p class="text-sm text-muted">
-          How the contact page looks to visitors, including changes you haven't saved.
-        </p>
       </template>
       <div class="space-y-4 max-w-2xl">
         <p class="text-sm">
@@ -341,7 +336,7 @@ defineExpose({ dirty, reset })
       </div>
     </UCard>
 
-    <PtSaveBar
+    <SaveBar
       v-if="can('pt.site.write') || can('pt.content.translate')"
       :dirty="dirty"
       :saving="saving"
