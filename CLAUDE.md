@@ -65,3 +65,7 @@ Three processes on one Postgres, one Docker image each (`apps/<app>/Dockerfile`,
 - The admin UI is English only; the public site is translated.
 - Nuxtinator improvements needed by prayer.tools are made in this repo (e.g. the marketing layer), not upstream.
 - Don't read other worktrees (`.worktrees/`) or branches.
+
+## UI rules
+
+Before any UI work — in the host or in your own app layer — read `apps/admin/_layers/core/DESIGN.md` and follow it. It lists the core components to use (help icons, sidebars, settings rows, confirm dialogs) and the styling rules every nuxtinator page shares. It updates with core, so re-read it after a core update.
