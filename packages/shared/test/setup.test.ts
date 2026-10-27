@@ -92,7 +92,7 @@ describe('side campaigns', () => {
 
 describe('applyTemplate', () => {
   it('Ramadan: dates from the chosen start, 30 days, daily, people', () => {
-    expect(applyTemplate('ramadan', { start_date: '2027-02-08', cadence: 'weekly', end_mode: 'none' })).toEqual({
+    expect(applyTemplate('ramadan', { start_date: '2027-02-08' })).toEqual({
       start_mode: 'date', start_date: '2027-02-08', end_mode: 'date', end_date: '2027-03-09', length_days: null, goal: 'people', cadence: 'daily', track_time: false
     })
   })
@@ -101,9 +101,15 @@ describe('applyTemplate', () => {
     expect(applyTemplate('disaster_4', { start_date: '2026-09-28' }).end_date).toBe('2026-10-01')
   })
 
+  it('keeps the answers the champion changed from the template', () => {
+    expect(applyTemplate('disaster_12', { start_date: '2027-02-08', end_date: '2027-02-19' }).end_date).toBe('2027-02-19')
+    expect(applyTemplate('ramadan', { start_date: '2027-02-08', end_date: '2027-02-20', cadence: 'weekly' })).toMatchObject({ end_date: '2027-02-20', cadence: 'weekly' })
+    expect(validateSetup(applyTemplate('disaster_12', { start_date: '2027-02-08', end_date: '2027-02-19' }), 'side')).toEqual([])
+  })
+
   it('start anytime: personal start that follows the content, daily or weekly', () => {
     expect(applyTemplate('anytime', { length_days: 10, cadence: 'weekly' })).toEqual({
-      start_mode: 'join', start_date: null, end_mode: 'days', end_date: null, length_days: null, goal: 'people', cadence: 'weekly', track_time: false
+      start_mode: 'join', start_date: null, end_mode: 'days', end_date: null, length_days: 10, goal: 'people', cadence: 'weekly', track_time: false
     })
   })
 

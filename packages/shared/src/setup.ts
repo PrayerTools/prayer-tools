@@ -113,11 +113,12 @@ export function suggestedStartDate(key: string, today: string): string | null {
   return RAMADAN_START_DATES.find(d => d >= today) ?? null
 }
 
-// Fills a template's answers around what the champion chose.
+// Fills the answers the champion left out from the template. Locking a
+// template's answers is up to the setup form.
 export function applyTemplate(key: string, chosen: Partial<SetupAnswers>): SetupAnswers {
   const t = getTemplate(key)
   const merged: SetupAnswers = { ...SETUP_DEFAULTS, ...t.setup }
-  for (const k of t.open) {
+  for (const k of Object.keys(SETUP_DEFAULTS) as (keyof SetupAnswers)[]) {
     if (chosen[k] !== undefined) (merged as unknown as Record<string, unknown>)[k] = chosen[k]
   }
   if (merged.start_mode === 'date' && merged.end_mode === 'date' && !chosen.end_date && t.setup.length_days && merged.start_date) {
