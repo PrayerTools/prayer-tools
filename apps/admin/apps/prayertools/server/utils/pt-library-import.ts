@@ -32,6 +32,8 @@ export interface PtPackSummary {
   added: number
   changed: number
   removed: number
+  // Published entries missing from the pack, which stay.
+  kept: number
   unchanged: number
   skipped: string[]
 }
@@ -174,7 +176,7 @@ export async function ptPackSummary(pack: PtPack, target: string): Promise<PtPac
   const lib = await resolveTarget(target, pack.title)
   const match = await db.selectFrom('pt_library').select('id').where('owner_user_id', 'is', null).where('title', '=', pack.title).executeTakeFirst()
   const existing = lib
-    ? await db.selectFrom('pt_library_entry').select(['day', 'language', 'draft']).where('library_id', '=', lib.id).execute()
+    ? await db.selectFrom('pt_library_entry').select(['day', 'language', 'draft', 'published']).where('library_id', '=', lib.id).execute()
     : []
   const before = new Map(existing.map(e => [`${e.day}:${e.language}`, canonical(e.draft)]))
   let added = 0
@@ -196,7 +198,8 @@ export async function ptPackSummary(pack: PtPack, target: string): Promise<PtPac
     images: pack.images.size,
     added,
     changed,
-    removed: existing.filter(e => !keep.has(`${e.day}:${e.language}`)).length,
+    removed: existing.filter(e => !keep.has(`${e.day}:${e.language}`) && e.published === null).length,
+    kept: existing.filter(e => !keep.has(`${e.day}:${e.language}`) && e.published !== null).length,
     unchanged,
     skipped: pack.skipped
   }
@@ -217,8 +220,9 @@ export async function ptApplyPack(pack: PtPack, target: string, publish: boolean
       await tx.insertInto('pt_library_entry').values({ library_id: id, day: e.day, language: e.language, draft: jsonb(e.doc), published: null } as never)
         .onConflict(oc => oc.columns(['library_id', 'day', 'language']).doUpdateSet({ draft: jsonb(e.doc) as never, updated_at: new Date() } as never)).execute()
     }
+    // Entries missing from the pack go, except published ones: sites may be following them.
     const keep = entries.map(e => `${e.day}:${e.language}`)
-    await tx.deleteFrom('pt_library_entry').where('library_id', '=', id)
+    await tx.deleteFrom('pt_library_entry').where('library_id', '=', id).where('published', 'is', null)
       .where(sql<boolean>`(day::text || ':' || language) <> ALL(${pgArray(keep)})`).execute()
     return id
   })

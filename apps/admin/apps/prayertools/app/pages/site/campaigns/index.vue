@@ -24,26 +24,21 @@ const resultsUrl = (c: PtCampaign) => site.value ? `${site.value.url}/${c.slug}/
 
 const expanded = ref<string | null>(null)
 
-const confirm = reactive({ open: false, action: 'end' as 'end' | 'delete', campaign: null as PtCampaign | null })
-function ask(action: 'end' | 'delete', c: PtCampaign) {
-  Object.assign(confirm, { open: true, action, campaign: c })
+const confirm = reactive({ open: false, campaign: null as PtCampaign | null })
+function askDelete(c: PtCampaign) {
+  Object.assign(confirm, { open: true, campaign: c })
 }
 const confirming = ref(false)
 async function doConfirm() {
   if (!confirm.campaign) return
   confirming.value = true
   try {
-    if (confirm.action === 'end') {
-      await $fetch(`/api/pt/campaigns/${confirm.campaign.id}/close`, { method: 'POST' })
-      toast.ok('Campaign ended', 'Everyone in it will get the thank-you email.')
-    } else {
-      await $fetch(`/api/pt/campaigns/${confirm.campaign.id}`, { method: 'DELETE' })
-      toast.ok('Campaign deleted')
-    }
+    await $fetch(`/api/pt/campaigns/${confirm.campaign.id}`, { method: 'DELETE' })
+    toast.ok('Campaign deleted')
     confirm.open = false
     await refresh()
   } catch (err) {
-    toast.fail(err, 'Could not change the campaign')
+    toast.fail(err, 'Could not delete the campaign')
   } finally {
     confirming.value = false
   }
@@ -189,22 +184,13 @@ async function doConfirm() {
               label="Relaunch"
             />
             <UButton
-              v-if="canEdit && c.status === 'active' && c.start_mode !== 'join'"
-              size="sm"
-              variant="outline"
-              color="neutral"
-              icon="i-lucide-square"
-              label="End early"
-              @click="ask('end', c)"
-            />
-            <UButton
               v-if="canEdit && c.commitments === 0"
               size="sm"
               variant="ghost"
               color="error"
               icon="i-lucide-trash-2"
               label="Delete"
-              @click="ask('delete', c)"
+              @click="askDelete(c)"
             />
             <UButton
               :to="{ path: '/site/landing', query: { campaign: c.id } }"
@@ -288,10 +274,8 @@ async function doConfirm() {
 
     <UModal
       v-model:open="confirm.open"
-      :title="confirm.action === 'end' ? 'End this campaign early?' : 'Delete this campaign?'"
-      :description="confirm.action === 'end'
-        ? 'Yesterday becomes its last day. The site shows the final results and everyone in the campaign gets the thank-you email.'
-        : 'Nobody has signed up for it yet. Its setup and thank-you message are deleted too.'"
+      title="Delete this campaign?"
+      description="Nobody has signed up for it yet. Its setup and thank-you message are deleted too."
     >
       <template #footer>
         <div class="flex justify-end gap-2 w-full">
@@ -302,9 +286,9 @@ async function doConfirm() {
             @click="confirm.open = false"
           />
           <UButton
-            :color="confirm.action === 'end' ? 'warning' : 'error'"
+            color="error"
             :loading="confirming"
-            :label="confirm.action === 'end' ? 'End campaign' : 'Delete campaign'"
+            label="Delete campaign"
             @click="doConfirm"
           />
         </div>

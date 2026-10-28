@@ -96,7 +96,7 @@ export async function insertCommitment(tx: Tx, sub: SubscriptionRow, campaign: C
     if (existing) {
       const entries = await campaignEntries(tx, normalizeCampaign(campaign))
       if (entries && existing.entries_done >= entries) {
-        await tx.updateTable('pt_commitment').set({ entries_done: 0, advanced_on: null, starts_on: todayIn(input.timezone || existing.timezone) }).where('id', '=', existing.id).execute()
+        await tx.updateTable('pt_commitment').set({ entries_done: 0, advanced_on: null, finished_at: null, starts_on: todayIn(input.timezone || existing.timezone) }).where('id', '=', existing.id).execute()
       }
       return (await updateCommitment(tx, sub, existing.id, input))!
     }

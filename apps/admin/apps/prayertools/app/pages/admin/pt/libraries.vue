@@ -34,6 +34,7 @@ interface PackSummary {
   added: number
   changed: number
   removed: number
+  kept: number
   unchanged: number
   skipped: string[]
 }
@@ -181,7 +182,7 @@ async function importPack() {
         </h2>
         <p class="text-sm text-(--ui-text-muted)">
           A pack.json, or a zip of pack.json and an images/ folder. The pack's details and entries replace the library's;
-          entries not in the pack are removed.
+          entries not in the pack are removed, except published ones, which sites may follow.
         </p>
       </template>
       <div class="space-y-4">
@@ -240,6 +241,12 @@ async function importPack() {
               v-if="summary.target"
               :label="`${summary.removed} removed`"
               :color="summary.removed ? 'warning' : 'neutral'"
+              variant="subtle"
+            />
+            <UBadge
+              v-if="summary.target && summary.kept"
+              :label="`${summary.kept} published, kept`"
+              color="neutral"
               variant="subtle"
             />
             <UBadge

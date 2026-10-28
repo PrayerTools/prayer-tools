@@ -445,6 +445,8 @@ export interface PtCommitmentTable {
   claimed_at: NullableTimestamp
   entries_done: Generated<number>
   advanced_on: NullableDateOnly
+  // Personal-start campaigns: when the person went through the last entry.
+  finished_at: NullableTimestamp
   created_at: Timestamp
   updated_at: Timestamp
 }

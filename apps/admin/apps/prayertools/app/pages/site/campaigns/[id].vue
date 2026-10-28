@@ -56,18 +56,7 @@ async function save() {
   }
 }
 
-const confirmClose = ref(false)
 const confirmDelete = ref(false)
-async function close() {
-  try {
-    await $fetch(`/api/pt/campaigns/${id.value}/close`, { method: 'POST' })
-    confirmClose.value = false
-    await refresh()
-    toast.ok('Campaign ended', 'Everyone in it will get the thank-you email.')
-  } catch (err) {
-    toast.fail(err)
-  }
-}
 async function remove() {
   try {
     await $fetch(`/api/pt/campaigns/${id.value}`, { method: 'DELETE' })
@@ -299,14 +288,6 @@ async function remove() {
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div class="flex gap-2">
             <UButton
-              v-if="data.campaign.status !== 'ended'"
-              color="neutral"
-              variant="outline"
-              icon="i-lucide-square"
-              label="End early"
-              @click="confirmClose = true"
-            />
-            <UButton
               v-if="data.campaign.commitments === 0"
               color="error"
               variant="ghost"
@@ -347,28 +328,6 @@ async function remove() {
         @saved="refresh"
       />
     </UCard>
-
-    <UModal
-      v-model:open="confirmClose"
-      title="End this campaign early?"
-      description="Yesterday becomes its last day. The site shows the final results and invites people to be notified when it runs again. Everyone in the campaign gets the thank-you email."
-    >
-      <template #footer>
-        <div class="flex justify-end gap-2 w-full">
-          <UButton
-            label="Cancel"
-            color="neutral"
-            variant="ghost"
-            @click="confirmClose = false"
-          />
-          <UButton
-            label="End campaign"
-            color="warning"
-            @click="close"
-          />
-        </div>
-      </template>
-    </UModal>
 
     <UModal
       v-model:open="confirmDelete"

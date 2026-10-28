@@ -36,6 +36,7 @@ export default definePtHandler('pt.campaigns.write', async (event, tx, ctx) => {
   const taken = (await tx.selectFrom('pt_campaign').select('slug').execute()).map(r => r.slug)
   const slug = (extras.slug as string) ?? (kind === 'side' ? suggestSideSlug(name, answers.start_date, taken) : suggestCampaignSlug(answers.start_date, taken))
   if (taken.includes(slug)) ptBadRequest('That campaign address is already used on this site.')
+  const hasMain = !!(await tx.selectFrom('pt_campaign').select('id').where('kind', 'is', null).executeTakeFirst())
   const mains = previous ? [] : (await loadCampaigns(ptTx(tx), { drafts: true })).filter(c => !isSideCampaign(c))
   const look = previous ?? pickCurrentCampaign(mains)?.campaign ?? mains.at(-1)
   const created = await tx.insertInto('pt_campaign').values({
@@ -58,8 +59,9 @@ export default definePtHandler('pt.campaigns.write', async (event, tx, ctx) => {
     branding: jsonb(look?.branding ?? {}),
     share: jsonb(look?.share ?? {}),
     description: look?.description && (previous || kind !== 'side') ? jsonb(look.description) : null,
-    // A campaign starts as a draft, except on a site still being set up, which is itself unpublished.
-    published_at: site.status === 'draft' ? new Date() : null
+    // A campaign starts as a draft, except a site's first main campaign while
+    // the site is being set up: it goes live with the site, whose checklist covers it.
+    published_at: site.status === 'draft' && kind !== 'side' && !hasMain ? new Date() : null
   } as never).returningAll().executeTakeFirstOrThrow()
   if (previous) {
     const libs = await tx.selectFrom('pt_campaign_library').select(['site_library_id', 'position']).where('campaign_id', '=', previous.id).execute()
