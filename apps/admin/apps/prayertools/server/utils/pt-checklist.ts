@@ -19,11 +19,14 @@ export interface PtChecklistItem {
 
 const hasText = (t: TranslatableText | null | undefined) => Object.values(t?.values ?? {}).some(v => !!v?.trim())
 
-// What a site needs before (and soon after) it goes live, for its current campaign.
-export async function ptLaunchChecklist(tx: Transaction<Database>): Promise<PtChecklistItem[]> {
+// What a site needs before (and soon after) it goes live, for its current
+// campaign, or for the campaign `campaignId` before it is published.
+export async function ptLaunchChecklist(tx: Transaction<Database>, campaignId?: string): Promise<PtChecklistItem[]> {
   const site = await ptSite(tx)
   const campaigns = (await tx.selectFrom('pt_campaign').selectAll().execute()).map(ptCampaignOut)
-  const campaign = pickCurrentCampaign(campaigns)?.campaign ?? campaigns[0] ?? null
+  const campaign = campaignId
+    ? campaigns.find(c => c.id === campaignId) ?? null
+    : pickCurrentCampaign(campaigns)?.campaign ?? campaigns[0] ?? null
   const libraries = campaign ? await ptCampaignLibraries(tx, campaign.id, site.languages) : []
   const entries = libraries.reduce((n, l) => n + l.entryCount, 0)
   const missing = [...new Set(libraries.flatMap(l => l.missingLanguages))]
@@ -33,6 +36,10 @@ export async function ptLaunchChecklist(tx: Transaction<Database>): Promise<PtCh
   const usesPlacePhrases = !!campaign && !!site.place_name && await ptCampaignUsesPlacePhrases(tx, campaign.id)
   const unworded = (site.languages as string[]).filter(l => !RELIABLE_PLACE_LANGUAGES.includes(l) && !hasPlacePhrases(placeWording, l))
   const forCampaign = campaign ? `?campaign=${campaign.id}` : ''
+  // A side campaign has its own template and description; the main campaign uses the site's.
+  const side = campaign?.kind === 'side'
+  const templateKey = side ? campaign.template_key : site.template_key
+  const description = (side ? campaign.description : site.description) as TranslatableText | null
   const datesDone = !!campaign && (campaign.start_mode === 'join' || (!!campaign.start_date && (campaign.end_mode !== 'date' || !!campaign.end_date)))
 
   return [
@@ -72,14 +79,14 @@ export async function ptLaunchChecklist(tx: Transaction<Database>): Promise<PtCh
     {
       key: 'why',
       label: '"Why we pray" written',
-      done: !!landingWhyDoc(landing.why, site.template_key, site.default_language, site.default_language),
+      done: !!landingWhyDoc(landing.why, templateKey, site.default_language, site.default_language),
       required: false,
       to: `/site/landing${forCampaign}`
     },
     {
       key: 'description',
       label: 'Short description written',
-      done: hasText(site.description as TranslatableText | null),
+      done: hasText(description),
       required: false,
       to: `/site/landing${forCampaign}`
     },

@@ -145,66 +145,6 @@ async function saveLanguages() {
   }
 }
 
-// ── Step: content ────────────────────────────────────────────────────────
-const { data: content, refresh: refreshContent } = useFetch<{ libraries: { siteLibraryId: string, libraryId: string | null, title: string, entryCount: number, missingLanguages: string[] }[] }>('/api/pt/content', {
-  query: computed(() => ({ campaign: existingCampaign.value?.id })),
-  key: computed(() => `pt-setup-content-${existingCampaign.value?.id}`),
-  immediate: false
-})
-watch(() => [step.value, existingCampaign.value?.id], () => { if (step.value === 'content' && existingCampaign.value) refreshContent() }, { immediate: true })
-async function useLibrary(libraryId: string) {
-  try {
-    await $fetch('/api/pt/content/libraries', { method: 'POST', body: { campaignId: existingCampaign.value?.id, libraryId } })
-    await refreshContent()
-    toast.ok('Added to your campaign')
-  } catch (err) {
-    toast.fail(err)
-  }
-}
-const cadenceOpen = computed(() => {
-  if (!meta.value) return false
-  const t = meta.value.templates.find(x => x.key === templateKey.value)
-  return !t || t.open.includes('cadence')
-})
-const savingCadence = ref(false)
-async function saveCadence(cadence: SetupState['cadence']) {
-  if (!existingCampaign.value) return
-  setup.value.cadence = cadence
-  savingCadence.value = true
-  try {
-    await $fetch(`/api/pt/campaigns/${existingCampaign.value.id}`, { method: 'PATCH', body: { cadence } })
-    await refreshSite()
-  } catch (err) {
-    toast.fail(err)
-  } finally {
-    savingCadence.value = false
-  }
-}
-// Personal-start campaigns without a length go through all of their content.
-const contentEntries = computed(() => Math.max(0, ...(content.value?.libraries ?? []).map(l => l.entryCount)))
-const lengthOpen = computed(() => existingCampaign.value?.start_mode === 'join' && existingCampaign.value.end_mode === 'days')
-async function saveLength(length: number | null | undefined) {
-  if (!existingCampaign.value) return
-  setup.value.length_days = length ?? null
-  try {
-    await $fetch(`/api/pt/campaigns/${existingCampaign.value.id}`, { method: 'PATCH', body: { length_days: length ?? null } })
-    await refreshSite()
-  } catch (err) {
-    toast.fail(err)
-  }
-}
-const ownTitle = ref('')
-async function createOwn() {
-  try {
-    await $fetch('/api/pt/content/libraries', { method: 'POST', body: { campaignId: existingCampaign.value?.id, title: ownTitle.value || 'Our prayer guide' } })
-    ownTitle.value = ''
-    await refreshContent()
-    toast.ok('Created. Write the entries on the Prayer content page.')
-  } catch (err) {
-    toast.fail(err)
-  }
-}
-
 // ── Step: look and publish ──────────────────────────────────────────────
 const color = ref('#2f6f5e')
 const image = ref<{ url: string, alt: string, credit: string | null } | null>(null)
@@ -496,89 +436,12 @@ async function publish() {
           your site, or write your own.
         </p>
       </template>
-      <div class="divide-y divide-(--ui-border-accented)">
-        <UFormField
-          label="How often is there new prayer content?"
-          :help="!cadenceOpen ? 'Set by the template.' : undefined"
-          :ui="{ label: 'text-base font-semibold' }"
-          class="py-6 first:pt-0 last:pb-0"
-        >
-          <URadioGroup
-            :model-value="setup.cadence"
-            :items="PT_CADENCE_ITEMS"
-            orientation="horizontal"
-            variant="card"
-            :disabled="!cadenceOpen || savingCadence || !existingCampaign"
-            @update:model-value="(v) => saveCadence(v as SetupState['cadence'])"
-          />
-        </UFormField>
-        <UFormField
-          v-if="lengthOpen"
-          :label="`How many ${ptUnit(setup.cadence)}s does each person go through? (optional)`"
-          :help="contentEntries ? `Leave empty to go through all ${contentEntries} entries.` : 'Leave empty to go through all of the prayer content.'"
-          :ui="{ label: 'text-base font-semibold' }"
-          class="py-6 first:pt-0 last:pb-0"
-        >
-          <UInputNumber
-            :model-value="setup.length_days"
-            :min="1"
-            :max="contentEntries || 3650"
-            placeholder="All"
-            @update:model-value="saveLength"
-          />
-        </UFormField>
-        <section
-          v-if="content?.libraries.length"
-          class="space-y-2 py-6 first:pt-0 last:pb-0"
-        >
-          <h3 class="text-base font-semibold">
-            In your campaign
-          </h3>
-          <div
-            v-for="l in content.libraries"
-            :key="l.siteLibraryId"
-            class="flex items-center justify-between rounded-md border border-(--ui-border) px-3 py-2 text-sm"
-          >
-            <span>{{ l.title }} · {{ l.entryCount }} entries</span>
-            <UBadge
-              v-if="l.missingLanguages.length"
-              color="warning"
-              variant="soft"
-              :label="`Missing: ${l.missingLanguages.map(x => languageName(meta, x)).join(', ')}`"
-            />
-          </div>
-        </section>
-        <section class="space-y-4 py-6 first:pt-0 last:pb-0">
-          <h3 class="text-base font-semibold">
-            Add prayer content
-          </h3>
-          <PtLibraryCatalog
-            :template="templateKey"
-            :cadence="existingCampaign?.cadence"
-            :site-languages="site?.site.languages ?? []"
-            :used-ids="(content?.libraries ?? []).map(l => l.libraryId).filter(Boolean) as string[]"
-            @use="useLibrary"
-          />
-          <USeparator label="or" />
-          <div class="flex flex-wrap items-end gap-2">
-            <UFormField
-              label="Write your own content"
-              class="flex-1"
-            >
-              <UInput
-                v-model="ownTitle"
-                placeholder="Our prayer guide"
-                class="w-full"
-              />
-            </UFormField>
-            <UButton
-              label="Create"
-              variant="soft"
-              @click="createOwn"
-            />
-          </div>
-        </section>
-      </div>
+      <PtCampaignContentSetup
+        v-if="existingCampaign"
+        :campaign="existingCampaign"
+        :template-key="templateKey"
+        @changed="refreshSite"
+      />
       <template #footer>
         <div class="flex justify-end">
           <UButton

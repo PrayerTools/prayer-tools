@@ -8,7 +8,7 @@ import { siteUrlFor } from '@prayertools/shared/site'
 import { useDb } from '../utils/db'
 import { NOT_FOUND_CACHE, PRIVATE_CACHE, limit, requestHost, setCache } from '../utils/request'
 import { buildSiteContext, resolveSiteCached } from '../utils/site-context'
-import { previewCookieMatches } from '../utils/cookies'
+import { PREVIEW_COOKIE, previewCookieMatches } from '../utils/cookies'
 import { addTimesLink, checkinAnswer, exchangeManageLink, legacyFuel, legacyManage, previewLink, unsubscribePost, verifyLink } from '../utils/actions'
 import { editorAccess, editorFrameAncestors } from '../utils/editor'
 import { exchangeMyToken } from '../utils/my-auth'
@@ -96,15 +96,20 @@ export default defineEventHandler(async (event) => {
     setResponseHeader(event, 'x-robots-tag', 'noindex')
   }
 
-  if (resolved.status === 'draft' && !ctx.editor) {
-    if (segs[0] === 'preview' && segs[1] && isGet) {
-      if (await previewLink(event, ctx, segs[1])) return
-      return notFound(event, false)
-    }
+  if (segs[0] === 'preview' && segs[1] && segs.length === 2 && isGet && !ctx.editor) {
+    if (await previewLink(event, ctx, segs[1])) return
+    return notFound(event, false)
+  }
+  // A draft site shows only with a preview cookie; a published site uses one
+  // to also show its draft campaigns.
+  if (!ctx.editor && (resolved.status === 'draft' || getCookie(event, PREVIEW_COOKIE))) {
     const hash = await withOrg(useDb(), ctx.orgId, tx => tx.selectFrom('pt_site').select('preview_token_hash').executeTakeFirst())
-    if (!previewCookieMatches(event, ctx.orgId, hash?.preview_token_hash ?? null)) return notFound(event, false)
-    ctx.preview = true
-    setResponseHeader(event, 'x-robots-tag', 'noindex')
+    const matches = previewCookieMatches(event, ctx.orgId, hash?.preview_token_hash ?? null)
+    if (!matches && resolved.status === 'draft') return notFound(event, false)
+    if (matches) {
+      ctx.preview = true
+      setResponseHeader(event, 'x-robots-tag', 'noindex')
+    }
   }
 
   const embed = segs[segs.length - 1] === 'embed' || pathname === '/embed.js'

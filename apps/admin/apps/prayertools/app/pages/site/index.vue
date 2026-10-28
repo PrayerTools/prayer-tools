@@ -1,7 +1,7 @@
 <script setup lang="ts">
-// Site dashboard: status and actions, the site link, where the site is in its
-// campaigns, people and goal progress for a campaign (the current one by
-// default), setup still to do, quick links and giving.
+// Site dashboard for the campaign chosen in the switcher (the current one by
+// default): where it stands, its link, setup and share actions, people and
+// goal progress, setup still to do, quick links and giving.
 import type { PtChecklist } from '../../components/PtLaunchChecklist.vue'
 
 definePageMeta({ middleware: 'auth' })
@@ -9,15 +9,18 @@ definePageMeta({ middleware: 'auth' })
 const { data: site, error, can, slug, refresh: refreshSite } = usePtSite()
 const { data: meta } = usePtMeta()
 const toast = usePtToast()
-const selectedCampaign = ref<string | undefined>(undefined)
-const campaignId = computed(() => selectedCampaign.value ?? site.value?.currentCampaign?.id)
+const { id: campaignId, campaign, campaigns } = usePtCampaign()
 const { data: stats } = useFetch<{ totals: Record<string, number>, progress: { goal: string, people: number, value: number, target: number | null, percent: number | null } | null, prayingNow: number, commitments: number }>('/api/pt/stats', {
   query: computed(() => ({ campaign: campaignId.value })),
   key: computed(() => `pt-dash-stats-${slug.value}-${campaignId.value}`)
 })
-const { data: campaignList } = useFetch<{ campaigns: { id: string, name: string }[] }>('/api/pt/campaigns', { key: computed(() => `pt-dash-campaigns-${slug.value}`) })
-const campaignItems = computed(() => (campaignList.value?.campaigns ?? []).map(c => ({ value: c.id, label: c.name })))
-const selectedName = computed(() => campaignList.value?.campaigns.find(c => c.id === campaignId.value)?.name ?? site.value?.currentCampaign?.name)
+// The campaign on the root address is at the site's link; any other at its own path.
+const campaignUrl = computed(() => {
+  const c = campaign.value
+  if (!site.value || !c) return site.value?.url ?? ''
+  return site.value.currentCampaign?.id === c.id ? site.value.url : `${site.value.url}/${c.slug}`
+})
+const setupUrl = computed(() => status.value === 'draft' || !campaign.value ? '/site/setup' : `/site/campaigns/setup/${campaign.value.id}`)
 const notASite = computed(() => (error.value as { statusCode?: number } | null)?.statusCode === 404)
 const status = computed(() => site.value?.site.status ?? 'draft')
 const hasCustomDomain = computed(() => !!site.value?.domains.some(d => d.status === 'active'))
@@ -26,15 +29,18 @@ const checklist = ref<{ refresh: () => Promise<void>, data: PtChecklist | null }
 const daysUntil = (d: string) => Math.round((Date.parse(`${d}T00:00:00Z`) - Date.parse(`${new Date().toISOString().slice(0, 10)}T00:00:00Z`)) / 86_400_000)
 
 const phaseText = computed(() => {
-  const c = site.value?.currentCampaign
+  const c = campaign.value
   if (!c) return 'No campaign yet.'
-  if (c.start_mode === 'join') return `${c.name}: open since ${ptFormatDate(c.start_date ?? c.created_at)}. Each person starts when they join.`
-  if (c.state === 'upcoming') {
-    const n = daysUntil(c.start_date)
+  if (!c.published_at) return `${c.name} is a draft. Finish its setup and publish it to put it on your site.`
+  if (c.start_mode === 'join') return `${c.name}: open since ${ptFormatDate(c.start_date)}. Each person starts when they join.`
+  if (c.status === 'upcoming') {
+    const n = daysUntil(c.start_date!)
     return `${c.name} starts ${ptFormatDate(c.start_date)} (in ${n} ${n === 1 ? 'day' : 'days'}). Signup is open.`
   }
-  if (c.state === 'active') return c.end_date ? `${c.name} runs until ${ptFormatDate(c.end_date)}.` : `${c.name} has run since ${ptFormatDate(c.start_date)}, with no end date.`
-  return `${c.name} ended ${c.end_date ? ptFormatDate(c.end_date) : ''}. The site shows the results and offers “Notify me when this campaign runs again”.`
+  if (c.status === 'active') return c.end_date ? `${c.name} runs until ${ptFormatDate(c.end_date)}.` : `${c.name} has run since ${ptFormatDate(c.start_date)}, with no end date.`
+  return site.value?.currentCampaign?.id === c.id
+    ? `${c.name} ended ${c.end_date ? ptFormatDate(c.end_date) : ''}. The site shows the results and offers “Notify me when this campaign runs again”.`
+    : `${c.name} ended ${c.end_date ? ptFormatDate(c.end_date) : ''}.`
 })
 
 const progressLabel = computed(() => {
@@ -70,8 +76,8 @@ async function dismissOnboarding() {
 }
 
 async function copyLink() {
-  if (!site.value) return
-  await navigator.clipboard.writeText(site.value.url)
+  if (!campaignUrl.value) return
+  await navigator.clipboard.writeText(campaignUrl.value)
   toast.ok('Link copied')
 }
 
@@ -101,6 +107,7 @@ const quickLinks = computed(() => [
     </UCard>
 
     <template v-else-if="site">
+      <PtCampaignSwitcher />
       <header class="flex items-start justify-between gap-4 flex-wrap">
         <div class="min-w-0">
           <div class="flex items-center gap-2">
@@ -120,15 +127,15 @@ const quickLinks = computed(() => [
         <div class="flex items-center gap-2 flex-wrap">
           <UButton
             v-if="can('pt.site.write')"
-            to="/site/setup"
+            :to="setupUrl"
             variant="outline"
             color="neutral"
             icon="i-lucide-wand-sparkles"
             label="Setup wizard"
           />
           <UButton
-            v-if="status === 'published'"
-            :to="site.url"
+            v-if="status === 'published' && campaign?.published_at"
+            :to="campaignUrl"
             target="_blank"
             variant="outline"
             color="neutral"
@@ -136,7 +143,7 @@ const quickLinks = computed(() => [
             label="View site"
           />
           <UButton
-            v-if="status === 'published'"
+            v-if="status === 'published' && campaign?.published_at"
             to="/site/landing/share"
             icon="i-lucide-share-2"
             label="Share"
@@ -179,7 +186,7 @@ const quickLinks = computed(() => [
           <div class="space-y-4">
             <div class="flex items-center justify-between gap-2">
               <h2 class="font-semibold">
-                Site link
+                Link
               </h2>
               <UBadge
                 v-if="hasCustomDomain"
@@ -189,7 +196,7 @@ const quickLinks = computed(() => [
               />
             </div>
             <div class="flex items-center gap-2 flex-wrap">
-              <span class="font-mono text-sm break-all">{{ site.url }}</span>
+              <span class="font-mono text-sm break-all">{{ campaignUrl }}</span>
               <UButton
                 size="xs"
                 variant="ghost"
@@ -200,10 +207,10 @@ const quickLinks = computed(() => [
               />
             </div>
             <p
-              v-if="status === 'draft'"
+              v-if="status === 'draft' || (campaign && !campaign.published_at)"
               class="text-xs text-(--ui-text-muted)"
             >
-              The link works once the site is published. Until then, use the preview on the setup page.
+              The link works once {{ status === 'draft' ? 'the site' : 'the campaign' }} is published. Until then, use the preview in the setup wizard.
             </p>
           </div>
         </UCard>
@@ -221,20 +228,7 @@ const quickLinks = computed(() => [
       </div>
 
       <div
-        v-if="campaignItems.length > 1 && stats?.progress"
-        class="flex items-center gap-2"
-      >
-        <span class="text-sm text-(--ui-text-muted)">Numbers for</span>
-        <USelect
-          v-model="selectedCampaign"
-          :items="campaignItems"
-          :placeholder="site.currentCampaign?.name ?? 'Current campaign'"
-          class="w-60"
-        />
-      </div>
-
-      <div
-        v-if="!site.currentCampaign"
+        v-if="!campaigns.length"
         class="flex"
       >
         <UButton
@@ -273,7 +267,7 @@ const quickLinks = computed(() => [
         </UCard>
         <UCard class="md:col-span-3">
           <p class="text-sm text-(--ui-text-muted) mb-2">
-            Prayer activity in {{ selectedName ?? 'this campaign' }}
+            Prayer activity in {{ campaign?.name ?? 'this campaign' }}
           </p>
           <div class="grid grid-cols-3 gap-4">
             <div>
@@ -308,6 +302,7 @@ const quickLinks = computed(() => [
         ref="checklist"
         open-only
         title="Still to do"
+        :campaign-id="campaignId"
       />
 
       <div class="grid gap-3 grid-cols-2 sm:grid-cols-4">

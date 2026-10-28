@@ -28,10 +28,13 @@ export interface SiteData {
 
 export { UI_LANGUAGES }
 
-export async function loadSiteData(tx: Tx): Promise<SiteData> {
+// Draft campaigns are left out unless `drafts` (preview links and the admin editor).
+export async function loadSiteData(tx: Tx, opts: { drafts?: boolean } = {}): Promise<SiteData> {
   const site = await tx.selectFrom('pt_site').selectAll().executeTakeFirst()
   if (!site) throw createError({ statusCode: 404, statusMessage: 'Not found' })
-  const rows = await tx.selectFrom('pt_campaign').selectAll().orderBy('start_date', 'asc').orderBy('created_at', 'asc').execute()
+  let query = tx.selectFrom('pt_campaign').selectAll()
+  if (!opts.drafts) query = query.where('published_at', 'is not', null)
+  const rows = await query.orderBy('start_date', 'asc').orderBy('created_at', 'asc').execute()
   const campaigns = rows.map(normalizeCampaign) as CampaignRow[]
   return { site, campaigns, current: pickCurrentCampaign(campaigns), settings: siteSettings(site.settings) }
 }

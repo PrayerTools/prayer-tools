@@ -53,7 +53,9 @@ export default definePtHandler('pt.campaigns.write', async (event, tx, ctx) => {
     landing: jsonb(look && (previous || kind !== 'side') ? look.landing : {}),
     branding: jsonb(look?.branding ?? {}),
     share: jsonb(look?.share ?? {}),
-    description: previous?.description ? jsonb(previous.description) : null
+    description: previous?.description ? jsonb(previous.description) : null,
+    // A campaign starts as a draft, except on a site still being set up, which is itself unpublished.
+    published_at: site.status === 'draft' ? new Date() : null
   } as never).returningAll().executeTakeFirstOrThrow()
   if (previous) {
     const libs = await tx.selectFrom('pt_campaign_library').select(['site_library_id', 'position']).where('campaign_id', '=', previous.id).execute()

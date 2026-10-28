@@ -42,8 +42,8 @@ const model = computed({
       {{ campaign.name }}
     </span>
     <UBadge
-      :label="PT_LABELS.campaignStatus[campaign.status]"
-      :color="ptStatusColor(campaign.status)"
+      :label="campaign.published_at ? PT_LABELS.campaignStatus[campaign.status] : 'Draft'"
+      :color="campaign.published_at ? ptStatusColor(campaign.status) : 'neutral'"
       variant="subtle"
     />
   </div>

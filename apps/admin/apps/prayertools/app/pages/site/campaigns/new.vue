@@ -20,6 +20,7 @@ const { data: previous } = useFetch<{ campaign: PtCampaign }>(() => `/api/pt/cam
 const templateKey = ref('generic')
 const kind = ref<'side' | null>(route.query.kind === 'side' ? 'side' : null)
 const name = ref('')
+const suggestedName = ref('')
 const setup = ref<SetupState>({ start_mode: 'date', start_date: null, end_mode: 'date', end_date: null, length_days: null, goal: 'people', cadence: 'daily', track_time: false, goal_target: null, slot_min: null })
 watch(previous, (p) => {
   const c = p?.campaign
@@ -41,7 +42,11 @@ function chooseTemplate(key: string) {
   if (t.setup.length_days && setup.value.start_mode === 'date') setup.value.length_days = null
   const start = setup.value.start_mode === 'date' ? suggestedStartDate(key, todayIn(site.value?.site.timezone ?? 'UTC')) : null
   if (start) setup.value.start_date = start
-  if (!name.value.trim() && key === 'ramadan' && start) name.value = `Ramadan ${start.slice(0, 4)}`
+  // A name the template suggested follows the template; a name the user typed stays.
+  if (!name.value.trim() || name.value === suggestedName.value) {
+    suggestedName.value = key === 'ramadan' && start ? `Ramadan ${start.slice(0, 4)}` : ''
+    name.value = suggestedName.value
+  }
   fillEndDate()
 }
 
@@ -53,13 +58,6 @@ function fillEndDate() {
 }
 watch(() => setup.value.start_date, fillEndDate)
 
-const prefilled = ref(false)
-watch([site, meta], ([s, m]) => {
-  if (prefilled.value || relaunchOf.value || !s || !m) return
-  prefilled.value = true
-  chooseTemplate(s.site.template_key ?? 'generic')
-}, { immediate: true })
-
 // A site runs one main campaign at a time: the dates other main campaigns hold, and the one these dates would overlap.
 const { data: existing } = useFetch<{ campaigns: PtCampaign[] }>('/api/pt/campaigns', { key: 'pt-campaigns' })
 const booked = computed(() => kind.value === 'side' ? [] : (existing.value?.campaigns ?? []).filter(c => c.status !== 'ended' && c.kind !== 'side'))
@@ -68,6 +66,15 @@ const clash = computed(() => {
   const mine = { ...answers, timezone: site.value?.site.timezone ?? 'UTC' }
   return overlappingCampaign(mine, kind.value, existing.value?.campaigns ?? [])
 })
+// While a main campaign is running or upcoming, a new campaign starts as a
+// side campaign from scratch; otherwise as a main campaign on the site's template.
+const prefilled = ref(false)
+watch([site, meta, existing], ([s, m, e]) => {
+  if (prefilled.value || relaunchOf.value || !s || !m || !e) return
+  prefilled.value = true
+  if (!route.query.kind && e.campaigns.some(c => c.kind !== 'side' && c.status !== 'ended')) kind.value = 'side'
+  chooseTemplate(kind.value === 'side' ? 'generic' : (s.site.template_key ?? 'generic'))
+}, { immediate: true })
 const kindItems = [
   { value: 'main', label: 'Main campaign', description: 'Shows at your site\'s address. A site runs one main campaign at a time.' },
   { value: 'side', label: 'Side campaign', description: 'Runs alongside your main campaign at its own address, with its own landing page and dates. Your home page links to it while it runs.' }
@@ -84,9 +91,10 @@ async function create() {
     const body: Record<string, unknown> = { ...setup.value, name: name.value, template_key: templateKey.value, kind: kind.value }
     if (relaunchOf.value) body.relaunchOf = relaunchOf.value
     if (!setup.value.end_date) delete body.end_date
-    const res = await $fetch<{ campaign: { id: string } }>('/api/pt/campaigns', { method: 'POST', body })
-    toast.ok(relaunchOf.value ? 'Relaunched' : 'Campaign created')
-    await navigateTo(`/site/campaigns/${res.campaign.id}`)
+    const res = await $fetch<{ campaign: { id: string, published_at: string | null } }>('/api/pt/campaigns', { method: 'POST', body })
+    await refreshNuxtData('pt-campaigns')
+    // A draft continues in the campaign's setup steps.
+    await navigateTo(res.campaign.published_at ? `/site/campaigns/${res.campaign.id}` : `/site/campaigns/setup/${res.campaign.id}`)
   } catch (err) {
     toast.fail(err)
   } finally {

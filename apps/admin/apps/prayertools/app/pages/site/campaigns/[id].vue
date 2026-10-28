@@ -97,6 +97,13 @@ async function remove() {
             {{ data.campaign.name }}
           </h1>
           <UBadge
+            v-if="!data.campaign.published_at"
+            label="Draft"
+            color="neutral"
+            variant="subtle"
+          />
+          <UBadge
+            v-else
             :label="PT_LABELS.campaignStatus[data.campaign.status]"
             :color="ptStatusColor(data.campaign.status)"
             variant="subtle"
@@ -147,6 +154,16 @@ async function remove() {
         />
       </div>
     </header>
+
+    <UAlert
+      v-if="!data.campaign.published_at"
+      icon="i-lucide-list-checks"
+      color="neutral"
+      variant="subtle"
+      title="This campaign is a draft"
+      description="It is not on your site yet. Add its prayer content and landing page, then publish it."
+      :actions="can('pt.campaigns.write') ? [{ label: 'Continue setup', to: `/site/campaigns/setup/${id}`, trailingIcon: 'i-lucide-arrow-right' }] : []"
+    />
 
     <div class="grid gap-4 md:grid-cols-3">
       <UCard>

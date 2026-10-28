@@ -37,7 +37,7 @@ export function appAvailable(): boolean {
 export async function buildSiteResponse(event: H3Event, ctx: SiteContext, fullPath: string, draft?: LandingDraft): Promise<SiteResponse> {
   const url = new URL(fullPath, 'http://x')
   return await withOrg(useDb(), ctx.orgId, async (tx) => {
-    const data = await loadSiteData(tx)
+    const data = await loadSiteData(tx, { drafts: ctx.preview || ctx.editor })
     const parsed = parseSitePath(url.pathname, data.site.languages, data.campaigns.map(c => c.slug))
     const lang = parsed.lang ?? data.site.default_language
     const def = data.site.default_language
