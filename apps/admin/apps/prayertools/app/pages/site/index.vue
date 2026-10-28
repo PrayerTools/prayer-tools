@@ -2,6 +2,7 @@
 // Site dashboard for the campaign chosen in the switcher (the current one by
 // default): where it stands, its link, setup and share actions, people and
 // goal progress, setup still to do, quick links and giving.
+import { campaignUrl as campaignUrlOf } from '@prayertools/shared/campaigns'
 import type { PtChecklist } from '../../components/PtLaunchChecklist.vue'
 
 definePageMeta({ middleware: 'auth' })
@@ -18,7 +19,7 @@ const { data: stats } = useFetch<{ totals: Record<string, number>, progress: { g
 const campaignUrl = computed(() => {
   const c = campaign.value
   if (!site.value || !c) return site.value?.url ?? ''
-  return site.value.currentCampaign?.id === c.id ? site.value.url : `${site.value.url}/${c.slug}`
+  return campaignUrlOf(site.value.url, c, site.value.currentCampaign?.id)
 })
 const setupUrl = computed(() => status.value === 'draft' || !campaign.value ? '/site/setup' : `/site/campaigns/setup/${campaign.value.id}`)
 const notASite = computed(() => (error.value as { statusCode?: number } | null)?.statusCode === 404)

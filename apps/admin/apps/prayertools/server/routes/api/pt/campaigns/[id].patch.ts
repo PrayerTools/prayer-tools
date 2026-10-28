@@ -1,20 +1,25 @@
-// Edits a campaign's setup answers, name, address, goal target, end message
-// and call to action, and its landing page, images and share messages. A side
-// campaign also has its own short description; the main campaign uses the
-// site's. Existing commitments keep their windows.
+// Edits a campaign's template, setup answers, name, address, goal target, end
+// message and call to action, and its landing page, short description, images
+// and share messages. Existing commitments keep their windows.
 import { jsonb } from '@prayertools/shared/db/json'
 import { parseText } from '@prayertools/shared/translatable'
 import { contentLength } from '@prayertools/shared/content'
 import { isTemplateWhy } from '@prayertools/shared/i18n/landing'
 import type { CampaignBranding } from '@prayertools/shared/db/schema'
+import { TEMPLATES } from '@prayertools/shared/setup'
+import { campaignById } from '@prayertools/shared/campaigns'
 
 export default definePtHandler('pt.campaigns.write', async (event, tx, ctx) => {
   const id = getRouterParam(event, 'id')!
   const b = await ptBody(event)
-  const row = await tx.selectFrom('pt_campaign').selectAll().where('id', '=', id).executeTakeFirst()
-  if (!row) ptNotFound('Campaign not found.')
-  const c = ptCampaignOut(row)
+  const c = await campaignById(ptTx(tx), id, { drafts: true })
+  if (!c) ptNotFound('Campaign not found.')
   const patch: Record<string, unknown> = ptCampaignExtras(b)
+  if (typeof b.template_key === 'string') {
+    if (!TEMPLATES.some(t => t.key === b.template_key)) ptBadRequest('Unknown template.')
+    patch.template_key = b.template_key
+  }
+  const templateKey = (patch.template_key as string | undefined) ?? c.template_key
   const setupKeys = ['start_mode', 'start_date', 'end_mode', 'end_date', 'length_days', 'goal', 'cadence', 'track_time']
   if (setupKeys.some(k => k in b)) {
     const answers = ptSetupFromBody(b, 'generic', { start_mode: c.start_mode, start_date: c.start_date, end_mode: c.end_mode, end_date: c.end_date, length_days: c.length_days, goal: c.goal, cadence: c.cadence, track_time: c.track_time }, c.kind)
@@ -32,14 +37,10 @@ export default definePtHandler('pt.campaigns.write', async (event, tx, ctx) => {
   if ('end_message' in b) patch.end_message = b.end_message ? jsonb(parseText(b.end_message)) : null
   if ('cta' in b) patch.cta = jsonb(ptCta(b.cta))
   if (['landing', 'description', 'branding', 'share_image_url', 'share'].some(k => k in b)) ptNeed(ctx, 'pt.site.write')
-  if ('description' in b) {
-    if (c.kind !== 'side') ptBadRequest('The main campaign uses the site\'s description.')
-    patch.description = b.description ? jsonb(parseText(b.description)) : null
-  }
+  if ('description' in b) patch.description = b.description ? jsonb(parseText(b.description)) : null
   if ('landing' in b) {
     const landing = ptLanding(b.landing)
     // The template's standard "why" text shows by default, so it is not stored.
-    const templateKey = c.kind === 'side' ? c.template_key : (await ptSite(tx)).template_key
     if (landing.why) landing.why = Object.fromEntries(Object.entries(landing.why).filter(([lang, doc]) => !isTemplateWhy(doc, templateKey, lang)))
     patch.landing = jsonb(landing)
   }

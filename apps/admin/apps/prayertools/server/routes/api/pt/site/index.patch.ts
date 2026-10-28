@@ -4,10 +4,8 @@
 import { isLanguage } from '@prayertools/shared/languages'
 import { isValidTimezone } from '@prayertools/shared/dates'
 import { containsBlockedWord } from '@prayertools/shared/moderation'
-import { parseText } from '@prayertools/shared/translatable'
 import { settingsOverrides } from '@prayertools/shared/site'
 import { jsonb, pgArray } from '@prayertools/shared/db/json'
-import { TEMPLATES } from '@prayertools/shared/setup'
 
 export default definePtHandler('pt.site.write', async (event, tx, ctx) => {
   const b = await ptBody(event)
@@ -20,8 +18,6 @@ export default definePtHandler('pt.site.write', async (event, tx, ctx) => {
     if (containsBlockedWord(name)) ptBadRequest('Please choose another name.')
     await tx.updateTable('orgs').set({ name, updated_at: new Date().toISOString() }).where('id', '=', ctx.orgId).execute()
   }
-  if ('description' in b) patch.description = b.description ? jsonb(parseText(b.description)) : null
-  if ('purpose' in b) patch.purpose = typeof b.purpose === 'string' && b.purpose.trim() ? b.purpose.trim().slice(0, 200) : null
   if ('timezone' in b) {
     if (!isValidTimezone(b.timezone)) ptBadRequest('Unknown timezone.')
     patch.timezone = b.timezone
@@ -33,10 +29,6 @@ export default definePtHandler('pt.site.write', async (event, tx, ctx) => {
     if (!languages.includes(def)) ptBadRequest('The default language must be one of the site languages.')
     patch.languages = pgArray(languages)
     patch.default_language = def
-  }
-  if (typeof b.template_key === 'string') {
-    if (!TEMPLATES.some(t => t.key === b.template_key)) ptBadRequest('Unknown template.')
-    patch.template_key = b.template_key
   }
   if ('branding' in b) patch.branding = jsonb(ptBranding(b.branding))
   if ('email_identity' in b) {

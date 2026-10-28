@@ -311,8 +311,6 @@ export interface SiteContactForm {
 export interface PtSiteTable {
   org_id: string
   status: Generated<SiteStatus>
-  description: Json<TranslatableText | null> | null
-  purpose: string | null
   languages: Generated<string[]>
   default_language: Generated<string>
   timezone: Generated<string>
@@ -321,7 +319,6 @@ export interface PtSiteTable {
   settings: JsonDefault<Record<string, unknown>>
   onboarding: JsonDefault<SiteOnboarding>
   contact_form: JsonDefault<SiteContactForm>
-  template_key: string | null
   preview_token_hash: string | null
   published_at: NullableTimestamp
   archived_at: NullableTimestamp

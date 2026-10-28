@@ -1,4 +1,5 @@
 import { withOrg } from '@prayertools/shared/db/scope'
+import { campaignById } from '@prayertools/shared/campaigns'
 import { openEntry } from '@prayertools/shared/progress'
 import { prayingNow } from '@prayertools/shared/stats'
 import { useDb } from '../../utils/db'
@@ -16,7 +17,7 @@ export default defineEventHandler(async (event) => {
   const day = Number.isInteger(body.day) && (body.day as number) > 0 ? body.day as number : null
   const source = body.source === 'manage' ? 'manage' : 'porch'
   const result = await withOrg(useDb(), ctx.orgId, async (tx) => {
-    const campaign = await tx.selectFrom('pt_campaign').selectAll().where('id', '=', body.campaign as string).executeTakeFirst()
+    const campaign = await campaignById(tx, body.campaign)
     if (!campaign) throw createError({ statusCode: 404 })
     const subscriptionId = await prayingSubscription(tx, event, ctx.orgId, body.p)
     const ping = await recordPing(tx, {

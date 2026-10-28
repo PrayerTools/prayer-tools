@@ -11,16 +11,13 @@ import { hashToken, randomToken, shortCode } from './tokens'
 import { consentHistory, consentState, markChannelVerified, primaryEmailOf, setConsent, upsertContact, type ConsentCapture } from './crm'
 import { bumpStat } from './stats'
 import { durationOptions, durationRule } from './setup'
+import { normalizeCampaign } from './campaigns'
 
 export type CampaignRow = Selectable<PtCampaignTable>
 export type SubscriptionRow = Selectable<PtSubscriptionTable>
 export type CommitmentRow = Selectable<PtCommitmentTable>
 
 export const VERIFY_TOKEN_DAYS = 7
-
-export function normalizeCampaign<T extends { start_date: unknown, end_date: unknown }>(c: T): T & { start_date: string | null, end_date: string | null } {
-  return { ...c, start_date: toIsoDate(c.start_date as Date | string | null), end_date: toIsoDate(c.end_date as Date | string | null) }
-}
 
 export function ruleOf(c: Pick<CommitmentRow, 'kind' | 'frequency' | 'days_of_week' | 'time' | 'timezone' | 'duration_min' | 'dates' | 'starts_on' | 'ends_on' | 'paused'>): CommitmentRule {
   return {

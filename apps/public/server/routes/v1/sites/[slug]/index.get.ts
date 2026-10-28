@@ -1,5 +1,6 @@
-// Site info for the app: branding (the hero image is the current campaign's),
-// languages, current campaign, stats and praying now. Public and edge-cacheable.
+// Site info for the app: branding (the hero image and description are the
+// current campaign's), languages, current campaign, stats and praying now.
+// Public and edge-cacheable.
 import { withOrg } from '@prayertools/shared/db/scope'
 import { goalProgress, prayingNow } from '@prayertools/shared/stats'
 import { pickCurrentCampaign } from '@prayertools/shared/setup'
@@ -10,7 +11,8 @@ import { getLanguage } from '@prayertools/shared/languages'
 import type { CampaignBranding, SiteBranding, TranslatableText } from '@prayertools/shared/db/schema'
 import { useDb } from '../../../../utils/db'
 import { SHORT_CACHE, setCache } from '../../../../utils/request'
-import { apiSite, campaignJson, campaignsOf } from '../../../../utils/app-api'
+import { loadCampaigns } from '@prayertools/shared/campaigns'
+import { apiSite, campaignJson } from '../../../../utils/app-api'
 
 export default defineEventHandler(async (event) => {
   const site = await apiSite(getRouterParam(event, 'slug'))
@@ -19,7 +21,7 @@ export default defineEventHandler(async (event) => {
     const row = await tx.selectFrom('pt_site').selectAll().executeTakeFirstOrThrow()
     const lang = typeof q.language === 'string' && row.languages.includes(q.language) ? q.language : row.default_language
     const settings = siteSettings(row.settings)
-    const campaigns = await campaignsOf(tx)
+    const campaigns = await loadCampaigns(tx)
     const current = pickCurrentCampaign(campaigns)
     const branding = (row.branding ?? {}) as SiteBranding
     const hero = (current?.campaign.branding ?? {}) as CampaignBranding
@@ -29,7 +31,7 @@ export default defineEventHandler(async (event) => {
       name: site.name,
       status: row.status,
       url: await siteUrlFor(tx, site.orgId, site.slug),
-      description: textIn(row.description as TranslatableText | null, lang, row.default_language),
+      description: textIn(current?.campaign.description as TranslatableText | null, lang, row.default_language),
       language: lang,
       default_language: row.default_language,
       languages: row.languages.map(code => ({ code, name: getLanguage(code)?.native ?? code, dir: getLanguage(code)?.dir ?? 'ltr' })),

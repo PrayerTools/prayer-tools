@@ -783,7 +783,7 @@ function sourceBadge(l: Lib): { label: string, color: 'info' | 'warning' | 'neut
       <template #body>
         <div class="space-y-5">
           <PtLibraryCatalog
-            :template="site?.site.template_key"
+            :template="campaign?.template_key"
             :cadence="campaign?.cadence"
             :site-languages="site?.site.languages ?? []"
             :used-ids="libraries.map(l => l.libraryId).filter(Boolean) as string[]"

@@ -2,12 +2,12 @@
 // the site moves to "between campaigns" and the worker's daily run sends the
 // thank-you; a personal-start campaign is marked ended.
 import { todayIn, addDays } from '@prayertools/shared/dates'
+import { campaignById } from '@prayertools/shared/campaigns'
 
 export default definePtHandler('pt.campaigns.write', async (event, tx) => {
   const id = getRouterParam(event, 'id')!
-  const row = await tx.selectFrom('pt_campaign').selectAll().where('id', '=', id).executeTakeFirst()
-  if (!row) ptNotFound('Campaign not found.')
-  const c = ptCampaignOut(row)
+  const c = await campaignById(ptTx(tx), id, { drafts: true })
+  if (!c) ptNotFound('Campaign not found.')
   const yesterday = addDays(todayIn(c.timezone), -1)
   if (c.start_mode === 'date') {
     const end = c.start_date && c.start_date > yesterday ? c.start_date : yesterday

@@ -28,8 +28,6 @@ export const PT_LABELS = {
     prayer_time: 'Aim for an amount of prayer, such as 24 hours of prayer every day.',
     coverage: 'Fill every moment of the day and night with someone praying, from the start date to the end date.'
   } as Record<string, string>,
-  purpose: { place: 'A place', people_group: 'A people group', event: 'An event', other: 'Something else' } as Record<string, string>,
-  purposeDescription: { place: 'A city, region or country', people_group: 'People sharing a language or culture', event: 'A season, crisis or gathering' } as Record<string, string>,
   license: { own: 'Our own content', permission: 'Used with permission', cc_by: 'CC BY', cc_by_sa: 'CC BY-SA', other: 'Other (described)' } as Record<string, string>,
   // The English headings the public page shows (apps/public i18n `landing.*.title`).
   landingSection: {

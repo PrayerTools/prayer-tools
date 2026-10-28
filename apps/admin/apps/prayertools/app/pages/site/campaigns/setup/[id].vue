@@ -2,6 +2,7 @@
 // Sets up a draft campaign before it goes on the public site: its prayer
 // content, its landing page, then the checklist, a preview and Publish. Its
 // dates and setup answers were chosen when it was created.
+import { campaignSegment } from '@prayertools/shared/campaigns'
 import type { PtCampaign } from '../../../../utils/pt-campaign-ui'
 import type { PtChecklist } from '../../../../components/PtLaunchChecklist.vue'
 
@@ -30,8 +31,8 @@ const preview = ref<string | null>(null)
 async function makePreview() {
   try {
     const res = await $fetch<{ url: string }>('/api/pt/site/preview-link', { method: 'POST' })
-    const c = campaign.value
-    preview.value = c && site.value?.currentCampaign?.id !== c.id ? `${res.url}?to=/${c.slug}` : res.url
+    const segment = campaign.value ? campaignSegment(campaign.value, site.value?.currentCampaign?.id) : null
+    preview.value = segment ? `${res.url}?to=/${segment}` : res.url
   } catch (err) {
     toast.fail(err)
   }

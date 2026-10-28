@@ -3,16 +3,16 @@
 // writes the "why" text and custom sections, hides sections they don't need,
 // and chooses whether published stories show. Section headings and standard
 // text can be reworded per language; the preview beside the editor shows
-// unsaved changes. It edits one campaign's landing page and hero image;
-// section headings, standard text, color and logo are the site's, shared by
-// all campaigns. A side campaign has its own short description; the main
-// campaign uses the site's.
+// unsaved changes. It edits one campaign's landing page, short description
+// and hero image; section headings, standard text, color and logo are the
+// site's, shared by all campaigns.
 import type { CampaignBranding, CampaignLanding, SiteBranding, TiptapDoc, TranslatableText } from '@prayertools/shared/db/schema'
 import { DEFAULT_BRAND_COLOR } from '@prayertools/shared/colors'
 import { heroImage } from '@prayertools/shared/hero-images'
 import { isEmptyDoc } from '@prayertools/shared/tiptap'
 import { isTemplateWhy, templateWhyDoc } from '@prayertools/shared/i18n/landing'
 import { videoEmbed } from '@prayertools/shared/video'
+import { campaignSegment, campaignUrl } from '@prayertools/shared/campaigns'
 
 const props = withDefaults(defineProps<{ saveLabel?: string, campaignId: string }>(), { saveLabel: 'Save landing page' })
 const emit = defineEmits<{ saved: [] }>()
@@ -38,16 +38,16 @@ const { data: campaignData, refresh: refreshCampaign } = useFetch<{ campaign: Ca
 const campaign = computed(() => campaignData.value?.campaign ?? null)
 const side = computed(() => campaign.value?.kind === 'side')
 // The campaign on the site's root address is previewed there; others at their own path.
-const onRoot = computed(() => !!campaign.value && site.value?.currentCampaign?.id === campaign.value.id)
+const segment = computed(() => campaign.value ? campaignSegment(campaign.value, site.value?.currentCampaign?.id) : null)
 const source = computed(() => {
   const s = site.value
   const c = campaign.value
   if (!s || !c) return null
   return {
     landing: c.landing ?? {},
-    description: c.kind === 'side' ? c.description : s.site.description,
-    templateKey: c.kind === 'side' ? c.template_key : s.site.template_key,
-    url: onRoot.value ? s.url : `${s.url}/${c.slug}`
+    description: c.description,
+    templateKey: c.template_key,
+    url: campaignUrl(s.url, c, s.currentCampaign?.id)
   }
 })
 const refresh = () => Promise.all([refreshCampaign(), refreshSite()])
@@ -299,12 +299,8 @@ async function save() {
       return
     }
     const landing = { why: why.value, hidden: hidden.value, stories: stories.value, custom: custom.value }
-    await $fetch(`/api/pt/campaigns/${props.campaignId}`, { method: 'PATCH', body: { landing, branding: hero.value, ...(side.value ? { description: description.value } : {}) } })
-    const sitePatch = {
-      ...(side.value ? {} : { description: description.value }),
-      ...(brandDirty.value ? { branding: brand.value } : {})
-    }
-    if (Object.keys(sitePatch).length) await $fetch('/api/pt/site', { method: 'PATCH', body: sitePatch })
+    await $fetch(`/api/pt/campaigns/${props.campaignId}`, { method: 'PATCH', body: { landing, branding: hero.value, description: description.value } })
+    if (brandDirty.value) await $fetch('/api/pt/site', { method: 'PATCH', body: { branding: brand.value } })
     await saveWording()
     await refresh()
     toast.ok('Landing page saved')
@@ -533,7 +529,7 @@ async function translateWhy() {
                   :languages="site.site.languages"
                   :default-language="site.site.default_language"
                   label="Short description"
-                  :help="side ? 'Shown under the site name on this campaign\'s page, and used in its link previews.' : 'Shown under the site name, and used in link previews and the Prayer.Tools directory. Shared by all main campaigns.'"
+                  :help="side ? 'Shown under the site name on this campaign\'s page, and used in its link previews.' : 'Shown under the site name, and used in link previews and the Prayer.Tools directory while this campaign is on the site\'s address.'"
                   multiline
                   :source-locked="!canWrite"
                 />
@@ -847,7 +843,7 @@ async function translateWhy() {
       <PtLandingPreview
         ref="preview"
         :site-url="site!.url"
-        :campaign-slug="onRoot ? undefined : campaign?.slug"
+        :campaign-slug="segment ?? undefined"
         :lang="lang"
         :default-language="site!.site.default_language"
         :draft="draft"

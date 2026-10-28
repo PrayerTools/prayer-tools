@@ -1,8 +1,9 @@
 // Changes a person makes to their own subscription, from the manage page or
 // My prayer. Every function runs inside the subscription's org.
 import type { Tx } from '@prayertools/shared/db/scope'
-import { insertCommitment, refreshReminders, setSubscriptionStatus, updateCommitment, validateRuleForCampaign, normalizeCampaign, type CampaignRow, type SubscriptionRow } from '@prayertools/shared/subscriptions'
-import { campaignStatus, defaultDuration } from '@prayertools/shared/setup'
+import { insertCommitment, refreshReminders, setSubscriptionStatus, updateCommitment, validateRuleForCampaign, type CampaignRow, type SubscriptionRow } from '@prayertools/shared/subscriptions'
+import { campaignStatus, defaultDuration, pickCurrentCampaign } from '@prayertools/shared/setup'
+import { campaignById, loadCampaigns } from '@prayertools/shared/campaigns'
 import { customPurpose, primaryEmailOf, PURPOSE_SITE_UPDATES, setConsent, type ConsentCapture } from '@prayertools/shared/crm'
 import { isValidTimezone } from '@prayertools/shared/dates'
 import { siteSettings } from '@prayertools/shared/site'
@@ -11,21 +12,15 @@ import { parseRuleInput } from '../lib/input'
 import { bad } from './request'
 
 async function campaignOf(tx: Tx, id: string): Promise<CampaignRow> {
-  const row = await tx.selectFrom('pt_campaign').selectAll().where('id', '=', id).executeTakeFirst()
-  if (!row) throw createError({ statusCode: 404, statusMessage: 'Not found' })
-  return normalizeCampaign(row) as CampaignRow
+  const campaign = await campaignById(tx, id)
+  if (!campaign) throw createError({ statusCode: 404, statusMessage: 'Not found' })
+  return campaign
 }
 
 export async function addCommitment(tx: Tx, sub: SubscriptionRow, campaignId: string | null, raw: unknown): Promise<void> {
   if (sub.status === 'unsubscribed') bad('unsubscribed')
-  let id = campaignId
-  if (!id) {
-    const latest = await tx.selectFrom('pt_campaign').select('id').orderBy('start_date', 'desc').executeTakeFirst()
-    id = latest?.id ?? null
-  }
-  if (!id) bad('closed')
-  const campaign = await campaignOf(tx, id)
-  if (campaignStatus(campaign) === 'ended') bad('closed')
+  const campaign = campaignId ? await campaignOf(tx, campaignId) : pickCurrentCampaign(await loadCampaigns(tx))?.campaign
+  if (!campaign || campaignStatus(campaign) === 'ended') bad('closed')
   const rule = parseRuleInput(raw)
   if (!rule) bad('commitment')
   if (rule.duration_min === null && campaign.goal !== 'people') {

@@ -9,6 +9,7 @@ import { findContactByEmail, primaryEmailOf } from '@prayertools/shared/crm'
 import { recordEvent } from '@prayertools/shared/stats'
 import { sitePath } from '@prayertools/shared/paths'
 import { campaignStatus } from '@prayertools/shared/setup'
+import { campaignSegment } from '@prayertools/shared/campaigns'
 import type { CheckinResponse } from '@prayertools/shared/db/schema'
 import { useDb } from './db'
 import type { SiteContext } from './site-context'
@@ -49,7 +50,7 @@ export async function verifyLink(event: H3Event, ctx: SiteContext, token: string
     const welcome = firstTime ? await prepareWelcomeMail(tx, ctx.orgId, sub) : null
     const campaign = data.campaigns.find(c => c.id === latest?.campaign_id)
     const joined = campaign
-      ? { slug: data.current?.campaign.id === campaign.id ? null : campaign.slug, upcoming: campaignStatus(campaign) === 'upcoming' }
+      ? { slug: campaignSegment(campaign, data.current?.campaign.id), upcoming: campaignStatus(campaign) === 'upcoming' }
       : null
     return { sub, defaultLanguage: data.site.default_language, campaignId: latest?.campaign_id ?? null, email: email?.email ?? null, firstTime, welcome, joined }
   })
@@ -91,7 +92,7 @@ export async function addTimesLink(event: H3Event, ctx: SiteContext, token: stri
       sub: res.subscription,
       welcome: await prepareWelcomeMail(tx, ctx.orgId, res.subscription),
       defaultLanguage: data.site.default_language,
-      slug: data.current?.campaign.id === campaign.id ? null : campaign.slug,
+      slug: campaignSegment(campaign, data.current?.campaign.id),
       upcoming: state === 'upcoming'
     }
   })

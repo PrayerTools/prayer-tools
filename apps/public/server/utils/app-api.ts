@@ -4,7 +4,7 @@ import type { H3Event } from 'h3'
 import { sql } from 'kysely'
 import { withOrg, type Tx } from '@prayertools/shared/db/scope'
 import { hashToken, shortCode } from '@prayertools/shared/tokens'
-import { normalizeCampaign, type CampaignRow, type CommitmentRow, type SubscriptionRow } from '@prayertools/shared/subscriptions'
+import type { CampaignRow, CommitmentRow, SubscriptionRow } from '@prayertools/shared/subscriptions'
 import { campaignStatus, defaultDuration, durationOptions, durationRule, isSideCampaign, slotMinutes } from '@prayertools/shared/setup'
 import { toIsoDate } from '@prayertools/shared/dates'
 import { useDb } from './db'
@@ -52,10 +52,6 @@ export async function apiSite(slug: string | undefined): Promise<ApiSite> {
   }
   if (!value) throw createError({ statusCode: 404, statusMessage: 'Site not found' })
   return value
-}
-
-export async function campaignsOf(tx: Tx): Promise<CampaignRow[]> {
-  return (await tx.selectFrom('pt_campaign').selectAll().where('published_at', 'is not', null).orderBy('start_date').execute()).map(normalizeCampaign) as CampaignRow[]
 }
 
 export async function appSubscription(tx: Tx, intercessorId: string): Promise<SubscriptionRow | null> {

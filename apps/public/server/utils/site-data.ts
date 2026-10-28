@@ -1,11 +1,12 @@
 // Site and campaign data every page needs, read inside the site's org.
 import type { Selectable } from 'kysely'
 import type { Tx } from '@prayertools/shared/db/scope'
-import type { CampaignBranding, CampaignLanding, CampaignShare, PtSiteTable, SiteBranding, TranslatableText } from '@prayertools/shared/db/schema'
+import type { CampaignBranding, CampaignShare, PtSiteTable, SiteBranding, TranslatableText } from '@prayertools/shared/db/schema'
 import { campaignLength, campaignStatus, defaultDuration, durationOptions, durationRule, isSideCampaign, pickCurrentCampaign, slotMinutes } from '@prayertools/shared/setup'
 import { entryNumber } from '@prayertools/shared/schedule'
 import { todayIn } from '@prayertools/shared/dates'
-import { normalizeCampaign, type CampaignRow } from '@prayertools/shared/subscriptions'
+import type { CampaignRow } from '@prayertools/shared/subscriptions'
+import { campaignSegment, loadCampaigns } from '@prayertools/shared/campaigns'
 import { siteSettings, type SiteSettings } from '@prayertools/shared/site'
 import { getLanguage, languageDir, UI_LANGUAGES } from '@prayertools/shared/languages'
 import { textIn } from '@prayertools/shared/translatable'
@@ -32,10 +33,7 @@ export { UI_LANGUAGES }
 export async function loadSiteData(tx: Tx, opts: { drafts?: boolean } = {}): Promise<SiteData> {
   const site = await tx.selectFrom('pt_site').selectAll().executeTakeFirst()
   if (!site) throw createError({ statusCode: 404, statusMessage: 'Not found' })
-  let query = tx.selectFrom('pt_campaign').selectAll()
-  if (!opts.drafts) query = query.where('published_at', 'is not', null)
-  const rows = await query.orderBy('start_date', 'asc').orderBy('created_at', 'asc').execute()
-  const campaigns = rows.map(normalizeCampaign) as CampaignRow[]
+  const campaigns = await loadCampaigns(tx, opts)
   return { site, campaigns, current: pickCurrentCampaign(campaigns), settings: siteSettings(site.settings) }
 }
 
@@ -132,12 +130,12 @@ export async function buildSiteView(tx: Tx, ctx: SiteContext, data: SiteData, la
     logoUrl: branding.logo_url ?? null,
     image,
     shareImageUrl: look.share_image_url ?? image?.url ?? null,
-    description: textIn(landingSource(data, campaign).description, lang, def) || textIn(site.description as TranslatableText | null, lang, def),
+    description: textIn(campaign?.description as TranslatableText | null, lang, def),
     status: site.status,
     preview: ctx.preview,
     editor: ctx.editor ? { adminOrigin: new URL(cfg.adminUrl).origin, defaults: editorDefaults(uiLanguage(lang)) } : null,
     campaign: cv,
-    campaignSegment: cv && !cv.isCurrent ? cv.slug : null,
+    campaignSegment: campaign ? campaignSegment(campaign, data.current?.campaign.id) : null,
     pastCampaigns: data.campaigns
       .filter(c => c.id !== data.current?.campaign.id && campaignStatus(c) === 'ended')
       .reverse()
@@ -153,16 +151,6 @@ export async function buildSiteView(tx: Tx, ctx: SiteContext, data: SiteData, la
     feedback: feedbackConfig(),
     turnstileSiteKey: process.env.NUXT_PUBLIC_TURNSTILE_SITE_KEY || null
   }
-}
-
-// A campaign's landing page. A side campaign has its own description and
-// template; the main campaign uses the site's.
-export function landingSource(data: SiteData, campaign: CampaignRow | null): { landing: CampaignLanding, description: TranslatableText | null, templateKey: string | null } {
-  const landing = (campaign?.landing ?? {}) as CampaignLanding
-  if (campaign && isSideCampaign(campaign)) {
-    return { landing, description: campaign.description as TranslatableText | null, templateKey: campaign.template_key }
-  }
-  return { landing, description: data.site.description as TranslatableText | null, templateKey: data.site.template_key }
 }
 
 // Side campaigns open for signup or running now, soonest first.

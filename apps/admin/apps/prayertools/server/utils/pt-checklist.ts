@@ -1,7 +1,8 @@
 import type { Transaction } from 'kysely'
 import type { Database } from '#core/server/database/schema'
 import type { CampaignBranding, CampaignLanding, TranslatableText } from '@prayertools/shared/db/schema'
-import { pickCurrentCampaign } from '@prayertools/shared/setup'
+import { isSideCampaign, pickCurrentCampaign } from '@prayertools/shared/setup'
+import { loadCampaigns } from '@prayertools/shared/campaigns'
 import { LANGUAGES } from '@prayertools/shared/languages'
 import { landingWhyDoc } from '@prayertools/shared/i18n/landing'
 import { hasPlacePhrases, RELIABLE_PLACE_LANGUAGES, type SitePlaceWording } from '@prayertools/shared/place'
@@ -25,10 +26,10 @@ const hasText = (t: TranslatableText | null | undefined) => Object.values(t?.val
 // campaign, or for the campaign `campaignId` before it is published.
 export async function ptLaunchChecklist(tx: Transaction<Database>, campaignId?: string): Promise<PtChecklistItem[]> {
   const site = await ptSite(tx)
-  const campaigns = (await tx.selectFrom('pt_campaign').selectAll().execute()).map(ptCampaignOut)
+  const campaigns = await loadCampaigns(ptTx(tx), { drafts: true })
   const campaign = campaignId
     ? campaigns.find(c => c.id === campaignId) ?? null
-    : pickCurrentCampaign(campaigns)?.campaign ?? campaigns[0] ?? null
+    : pickCurrentCampaign(campaigns)?.campaign ?? campaigns.find(c => !isSideCampaign(c)) ?? null
   const libraries = campaign ? await ptCampaignLibraries(tx, campaign.id, site.languages) : []
   const entries = libraries.reduce((n, l) => n + l.entryCount, 0)
   const missing = [...new Set(libraries.flatMap(l => l.missingLanguages))]
@@ -38,10 +39,8 @@ export async function ptLaunchChecklist(tx: Transaction<Database>, campaignId?: 
   const usesPlacePhrases = !!campaign && !!campaign.place_name && await ptCampaignUsesPlacePhrases(tx, campaign.id)
   const unworded = (site.languages as string[]).filter(l => !RELIABLE_PLACE_LANGUAGES.includes(l) && !hasPlacePhrases(placeWording, l))
   const forCampaign = campaign ? `?campaign=${campaign.id}` : ''
-  // A side campaign has its own template and description; the main campaign uses the site's.
-  const side = campaign?.kind === 'side'
-  const templateKey = side ? campaign.template_key : site.template_key
-  const description = (side ? campaign.description : site.description) as TranslatableText | null
+  const templateKey = campaign?.template_key ?? null
+  const description = (campaign?.description ?? null) as TranslatableText | null
   const datesDone = !!campaign && (campaign.start_mode === 'join' || (!!campaign.start_date && (campaign.end_mode !== 'date' || !!campaign.end_date)))
 
   return [

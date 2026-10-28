@@ -4,7 +4,8 @@
 import { withOrg, withPerson } from '@prayertools/shared/db/scope'
 import { siteSettings } from '@prayertools/shared/site'
 import { useDb } from '../../../utils/db'
-import { campaignJson, campaignsOf, commitmentJson, requireDevice } from '../../../utils/app-api'
+import { loadCampaigns } from '@prayertools/shared/campaigns'
+import { campaignJson, commitmentJson, requireDevice } from '../../../utils/app-api'
 
 export default defineEventHandler(async (event) => {
   const device = await requireDevice(event)
@@ -21,7 +22,7 @@ export default defineEventHandler(async (event) => {
     out.push(await withOrg(useDb(), s.org_id, async (tx) => {
       const sub = await tx.selectFrom('pt_subscription').selectAll().where('id', '=', s.id).executeTakeFirstOrThrow()
       const site = await tx.selectFrom('pt_site').select(['status', 'settings']).executeTakeFirstOrThrow()
-      const campaigns = await campaignsOf(tx)
+      const campaigns = await loadCampaigns(tx)
       const commitments = await tx.selectFrom('pt_commitment').selectAll().where('subscription_id', '=', sub.id).execute()
       const defaults = siteSettings(site.settings).default_duration_min
       const used = new Set(commitments.map(c => c.campaign_id))

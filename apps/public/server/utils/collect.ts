@@ -6,7 +6,8 @@ import { bumpDim, bumpStat, recordEvent, recordVisitor } from '@prayertools/shar
 import { todayIn } from '@prayertools/shared/dates'
 import { pickCurrentCampaign } from '@prayertools/shared/setup'
 import { parseSitePath } from '@prayertools/shared/paths'
-import { normalizeCampaign, type CampaignRow } from '@prayertools/shared/subscriptions'
+import type { CampaignRow } from '@prayertools/shared/subscriptions'
+import { loadCampaigns } from '@prayertools/shared/campaigns'
 
 export const WEB_EVENTS = new Set(['pageview', 'campaign_shared', 'language_switched', 'signup_cta_clicked', 'app_link_clicked'])
 export const APP_EVENTS = new Set(['app_open', 'language_switched', 'campaign_shared'])
@@ -37,7 +38,7 @@ function hostOf(url: string | null): string | null {
 // The campaign a page belongs to: the one its address names (a past or side
 // campaign), else the site's current campaign.
 export async function campaignOfPage(tx: Tx, url: string | null): Promise<{ id: string, timezone: string } | null> {
-  const rows = (await tx.selectFrom('pt_campaign').selectAll().execute()).map(normalizeCampaign) as CampaignRow[]
+  const rows = await loadCampaigns(tx)
   let named: CampaignRow | undefined
   if (url) {
     try {

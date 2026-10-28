@@ -40,7 +40,6 @@ async function continueFromContent() {
 
 // ── Step: the campaign ──────────────────────────────────────────────────
 const templateKey = ref('generic')
-watch(site, s => { if (s?.site.template_key) templateKey.value = s.site.template_key }, { immediate: true })
 const campaignName = ref('')
 const setup = ref<SetupDraft>({ start_mode: 'date', start_date: null, end_mode: 'date', end_date: null, length_days: null, goal: null, cadence: 'daily', track_time: false, goal_target: 100, slot_min: null })
 const place = reactive({ people_group: '', timezone: 'UTC' })
@@ -52,6 +51,7 @@ watch(site, (s) => {
 }, { immediate: true })
 watch(existingCampaign, (c) => {
   if (!c) return
+  if (c.template_key) templateKey.value = c.template_key
   campaignName.value = c.name
   setup.value = { start_mode: c.start_mode, start_date: c.start_date, end_mode: c.end_mode, end_date: c.end_date, length_days: c.length_days, goal: c.goal, cadence: c.cadence, track_time: c.track_time, goal_target: c.goal_target, slot_min: c.slot_min ?? null }
   Object.assign(place, { people_group: c.people_group ?? '', timezone: c.timezone })
@@ -85,7 +85,7 @@ const savingSetup = ref(false)
 async function saveSetup() {
   savingSetup.value = true
   try {
-    await $fetch('/api/pt/site', { method: 'PATCH', body: { template_key: templateKey.value, timezone: place.timezone } })
+    await $fetch('/api/pt/site', { method: 'PATCH', body: { timezone: place.timezone } })
     const body = {
       ...setup.value,
       name: campaignName.value || site.value?.org.name,

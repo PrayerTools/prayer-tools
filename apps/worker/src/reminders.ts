@@ -4,7 +4,9 @@ import { sql } from 'kysely'
 import { withOrg, type Tx } from '@prayertools/shared/db/scope'
 import { daysBetween, localDateOf, toIsoDate } from '@prayertools/shared/dates'
 import { entryNumber, nextReminderUtc } from '@prayertools/shared/schedule'
-import { normalizeCampaign, ruleOf } from '@prayertools/shared/subscriptions'
+import { ruleOf } from '@prayertools/shared/subscriptions'
+import { campaignSegment, loadCampaigns, normalizeCampaign } from '@prayertools/shared/campaigns'
+import { isSideCampaign, pickCurrentCampaign } from '@prayertools/shared/setup'
 import { campaignEntries } from '@prayertools/shared/content'
 import { MISSES_BEFORE_WEEKLY, positionOf } from '@prayertools/shared/progress'
 import { primaryEmailOf } from '@prayertools/shared/crm'
@@ -202,11 +204,13 @@ async function prepare(tx: Tx, claimed: Claimed, now: Date, mailCtx: Map<string,
   const ctx = await ctxP
   const lang = personLanguage(sub.language, site)
   const links = personLinks(ctx, sub)
+  // Side campaigns never have the site's root address, so only a main campaign needs the current one.
+  const current = isSideCampaign(campaign) ? null : pickCurrentCampaign(await loadCampaigns(tx))?.campaign.id
   const rendered = reminderEmail(ctx, lang, {
     campaignName: campaign.name,
     day,
     minutes: c.duration_min,
-    prayUrl: prayUrl(ctx.siteUrl, campaign.slug, day, lang === site.default_language ? null : lang, claimed.org_id, sub.id),
+    prayUrl: prayUrl(ctx.siteUrl, campaignSegment(campaign, current), day, lang === site.default_language ? null : lang, claimed.org_id, sub.id),
     manageUrl: links.manageUrl,
     unsubscribeUrl: links.unsubscribeUrl
   })

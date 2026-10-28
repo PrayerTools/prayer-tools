@@ -4,7 +4,8 @@ import { db } from '#core/server/utils/database'
 import { sendMail } from '@prayertools/shared/email/transport'
 import { acknowledgementEmail, checkinEmail, loadSiteMailContext, manageLinkEmail, prayerTimeLines, reminderEmail, thankYouEmail, verificationEmail, welcomeEmail } from '@prayertools/shared/email/templates'
 import { textIn } from '@prayertools/shared/translatable'
-import { durationRule } from '@prayertools/shared/setup'
+import { durationRule, pickCurrentCampaign } from '@prayertools/shared/setup'
+import { campaignById, loadCampaigns } from '@prayertools/shared/campaigns'
 import type { CampaignCta, TranslatableText } from '@prayertools/shared/db/schema'
 
 export default definePtHandler('pt.email.send', async (event, tx, ctx) => {
@@ -15,8 +16,8 @@ export default definePtHandler('pt.email.send', async (event, tx, ctx) => {
   const mail = await loadSiteMailContext(ptTx(tx), ctx.orgId)
   const dead = `${mail.siteUrl}/#test-email`
   const campaignRow = b.campaignId
-    ? await tx.selectFrom('pt_campaign').selectAll().where('id', '=', b.campaignId).executeTakeFirst()
-    : await tx.selectFrom('pt_campaign').selectAll().orderBy('start_date', 'desc').executeTakeFirst()
+    ? await campaignById(ptTx(tx), b.campaignId, { drafts: true })
+    : pickCurrentCampaign(await loadCampaigns(ptTx(tx)))?.campaign
   const campaignName = campaignRow?.name ?? ctx.orgName
   const opts = { test: true }
   let rendered

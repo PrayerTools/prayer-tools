@@ -1,5 +1,5 @@
 // Display helpers shared by the campaign list and campaign pages.
-import type { TranslatableText } from '@prayertools/shared/db/schema'
+import type { CampaignLanding, TranslatableText } from '@prayertools/shared/db/schema'
 import type { SitePlaceWording } from '@prayertools/shared/place'
 import type { SetupState } from '../components/PtSetupForm.vue'
 
@@ -38,6 +38,7 @@ export interface PtCampaign extends SetupState {
   published_at: string | null
   end_message: TranslatableText | null
   cta: { url?: string, label?: TranslatableText } | null
+  landing: CampaignLanding | null
   commitments: number
   progress: PtGoalProgress
 }

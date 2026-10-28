@@ -8,6 +8,7 @@ import { campaignStatus, pickCurrentCampaign, slotMinutes } from '@prayertools/s
 import { siteSettings } from '@prayertools/shared/site'
 import { activeRules, peopleCount } from '@prayertools/shared/stats'
 import { daysBetween } from '@prayertools/shared/dates'
+import { loadCampaigns } from '@prayertools/shared/campaigns'
 import type { WorkerContext } from '../context'
 import type { Logger } from '../log'
 import { DAY } from '../util'
@@ -35,8 +36,7 @@ export async function sitesWithRecentActivity(ctx: WorkerContext, now: Date): Pr
 async function refreshDirectory(tx: Tx, orgId: string, now: Date): Promise<boolean> {
   const entry = await tx.selectFrom('pt_directory_entry').select('status').where('org_id', '=', orgId).where('status', 'in', ['listed', 'requested']).executeTakeFirst()
   if (!entry) return false
-  const campaigns = await tx.selectFrom('pt_campaign').selectAll().execute()
-  const current = pickCurrentCampaign(campaigns, now)
+  const current = pickCurrentCampaign(await loadCampaigns(tx), now)
   const people = current ? await peopleCount(tx, current.campaign, now) : 0
   await tx
     .updateTable('pt_directory_entry')

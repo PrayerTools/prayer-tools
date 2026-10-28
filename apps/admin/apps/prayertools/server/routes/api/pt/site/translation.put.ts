@@ -1,7 +1,6 @@
-// Translators edit one language of a campaign's landing page and share
-// messages, or the site's short description, without write access to the rest
-// of the site: a language other than the text's source language. A side
-// campaign's description is its own.
+// Translators edit one language of a campaign's landing page, short
+// description and share messages, without write access to the rest of the
+// site: a language other than the text's source language.
 import type { CampaignLanding, CampaignShare, TranslatableText, TiptapDoc } from '@prayertools/shared/db/schema'
 import { setText } from '@prayertools/shared/translatable'
 import { jsonb } from '@prayertools/shared/db/json'
@@ -20,11 +19,10 @@ export default definePtHandler('pt.content.translate', async (event, tx, ctx) =>
     ? await tx.selectFrom('pt_campaign').select(['id', 'kind', 'landing', 'share', 'description', 'template_key']).where('id', '=', String(b.campaignId)).executeTakeFirst()
     : undefined
   if (b.campaignId && !campaign) ptNotFound('Campaign not found.')
-  const side = campaign?.kind === 'side'
   const landing = (campaign?.landing ?? {}) as CampaignLanding
   const share = (campaign?.share ?? {}) as CampaignShare
-  const description = (side ? campaign!.description : site.description) as TranslatableText | null
-  const templateKey = side ? campaign!.template_key : site.template_key
+  const description = (campaign?.description ?? null) as TranslatableText | null
+  const templateKey = campaign?.template_key ?? null
   const writeCampaign = async (patch: { landing?: CampaignLanding, share?: CampaignShare, description?: TranslatableText | null }) => {
     if (!campaign) ptBadRequest('Choose a campaign.')
     const out: Record<string, unknown> = { updated_at: new Date() }
@@ -33,9 +31,7 @@ export default definePtHandler('pt.content.translate', async (event, tx, ctx) =>
   }
   if (b.field === 'description') {
     guard(description)
-    const next = setText(description, lang, String(b.value ?? ''))
-    if (side) await writeCampaign({ description: next })
-    else await tx.updateTable('pt_site').set({ description: jsonb(next) }).where('org_id', '=', ctx.orgId).execute()
+    await writeCampaign({ description: setText(description, lang, String(b.value ?? '')) })
   } else if (b.field === 'share') {
     guard(share.messages)
     await writeCampaign({ share: { ...share, messages: setText(share.messages, lang, String(b.value ?? '')) } })

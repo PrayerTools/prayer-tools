@@ -3,8 +3,9 @@
 import type { Tx } from '@prayertools/shared/db/scope'
 import { occurrences, entryNumber } from '@prayertools/shared/schedule'
 import { localDateOf } from '@prayertools/shared/dates'
-import { normalizeCampaign, ruleOf, type CampaignRow, type CommitmentRow, type SubscriptionRow } from '@prayertools/shared/subscriptions'
+import { ruleOf, type CampaignRow, type CommitmentRow, type SubscriptionRow } from '@prayertools/shared/subscriptions'
 import { pickCurrentCampaign } from '@prayertools/shared/setup'
+import { campaignSegment, loadCampaigns } from '@prayertools/shared/campaigns'
 import { prayUrl } from '@prayertools/shared/links'
 import { emailT } from '@prayertools/shared/i18n/email'
 import { buildCalendar, type IcsEvent } from '../lib/ics'
@@ -15,7 +16,7 @@ const MAX_EVENTS = 500
 
 async function context(tx: Tx) {
   const site = await tx.selectFrom('pt_site').select(['default_language', 'settings']).executeTakeFirstOrThrow()
-  const campaigns = (await tx.selectFrom('pt_campaign').selectAll().execute()).map(normalizeCampaign) as CampaignRow[]
+  const campaigns = await loadCampaigns(tx)
   const current = pickCurrentCampaign(campaigns)?.campaign.id ?? null
   const defaultMinutes = Number((site.settings as Record<string, unknown>)?.default_duration_min) || 15
   return { site, campaigns, current, defaultMinutes }
@@ -28,7 +29,7 @@ function eventsFor(ctx: SiteContext, sub: SubscriptionRow, c: CommitmentRow, cam
   return occurrences(rule, from, to).map((at) => {
     const anchor = campaign.start_mode === 'date' && campaign.start_date ? campaign.start_date : rule.starts_on
     const day = entryNumber(anchor, campaign.cadence, localDateOf(at, campaign.start_mode === 'date' ? campaign.timezone : rule.timezone))
-    const url = prayUrl(ctx.canonicalOrigin, campaign.id === env.current ? null : campaign.slug, day > 0 ? day : null, lang === env.site.default_language ? null : lang, ctx.orgId, sub.id)
+    const url = prayUrl(ctx.canonicalOrigin, campaignSegment(campaign, env.current), day > 0 ? day : null, lang === env.site.default_language ? null : lang, ctx.orgId, sub.id)
     return {
       uid: `${c.id}-${at.getTime()}@prayer.tools`,
       start: at,

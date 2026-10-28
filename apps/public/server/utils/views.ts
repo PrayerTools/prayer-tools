@@ -10,15 +10,15 @@ import { entryDate } from '@prayertools/shared/schedule'
 import { parseLink } from '@prayertools/shared/links'
 import { textIn } from '@prayertools/shared/translatable'
 import { videoEmbed } from '@prayertools/shared/video'
-import type { TranslatableText, CampaignCta, SignupFieldKind } from '@prayertools/shared/db/schema'
+import type { TranslatableText, CampaignCta, CampaignLanding, SignupFieldKind } from '@prayertools/shared/db/schema'
 import type { CampaignRow } from '@prayertools/shared/subscriptions'
 import { platformConfig } from '@prayertools/shared/config'
 import { isSideCampaign } from '@prayertools/shared/setup'
 import type { PageView, SiteResponse } from '../../shared/view'
 import { useDb } from './db'
 import type { SiteContext } from './site-context'
-import { buildSiteView, campaignView, landingSource, loadSiteData, sideCampaigns, stateOf, type SiteData } from './site-data'
-import { contentBlocks, contentVars, docHtml, formatDate, lastEntry } from './content'
+import { buildSiteView, campaignView, loadSiteData, sideCampaigns, stateOf, type SiteData } from './site-data'
+import { contentBlocks, contentVars, docHtml, formatDate, visibleEntries } from './content'
 import { progressFor, statsFor } from './site-stats'
 import { managedSubscription, manageView } from './manage'
 import { withDraftStrings, type LandingDraft } from './editor'
@@ -46,17 +46,15 @@ export async function buildSiteResponse(event: H3Event, ctx: SiteContext, fullPa
       : data.current?.campaign ?? null
     // The editor's draft is the landing page of the page it previews.
     if (draft && campaign) {
-      const side = isSideCampaign(campaign)
       const edited = {
         ...campaign,
         landing: draft.landing,
-        ...(side ? { description: draft.description } : {}),
+        description: draft.description,
         ...(draft.branding ? { branding: draft.branding } : {})
       }
       data.campaigns = data.campaigns.map(c => c.id === edited.id ? edited : c)
       if (data.current?.campaign.id === edited.id) data.current = { ...data.current, campaign: edited }
       campaign = edited
-      if (!side) data.site = { ...data.site, description: draft.description }
     }
     if (draft?.brand) data.site = { ...data.site, branding: { ...(data.site.branding ?? {}), ...draft.brand } }
     const site = await buildSiteView(tx, ctx, data, lang, campaign, url.pathname)
@@ -162,7 +160,8 @@ async function landingPage(tx: Parameters<typeof loadSiteData>[0], ctx: SiteCont
     const state = stateOf(data, campaign)
     if (state === 'between' || state === 'ended') return await betweenPage(tx, data, campaign, lang)
   }
-  const { landing, templateKey } = landingSource(data, campaign)
+  const landing = (campaign?.landing ?? {}) as CampaignLanding
+  const templateKey = campaign?.template_key ?? null
   const side = !!campaign && isSideCampaign(campaign)
   const vars = campaign ? contentVars(data, ctx.name, campaign, lang) : undefined
   const whyDoc = landingWhyDoc(landing.why, templateKey, lang, def)
@@ -234,15 +233,14 @@ async function prayPage(tx: Parameters<typeof loadSiteData>[0], ctx: SiteContext
   if (!campaign || rest.length > 1) return { kind: 'not_found' }
   const cv = campaignView(data, campaign)
   if (cv.state === 'upcoming' && campaign.start_date && !ctx.preview) return { kind: 'not_started', startDate: campaign.start_date }
-  const last = await lastEntry(tx, campaign, cv.length)
+  const { last, max } = await visibleEntries(tx, campaign, cv, ctx.preview)
   let day = cv.todayEntry
   if (rest[0] !== undefined) {
     if (!/^\d{1,5}$/.test(rest[0])) return { kind: 'not_found' }
     day = Number(rest[0])
   }
-  if (day < 1 || (last > 0 && day > last)) return { kind: 'not_found' }
+  if (day < 1 || day > max) return { kind: 'not_found' }
   const blocks = await contentBlocks(tx, data, ctx.name, campaign, day, lang)
-  const maxDay = campaign.start_mode === 'date' && cv.state === 'active' ? Math.min(cv.todayEntry, last || cv.todayEntry) : last
   // Personal-start campaigns move each person forward one entry per day, so
   // their pages never link ahead.
   const personal = campaign.start_mode === 'join'
@@ -254,7 +252,7 @@ async function prayPage(tx: Parameters<typeof loadSiteData>[0], ctx: SiteContext
     dateLabel: campaign.start_mode === 'date' && campaign.start_date ? formatDate(entryDate(campaign.start_date, campaign.cadence, day), lang) : null,
     blocks,
     prev: day > 1 ? day - 1 : null,
-    next: !personal && day < maxDay ? day + 1 : null,
+    next: !personal && day < max ? day + 1 : null,
     length: last || null
   }
 }

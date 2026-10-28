@@ -3,6 +3,9 @@
 // the campaign's coordinates and site metadata.
 import type { H3Event } from 'h3'
 import { withOrg } from '@prayertools/shared/db/scope'
+import { loadCampaigns } from '@prayertools/shared/campaigns'
+import { pickCurrentCampaign } from '@prayertools/shared/setup'
+import type { CampaignRow } from '@prayertools/shared/subscriptions'
 import { forwardEvent, geoFromHeaders, type StatinatorEvent } from '@prayertools/shared/statinator'
 import { useDb } from './db'
 import { background } from './request'
@@ -17,8 +20,8 @@ const geoCache = new Map<string, { value: SiteGeo, expires: number }>()
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-// The site's timezone, and the coordinates of `campaignId`, or of the latest
-// main campaign when that campaign has none.
+// The site's timezone, and the coordinates of `campaignId`, or of the current
+// campaign when that campaign has none.
 export async function siteGeo(orgId: string, campaignId?: string | null): Promise<SiteGeo> {
   const id = campaignId && UUID.test(campaignId) ? campaignId : null
   const key = `${orgId}:${id ?? ''}`
@@ -26,9 +29,9 @@ export async function siteGeo(orgId: string, campaignId?: string | null): Promis
   if (hit && hit.expires > Date.now()) return hit.value
   const value = await withOrg(useDb(), orgId, async (tx) => {
     const site = await tx.selectFrom('pt_site').select('timezone').executeTakeFirst()
-    const placed = tx.selectFrom('pt_campaign').select(['latitude', 'longitude']).where('latitude', 'is not', null).where('longitude', 'is not', null)
-    const own = id ? await placed.where('id', '=', id).executeTakeFirst() : undefined
-    const place = own ?? await placed.where('kind', 'is', null).orderBy('start_date', ob => ob.desc().nullsLast()).orderBy('created_at', 'desc').executeTakeFirst()
+    const campaigns = await loadCampaigns(tx, { drafts: true })
+    const placed = (c: CampaignRow | null | undefined) => c && c.latitude !== null && c.longitude !== null ? c : null
+    const place = placed(campaigns.find(c => c.id === id)) ?? placed(pickCurrentCampaign(campaigns)?.campaign)
     return { lat: place?.latitude ?? null, lng: place?.longitude ?? null, timezone: site?.timezone ?? 'UTC' }
   })
   geoCache.set(key, { value, expires: Date.now() + 60_000 })

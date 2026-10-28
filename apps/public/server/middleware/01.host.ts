@@ -4,6 +4,7 @@
 import type { H3Event } from 'h3'
 import { classifyHost } from '@prayertools/shared/site'
 import { withOrg } from '@prayertools/shared/db/scope'
+import { loadCampaigns } from '@prayertools/shared/campaigns'
 import { siteUrlFor } from '@prayertools/shared/site'
 import { useDb } from '../utils/db'
 import { NOT_FOUND_CACHE, PRIVATE_CACHE, limit, requestHost, setCache } from '../utils/request'
@@ -134,7 +135,7 @@ export default defineEventHandler(async (event) => {
   if (segs.includes('fuel')) {
     const data = await withOrg(useDb(), ctx.orgId, async tx => ({
       languages: (await tx.selectFrom('pt_site').select('languages').executeTakeFirst())?.languages ?? [],
-      slugs: (await tx.selectFrom('pt_campaign').select('slug').execute()).map(r => r.slug)
+      slugs: (await loadCampaigns(tx)).map(c => c.slug)
     }))
     return await legacyFuel(event, ctx, segs, data.languages, data.slugs)
   }

@@ -7,15 +7,13 @@ import { goalProgress, prayingNow, statTotals, activeRules } from '@prayertools/
 import { buildGrid, coverageByDay } from '@prayertools/shared/coverage'
 import { campaignStatus, displayLength, slotMinutes } from '@prayertools/shared/setup'
 import { toIsoDate } from '@prayertools/shared/dates'
+import { campaignById } from '@prayertools/shared/campaigns'
 
 export default definePtHandler('pt.stats.read', async (event, tx) => {
   const q = getQuery(event)
   const site = await ptSite(tx)
-  const row = typeof q.campaign === 'string' && q.campaign
-    ? await tx.selectFrom('pt_campaign').selectAll().where('id', '=', q.campaign).executeTakeFirst()
-    : undefined
-  const campaign = row ? ptCampaignOut(row) : null
   const t = ptTx(tx)
+  const campaign = await campaignById(t, q.campaign, { drafts: true })
   const totals = await statTotals(t, campaign?.id ?? null)
   const series = await tx.selectFrom('pt_stat_daily').select(['day', 'metric', 'value'])
     .$if(!!campaign, qb => qb.where('campaign_id', '=', campaign!.id))

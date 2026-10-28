@@ -1,5 +1,3 @@
-import type { TranslatableText } from '@prayertools/shared/db/schema'
-
 export interface PtLanguage { code: string, name: string, native: string, dir: 'ltr' | 'rtl' }
 
 export interface PtMeta {
@@ -22,8 +20,6 @@ export interface PtSiteResponse {
   site: {
     org_id: string
     status: 'draft' | 'published' | 'archived'
-    description: TranslatableText | null
-    purpose: string | null
     languages: string[]
     default_language: string
     timezone: string
@@ -32,7 +28,6 @@ export interface PtSiteResponse {
     settings: Record<string, any>
     overrides: Record<string, any>
     onboarding: { step?: string, completed?: boolean }
-    template_key: string | null
     published_at: string | null
     archived_at: string | null
   }

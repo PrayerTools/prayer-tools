@@ -75,15 +75,16 @@ const clash = computed(() => {
   return overlappingCampaign(mine, kind.value, existing.value?.campaigns ?? [])
 })
 // While a main campaign is running or upcoming, a new campaign starts as a
-// side campaign from scratch; otherwise as a main campaign on the site's
-// template, when that template is on offer.
+// side campaign from scratch; otherwise as a main campaign on the current
+// campaign's template, when that template is on offer.
 const prefilled = ref(false)
 watch([site, meta, existing], ([s, m, e]) => {
   if (prefilled.value || relaunchOf.value || !s || !m || !e) return
   prefilled.value = true
   if (!route.query.kind && e.campaigns.some(c => c.kind !== 'side' && c.status !== 'ended')) kind.value = 'side'
-  const siteTemplate = s.site.template_key && offeredTemplates(todayIn(s.site.timezone)).includes(s.site.template_key) ? s.site.template_key : 'generic'
-  chooseTemplate(kind.value === 'side' ? 'generic' : siteTemplate)
+  const current = s.currentCampaign?.template_key as string | undefined
+  const template = current && offeredTemplates(todayIn(s.site.timezone)).includes(current) ? current : 'generic'
+  chooseTemplate(kind.value === 'side' ? 'generic' : template)
   placeFrom(s.currentCampaign as PtCampaign | null)
 }, { immediate: true })
 const kindItems = [

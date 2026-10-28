@@ -67,8 +67,7 @@ async function create() {
       body: {
         ...form,
         languages: ['en'],
-        default_language: 'en',
-        template_key: 'generic'
+        default_language: 'en'
       }
     })
     await navigateTo(`/@${site.slug}/site/setup`)

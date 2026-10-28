@@ -15,6 +15,7 @@ import { emailT } from './i18n/email'
 import { getLanguage } from './languages'
 import { toIsoDate } from './dates'
 import { campaignStatus, pickCurrentCampaign } from './setup'
+import { loadCampaigns } from './campaigns'
 import { PT_LIBRARY_APP } from './site'
 import { tiptapToHtml, tiptapToText } from './tiptap'
 import { textIn } from './translatable'
@@ -79,7 +80,7 @@ function siteInfo(tx: Tx, orgId: string): Promise<SiteInfo> {
   return once(tx, `site:${orgId}`, async () => {
     const mail = await loadSiteMailContext(tx, orgId)
     const site = await tx.selectFrom('pt_site').select(['languages', 'default_language']).where('org_id', '=', orgId).executeTakeFirstOrThrow()
-    const campaigns = await tx.selectFrom('pt_campaign').selectAll().where('org_id', '=', orgId).execute()
+    const campaigns = await loadCampaigns(tx, { orgId })
     const now = new Date()
     const ended = campaigns.filter(c => campaignStatus(c, now) === 'ended')
     return {

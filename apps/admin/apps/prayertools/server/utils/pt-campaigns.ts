@@ -7,6 +7,7 @@ import { isValidTimezone } from '@prayertools/shared/dates'
 import { parseText } from '@prayertools/shared/translatable'
 import { parsePlaceWording } from '@prayertools/shared/place'
 import { jsonb } from '@prayertools/shared/db/json'
+import { loadCampaigns } from '@prayertools/shared/campaigns'
 
 export function ptSetupFromBody(b: Record<string, unknown>, templateKey: string, base?: Partial<SetupAnswers>, kind: CampaignKind | null = null): SetupAnswers {
   const chosen: Partial<SetupAnswers> = { ...base }
@@ -21,9 +22,7 @@ export function ptSetupFromBody(b: Record<string, unknown>, templateKey: string,
 
 export async function ptAssertNoOverlap(tx: Transaction<Database>, answers: SetupAnswers & { timezone: string }, kind: CampaignKind | null, exceptId?: string) {
   if (kind === 'side') return
-  let q = tx.selectFrom('pt_campaign').selectAll().where('ended_at', 'is', null)
-  if (exceptId) q = q.where('id', '!=', exceptId)
-  const others = (await q.execute()).map(ptCampaignOut)
+  const others = (await loadCampaigns(ptTx(tx), { drafts: true })).filter(c => !c.ended_at && c.id !== exceptId)
   const clash = overlappingCampaign(answers, kind, others)
   if (clash) ptBadRequest(`These dates overlap "${clash.name}". A site runs one main campaign at a time; a side campaign can run alongside it.`)
 }

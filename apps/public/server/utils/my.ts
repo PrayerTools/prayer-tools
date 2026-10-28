@@ -8,7 +8,8 @@ import { campaignStatus, defaultDuration, durationOptions, durationRule, pickCur
 import { primaryEmailOf, PURPOSE_SITE_UPDATES } from '@prayertools/shared/crm'
 import { siteSettings, siteUrlFor } from '@prayertools/shared/site'
 import { getLanguage } from '@prayertools/shared/languages'
-import { normalizeCampaign, type CampaignRow, type SubscriptionRow } from '@prayertools/shared/subscriptions'
+import type { SubscriptionRow } from '@prayertools/shared/subscriptions'
+import { loadCampaigns } from '@prayertools/shared/campaigns'
 import type { MySiteView, MyView } from '../../shared/view'
 import { useDb } from './db'
 import { MY_COOKIE } from './cookies'
@@ -70,7 +71,7 @@ export async function buildMyView(intercessorId: string | null): Promise<MyView>
       const sub = await tx.selectFrom('pt_subscription').selectAll().where('id', '=', s.id).executeTakeFirst()
       const site = await tx.selectFrom('pt_site').select(['languages', 'default_language', 'settings', 'status']).executeTakeFirst()
       if (!sub || !site) return null
-      const campaigns = (await tx.selectFrom('pt_campaign').selectAll().orderBy('start_date').execute()).map(normalizeCampaign) as CampaignRow[]
+      const campaigns = await loadCampaigns(tx)
       const commitments = await commitmentsOf(tx, sub.id, campaigns)
       const totals = await tx.selectFrom('pt_person_total').selectAll().where('subscription_id', '=', sub.id).execute()
       const email = sub.contact_id ? await primaryEmailOf(tx, sub.contact_id) : null
