@@ -25,10 +25,10 @@ Monorepo for prayer.tools v3 (with orgs). Plans live in `plans/` — they are th
 ## RLS and scopes
 
 - Site tables carry `org_id` with policy `tenant_isolation` on `app.current_org`. Use `withOrg(db, orgId, tx => …)` from `@prayertools/shared/db/scope`. Inserts omit `org_id` (defaults to `current_org_id()`).
-- Person scope: `withPerson(db, intercessorId, …)` sets `app.current_intercessor`; `pt_subscription`, `pt_commitment`, `pt_person_total` have a SELECT policy for the person's own rows across sites. Writes always happen inside the site's org, one site at a time.
+- Person scope: `withPerson(db, userId, …)` sets `app.current_intercessor` to the person's user id; `pt_subscription`, `pt_commitment`, `pt_person_total` have a SELECT policy for the person's own rows (`user_id`) across sites. Writes always happen inside the site's org, one site at a time.
 - One site per transaction, always. Work that covers several sites (Your sites, multi-site sends) visits each site in turn with `withOrgScope(orgId, …)` / `listUserOrgs(userId, { permission, appId })` from `#tenant/server` (or `forEachOrg` in the worker). No policy admits another org's rows; `apps/worker/test/isolation.test.ts` checks it.
 - User-owned tables (`pt_personal_asset`, `pt_personal_block`, `marketing_template`, `marketing_parent`): policy `user_isolation` on `app.current_user`. Their handlers run in the `library` personal app: `withUserContext(event, { appId: PT_LIBRARY_APP }, …)` from `#core/server/utils/personal-apps`.
-- Global tables (no RLS): `orgs`, `memberships`, `users`, `pt_intercessor*`, `pt_my_*`, `pt_suppression`, `pt_library*`. Always filter them explicitly.
+- Global tables (no RLS): `orgs`, `memberships`, `users`, `sessions`, `pt_user_device`, `pt_auth_code`, `pt_suppression`, `pt_library*`. Always filter them explicitly.
 - Tables with an `org_id` but no RLS, because they are read before the site is known or across sites by design; each is always filtered by `org_id` (or its own key) in code. `apps/worker/test/isolation.test.ts` holds this exact list, so a new `org_id` table without RLS fails the test:
   - `pt_site_domain` — the public server resolves a request's host to its site before any org is set.
   - `pt_legacy_key` — old links resolve to their site before any org is set.

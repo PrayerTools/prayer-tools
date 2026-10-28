@@ -8,7 +8,8 @@ import { todayIn, toIsoDate } from './dates'
 import { nextReminderUtc, validateRule, type CommitmentRule } from './schedule'
 import { campaignEntries } from './content'
 import { hashToken, randomToken, shortCode } from './tokens'
-import { consentHistory, consentState, markChannelVerified, primaryEmailOf, setConsent, upsertContact, type ConsentCapture } from './crm'
+import { consentHistory, consentState, deleteChannelIfUnused, markChannelVerified, primaryEmailOf, setConsent, upsertContact, type ConsentCapture } from './crm'
+import { ensureAccount, linkSubscriptionToAccount, markAccountVerified } from './accounts'
 import { bumpStat } from './stats'
 import { durationOptions, durationRule } from './setup'
 import { normalizeCampaign } from './campaigns'
@@ -192,6 +193,7 @@ export interface SignupInput {
 
 export interface SignupResult {
   subscription: SubscriptionRow
+  userId: string
   contactId: string
   channelId: string
   verifyToken: string | null
@@ -201,6 +203,7 @@ export interface SignupResult {
 }
 
 export async function createWebSignup(tx: Tx, input: SignupInput): Promise<SignupResult> {
+  const account = await ensureAccount(tx, input.email, input.name)
   const contact = await upsertContact(tx, {
     email: input.email,
     name: input.name,
@@ -258,10 +261,9 @@ export async function createWebSignup(tx: Tx, input: SignupInput): Promise<Signu
       .executeTakeFirstOrThrow()
   } else {
     await markChannelVerified(tx, contact.channelId)
-    const intercessorId = await linkIntercessor(tx, input.email)
-    if (sub.intercessor_id !== intercessorId) {
-      sub = await tx.updateTable('pt_subscription').set({ intercessor_id: intercessorId }).where('id', '=', sub.id).returningAll().executeTakeFirstOrThrow()
-    }
+    await markAccountVerified(tx, account.id)
+    await linkSubscriptionToAccount(tx, sub.id, { ...account, verified: true })
+    sub = await tx.selectFrom('pt_subscription').selectAll().where('id', '=', sub.id).executeTakeFirstOrThrow()
   }
   for (const c of input.commitments) await insertCommitment(tx, sub, input.campaign, c)
 
@@ -277,27 +279,7 @@ export async function createWebSignup(tx: Tx, input: SignupInput): Promise<Signu
     if (sub.referred_by) await bumpStat(tx, input.campaign.id, today, 'share_signups')
   }
   if (sub.verified_at && newSubscription) await bumpStat(tx, input.campaign.id, today, 'verifications')
-  return { subscription: sub, contactId: contact.contactId, channelId: contact.channelId, verifyToken, newSubscription, verifiedNow: !!sub.verified_at && !wasVerified }
-}
-
-// Global identity for a verified email address. `pt_intercessor` has no RLS;
-// the lookup is always by the explicit address.
-export async function linkIntercessor(tx: Tx, email: string): Promise<string> {
-  const normalized = email.trim().toLowerCase()
-  const existing = await tx.selectFrom('pt_intercessor').select('id').where(eb => eb.fn('lower', ['email']), '=', normalized).executeTakeFirst()
-  if (existing) {
-    await tx.updateTable('pt_intercessor').set({ last_active_at: new Date() }).where('id', '=', existing.id).execute()
-    return existing.id
-  }
-  const row = await tx
-    .insertInto('pt_intercessor')
-    .values({ email: normalized, email_verified_at: new Date(), last_active_at: new Date() })
-    .onConflict(oc => oc.expression(sql`lower(email)`).where('email', 'is not', null).doNothing())
-    .returning('id')
-    .executeTakeFirst()
-  if (row) return row.id
-  const again = await tx.selectFrom('pt_intercessor').select('id').where(eb => eb.fn('lower', ['email']), '=', normalized).executeTakeFirstOrThrow()
-  return again.id
+  return { subscription: sub, userId: account.id, contactId: contact.contactId, channelId: contact.channelId, verifyToken, newSubscription, verifiedNow: !!sub.verified_at && !wasVerified }
 }
 
 export async function verifySubscription(tx: Tx, token: string): Promise<SubscriptionRow | null> {
@@ -305,14 +287,18 @@ export async function verifySubscription(tx: Tx, token: string): Promise<Subscri
   if (!sub) return null
   if (sub.verify_expires_at && new Date(sub.verify_expires_at) < new Date()) return null
   const email = sub.contact_id ? await primaryEmailOf(tx, sub.contact_id) : null
-  const intercessorId = email ? await linkIntercessor(tx, email.email) : sub.intercessor_id
   if (email) await markChannelVerified(tx, email.channelId)
-  const updated = await tx
+  await tx
     .updateTable('pt_subscription')
-    .set({ verified_at: sub.verified_at ?? new Date(), verify_token_hash: null, verify_expires_at: null, intercessor_id: intercessorId, updated_at: new Date() })
+    .set({ verified_at: sub.verified_at ?? new Date(), verify_token_hash: null, verify_expires_at: null, updated_at: new Date() })
     .where('id', '=', sub.id)
-    .returningAll()
-    .executeTakeFirstOrThrow()
+    .execute()
+  if (email) {
+    const account = await ensureAccount(tx, email.email)
+    await markAccountVerified(tx, account.id)
+    await linkSubscriptionToAccount(tx, sub.id, { ...account, verified: true })
+  }
+  const updated = await tx.selectFrom('pt_subscription').selectAll().where('id', '=', sub.id).executeTakeFirstOrThrow()
   await refreshReminders(tx, sub.id)
   if (!sub.verified_at) {
     const campaign = await tx.selectFrom('pt_commitment').select('campaign_id').where('subscription_id', '=', sub.id).orderBy('created_at', 'desc').executeTakeFirst()
@@ -380,10 +366,10 @@ export async function personData(tx: Tx, subscriptionId: string) {
 
 // Deletes the person's data on this site: subscription, commitments and the
 // CRM contact with its address. Consent proof events stay (the CRM keeps
-// them past erasure). A global intercessor left without subscriptions is
-// removed by the worker's retention sweep, which can see every site.
+// them past erasure). An account left with nothing is removed by the
+// worker's retention sweep, which can see every site.
 export async function deleteSubscriptionData(tx: Tx, subscriptionId: string): Promise<void> {
-  const sub = await tx.selectFrom('pt_subscription').select(['contact_id', 'intercessor_id']).where('id', '=', subscriptionId).executeTakeFirst()
+  const sub = await tx.selectFrom('pt_subscription').select(['contact_id']).where('id', '=', subscriptionId).executeTakeFirst()
   if (!sub) return
   await tx.deleteFrom('pt_subscription').where('id', '=', subscriptionId).execute()
   if (sub.contact_id) {
@@ -391,17 +377,6 @@ export async function deleteSubscriptionData(tx: Tx, subscriptionId: string): Pr
     await tx.deleteFrom('crm_records').where('id', '=', sub.contact_id).execute()
     for (const ch of channels) await deleteChannelIfUnused(tx, ch.channel_id)
   }
-}
-
-// An address still linked to another contact, or to an inbox conversation
-// (whose foreign key has no cascade), is kept.
-async function deleteChannelIfUnused(tx: Tx, channelId: string): Promise<boolean> {
-  const linked = await tx.selectFrom('crm_contact_channels').select('id').where('channel_id', '=', channelId).executeTakeFirst()
-  if (linked) return false
-  const conversation = await tx.selectFrom('inbox_conversations').select('id').where('channel_id', '=', channelId).executeTakeFirst()
-  if (conversation) return false
-  await tx.deleteFrom('crm_channels').where('id', '=', channelId).execute()
-  return true
 }
 
 export const ANONYMIZED_NAME = 'Anonymized'
@@ -425,7 +400,7 @@ export async function anonymizeSubscription(tx: Tx, subscriptionId: string, now:
     await tx.updateTable('crm_record_activity').set({ old_value: null, new_value: null }).where('record_id', '=', sub.contact_id).execute()
     await tx
       .updateTable('crm_records')
-      .set({ name: ANONYMIZED_NAME, data: sql`'{}'::jsonb`, updated_at: now })
+      .set({ name: ANONYMIZED_NAME, data: sql`'{}'::jsonb`, user_id: null, updated_at: now })
       .where('id', '=', sub.contact_id)
       .execute()
   }
@@ -433,7 +408,7 @@ export async function anonymizeSubscription(tx: Tx, subscriptionId: string, now:
     .updateTable('pt_subscription')
     .set({
       anonymized_at: now,
-      intercessor_id: null,
+      user_id: null,
       verify_token_hash: null,
       verify_expires_at: null,
       joined_from: null,
@@ -441,15 +416,5 @@ export async function anonymizeSubscription(tx: Tx, subscriptionId: string, now:
     })
     .where('id', '=', subscriptionId)
     .execute()
-  return true
-}
-
-// Must run on the admin connection: the subscription count spans every site.
-export async function deleteIntercessorIfUnused(tx: Tx, intercessorId: string): Promise<boolean> {
-  const device = await tx.selectFrom('pt_intercessor_device').select('id').where('intercessor_id', '=', intercessorId).executeTakeFirst()
-  if (device) return false
-  const res = await sql<{ n: number }>`select count(*)::int as n from pt_subscription where intercessor_id = ${intercessorId}`.execute(tx)
-  if ((res.rows[0]?.n ?? 0) > 0) return false
-  await tx.deleteFrom('pt_intercessor').where('id', '=', intercessorId).execute()
   return true
 }

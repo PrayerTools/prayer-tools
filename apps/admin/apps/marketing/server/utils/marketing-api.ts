@@ -115,7 +115,7 @@ export function marketingScheduleTime(raw: unknown): Date {
 }
 
 export async function marketingUserEmail(userId: string): Promise<{ email: string, name: string }> {
-  const u = await db.selectFrom('users').select(['email', 'display_name']).where('id', '=', userId).executeTakeFirstOrThrow()
+  const u = await db.selectFrom('users').select(['email', 'display_name']).where('id', '=', userId).where('email', 'is not', null).$narrowType<{ email: string }>().executeTakeFirstOrThrow()
   return { email: u.email, name: u.display_name }
 }
 

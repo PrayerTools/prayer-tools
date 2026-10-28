@@ -68,7 +68,7 @@ While a side campaign is upcoming or running, the site's landing page shows a ca
 - On 24/7 campaigns each recurring prayer time is chosen on a coverage picker: the hours that most need someone are listed first, then a grid of the 24 hours shaded by how covered each is from now to the campaign's end (only the chosen weekdays for weekly), then the slots of the chosen hour. One line gives the numbers for the selected time ("still open on 12 of 30 days"). Specific dates are picked on the prayer calendar page. Other goals ask for a plain reminder time.
 - Consent boxes, unchecked: updates from this site, news from Prayer.Tools, and any custom options the champion added.
 - Turnstile and rate limiting on public endpoints.
-- Creates or reuses the site's CRM contact by email, inside the site's org; a subscription on the site; commitments in the current campaign as recurring rules. Once the email is verified, the contact is linked to the global `intercessor` for that address.
+- Creates or reuses the site's CRM contact by email, inside the site's org; a subscription on the site; commitments in the current campaign as recurring rules. The address's account is created (unverified) if there is none. Once the email is verified, the subscription and the contact are linked to that account. A person signed in to Prayer.Tools on the site who signs up with their account's address is verified at once.
 - Contact channels and delivery are typed so SMS or WhatsApp signup can be added later.
 - Custom signup fields added by the champion are asked on the web form.
 - The page after signup invites people to share the campaign (see Sharing).
@@ -84,20 +84,21 @@ While a side campaign is upcoming or running, the site's landing page shows a ca
 
 ## My prayer (all sites)
 
-One place where an intercessor manages every campaign they pray in.
+One place where a person manages their account and every campaign they pray in.
 
-- **Getting in:** the only way in is "email me my link" on `prayer.tools/my`. The person types their address and the link goes to that address; the page always answers "if we know this address, we've sent a link", so it never reveals whether someone prays through prayer.tools.
-- **Nobody else can get it:** there is no admin button to send it; tokens are stored hashed, so neither champions nor operators can see one; test emails never contain live links.
-- **Token:** short-lived and single-use, exchanged for an httpOnly session cookie on `prayer.tools` that the person can sign out of.
-- **What it shows:** a card per site with current campaigns — reminder times (add, change, pause, remove), language, timezone, consent and unsubscribe for that site — and past campaigns with their own prayer totals. Download my data and delete my data cover every site.
+- **Getting in:** "email me my link" on `prayer.tools/my`. The person types their address and the link goes to that address; the page always answers "if we know this address, we've sent a link", so it never reveals whether someone prays through prayer.tools. Opening the link verifies the account's address.
+- **Nobody else can get in:** a site's team can have a sign-in link emailed to the person (from the intercessor's record), but it goes only to the account's address; codes are stored hashed, so neither champions nor operators can see one; test emails never contain live links.
+- **Session:** the single-use code becomes a row in core's `sessions` and an httpOnly cookie on `prayer.tools` that the person can sign out of.
+- **Other hosts:** a site's domain sends "sign in" to `prayer.tools/my/continue`, which returns with a one-time code for that host only; the site then has its own session (used to fill in the signup form). "Manage" and "Start a prayer campaign" open the admin app the same way.
+- **What it shows:** the account (name; email change, confirmed from a link sent to the new address and then copied to every site), the sites the person helps run, and a card per site they pray with: current campaigns — reminder times (add, change, pause, remove), language, timezone, consent and unsubscribe for that site — and past campaigns with their own prayer totals. Download my data and delete my data cover every site.
 - **Only verified emails:** a site's subscription appears only once the email was verified on that site, so a signup made with someone else's address never shows on the owner's page.
-- **Scoping:** the page runs as the person (`intercessor`); every change is applied inside that site's org, one site at a time.
+- **Scoping:** the page runs as the person (their user id); every change is applied inside that site's org, one site at a time.
 - Apple "Hide My Email" relay addresses are a separate identity.
 
 ## API for the mobile app (`api.prayer.tools/v1`)
 
 - Versioned and backward compatible — old app versions live for years. OpenAPI spec.
-- Anonymous device registration issues a per-device credential and creates an `intercessor`; email linking later.
+- Anonymous device registration issues a per-device credential and creates an account without an address (`intercessor_id` in the response is its id); email linking later.
 - Subscriptions per site and commitments per campaign; each commitment is sent as its own rule (days, time, timezone, and duration when the goal uses it).
 - Prayer session pings (upsert per session) feed "praying now" and activity.
 - Prayer content as JSON (Tiptap) by site / campaign / day / language, edge-cacheable.

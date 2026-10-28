@@ -198,9 +198,17 @@ export interface MySiteView {
   past: { id: string, name: string, prayers: number, minutes: number }[]
 }
 
+export interface MyManagedSiteView {
+  name: string
+  adminUrl: string
+}
+
 export interface MyView {
   signedIn: boolean
+  account: { name: string, email: string | null } | null
   sites: MySiteView[]
+  managing: MyManagedSiteView[]
+  createUrl: string | null
 }
 
 export type PageView =
@@ -236,7 +244,7 @@ export interface PlatformResponse {
   host: 'platform'
   lang: string
   donateUrl: string
-  page: { kind: 'my', my: MyView, notice: string | null } | { kind: 'home', adminUrl: string } | { kind: 'not_found' }
+  page: { kind: 'my', my: MyView, notice: string | null, continueTo: string | null } | { kind: 'home', adminUrl: string } | { kind: 'not_found' }
   status: number
   cache: 'private'
   title: string

@@ -161,7 +161,7 @@ async function pushCampaign(ctx: JobContext, orgId: string, campaignId: string, 
       const base = await loadCampaign(tx, campaignId)
       let q = tx
         .selectFrom('pt_subscription as s')
-        .innerJoin('pt_intercessor_device as d', 'd.intercessor_id', 's.intercessor_id')
+        .innerJoin('pt_user_device as d', 'd.user_id', 's.user_id')
         .select(['s.id', 's.language', 'd.push_id'])
         .where('s.delivery', '=', 'app')
         .where('s.status', '<>', 'unsubscribed')
@@ -201,8 +201,8 @@ async function thankYouPerson(ctx: JobContext, payload: Record<string, unknown>)
     const totals = await totalsFor(tx, campaignId, [sub.id])
     const email = sub.delivery === 'email' && sub.verified_at && sub.contact_id ? await primaryEmailOf(tx, sub.contact_id) : null
     const suppressed = email ? (await suppressedAmong(tx, [email.email])).size > 0 : false
-    const pushIds = sub.delivery === 'app' && sub.intercessor_id
-      ? (await tx.selectFrom('pt_intercessor_device').select('push_id').where('intercessor_id', '=', sub.intercessor_id).where('push_id', 'is not', null).execute()).map(d => d.push_id!)
+    const pushIds = sub.delivery === 'app' && sub.user_id
+      ? (await tx.selectFrom('pt_user_device').select('push_id').where('user_id', '=', sub.user_id).where('push_id', 'is not', null).execute()).map(d => d.push_id!)
       : []
     return { ...base, sub, totals, email: suppressed ? null : email?.email ?? null, pushIds }
   })

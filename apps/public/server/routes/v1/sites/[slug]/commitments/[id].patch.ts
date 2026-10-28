@@ -12,7 +12,7 @@ export default defineEventHandler(async (event) => {
   if (!isUuid(id)) throw createError({ statusCode: 404 })
   const body = await readJson(event, 16_384)
   return await withOrg(useDb(), site.orgId, async (tx) => {
-    const sub = await appSubscription(tx, device.intercessorId)
+    const sub = await appSubscription(tx, device.userId)
     if (!sub) throw createError({ statusCode: 404 })
     await patchCommitment(tx, sub, id, body)
     return commitmentJson(await tx.selectFrom('pt_commitment').selectAll().where('id', '=', id).executeTakeFirstOrThrow())

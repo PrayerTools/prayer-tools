@@ -361,3 +361,19 @@ export function myPrayerEmail(lang: string, url: string, hours: number, minutes?
   }
 }
 
+// Confirms a new address for the person's account; a platform email like
+// the My prayer link.
+export function emailChangeEmail(lang: string, url: string, minutes: number): Rendered {
+  const ctx: SiteMailContext = {
+    orgId: '', slug: '', siteName: 'Prayer.Tools', siteUrl: platformOrigin(), color: '#2f6f5e', textOnColor: '#ffffff',
+    logoUrl: null, fromName: 'Prayer.Tools', fromLocal: 'my', replyTo: null, signature: {}, defaultLanguage: 'en'
+  }
+  const bodyText = emailT(lang, 'email_change.body', { minutes })
+  const body = heading(emailT(lang, 'email_change.heading')) + paragraph(bodyText) + button(ctx, url, emailT(lang, 'email_change.button'))
+  return {
+    subject: emailT(lang, 'email_change.subject'),
+    html: layout(ctx, lang, body, { reason: bodyText, hideMy: true }),
+    text: `${emailT(lang, 'email_change.heading')}\n\n${bodyText}\n\n${url}`
+  }
+}
+

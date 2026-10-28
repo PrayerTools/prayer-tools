@@ -9,10 +9,10 @@ import { campaignJson, commitmentJson, requireDevice } from '../../../utils/app-
 
 export default defineEventHandler(async (event) => {
   const device = await requireDevice(event)
-  const subs = await withPerson(useDb(), device.intercessorId, tx => tx
+  const subs = await withPerson(useDb(), device.userId, tx => tx
     .selectFrom('pt_subscription')
     .select(['id', 'org_id'])
-    .where('intercessor_id', '=', device.intercessorId)
+    .where('user_id', '=', device.userId)
     .where('delivery', '=', 'app')
     .execute())
   const out = []

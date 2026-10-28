@@ -68,6 +68,14 @@ async function removeCommitment(c: Record<string, any>) {
   await $fetch(`/api/pt/intercessors/${subId.value}/commitments/${c.id}`, { method: 'DELETE' }).catch(err => toast.fail(err))
   await refresh()
 }
+async function sendSignInLink() {
+  try {
+    await $fetch(`/api/pt/intercessors/${subId.value}/sign-in-link`, { method: 'POST' })
+    toast.ok('Sign-in link sent')
+  } catch (err) {
+    toast.fail(err)
+  }
+}
 async function sendCheckin() {
   try {
     await $fetch(`/api/pt/intercessors/${subId.value}/checkin`, { method: 'POST' })
@@ -251,6 +259,15 @@ async function remove() {
             variant="soft"
             label="Send a check-in now"
             @click="sendCheckin"
+          />
+          <UButton
+            v-if="data.subscription.user_id && data.subscription.delivery === 'email'"
+            size="sm"
+            variant="soft"
+            icon="i-lucide-key-round"
+            label="Email a sign-in link"
+            title="They can change their own name and email address in My prayer."
+            @click="sendSignInLink"
           />
           <UButton
             class="ms-auto"

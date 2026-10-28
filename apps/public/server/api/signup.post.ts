@@ -1,7 +1,8 @@
 // Web signup: creates or reuses the site's CRM contact, a subscription and
 // commitments in the campaign, grants the ticked consents and sends the
-// verification email. Google / Apple sign-in arrives already verified and gets
-// the welcome email instead. An address already confirmed on the site gets an
+// verification email. Google / Apple sign-in, or a Prayer.Tools sign-in on
+// this site with the same address, arrives already verified and gets the
+// welcome email instead. An address already confirmed on the site gets an
 // email to confirm the chosen times before they are added.
 import { withOrg } from '@prayertools/shared/db/scope'
 import { createWebSignup, validateRuleForCampaign, type RuleInput } from '@prayertools/shared/subscriptions'
@@ -24,6 +25,7 @@ import { forwardInBackground } from '../utils/analytics'
 import { prepareWelcomeMail } from '../utils/welcome'
 import { readManageCookie } from '../utils/cookies'
 import { saveSignupRequest, type SignupRequest } from '../utils/signup-request'
+import { sessionAccount } from '../utils/account-session'
 
 export default defineEventHandler(async (event) => {
   const ctx = siteContext(event)
@@ -43,6 +45,8 @@ export default defineEventHandler(async (event) => {
   }
   const { normalized, valid } = normalizeEmail(email)
   if (!valid) bad('email')
+  const account = await sessionAccount(event)
+  if (account?.verified && account.email === normalized) preVerified = true
   const timezone = str(body.timezone, 64)
   if (!isValidTimezone(timezone)) bad('timezone')
   const name = str(body.name, 200) || null

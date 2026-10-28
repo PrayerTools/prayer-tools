@@ -13,7 +13,7 @@ export const pushAnnouncementJob: JobHandler = async (ctx, payload) => {
   if (!ctx.push) return { skipped: 'push not configured' }
   const recipients = await withOrg(ctx.app, orgId, tx => tx
     .selectFrom('pt_subscription as s')
-    .innerJoin('pt_intercessor_device as d', 'd.intercessor_id', 's.intercessor_id')
+    .innerJoin('pt_user_device as d', 'd.user_id', 's.user_id')
     .select(['s.language', 'd.push_id'])
     .where('s.delivery', '=', 'app')
     .where('s.status', '=', 'active')

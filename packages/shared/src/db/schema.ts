@@ -59,17 +59,9 @@ export interface TiptapNode {
 
 // ── Global tables ──────────────────────────────────────────────────────────
 
-export interface PtIntercessorTable {
+export interface PtUserDeviceTable {
   id: Generated<string>
-  email: string | null
-  email_verified_at: NullableTimestamp
-  created_at: Timestamp
-  last_active_at: NullableTimestamp
-}
-
-export interface PtIntercessorDeviceTable {
-  id: Generated<string>
-  intercessor_id: string
+  user_id: string
   credential_hash: string
   platform: string | null
   app_version: string | null
@@ -80,21 +72,20 @@ export interface PtIntercessorDeviceTable {
   last_seen_at: Timestamp
 }
 
-export interface PtMyTokenTable {
+export type AuthCodePurpose = 'sign_in' | 'handoff' | 'email_change'
+
+export interface PtAuthCodeTable {
   id: Generated<string>
-  intercessor_id: string
-  token_hash: string
+  user_id: string
+  purpose: AuthCodePurpose
+  code_hash: string
+  // handoff: the host the code may be redeemed on.
+  host: string | null
+  // email_change: the new address.
+  email: string | null
+  return_to: string | null
   expires_at: Timestamp
   used_at: NullableTimestamp
-  created_at: Timestamp
-}
-
-export interface PtMySessionTable {
-  id: Generated<string>
-  intercessor_id: string
-  token_hash: string
-  expires_at: Timestamp
-  revoked_at: NullableTimestamp
   created_at: Timestamp
 }
 
@@ -402,7 +393,7 @@ export interface PtSubscriptionTable {
   id: Generated<string>
   org_id: Generated<string>
   contact_id: string | null
-  intercessor_id: string | null
+  user_id: string | null
   status: Generated<SubscriptionStatus>
   delivery: Generated<Delivery>
   language: string
@@ -498,7 +489,7 @@ export interface PtPrayerSessionTable {
   org_id: Generated<string>
   campaign_id: string | null
   subscription_id: string | null
-  intercessor_id: string | null
+  user_id: string | null
   source: SessionSource
   day: number | null
   language: string | null
@@ -617,10 +608,8 @@ export interface PtCoverageCacheTable {
 }
 
 export interface PtTables {
-  pt_intercessor: PtIntercessorTable
-  pt_intercessor_device: PtIntercessorDeviceTable
-  pt_my_token: PtMyTokenTable
-  pt_my_session: PtMySessionTable
+  pt_user_device: PtUserDeviceTable
+  pt_auth_code: PtAuthCodeTable
   pt_suppression: PtSuppressionTable
   pt_job: PtJobTable
   pt_site_domain: PtSiteDomainTable
@@ -660,12 +649,28 @@ export interface PtTables {
 
 export interface UsersTable {
   id: Generated<string>
-  created: Timestamp
-  updated: Timestamp
-  email: string
+  created: Generated<Date>
+  updated: Generated<Date>
+  email: string | null
   display_name: string
+  password: string | null
   is_admin: Generated<boolean>
   verified: Generated<boolean>
+}
+
+// Core's signed-in devices. The public server keeps its sign-ins here too, so
+// they share the account's session list and end with it.
+export interface SessionsTable {
+  id: Generated<string>
+  user_id: string
+  client: string
+  refresh_token_hash: string
+  created_at: Generated<Date>
+  last_used_at: Generated<Date>
+  authenticated_at: Generated<Date>
+  expires_at: Timestamp
+  user_agent: string | null
+  ip: string | null
 }
 
 export interface OrgsTable {
@@ -696,6 +701,8 @@ export interface CrmRecordsTable {
   created_by: string
   created_at: Timestamp
   updated_at: Timestamp
+  // The person's account; it owns the contact's name and email address.
+  user_id: string | null
 }
 
 export interface CrmChannelsTable {
@@ -820,6 +827,7 @@ export interface NotificationsTable {
 
 export interface LayerTables {
   users: UsersTable
+  sessions: SessionsTable
   orgs: OrgsTable
   memberships: MembershipsTable
   crm_records: CrmRecordsTable

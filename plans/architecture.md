@@ -41,13 +41,13 @@ The public server and worker are not Nuxt layers. Logic they share with the admi
 - **Public server:** resolves the site from the hostname and runs inside that site's org, or as the person (person scope) for the app API and the My prayer page. It uses the RLS-enforced role, never the bypass role.
 - **Worker:** the admin (bypass) connection only finds due work and does housekeeping (stale claims, totals) with explicit site ids; recipients are worked out, and a site's data written, inside that site's org on the RLS role, through one shared "for each org" helper.
 - **No cross-org reads.** Every policy on a site table is "org = the active org"; nothing admits a second org's rows. Work that covers several sites visits each one in turn. The one other shape is the personal library's owner policy (tables with no org). The public server's person scope reads a person's own subscriptions across sites; only the public server sets it.
-- **Global tables** (no org): `intercessor`, app devices, global suppression, libraries. Always filtered explicitly.
+- **Global tables** (no org): `users` (every person), app devices, sign-in codes, global suppression, libraries. Always filtered explicitly.
 - **Site-keyed tables without RLS:** custom domains and legacy link keys (looked up before the site is known), directory entries and reports (operator review), the job queue, and the multi-site send ledger (address fingerprints, used only by the worker). Each carries its site's id and is filtered by it in code; the isolation test pins this list.
 
 ## Intercessor data
 
-- **Contact per site.** Each intercessor who signs up on a site gets a CRM contact in that site's org: name, email, language, custom answers, consent. What someone told site A is never visible to site B.
-- **`intercessor`, global and thin:** id, verified email, app devices. A site's contact links to it once the email is verified. It serves the app, the My prayer page and platform-wide counts.
+- **Contact per site.** Each intercessor who signs up on a site gets a CRM contact in that site's org: language, custom answers, consent, and a copy of their name and email. What someone told site A is never visible to site B.
+- **One account per person.** Every person is a Nuxtinator user: a new address gets an unverified account at signup, an app install gets one with no address. The account owns name and email; a site's contact links to it (`crm_records.user_id`) once the email is verified there, and the CRM shows those two fields read-only. Name and email changes on the account are copied to every linked contact (at once from the public server; a daily sweep catches changes made in the admin app). People who pray have no memberships; creating a site makes them a champion. The account serves My prayer, the app and platform-wide counts.
 - **Anonymous app intercessors** are not CRM contacts (champions never see them individually). Their subscriptions and commitments point at the `intercessor`. Linking an email and joining a site's signup fields creates their contact on that site.
 - **Suppression** is global per address, so a bounce learned on one site protects every site.
 
@@ -67,7 +67,7 @@ A request sees one org. These features visit sites one at a time; none reads two
 
 ## Nuxtinator upgrades this needs
 
-- **CRM:** a system actor for records created without a logged-in user (public signups); a link from a contact to a host record (subscription / `intercessor`) and duplicate merging; saved segments; import / export; the consent log extended with wording key + version, surface and source; settings moved to core's per-org settings pages.
+- **CRM:** a system actor for records created without a logged-in user (public signups); a contact's link to the person's user account, which makes its name and email read-only (built); duplicate merging; saved segments; import / export; the consent log extended with wording key + version, surface and source; settings moved to core's per-org settings pages.
 - **Email provider layer:** one transport replacing core's send-only one, the inbox's own and Doxa's marketing one; separate sending domains; webhooks → global suppression; per-tenant throttling and complaint auto-pause.
 - **Global suppression:** a table outside org scoping, owned by the email layer; the CRM and inbox check it.
 - **Marketing layer (from Doxa):** audiences from a registry the host fills (the CRM supplies "consented to updates"; prayer.tools adds "people in this campaign", "people from past campaigns"); per-tenant senders and branding; signed unsubscribe tokens and a layer-owned unsubscribe page; the parent record for multi-site sends; the personal template library.

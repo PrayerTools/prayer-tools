@@ -21,7 +21,7 @@ Rebuild of prayer.tools campaigns. Today: WordPress multisite + Disciple.Tools +
 
 | Component | Where | Plan |
 |---|---|---|
-| Architecture | tenancy, access, shared layers, intercessor identity | [architecture.md](architecture.md) |
+| Architecture | tenancy, access, shared layers, person accounts | [architecture.md](architecture.md) |
 | Admin app | `app.prayer.tools` | [admin-app.md](admin-app.md) |
 | Public server | site domains, `api.prayer.tools`, `go.prayer.tools`, the My prayer page | [public-server.md](public-server.md) |
 | Mobile app | iOS / Android | [mobile-app.md](mobile-app.md) |
@@ -45,15 +45,15 @@ Admin app, public server, worker and a shared package (domain logic, types, emai
 
 - **Tenant = site**, a Nuxtinator org. The site's team are the org's members; roles are per site (see [admin-app.md](admin-app.md)).
 - Every table holding a site's data carries the org and row-level security, so one site's team can never see another site's intercessors.
-- **Two RLS scopes:** site scope (admin) and person scope (the intercessor app and the My prayer page).
+- **Two RLS scopes:** site scope (admin) and person scope (the intercessor app and the My prayer page, keyed by the person's user id).
 - Work across several of a champion's sites (the sites list, the personal library, multi-site sends) is described in [architecture.md](architecture.md).
 
 ## Core data (sketch)
 
 - `site` (the org), `site_domain` (hostname → site, verification status, Cloudflare hostname id), `campaign`
-- `intercessor` — global and thin: server-minted id, verified email once they have one, app devices. No name or answers. Used by the app, the My prayer page and platform-wide counts.
-- **Contact** — a CRM contact per site (CRM layer): name, email address with verification, language, custom answers, consent. The same person on three sites is three contacts, each linked to their `intercessor` once the email is verified.
-- `subscription` — a person on a site; points at the site's contact (web) and/or the `intercessor` (app); delivery `email | app` (more channels can be added); status `active | inactive | completed | unsubscribed`
+- **Account** — every person is a Nuxtinator user (`users`): an email signup creates an unverified account for a new address, an app install creates one with no address. The account owns the person's name and email address; it has app devices and sign-ins. Someone who prays and also runs a site is one account; they become a champion by creating a site (a membership).
+- **Contact** — a CRM contact per site (CRM layer): language, custom answers, consent, notes, plus a copy of the account's name and email. The same person on three sites is three contacts, each linked to their account (`crm_records.user_id`) once the email is verified there. A change to the name or email on the account reaches every linked contact; champions can't edit them (they can email the person a sign-in link).
+- `subscription` — a person on a site; points at the site's contact (web) and the account (`user_id`, once verified; always for app); delivery `email | app` (more channels can be added); status `active | inactive | completed | unsubscribed`
 - **Consent** — the CRM's consent state and append-only proof log, per site: purpose key (built-in keys in code, or a site's custom option), grant / withdraw, the wording shown (i18n key + version, or a copy of a custom option's label), surface, source, time. "News from Prayer.Tools" is platform consent, held on a contact in the staff org's CRM.
 - **Suppression** — global per address (hard bounce, complaint), owned by the email layer and checked on every send from every site.
 - `commitment` — a recurring rule (or a list of specific dates for 24/7) within a campaign: days, time and timezone (always required; the time is when the reminder is sent), duration (required or optional depending on the goal, see [campaign-setup.md](campaign-setup.md)), `starts_on`, `ends_on`, and `next_reminder_utc` for email delivery. **No rows for future occurrences.**
@@ -83,18 +83,19 @@ Admin app, public server, worker and a shared package (domain logic, types, emai
 - Active, inactive and completed subscriptions are kept while the site exists (relaunch audience; inactive people can come back).
 - Unsubscribed: 12 months after unsubscribing the subscription and its contact are anonymized (name, custom answers, reminder times removed); it remains as a count in stats.
 - Archived sites: 12 months after archiving, their intercessors' personal data is anonymized; stats remain.
-- An `intercessor` with no subscriptions and no app device is deleted with their email; a hashed address stays in the global suppression list only if it bounced or complained.
+- An account with no subscription, linked contact, app device, membership or password is deleted with its email; a hashed address stays in the global suppression list only if it bounced or complained.
 - Raw `prayer_session` rows older than 2 years are dropped by partition, once the site, campaign and per-person rollups hold everything shown (see [analytics.md](analytics.md)).
 - Champions can't shorten these yet.
 
 ## Identity
 
 - **Champions:** accounts on the admin app — Nuxtinator's JWT auth with password, recovered through forgot password. Google and Apple sign-in may be added.
-- **Web intercessors:** email, verified by the email link, or Google / Apple sign-in (email already verified). This is separate from the subscriber magic links used to manage prayer times.
-- **My prayer:** an intercessor can ask for a link, sent only to their verified email, that manages all their current campaigns across sites and shows past ones (see [public-server.md](public-server.md)).
-- **App intercessors:** anonymous first (Doxa model); email linking added later, which joins them to the same `intercessor` as their web signups.
+- **Web intercessors:** email, verified by the email link, or Google / Apple sign-in (email already verified). Signing in to Prayer.Tools on a site with the same address also counts as verified. This is separate from the subscriber magic links used to manage prayer times.
+- **Signing in:** every sign-in happens on `prayer.tools` (email link to the account's address); a site's own domain and the admin app receive it through a one-time code. Public-server sign-ins are rows in core's `sessions`, like the admin app's.
+- **My prayer:** a signed-in person sees their account (name, email change with confirmation), the campaigns they pray with across sites, past ones, and the sites they help run, with a way into the admin app and to start a new campaign (see [public-server.md](public-server.md)).
+- **App intercessors:** anonymous first (Doxa model): an account without an address; email linking added later, which joins them to the same account as their web signups.
 - Who counts toward the people number: see [campaign-setup.md](campaign-setup.md). Anonymous commitments count toward the campaign's goal while active. Champions see counts and activity for anonymous intercessors, never individual records; anonymous app intercessors are not CRM contacts.
-- **Platform-wide unique people:** counted from `intercessor` (verified emails plus app identities).
+- **Platform-wide unique people:** counted from accounts with a subscription (verified emails plus app installs).
 
 ## Open questions
 

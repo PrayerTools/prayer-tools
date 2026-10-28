@@ -173,7 +173,7 @@ export async function consentOf(env: TestEnv, orgId: string, channelId: string, 
 export async function cleanup(env: TestEnv): Promise<void> {
   if (env.orgs.length) await env.admin.deleteFrom('orgs').where('id', 'in', env.orgs).execute()
   if (env.emails.length) {
-    await env.admin.deleteFrom('pt_intercessor').where(eb => eb.fn('lower', ['email']), 'in', env.emails.map(e => e.toLowerCase())).execute()
+    await env.admin.deleteFrom('users').where(eb => eb.fn('lower', ['email']), 'in', env.emails.map(e => e.toLowerCase())).execute()
     await env.admin.deleteFrom('pt_suppression').where('address_hash', 'in', env.emails.map(e => emailHash(e))).execute()
   }
   if (env.users.length) await env.admin.deleteFrom('users').where('id', 'in', env.users).execute()

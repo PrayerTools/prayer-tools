@@ -12,6 +12,7 @@ import { runCheckins } from './checkins'
 import { refreshStats } from './stats'
 import { checkDomains } from './domains'
 import { runRetention } from './retention'
+import { syncLinkedContacts } from './accounts'
 
 export interface ScheduledJob {
   name: string
@@ -27,6 +28,7 @@ export const SCHEDULED_JOBS: readonly ScheduledJob[] = [
   { name: 'app_inactivity', cron: '40 2 * * *', run: appInactivity },
   { name: 'stats_refresh', cron: '0 3 * * *', run: refreshStats },
   { name: 'domains', cron: '30 3 * * *', run: checkDomains },
+  { name: 'account_sync', cron: '45 3 * * *', run: syncLinkedContacts },
   { name: 'retention', cron: '0 4 * * *', run: runRetention },
   { name: 'reap_jobs', cron: '15 4 * * *', run: async (ctx, log) => ({ reaped: await reapJobs(ctx, log) }) }
 ]

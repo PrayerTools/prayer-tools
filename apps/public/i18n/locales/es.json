@@ -154,7 +154,11 @@
     "closed": "Las inscripciones no están abiertas en este momento.",
     "app_way": "Usa la aplicación",
     "web_way": "O inscríbete aquí",
-    "success": "¡Ya estás inscrito! Gracias por unirte a nosotros en oración."
+    "success": "¡Ya estás inscrito! Gracias por unirte a nosotros en oración.",
+    "account_as": "Inscribiéndote como {email}",
+    "use_other_email": "Usar otro correo",
+    "sign_in_prompt": "¿Ya oraste con Prayer.Tools?",
+    "sign_in": "Inicia sesión"
   },
   "commitment": {
     "how_often": "Con qué frecuencia",
@@ -343,7 +347,21 @@
     "status_active": "Activa",
     "status_inactive": "En pausa",
     "status_completed": "Completada",
-    "status_unsubscribed": "Suscripción cancelada"
+    "status_unsubscribed": "Suscripción cancelada",
+    "account_title": "Tu cuenta",
+    "account_help": "Tu nombre y tu correo son los mismos en todas las campañas con las que oras.",
+    "name": "Nombre",
+    "save_name": "Guardar nombre",
+    "new_email": "Nuevo correo electrónico",
+    "change_email": "Cambiar correo",
+    "email_sent": "Si nadie más usa esta dirección, te enviamos un enlace. Ábrelo para terminar el cambio.",
+    "managing_title": "Campañas que ayudas a dirigir",
+    "managing_empty": "Todavía no estás en el equipo de ninguna campaña.",
+    "manage_site": "Administrar",
+    "create_campaign": "Comenzar una campaña de oración",
+    "praying_title": "Campañas con las que oras",
+    "notice_email_changed": "Tu correo se cambió en todas las campañas.",
+    "notice_email_taken": "Otra cuenta ya usa esa dirección, así que no cambió nada."
   },
   "home": {
     "title": "Campañas de oración por los lugares y pueblos que te importan",

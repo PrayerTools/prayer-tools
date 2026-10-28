@@ -28,7 +28,7 @@ export default defineEventHandler(async (event) => {
       language: typeof body.language === 'string' ? body.language.slice(0, 10) : null,
       source,
       subscriptionId,
-      intercessorId: null,
+      userId: null,
       country: getRequestHeader(event, 'cf-ipcountry')?.slice(0, 2) ?? null
     })
     const position = ping.first && ping.subscriptionId ? await openEntry(tx, ping.subscriptionId, campaign, day) : null

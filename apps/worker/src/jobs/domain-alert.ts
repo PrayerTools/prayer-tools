@@ -41,6 +41,8 @@ export async function domainAlertJob(ctx: JobContext, payload: Record<string, un
     .select('u.email')
     .where('m.org_id', '=', orgId)
     .where(sql<boolean>`m.roles && ARRAY['admin', 'owner']::text[]`)
+    .where('u.email', 'is not', null)
+    .$narrowType<{ email: string }>()
     .execute()
   const progress = await ctx.progress<{ sent: string[] }>()
   const sent = new Set(progress.sent ?? [])

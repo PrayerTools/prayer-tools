@@ -154,7 +154,11 @@
     "closed": "Sign-up is not open right now.",
     "app_way": "Use the app",
     "web_way": "Or sign up here",
-    "success": "You're signed up. Thank you for joining us in prayer!"
+    "success": "You're signed up. Thank you for joining us in prayer!",
+    "account_as": "Signing up as {email}",
+    "use_other_email": "Use a different email",
+    "sign_in_prompt": "Prayed with Prayer.Tools before?",
+    "sign_in": "Sign in"
   },
   "commitment": {
     "how_often": "How often",
@@ -343,7 +347,21 @@
     "status_active": "Active",
     "status_inactive": "Paused",
     "status_completed": "Completed",
-    "status_unsubscribed": "Unsubscribed"
+    "status_unsubscribed": "Unsubscribed",
+    "account_title": "Your account",
+    "account_help": "Your name and email address are the same on every campaign you pray with.",
+    "name": "Name",
+    "save_name": "Save name",
+    "new_email": "New email address",
+    "change_email": "Change email",
+    "email_sent": "If no one else uses this address, we have sent a link to it. Open it to finish the change.",
+    "managing_title": "Campaigns you help run",
+    "managing_empty": "You are not on the team of any campaign yet.",
+    "manage_site": "Manage",
+    "create_campaign": "Start a prayer campaign",
+    "praying_title": "Campaigns you pray with",
+    "notice_email_changed": "Your email address has been changed on every campaign.",
+    "notice_email_taken": "Another account already uses that address, so nothing changed."
   },
   "home": {
     "title": "Prayer campaigns for the places and peoples you care about",

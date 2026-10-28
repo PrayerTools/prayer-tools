@@ -10,7 +10,7 @@ export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, 'id')
   if (!isUuid(id)) throw createError({ statusCode: 404 })
   await withOrg(useDb(), site.orgId, async (tx) => {
-    const sub = await appSubscription(tx, device.intercessorId)
+    const sub = await appSubscription(tx, device.userId)
     if (!sub) throw createError({ statusCode: 404 })
     await removeCommitment(tx, sub, id)
   })

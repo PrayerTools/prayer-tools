@@ -19,13 +19,13 @@ export interface TestEnv {
   admin: Db
   app: Db
   orgs: string[]
-  intercessors: string[]
+  accounts: string[]
   emails: string[]
   users: string[]
 }
 
 export function testEnv(adminOpts: Parameters<typeof createDb>[1] = {}): TestEnv {
-  return { admin: createDb(ADMIN_URL, { max: 5, ...adminOpts }), app: createDb(APP_URL, { max: 10 }), orgs: [], intercessors: [], emails: [], users: [] }
+  return { admin: createDb(ADMIN_URL, { max: 5, ...adminOpts }), app: createDb(APP_URL, { max: 10 }), orgs: [], accounts: [], emails: [], users: [] }
 }
 
 export interface TestCtx extends WorkerContext {
@@ -153,7 +153,7 @@ export async function createSubscriber(env: TestEnv, orgId: string, campaignId: 
       preVerified: o.verified ?? true,
       capture: { surface: 'test', source: 'test' }
     })
-    if (res.subscription.intercessor_id) env.intercessors.push(res.subscription.intercessor_id)
+    env.accounts.push(res.userId)
     const patch = {
       ...(o.status ? { status: o.status, unsubscribed_at: o.status === 'unsubscribed' ? new Date() : null } : {}),
       ...(o.createdAt ? { created_at: o.createdAt } : {}),
@@ -196,15 +196,15 @@ export async function addCommitment(env: TestEnv, orgId: string, subscriptionId:
 
 export async function cleanup(env: TestEnv): Promise<void> {
   if (env.orgs.length) {
-    const subs = await env.admin.selectFrom('pt_subscription').select('intercessor_id').where('org_id', 'in', env.orgs).where('intercessor_id', 'is not', null).execute()
-    env.intercessors.push(...subs.map(s => s.intercessor_id!))
+    const subs = await env.admin.selectFrom('pt_subscription').select('user_id').where('org_id', 'in', env.orgs).where('user_id', 'is not', null).execute()
+    env.accounts.push(...subs.map(s => s.user_id!))
     await env.admin.deleteFrom('orgs').where('id', 'in', env.orgs).execute()
   }
-  if (env.intercessors.length) await env.admin.deleteFrom('pt_intercessor').where('id', 'in', env.intercessors).execute()
-  if (env.emails.length) await env.admin.deleteFrom('pt_intercessor').where(eb => eb.fn('lower', ['email']), 'in', env.emails.map(e => e.toLowerCase())).execute()
+  if (env.accounts.length) await env.admin.deleteFrom('users').where('id', 'in', env.accounts).execute()
+  if (env.emails.length) await env.admin.deleteFrom('users').where(eb => eb.fn('lower', ['email']), 'in', env.emails.map(e => e.toLowerCase())).execute()
   if (env.users.length) await env.admin.deleteFrom('users').where('id', 'in', env.users).execute()
   env.orgs = []
-  env.intercessors = []
+  env.accounts = []
   env.emails = []
   env.users = []
 }

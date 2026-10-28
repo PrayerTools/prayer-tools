@@ -2,7 +2,7 @@
 import type { MyView, MySiteView } from '~~/shared/view'
 import { timezones, type CommitmentInput } from '~/utils/commitment'
 
-const props = defineProps<{ my: MyView, notice: string | null, lang: string, donateUrl: string }>()
+const props = defineProps<{ my: MyView, notice: string | null, continueTo: string | null, lang: string, donateUrl: string }>()
 const { t } = useI18n()
 const route = useRoute()
 const toast = useToast()
@@ -17,7 +17,7 @@ const tzItems = timezones()
 async function requestLink() {
   busy.value = true
   try {
-    await $fetch('/api/my/link', { method: 'POST', body: { email: email.value, language: props.lang } })
+    await $fetch('/api/my/link', { method: 'POST', body: { email: email.value, language: props.lang, continue: props.continueTo } })
   } catch {
     // the answer is the same either way
   }
@@ -31,6 +31,35 @@ async function call(s: MySiteView, path: string, method: 'POST' | 'PATCH' | 'DEL
     await $fetch(`/api/my/${s.orgId}/${s.subscriptionId}/${path}`, { method: method as 'POST', body })
     toast.add({ title: t('manage.saved'), color: 'success', icon: 'i-lucide-check' })
     await refreshNuxtData(`view:${route.path}`)
+  } catch {
+    toast.add({ title: t('errors.generic'), color: 'error' })
+  } finally {
+    busy.value = false
+  }
+}
+
+const name = ref(props.my.account?.name ?? '')
+const newEmail = ref('')
+const emailSent = ref(false)
+
+async function saveName() {
+  busy.value = true
+  try {
+    await $fetch('/api/my/account', { method: 'POST', body: { name: name.value } })
+    toast.add({ title: t('manage.saved'), color: 'success', icon: 'i-lucide-check' })
+    await refreshNuxtData(`view:${route.path}`)
+  } catch {
+    toast.add({ title: t('errors.generic'), color: 'error' })
+  } finally {
+    busy.value = false
+  }
+}
+
+async function changeEmail() {
+  busy.value = true
+  try {
+    await $fetch('/api/my/email', { method: 'POST', body: { email: newEmail.value, language: props.lang } })
+    emailSent.value = true
   } catch {
     toast.add({ title: t('errors.generic'), color: 'error' })
   } finally {
@@ -83,16 +112,50 @@ function languageItems(s: MySiteView) {
       </section>
 
       <template v-else>
+        <section v-if="my.account" class="rounded-2xl bg-white border border-stone-200 p-6 space-y-4" aria-labelledby="my-account">
+          <h2 id="my-account" class="text-xl font-bold">{{ t('my.account_title') }}</h2>
+          <p class="text-sm text-stone-600">{{ t('my.account_help') }}</p>
+          <form class="flex flex-wrap items-end gap-2" @submit.prevent="saveName">
+            <UFormField :label="t('my.name')" name="my-name" class="grow sm:grow-0 sm:w-72">
+              <UInput v-model="name" autocomplete="name" class="w-full" />
+            </UFormField>
+            <UButton type="submit" variant="outline" :loading="busy" :disabled="!name.trim() || name.trim() === my.account.name" :label="t('my.save_name')" />
+          </form>
+          <div class="space-y-2">
+            <p class="text-sm"><span class="text-stone-600">{{ t('signup.email') }}:</span> {{ my.account.email }}</p>
+            <UAlert v-if="emailSent" color="success" variant="soft" icon="i-lucide-mail" :title="t('my.email_sent')" role="status" />
+            <form v-else class="flex flex-wrap items-end gap-2" @submit.prevent="changeEmail">
+              <UFormField :label="t('my.new_email')" name="my-new-email" class="grow sm:grow-0 sm:w-72">
+                <UInput v-model="newEmail" type="email" autocomplete="email" required class="w-full" />
+              </UFormField>
+              <UButton type="submit" variant="outline" :loading="busy" icon="i-lucide-send" :label="t('my.change_email')" />
+            </form>
+          </div>
+        </section>
+
+        <section class="space-y-3" aria-labelledby="my-managing">
+          <h2 id="my-managing" class="text-xl font-bold">{{ t('my.managing_title') }}</h2>
+          <ul v-if="my.managing.length" class="space-y-2">
+            <li v-for="m in my.managing" :key="m.adminUrl" class="flex flex-wrap items-center gap-3 rounded-xl bg-white border border-stone-200 px-4 py-3">
+              <span class="font-medium me-auto">{{ m.name }}</span>
+              <UButton :to="m.adminUrl" external variant="ghost" trailing-icon="i-lucide-external-link" :label="t('my.manage_site')" />
+            </li>
+          </ul>
+          <p v-else class="text-stone-700">{{ t('my.managing_empty') }}</p>
+          <UButton v-if="my.createUrl" :to="my.createUrl" external icon="i-lucide-plus" :label="t('my.create_campaign')" />
+        </section>
+
+        <h2 class="text-xl font-bold">{{ t('my.praying_title') }}</h2>
         <p v-if="!my.sites.length" class="text-stone-700">{{ t('my.empty') }}</p>
         <article v-for="s in my.sites" :key="s.subscriptionId" class="rounded-2xl bg-white border border-stone-200 p-6 space-y-6" :aria-labelledby="`site-${s.subscriptionId}`">
           <header class="flex flex-wrap items-center gap-3">
-            <h2 :id="`site-${s.subscriptionId}`" class="text-xl font-bold me-auto">{{ s.name }}</h2>
+            <h3 :id="`site-${s.subscriptionId}`" class="text-xl font-bold me-auto">{{ s.name }}</h3>
             <UBadge v-if="s.status !== 'active'" color="neutral" variant="soft" :label="t(`my.status_${s.status}`)" />
             <UButton :to="s.url" external variant="ghost" trailing-icon="i-lucide-external-link" :label="t('my.open_site')" />
           </header>
 
           <section v-for="cur in s.current" :key="cur.campaign.id" class="space-y-3">
-            <h3 class="font-semibold">{{ cur.campaign.name }}</h3>
+            <h4 class="font-semibold">{{ cur.campaign.name }}</h4>
             <CommitmentList
               :commitments="cur.commitments"
               :duration-rule="cur.campaign.durationRule"
@@ -128,7 +191,7 @@ function languageItems(s: MySiteView) {
           </div>
 
           <section v-if="s.past.length" class="space-y-2">
-            <h3 class="font-semibold">{{ t('my.past') }}</h3>
+            <h4 class="font-semibold">{{ t('my.past') }}</h4>
             <ul class="space-y-1 text-stone-700">
               <li v-for="p in s.past" :key="p.id">{{ t('my.past_line', { name: p.name, prayers: p.prayers, minutes: p.minutes }) }}</li>
             </ul>

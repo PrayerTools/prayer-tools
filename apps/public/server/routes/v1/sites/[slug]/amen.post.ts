@@ -32,9 +32,9 @@ export default defineEventHandler(async (event) => {
       if (!existing.rows[0].completed) await sql`UPDATE pt_prayer_session SET completed = true, last_ping_at = now() WHERE id = ${body.id}`.execute(tx)
       return false
     }
-    const sub = await appSubscription(tx, device.intercessorId)
+    const sub = await appSubscription(tx, device.userId)
     await tx.insertInto('pt_prayer_session').values({
-      id: body.id as string, campaign_id: campaign.id, subscription_id: sub?.id ?? null, intercessor_id: device.intercessorId,
+      id: body.id as string, campaign_id: campaign.id, subscription_id: sub?.id ?? null, user_id: device.userId,
       source: 'app', day, language, country: getRequestHeader(event, 'cf-ipcountry')?.slice(0, 2) ?? null,
       started_at: prayedAt, last_ping_at: new Date(prayedAt.getTime() + seconds * 1000), seconds, completed: true
     }).execute()

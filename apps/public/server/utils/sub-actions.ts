@@ -56,7 +56,9 @@ export async function removeCommitment(tx: Tx, sub: SubscriptionRow, id: string)
   if (!Number(res.numDeletedRows)) throw createError({ statusCode: 404, statusMessage: 'Not found' })
 }
 
-export async function updateProfile(tx: Tx, sub: SubscriptionRow, input: { name?: unknown, language?: unknown, timezone?: unknown }, siteLanguages: string[]): Promise<void> {
+// A new name on a subscription linked to an account renames the account;
+// the caller copies it to the person's other sites (returned user id).
+export async function updateProfile(tx: Tx, sub: SubscriptionRow, input: { name?: unknown, language?: unknown, timezone?: unknown }, siteLanguages: string[]): Promise<string | null> {
   const patch: { language?: string, timezone?: string, updated_at: Date } = { updated_at: new Date() }
   if (typeof input.language === 'string' && input.language !== sub.language) {
     if (!siteLanguages.includes(input.language)) bad('language')
@@ -79,7 +81,12 @@ export async function updateProfile(tx: Tx, sub: SubscriptionRow, input: { name?
       const data = { ...(contact.data as Record<string, unknown>), ...(patch.language ? { pt_language: patch.language } : {}) }
       await tx.updateTable('crm_records').set({ ...(name ? { name } : {}), data: jsonb(data), updated_at: new Date() }).where('id', '=', sub.contact_id).execute()
     }
+    if (name && sub.user_id) {
+      await tx.updateTable('users').set({ display_name: name, updated: new Date() }).where('id', '=', sub.user_id).execute()
+      return sub.user_id
+    }
   }
+  return null
 }
 
 export async function setSubscriptionConsent(tx: Tx, sub: SubscriptionRow, purpose: unknown, grant: unknown, capture: Omit<ConsentCapture, 'wording'>): Promise<void> {

@@ -3,12 +3,14 @@ import { negotiateLanguage } from '@prayertools/shared/languages'
 import { platformConfig } from '@prayertools/shared/config'
 import type { PlatformResponse, ViewResponse } from '../../shared/view'
 import { buildSiteResponse } from './views'
-import { buildMyView, mySession } from './my'
+import { buildMyView } from './my'
+import { sessionUserId } from './account-session'
+import { safeReturnPath } from '@prayertools/shared/auth-codes'
 import { UI_LANGUAGES } from './site-data'
 import type { SiteContext } from './site-context'
 import { NOT_FOUND_CACHE, PRIVATE_CACHE, SHARED_CACHE, setCache } from './request'
 
-const NOTICES = new Set(['link_invalid', 'link_sent', 'signed_out', 'deleted'])
+const NOTICES = new Set(['link_invalid', 'link_sent', 'signed_out', 'deleted', 'email_changed', 'email_taken'])
 
 export async function buildPlatformResponse(event: H3Event, fullPath: string): Promise<PlatformResponse> {
   const url = new URL(fullPath, 'http://x')
@@ -17,11 +19,13 @@ export async function buildPlatformResponse(event: H3Event, fullPath: string): P
   if (url.pathname === '/') return { host: 'platform', lang, donateUrl: platformConfig().donateUrl, page: { kind: 'home', adminUrl: platformConfig().adminUrl }, status: 200, cache: 'private', title: 'Prayer.Tools' }
   if (url.pathname !== '/my') return { host: 'platform', lang, donateUrl: platformConfig().donateUrl, page: { kind: 'not_found' }, status: 404, cache: 'private', title: 'Prayer.Tools' }
   const notice = url.searchParams.get('notice')
+  // Where to go once signed in: a hand-off to a site or the admin app.
+  const continueTo = safeReturnPath(url.searchParams.get('continue'), '')
   return {
     host: 'platform',
     lang,
     donateUrl: platformConfig().donateUrl,
-    page: { kind: 'my', my: await buildMyView(await mySession(event)), notice: notice && NOTICES.has(notice) ? notice : null },
+    page: { kind: 'my', my: await buildMyView(await sessionUserId(event)), notice: notice && NOTICES.has(notice) ? notice : null, continueTo: continueTo.startsWith('/my/') ? continueTo : null },
     status: 200,
     cache: 'private',
     title: 'Prayer.Tools'

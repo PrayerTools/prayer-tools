@@ -2,6 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { withOrg } from '@prayertools/shared/db/scope'
 import { addDays, todayIn } from '@prayertools/shared/dates'
 import { hashToken } from '@prayertools/shared/tokens'
+import { createAnonymousAccount } from '@prayertools/shared/accounts'
 import { runCheckins } from '../src/daily/checkins'
 import { appInactivity, deleteUnverified } from '../src/daily/subscriptions'
 import { drainJobs } from '../src/jobs/processor'
@@ -143,10 +144,10 @@ describe('subscription housekeeping', () => {
     const { orgId } = await createSite(env)
     await createCampaign(env, orgId, { endMode: 'none' })
     const make = async (days: number, status: 'active' | 'unsubscribed' = 'active') => {
-      const intercessor = await env.admin.insertInto('pt_intercessor').values({ email: null }).returning('id').executeTakeFirstOrThrow()
-      env.intercessors.push(intercessor.id)
+      const userId = await createAnonymousAccount(env.admin)
+      env.accounts.push(userId)
       return await withOrg(env.admin, orgId, async tx => (await tx.insertInto('pt_subscription').values({
-        intercessor_id: intercessor.id, delivery: 'app', status, language: 'en', timezone: TZ, referral_code: Math.random().toString(36).slice(2, 8),
+        user_id: userId, delivery: 'app', status, language: 'en', timezone: TZ, referral_code: Math.random().toString(36).slice(2, 8),
         last_activity_at: new Date(Date.now() - days * DAY), created_at: new Date(Date.now() - 60 * DAY)
       }).returning('id').executeTakeFirstOrThrow()).id)
     }

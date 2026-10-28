@@ -154,7 +154,11 @@
     "closed": "Les inscriptions ne sont pas ouvertes pour le moment.",
     "app_way": "Utiliser l'application",
     "web_way": "Ou inscrivez-vous ici",
-    "success": "Vous êtes inscrit. Merci de vous joindre à nous dans la prière !"
+    "success": "Vous êtes inscrit. Merci de vous joindre à nous dans la prière !",
+    "account_as": "Inscription avec {email}",
+    "use_other_email": "Utiliser une autre adresse",
+    "sign_in_prompt": "Vous avez déjà prié avec Prayer.Tools ?",
+    "sign_in": "Se connecter"
   },
   "commitment": {
     "how_often": "Fréquence",
@@ -343,7 +347,21 @@
     "status_active": "Active",
     "status_inactive": "En pause",
     "status_completed": "Terminée",
-    "status_unsubscribed": "Désabonné"
+    "status_unsubscribed": "Désabonné",
+    "account_title": "Votre compte",
+    "account_help": "Votre nom et votre adresse e-mail sont les mêmes pour toutes vos campagnes de prière.",
+    "name": "Nom",
+    "save_name": "Enregistrer le nom",
+    "new_email": "Nouvelle adresse e-mail",
+    "change_email": "Changer d’adresse",
+    "email_sent": "Si personne d’autre n’utilise cette adresse, nous y avons envoyé un lien. Ouvrez-le pour terminer le changement.",
+    "managing_title": "Campagnes que vous aidez à mener",
+    "managing_empty": "Vous ne faites encore partie de l’équipe d’aucune campagne.",
+    "manage_site": "Gérer",
+    "create_campaign": "Lancer une campagne de prière",
+    "praying_title": "Campagnes avec lesquelles vous priez",
+    "notice_email_changed": "Votre adresse e-mail a été changée pour toutes les campagnes.",
+    "notice_email_taken": "Un autre compte utilise déjà cette adresse ; rien n’a changé."
   },
   "home": {
     "title": "Des campagnes de prière pour les lieux et les peuples qui vous tiennent à cœur",

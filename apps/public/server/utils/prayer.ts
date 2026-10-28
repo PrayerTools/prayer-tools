@@ -23,7 +23,7 @@ export interface PingInput {
   language: string | null
   source: SessionSource
   subscriptionId: string | null
-  intercessorId: string | null
+  userId: string | null
   country: string | null
 }
 
@@ -54,7 +54,7 @@ export async function recordPing(tx: Tx, p: PingInput): Promise<PingResult> {
       id: p.id,
       campaign_id: p.campaignId,
       subscription_id: p.subscriptionId,
-      intercessor_id: p.intercessorId,
+      user_id: p.userId,
       source: p.source,
       day: p.day,
       language: p.language,

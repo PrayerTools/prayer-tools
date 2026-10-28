@@ -20,7 +20,7 @@ const admin = createDb(process.env.ADMIN_DATABASE_URL)
 const app = createDb(process.env.APP_DATABASE_URL!)
 const run = Date.now().toString(36)
 const emails: string[] = []
-const intercessors: string[] = []
+const accounts: string[] = []
 let failures = 0
 
 function email(tag: string): string {
@@ -264,7 +264,7 @@ await req('localhost', '/api/my/link', { body: { email: e1.toUpperCase(), langua
 const myMail = await mailTo(e1, /\/my\/login\/[A-Za-z0-9_-]+/)
 check('My prayer link emailed', !!myMail)
 const login = await req('localhost', new URL(myMail!.match, 'http://x').pathname.replace(/^.*\/my\//, '/my/'))
-const myCookie = cookieOf(login, 'pt_my')
+const myCookie = cookieOf(login, 'pt_session')
 check('login exchanges the token for a session cookie', login.status === 302 && login.headers.get('location') === '/my' && !!myCookie)
 check('login token is single-use', (await req('localhost', new URL(myMail!.match, 'http://x').pathname.replace(/^.*\/my\//, '/my/'))).headers.get('location') === '/my?notice=link_invalid')
 const my = (await req('localhost', '/api/view?path=/my', { cookie: myCookie })).json()
@@ -279,7 +279,7 @@ check('sign out revokes the session', (await req('localhost', '/api/my/export', 
 console.log('App API')
 const reg = await req('api.localhost', '/v1/devices', { body: { platform: 'ios', app_version: '1.0.0', timezone: 'Asia/Beirut', language: 'en' } })
 const device = reg.json()
-intercessors.push(device.intercessor_id)
+accounts.push(device.intercessor_id)
 const auth = { authorization: `Bearer ${device.credential}` }
 check('device registration', reg.status === 201 && !!device.credential)
 check('site info', (await req('api.localhost', '/v1/sites/demo-247')).json().current_campaign?.goal === 'coverage')
@@ -318,8 +318,8 @@ for (const org of [ramadan, beirut, await orgId('staff')]) {
     await tx.deleteFrom('crm_channels').where('id', 'in', ids).execute()
   })
 }
-await admin.deleteFrom('pt_subscription').where('intercessor_id', 'in', intercessors).execute()
-await admin.deleteFrom('pt_intercessor').where(eb => eb.or([eb('email', 'in', emails), eb('id', 'in', intercessors)])).execute()
+await admin.deleteFrom('pt_subscription').where('user_id', 'in', accounts).execute()
+await admin.deleteFrom('users').where(eb => eb.or([eb('email', 'in', emails), eb('id', 'in', accounts)])).execute()
 await admin.destroy()
 await app.destroy()
 

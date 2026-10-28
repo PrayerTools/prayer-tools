@@ -1,6 +1,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { sql } from 'kysely'
 import { withOrg } from '@prayertools/shared/db/scope'
+import { createAnonymousAccount } from '@prayertools/shared/accounts'
 import { jsonb } from '@prayertools/shared/db/json'
 import { addDays, todayIn } from '@prayertools/shared/dates'
 import { ANONYMIZED_NAME } from '@prayertools/shared/subscriptions'
@@ -20,7 +21,7 @@ afterAll(async () => { await closeEnv(env) })
 const TZ = 'America/New_York'
 
 describe('data retention', () => {
-  it('anonymizes subscriptions unsubscribed for 12 months and deletes their unused identity', async () => {
+  it('anonymizes subscriptions unsubscribed for 12 months and deletes their unused account', async () => {
     const { orgId } = await createSite(env)
     const campaignId = await createCampaign(env, orgId, { endMode: 'none' })
     const old = await createSubscriber(env, orgId, campaignId)
@@ -30,9 +31,9 @@ describe('data retention', () => {
       await tx.updateTable('pt_subscription').set({ status: 'unsubscribed', unsubscribed_at: new Date(Date.now() - 400 * DAY) }).where('id', '=', old.subscriptionId).execute()
       await tx.updateTable('pt_subscription').set({ status: 'unsubscribed', unsubscribed_at: new Date(Date.now() - 100 * DAY) }).where('id', '=', recent.subscriptionId).execute()
     })
-    const oldSub = await withOrg(env.admin, orgId, tx => tx.selectFrom('pt_subscription').select('intercessor_id').where('id', '=', old.subscriptionId).executeTakeFirstOrThrow())
-    expect(oldSub.intercessor_id).not.toBeNull()
-    await env.admin.updateTable('pt_intercessor').set({ created_at: new Date(Date.now() - 500 * DAY) }).where('id', '=', oldSub.intercessor_id!).execute()
+    const oldSub = await withOrg(env.admin, orgId, tx => tx.selectFrom('pt_subscription').select('user_id').where('id', '=', old.subscriptionId).executeTakeFirstOrThrow())
+    expect(oldSub.user_id).not.toBeNull()
+    await env.admin.updateTable('users').set({ created: new Date(Date.now() - 500 * DAY) }).where('id', '=', oldSub.user_id!).execute()
 
     const ctx = testCtx(env)
     const res = await runRetention(ctx, ctx.log)
@@ -48,7 +49,8 @@ describe('data retention', () => {
       recent: await tx.selectFrom('pt_subscription').selectAll().where('id', '=', recent.subscriptionId).executeTakeFirstOrThrow()
     }))
     expect(after.sub.anonymized_at).not.toBeNull()
-    expect(after.sub.intercessor_id).toBeNull()
+    expect(after.sub.user_id).toBeNull()
+    expect(after.contact.user_id).toBeNull()
     expect(after.sub.status).toBe('unsubscribed')
     expect(after.contact.name).toBe(ANONYMIZED_NAME)
     expect(after.contact.data).toEqual({})
@@ -57,8 +59,8 @@ describe('data retention', () => {
     expect(after.commitments).toHaveLength(0)
     expect(after.consentValues).toHaveLength(0)
     expect(after.recent.anonymized_at).toBeNull()
-    const identity = await env.admin.selectFrom('pt_intercessor').select('id').where('id', '=', oldSub.intercessor_id!).executeTakeFirst()
-    expect(identity).toBeUndefined()
+    const account = await env.admin.selectFrom('users').select('id').where('id', '=', oldSub.user_id!).executeTakeFirst()
+    expect(account).toBeUndefined()
     // It still counts in the signup stats.
     const signups = await withOrg(env.admin, orgId, tx => tx.selectFrom('pt_stat_daily').select('value').where('metric', '=', 'signups').execute())
     expect(signups.reduce((n, r) => n + Number(r.value), 0)).toBe(2)
@@ -78,7 +80,7 @@ describe('data retention', () => {
     expect(row.site.anonymized_at).not.toBeNull()
   })
 
-  it('drops raw events after 90 days, visitor days after 7, old session partitions, and expired My prayer tokens', async () => {
+  it('drops raw events after 90 days, visitor days after 7, old session partitions, and expired account codes', async () => {
     const { orgId } = await createSite(env)
     await withOrg(env.admin, orgId, async (tx) => {
       await tx.insertInto('pt_event').values([
@@ -90,12 +92,13 @@ describe('data retention', () => {
         { day: todayIn('UTC'), visitor_hash: 'b' }
       ]).execute()
     })
-    const intercessor = await env.admin.insertInto('pt_intercessor').values({ email: null }).returning('id').executeTakeFirstOrThrow()
-    env.intercessors.push(intercessor.id)
-    await env.admin.insertInto('pt_intercessor_device').values({ intercessor_id: intercessor.id, credential_hash: uid() }).execute()
-    await env.admin.insertInto('pt_my_token').values([
-      { intercessor_id: intercessor.id, token_hash: uid(), expires_at: new Date(Date.now() - 1000) },
-      { intercessor_id: intercessor.id, token_hash: uid(), expires_at: new Date(Date.now() + 3600_000) }
+    const userId = await createAnonymousAccount(env.admin)
+    env.accounts.push(userId)
+    await env.admin.updateTable('users').set({ created: new Date(Date.now() - 500 * DAY) }).where('id', '=', userId).execute()
+    await env.admin.insertInto('pt_user_device').values({ user_id: userId, credential_hash: uid() }).execute()
+    await env.admin.insertInto('pt_auth_code').values([
+      { user_id: userId, purpose: 'sign_in', code_hash: uid(), expires_at: new Date(Date.now() - 2 * DAY) },
+      { user_id: userId, purpose: 'sign_in', code_hash: uid(), expires_at: new Date(Date.now() + 3600_000) }
     ]).execute()
     await sql`CREATE TABLE IF NOT EXISTS pt_prayer_session_200001 PARTITION OF pt_prayer_session FOR VALUES FROM ('2000-01-01') TO ('2000-02-01')`.execute(env.admin)
 
@@ -113,10 +116,10 @@ describe('data retention', () => {
     const ahead = `pt_prayer_session_${future.getUTCFullYear()}${String(future.getUTCMonth() + 1).padStart(2, '0')}`
     const exists = await sql<{ r: string | null }>`select to_regclass(${ahead})::text as r`.execute(env.admin)
     expect(exists.rows[0]!.r).toBe(ahead)
-    const tokens = await env.admin.selectFrom('pt_my_token').select('id').where('intercessor_id', '=', intercessor.id).execute()
-    expect(tokens).toHaveLength(1)
-    // An identity with a device is kept.
-    expect(await env.admin.selectFrom('pt_intercessor').select('id').where('id', '=', intercessor.id).executeTakeFirst()).toBeDefined()
+    const codes = await env.admin.selectFrom('pt_auth_code').select('id').where('user_id', '=', userId).execute()
+    expect(codes).toHaveLength(1)
+    // An account with a device is kept.
+    expect(await env.admin.selectFrom('users').select('id').where('id', '=', userId).executeTakeFirst()).toBeDefined()
   })
 
   it('deletes signup requests nobody confirmed in time', async () => {
@@ -169,7 +172,7 @@ describe('custom-domain health check', () => {
     expect(alerts).toHaveLength(1)
 
     await drainJobs(ctx, ctx.log)
-    const mail = mailsTo(ctx.mails, user.email)
+    const mail = mailsTo(ctx.mails, user.email!)
     expect(mail).toHaveLength(1)
     expect(mail[0]!.subject).toContain(hostname)
     expect(mail[0]!.text).toContain(`http://${slug}.localhost:3380`)
