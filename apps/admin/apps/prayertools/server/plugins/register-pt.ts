@@ -8,8 +8,11 @@ import { getRegisteredRecordType, registerCrmConsentPurpose, registerCrmRecordTy
 import { registerAiFeature } from '#ai/server'
 import { PT_PERMISSIONS, PT_PERMISSION_META, PT_STATIC_ROLES } from '../../app/utils/pt-permissions'
 import { PT_LIBRARY_APP } from '@prayertools/shared/site'
+import { platformConfig } from '@prayertools/shared/config'
 
 export default defineNitroPlugin(() => {
+  // Fails at startup when required configuration is missing.
+  platformConfig()
   registerPermissions(PT_PERMISSIONS, PT_PERMISSION_META)
   registerDefaultGrants('pt', {
     member: ['pt.access', 'pt.site.read', 'pt.stats.read'],

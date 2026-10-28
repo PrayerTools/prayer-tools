@@ -5,6 +5,12 @@ function env(name: string, fallback = ''): string {
   return v === undefined || v === '' ? fallback : v
 }
 
+function required(name: string): string {
+  const v = env(name)
+  if (!v) throw new Error(`${name} is not set`)
+  return v
+}
+
 export interface PlatformConfig {
   // Host that sites live under: `{slug}.<siteBaseHost>`. `prayer.tools` in
   // production, `localhost:3380` in development.
@@ -39,7 +45,7 @@ export function platformConfig(): PlatformConfig {
     adminUrl: env('PT_ADMIN_URL', 'http://localhost:2380'),
     apiHost: env('PT_API_HOST', `api.${siteBaseHost}`),
     goHost: env('PT_GO_HOST', `go.${siteBaseHost}`),
-    secret: env('PT_SECRET', env('JWT_SECRET', 'dev-only-secret-change-me')),
+    secret: required('PT_SECRET'),
     statinator: {
       url: env('STATINATOR_URL'),
       projectId: env('STATINATOR_PROJECT_ID', 'prayer_tools_campaigns'),
