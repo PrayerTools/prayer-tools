@@ -16,7 +16,8 @@ import type { SiteContext } from './site-context'
 import { setManageCookie, setPreviewCookie } from './cookies'
 import { forwardInBackground } from './analytics'
 import { deliver } from './mail'
-import { background } from './request'
+import { background, clientIp } from './request'
+import { grantPlatformNews } from './staff'
 import { prepareWelcomeMail } from './welcome'
 import { loadSiteData, stateOf } from './site-data'
 import { takeSignupRequest } from './signup-request'
@@ -36,6 +37,11 @@ export async function exchangeManageLink(event: H3Event, ctx: SiteContext, token
   return sendRedirect(event, '/manage', 302)
 }
 
+// Consent confirmed by opening a signup's email link.
+function signupCapture(event: H3Event, ctx: SiteContext, language: string) {
+  return { surface: 'web_signup', source: ctx.host, ip: clientIp(event), userAgent: getRequestHeader(event, 'user-agent') ?? null, language }
+}
+
 export async function verifyLink(event: H3Event, ctx: SiteContext, token: string) {
   const result = await withOrg(useDb(), ctx.orgId, async (tx) => {
     const before = await tx.selectFrom('pt_subscription').select(['id', 'verified_at']).where('verify_token_hash', '=', hashToken(token)).executeTakeFirst()
@@ -52,11 +58,19 @@ export async function verifyLink(event: H3Event, ctx: SiteContext, token: string
     const joined = campaign
       ? { slug: campaignSegment(campaign, data.current?.campaign.id), upcoming: campaignStatus(campaign) === 'upcoming' }
       : null
-    return { sub, defaultLanguage: data.site.default_language, campaignId: latest?.campaign_id ?? null, email: email?.email ?? null, firstTime, welcome, joined }
+    // News from Prayer.Tools asked for at signup, now that the address is verified.
+    let news: { email: string, name: string | null } | null = null
+    if (sub.platform_news_requested_at && email && sub.contact_id) {
+      await tx.updateTable('pt_subscription').set({ platform_news_requested_at: null }).where('id', '=', sub.id).execute()
+      const contact = await tx.selectFrom('crm_records').select('name').where('id', '=', sub.contact_id).executeTakeFirst()
+      news = { email: email.email, name: contact?.name ?? null }
+    }
+    return { sub, defaultLanguage: data.site.default_language, campaignId: latest?.campaign_id ?? null, email: email?.email ?? null, firstTime, welcome, joined, news }
   })
   if (!result) return
   const { sub } = result
   setManageCookie(event, ctx.orgId, sub.id, sub.manage_version)
+  if (result.news) background(event, grantPlatformNews(result.news.email, result.news.name, signupCapture(event, ctx, sub.language)))
   if (result.firstTime) {
     background(event, deliver(result.welcome))
     forwardInBackground(event, { orgId: ctx.orgId, slug: ctx.slug, host: ctx.host }, {
@@ -89,6 +103,7 @@ export async function addTimesLink(event: H3Event, ctx: SiteContext, token: stri
     if (owner?.id !== taken.subscriptionId) return null
     const res = await createWebSignup(tx, { ...taken.request, campaign, preVerified: true })
     return {
+      news: taken.request.consents.platformNews ? { email: taken.request.email, name: taken.request.name ?? null } : null,
       sub: res.subscription,
       welcome: await prepareWelcomeMail(tx, ctx.orgId, res.subscription),
       defaultLanguage: data.site.default_language,
@@ -99,6 +114,7 @@ export async function addTimesLink(event: H3Event, ctx: SiteContext, token: stri
   if (!result) return sendRedirect(event, '/notice/link_invalid', 302)
   const { sub } = result
   setManageCookie(event, ctx.orgId, sub.id, sub.manage_version)
+  if (result.news) background(event, grantPlatformNews(result.news.email, result.news.name, signupCapture(event, ctx, sub.language)))
   background(event, deliver(result.welcome))
   const path = sitePath({ lang: sub.language, defaultLang: result.defaultLanguage, campaignSlug: result.slug, page: result.upcoming ? 'signup' : 'pray' })
   return sendRedirect(event, `${path}?confirmed=1`, 302)

@@ -86,7 +86,7 @@ export default defineEventHandler(async (event) => {
       language,
       timezone,
       commitments,
-      consents: { siteUpdates: consents.site_updates === true, custom: custom.map(o => o.key) },
+      consents: { siteUpdates: consents.site_updates === true, platformNews: consents.platform_news === true, custom: custom.map(o => o.key) },
       consentLabels,
       answers,
       referredBy: str(body.referral, 20) || null,
@@ -129,14 +129,19 @@ export default defineEventHandler(async (event) => {
     if (preVerified && res.newSubscription) {
       await recordEvent(tx, { campaignId: campaign.id, type: 'campaign_signup_verified', meta: { subscription_id: res.subscription.id } })
     }
-    return { known: false as const, res, mail, campaign, language, frequency }
+    // News from Prayer.Tools only for a verified address; otherwise once it is verified.
+    const grantNews = request.consents.platformNews === true && !!res.subscription.verified_at
+    if (request.consents.platformNews && !grantNews) {
+      await tx.updateTable('pt_subscription').set({ platform_news_requested_at: new Date() }).where('id', '=', res.subscription.id).execute()
+    }
+    return { known: false as const, res, mail, campaign, language, frequency, grantNews }
   })
 
   background(event, deliver(result.mail))
-  if (consents.platform_news === true) {
-    background(event, grantPlatformNews(normalized, name, { ...capture, language: str(body.language, 10) || undefined }))
-  }
   if (result.known) return { ok: true, verify: true, referral_code: null }
+  if (result.grantNews) {
+    background(event, grantPlatformNews(normalized, name, { ...capture, language: result.language }))
+  }
 
   const { res, campaign } = result
   if (res.newSubscription) {

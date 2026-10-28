@@ -179,7 +179,8 @@ export interface SignupInput {
   language: string
   timezone: string
   commitments: RuleInput[]
-  consents: { siteUpdates?: boolean, custom?: string[] }
+  // `platformNews` is granted by the caller once the address is verified.
+  consents: { siteUpdates?: boolean, platformNews?: boolean, custom?: string[] }
   consentLabels?: Record<string, string>
   answers?: Record<string, unknown>
   referredBy?: string | null

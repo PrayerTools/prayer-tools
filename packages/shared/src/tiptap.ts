@@ -2,6 +2,7 @@
 // every node the editor offers, including Scripture verses. `web` output uses
 // classes styled by the public site; `email` output uses inline styles.
 import type { TiptapDoc, TiptapNode } from './db/schema'
+import { videoEmbed } from './video'
 
 export type RenderMode = 'web' | 'email'
 
@@ -119,7 +120,10 @@ export function renderNode(n: TiptapNode, o: RenderOptions): string {
     case 'youtube': {
       const src = safeUrl(attr(n, 'src'))
       if (email) return `<p style="${EMAIL.p}"><a href="${src}">${src}</a></p>`
-      return `<div class="video"><iframe src="${src}" loading="lazy" allowfullscreen title="Video"></iframe></div>`
+      // Only YouTube and Vimeo players are embedded; content is shared across sites.
+      const video = videoEmbed(String(attr(n, 'src') ?? ''))
+      if (!video || video.kind === 'file') return ''
+      return `<div class="video"><iframe src="${escapeHtml(video.src)}" loading="lazy" allowfullscreen title="Video"></iframe></div>`
     }
     case 'button': {
       const href = safeUrl(attr(n, 'href'))

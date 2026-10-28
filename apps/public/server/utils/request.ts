@@ -1,27 +1,36 @@
 import type { H3Event } from 'h3'
 import { rateLimit } from '@prayertools/shared/rate-limit'
 import { verifyTurnstile } from '@prayertools/shared/turnstile'
+import { platformConfig } from '@prayertools/shared/config'
 
 export const SHARED_CACHE = 'public, max-age=0, s-maxage=600, stale-while-revalidate=86400'
 export const SHORT_CACHE = 'public, max-age=0, s-maxage=60, stale-while-revalidate=600'
 export const PRIVATE_CACHE = 'private, no-store'
 export const NOT_FOUND_CACHE = 'public, max-age=0, s-maxage=60'
 
+// A header set by the proxy in front; any client can send these, so they
+// count only with PT_TRUST_PROXY.
+function proxyHeader(event: H3Event, name: string): string | undefined {
+  return platformConfig().trustProxy ? getRequestHeader(event, name) : undefined
+}
+
 // The host the visitor asked for, including a non-default port (dev).
 export function requestHost(event: H3Event): string {
-  const raw = getRequestHeader(event, 'x-forwarded-host') || getRequestHeader(event, 'host') || ''
+  const raw = proxyHeader(event, 'x-forwarded-host') || getRequestHeader(event, 'host') || ''
   return raw.split(',')[0]!.trim().toLowerCase()
 }
 
 export function requestScheme(event: H3Event): 'http' | 'https' {
-  const proto = getRequestHeader(event, 'x-forwarded-proto')?.split(',')[0]?.trim()
+  const proto = proxyHeader(event, 'x-forwarded-proto')?.split(',')[0]?.trim()
   if (proto === 'https' || proto === 'http') return proto
   return requestHost(event).startsWith('localhost') || requestHost(event).includes('.localhost') ? 'http' : 'https'
 }
 
+// The visitor's address. A proxy appends the address it saw to
+// X-Forwarded-For, so the last entry is the one a client can't forge.
 export function clientIp(event: H3Event): string {
-  return getRequestHeader(event, 'cf-connecting-ip')
-    || getRequestHeader(event, 'x-forwarded-for')?.split(',')[0]?.trim()
+  return proxyHeader(event, 'cf-connecting-ip')
+    || proxyHeader(event, 'x-forwarded-for')?.split(',').at(-1)?.trim()
     || event.node.req.socket?.remoteAddress
     || 'unknown'
 }

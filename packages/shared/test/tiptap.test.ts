@@ -25,6 +25,12 @@ describe('tiptapToHtml', () => {
     expect(html).toContain('<ul><li><p>Families</p></li></ul>')
   })
 
+  it('embeds only YouTube and Vimeo players', () => {
+    const video = (src: string) => tiptapToHtml({ type: 'doc', content: [{ type: 'youtube', attrs: { src } }] })
+    expect(video('https://www.youtube.com/embed/dQw4w9WgXcQ')).toContain('<iframe src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"')
+    expect(video('https://evil.example/page')).toBe('')
+  })
+
   it('inlines styles for email', () => {
     const html = tiptapToHtml(doc, { mode: 'email', color: '#2f6f5e' })
     expect(html).toMatch(/<h2 style="margin:24px 0 12px;[^"]*font-size:22px;">/)

@@ -410,6 +410,8 @@ export interface PtSubscriptionTable {
   verified_at: NullableTimestamp
   verify_token_hash: string | null
   verify_expires_at: NullableTimestamp
+  // "News from Prayer.Tools" asked for before the address was verified.
+  platform_news_requested_at: NullableTimestamp
   manage_version: Generated<number>
   referral_code: string
   referred_by: string | null

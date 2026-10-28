@@ -23,6 +23,9 @@ export interface PlatformConfig {
   apiHost: string
   goHost: string
   secret: string
+  // Behind a proxy that sets X-Forwarded-Host / -Proto / -For and
+  // CF-Connecting-IP (PT_TRUST_PROXY=true); otherwise those headers are ignored.
+  trustProxy: boolean
   statinator: { url: string, projectId: string, apiKey: string }
   turnstileSecret: string
   cloudflare: { apiToken: string, zoneId: string, fallbackOrigin: string }
@@ -46,6 +49,7 @@ export function platformConfig(): PlatformConfig {
     apiHost: env('PT_API_HOST', `api.${siteBaseHost}`),
     goHost: env('PT_GO_HOST', `go.${siteBaseHost}`),
     secret: required('PT_SECRET'),
+    trustProxy: env('PT_TRUST_PROXY') === 'true',
     statinator: {
       url: env('STATINATOR_URL'),
       projectId: env('STATINATOR_PROJECT_ID', 'prayer_tools_campaigns'),
