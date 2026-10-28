@@ -8,7 +8,7 @@ export function usePtCampaign() {
   const route = useRoute()
   const router = useRouter()
   const { data: site, slug } = usePtSite()
-  const { data: list, status, refresh } = useFetch<{ campaigns: PtCampaign[] }>('/api/pt/campaigns', { key: 'pt-campaigns' })
+  const { data: list, status, refresh } = usePtCampaignList()
   const chosen = useState<Record<string, string>>('pt-campaign-choice', () => ({}))
   const storageKey = computed(() => `pt-campaign:${slug.value}`)
 
@@ -49,4 +49,13 @@ export function usePtCampaign() {
   }, { immediate: true })
 
   return { id, campaign, campaigns, select, status, refresh }
+}
+
+// The useFetch key of a site's campaign list.
+export const ptCampaignsKey = (slug: string) => `pt-campaigns-${slug}`
+
+// The site's campaigns, fetched again when the site changes.
+export function usePtCampaignList(opts: { immediate?: boolean } = {}) {
+  const { slug } = usePtSite()
+  return useFetch<{ campaigns: PtCampaign[] }>('/api/pt/campaigns', { key: computed(() => ptCampaignsKey(slug.value)), watch: [slug], immediate: opts.immediate ?? true })
 }

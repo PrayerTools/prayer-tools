@@ -7,7 +7,7 @@ definePageMeta({ middleware: 'auth' })
 
 const { data: site, can } = usePtSite()
 const toast = usePtToast()
-const { data, status, refresh } = useFetch<{ campaigns: PtCampaign[] }>('/api/pt/campaigns', { key: 'pt-campaigns' })
+const { data, status, refresh } = usePtCampaignList()
 const canEdit = computed(() => can('pt.campaigns.write'))
 
 const groups = computed(() => {

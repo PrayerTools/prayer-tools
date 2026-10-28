@@ -111,7 +111,7 @@ export function ptReadPack(data: Uint8Array): PtPack {
   } catch {
     ptBadRequest('pack.json isn\'t valid JSON.')
   }
-  const meta = { description: null, license_note: null, credit: null, topics: pgArray([]), template_keys: pgArray([]), ...ptLibraryMeta(raw) }
+  const meta: Record<string, unknown> = { description: null, license_note: null, credit: null, topics: pgArray([]), template_keys: pgArray([]), ...ptLibraryMeta(raw) }
   const list = Array.isArray(raw.entries) ? raw.entries as Record<string, unknown>[] : []
   if (!list.length) ptBadRequest('The pack has no entries.')
   if (list.length > MAX_ENTRIES) ptBadRequest(`Packs can have up to ${MAX_ENTRIES} entries.`)

@@ -43,6 +43,10 @@ export interface PtCampaign extends SetupState {
   progress: PtGoalProgress
 }
 
+// The steps of the campaign setup wizard (PtCampaignSetupSteps).
+export const PT_SETUP_STEPS = ['setup', 'languages', 'content', 'landing', 'publish'] as const
+export type PtSetupStep = typeof PT_SETUP_STEPS[number]
+
 export function ptCampaignDates(c: PtCampaignSummary): string {
   const start = ptFormatDate(c.start_date)
   if (c.start_mode === 'join') return `From ${start} · each person finishes on their own`
