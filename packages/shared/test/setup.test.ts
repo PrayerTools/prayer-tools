@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyTemplate, campaignLength, campaignStatus, campaignsOverlap, defaultDuration, displayLength, durationOptions, durationRule, overlappingCampaign, pickCurrentCampaign, slotMinutes, suggestCampaignSlug, suggestSideSlug, validateSetup, type CampaignDates } from '../src/setup'
+import { applyTemplate, campaignLength, offeredTemplates, campaignStatus, campaignsOverlap, defaultDuration, displayLength, durationOptions, durationRule, overlappingCampaign, pickCurrentCampaign, slotMinutes, suggestCampaignSlug, suggestSideSlug, validateSetup, type CampaignDates } from '../src/setup'
 
 const NY = 'America/New_York'
 
@@ -92,6 +92,13 @@ describe('side campaigns', () => {
     expect(suggestSideSlug('Pray', '2026-09-01', [])).toBe('pray-2026')
     expect(suggestSideSlug('Stats 2026', '2026-09-01', [])).toBe('stats-2026')
     expect(suggestSideSlug('…', '2026-09-01', [])).toBe('2026')
+  })
+})
+
+describe('offeredTemplates', () => {
+  it('offers Ramadan in the months before it starts, and building your own always', () => {
+    expect(offeredTemplates('2026-10-28')).toEqual(['generic', 'ramadan'])
+    expect(offeredTemplates('2026-03-01')).toEqual(['generic'])
   })
 })
 

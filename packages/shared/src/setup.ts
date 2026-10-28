@@ -65,7 +65,7 @@ export const TEMPLATES: readonly CampaignTemplate[] = [
   },
   {
     key: 'ramadan',
-    setup: { start_mode: 'date', end_mode: 'date', length_days: 30, goal: 'people', cadence: 'daily' },
+    setup: { start_mode: 'date', end_mode: 'date', length_days: 30, cadence: 'daily' },
     open: ['start_date', 'goal', 'track_time'],
     topics: ['ramadan'],
     hiddenSections: [],
@@ -73,7 +73,7 @@ export const TEMPLATES: readonly CampaignTemplate[] = [
   },
   {
     key: 'disaster_4',
-    setup: { start_mode: 'date', end_mode: 'date', length_days: 4, goal: 'people', cadence: 'daily' },
+    setup: { start_mode: 'date', end_mode: 'date', length_days: 4, cadence: 'daily' },
     open: ['start_date', 'goal', 'track_time'],
     topics: ['crisis'],
     hiddenSections: ['stories'],
@@ -81,7 +81,7 @@ export const TEMPLATES: readonly CampaignTemplate[] = [
   },
   {
     key: 'disaster_12',
-    setup: { start_mode: 'date', end_mode: 'date', length_days: 12, goal: 'people', cadence: 'daily' },
+    setup: { start_mode: 'date', end_mode: 'date', length_days: 12, cadence: 'daily' },
     open: ['start_date', 'goal', 'track_time'],
     topics: ['crisis'],
     hiddenSections: [],
@@ -89,7 +89,7 @@ export const TEMPLATES: readonly CampaignTemplate[] = [
   },
   {
     key: 'anytime',
-    setup: { start_mode: 'join', end_mode: 'days', length_days: null, goal: 'people', cadence: 'daily' },
+    setup: { start_mode: 'join', end_mode: 'days', length_days: null, cadence: 'daily' },
     open: ['cadence', 'goal', 'track_time'],
     topics: [],
     hiddenSections: [],
@@ -111,6 +111,15 @@ export const RAMADAN_START_DATES = [
 export function suggestedStartDate(key: string, today: string): string | null {
   if (key !== 'ramadan') return null
   return RAMADAN_START_DATES.find(d => d >= today) ?? null
+}
+
+// How many days ahead of Ramadan a new campaign is offered the Ramadan template.
+export const RAMADAN_OFFER_DAYS = 180
+
+// Templates a new campaign can start from on `today`; "generic" (build your own) is always first.
+export function offeredTemplates(today: string): string[] {
+  const ramadan = suggestedStartDate('ramadan', today)
+  return ['generic', ...(ramadan && daysBetween(today, ramadan) <= RAMADAN_OFFER_DAYS ? ['ramadan'] : [])]
 }
 
 // Fills the answers the champion left out from the template. Locking a

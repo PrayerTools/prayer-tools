@@ -1,19 +1,19 @@
 <script setup lang="ts">
-// Onboarding, continued on the draft site: about the site, template and
-// campaign setup, languages, content, look, landing page (after the look,
-// which shapes how it appears) and publish. The current step is saved on the
+// Onboarding, continued on the draft site: the campaign (template, setup
+// answers, place and timezone), languages, content, look, landing page (after
+// the look, which shapes how it appears) and publish. The current step is saved on the
 // site, so setup can be resumed.
 import { suggestedStartDate } from '@prayertools/shared/setup'
 import { addDays, todayIn } from '@prayertools/shared/dates'
 import { heroImage } from '@prayertools/shared/hero-images'
 import type { SitePlaceWording } from '@prayertools/shared/place'
-import type { SetupState } from '../../components/PtSetupForm.vue'
+import type { SetupDraft } from '../../components/PtSetupForm.vue'
 import type { PtChecklist } from '../../components/PtLaunchChecklist.vue'
 import type { PtLocation } from '../../components/PtLocationSearch.vue'
 
 definePageMeta({ middleware: 'auth' })
 
-const STEPS = ['about', 'setup', 'languages', 'content', 'look', 'landing', 'publish'] as const
+const STEPS = ['setup', 'languages', 'content', 'look', 'landing', 'publish'] as const
 type Step = typeof STEPS[number]
 
 const { data: site, refresh: refreshSite, can } = usePtSite()
@@ -22,10 +22,10 @@ const toast = usePtToast()
 const route = useRoute()
 const slug = computed(() => String(route.params.orgSlug))
 
-const step = ref<Step>('about')
+const step = ref<Step>('setup')
 watch(site, (s) => {
   const saved = s?.site.onboarding?.step as Step | undefined
-  if (saved && STEPS.includes(saved) && step.value === 'about') step.value = saved
+  if (saved && STEPS.includes(saved) && step.value === 'setup') step.value = saved
 }, { immediate: true })
 
 async function go(next: Step) {
@@ -38,59 +38,33 @@ async function continueFromContent() {
   if (await contentSetup.value?.save() !== false) await go('look')
 }
 
-// ── Step: about the site ─────────────────────────────────────────────────
-const about = reactive({ purpose: 'place', people_group: '', timezone: 'UTC' })
-const location = ref<PtLocation | null>(null)
-watch(site, (s) => {
-  if (!s) return
-  Object.assign(about, { purpose: s.site.purpose ?? 'place', people_group: s.site.people_group ?? '', timezone: s.site.timezone })
-  location.value = s.site.place_name ? { name: s.site.place_name, latitude: s.site.latitude, longitude: s.site.longitude } : null
-}, { immediate: true })
-const purposeItems = Object.entries(PT_LABELS.purpose).map(([value, label]) => ({ value, label, description: PT_LABELS.purposeDescription[value] }))
-const savingAbout = ref(false)
-async function saveAbout() {
-  savingAbout.value = true
-  try {
-    await $fetch('/api/pt/site', {
-      method: 'PATCH',
-      body: {
-        purpose: about.purpose,
-        people_group: about.purpose === 'people_group' ? about.people_group : null,
-        place_name: location.value?.name ?? null,
-        latitude: location.value?.latitude ?? null,
-        longitude: location.value?.longitude ?? null,
-        timezone: about.timezone
-      }
-    })
-    await refreshSite()
-    await go('setup')
-  } catch (err) {
-    toast.fail(err)
-  } finally {
-    savingAbout.value = false
-  }
-}
-
-// ── Step: template + campaign setup ─────────────────────────────────────
+// ── Step: the campaign ──────────────────────────────────────────────────
 const templateKey = ref('generic')
 watch(site, s => { if (s?.site.template_key) templateKey.value = s.site.template_key }, { immediate: true })
 const campaignName = ref('')
-const setup = ref<SetupState>({ start_mode: 'date', start_date: null, end_mode: 'date', end_date: null, length_days: null, goal: 'people', cadence: 'daily', track_time: false, goal_target: 100, slot_min: null })
+const setup = ref<SetupDraft>({ start_mode: 'date', start_date: null, end_mode: 'date', end_date: null, length_days: null, goal: null, cadence: 'daily', track_time: false, goal_target: 100, slot_min: null })
+const place = reactive({ people_group: '', timezone: 'UTC' })
+const location = ref<PtLocation | null>(null)
 const existingCampaign = computed(() => site.value?.currentCampaign ?? null)
 
+watch(site, (s) => {
+  if (s && !s.currentCampaign) place.timezone = s.site.timezone
+}, { immediate: true })
 watch(existingCampaign, (c) => {
   if (!c) return
   campaignName.value = c.name
   setup.value = { start_mode: c.start_mode, start_date: c.start_date, end_mode: c.end_mode, end_date: c.end_date, length_days: c.length_days, goal: c.goal, cadence: c.cadence, track_time: c.track_time, goal_target: c.goal_target, slot_min: c.slot_min ?? null }
+  Object.assign(place, { people_group: c.people_group ?? '', timezone: c.timezone })
+  location.value = c.place_name ? { name: c.place_name, latitude: c.latitude, longitude: c.longitude } : null
 }, { immediate: true })
 
 function chooseTemplate(key: string) {
   templateKey.value = key
   const t = meta.value?.templates.find(x => x.key === key)
   if (!t) return
-  setup.value = { ...setup.value, ...(t.setup as Partial<SetupState>) }
+  setup.value = { ...setup.value, ...(t.setup as Partial<SetupDraft>) }
   if (t.setup.length_days && setup.value.start_mode === 'date') setup.value.length_days = null
-  const start = setup.value.start_mode === 'date' ? suggestedStartDate(key, todayIn(site.value?.site.timezone ?? 'UTC')) : null
+  const start = setup.value.start_mode === 'date' ? suggestedStartDate(key, todayIn(place.timezone)) : null
   if (start) setup.value.start_date = start
   fillEndDate()
   if (!campaignName.value && site.value) {
@@ -111,8 +85,17 @@ const savingSetup = ref(false)
 async function saveSetup() {
   savingSetup.value = true
   try {
-    await $fetch('/api/pt/site', { method: 'PATCH', body: { template_key: templateKey.value } })
-    const body = { ...setup.value, name: campaignName.value || site.value?.org.name, template_key: templateKey.value }
+    await $fetch('/api/pt/site', { method: 'PATCH', body: { template_key: templateKey.value, timezone: place.timezone } })
+    const body = {
+      ...setup.value,
+      name: campaignName.value || site.value?.org.name,
+      template_key: templateKey.value,
+      timezone: place.timezone,
+      people_group: place.people_group || null,
+      place_name: location.value?.name ?? null,
+      latitude: location.value?.latitude ?? null,
+      longitude: location.value?.longitude ?? null
+    }
     if (templateKey.value !== 'generic' && setup.value.start_mode === 'date' && !existingCampaign.value) delete (body as Record<string, unknown>).end_date
     if (existingCampaign.value) await $fetch(`/api/pt/campaigns/${existingCampaign.value.id}`, { method: 'PATCH', body })
     else await $fetch('/api/pt/campaigns', { method: 'POST', body })
@@ -133,14 +116,17 @@ watch(site, (s) => {
   if (!s) return
   languages.value = [...s.site.languages]
   defaultLanguage.value = s.site.default_language
-  placeWording.value = { ...s.site.place_wording }
+}, { immediate: true })
+watch(existingCampaign, (c) => {
+  placeWording.value = { ...c?.place_wording }
 }, { immediate: true })
 const savingLanguages = ref(false)
 async function saveLanguages() {
   savingLanguages.value = true
   try {
     if (!languages.value.includes(defaultLanguage.value)) defaultLanguage.value = languages.value[0] ?? 'en'
-    await $fetch('/api/pt/site', { method: 'PATCH', body: { languages: languages.value, default_language: defaultLanguage.value, place_wording: placeWording.value } })
+    await $fetch('/api/pt/site', { method: 'PATCH', body: { languages: languages.value, default_language: defaultLanguage.value } })
+    if (existingCampaign.value?.place_name) await $fetch(`/api/pt/campaigns/${existingCampaign.value.id}`, { method: 'PATCH', body: { place_wording: placeWording.value } })
     await refreshSite()
     await go('content')
   } catch (err) {
@@ -248,7 +234,6 @@ async function publish() {
       <UTabs
         :model-value="step"
         :items="[
-          { label: 'About', value: 'about', icon: 'i-lucide-info' },
           { label: 'Campaign', value: 'setup', icon: 'i-lucide-calendar-range' },
           { label: 'Languages', value: 'languages', icon: 'i-lucide-languages' },
           { label: 'Content', value: 'content', icon: 'i-lucide-book-open', disabled: !existingCampaign },
@@ -262,107 +247,27 @@ async function publish() {
       />
     </div>
 
-    <UCard v-if="step === 'about'">
+    <UCard v-if="step === 'setup'">
       <template #header>
         <h2 class="font-semibold">
-          About the site
+          Your campaign
         </h2>
         <p class="text-sm text-(--ui-text-muted)">
           You can change all of this later.
         </p>
       </template>
       <div class="divide-y divide-(--ui-border-accented)">
-        <section class="space-y-4 py-6 first:pt-0 last:pb-0">
-          <UFormField
-            label="What are you praying for?"
-            :ui="{ label: 'text-base font-semibold' }"
-          >
-            <URadioGroup
-              v-model="about.purpose"
-              :items="purposeItems"
-              variant="card"
-              orientation="horizontal"
-              class="w-full"
-              :ui="{ fieldset: 'grid grid-cols-1 sm:grid-cols-2 gap-2' }"
-            />
-          </UFormField>
-          <UFormField
-            v-if="about.purpose === 'people_group'"
-            label="Which people group?"
-          >
-            <UInput
-              v-model="about.people_group"
-              placeholder="e.g. the Kurds of eastern Turkey"
-              class="w-full"
-            />
-          </UFormField>
-        </section>
-        <UFormField
-          label="Location"
-          description="Where the people you pray for are. It places your site on the Prayer.Tools map."
-          :ui="{ label: 'text-base font-semibold' }"
-          class="py-6 first:pt-0 last:pb-0"
-        >
-          <PtLocationSearch v-model="location" />
-        </UFormField>
-        <UFormField
-          label="Timezone"
-          description="Campaign days begin at midnight in this timezone."
-          :ui="{ label: 'text-base font-semibold' }"
-          class="py-6 first:pt-0 last:pb-0"
-        >
-          <USelectMenu
-            v-model="about.timezone"
-            :items="ptTimezones()"
-            class="w-full sm:w-80"
-          />
-        </UFormField>
-      </div>
-      <template #footer>
-        <div class="flex justify-end">
-          <UButton
-            label="Save and continue"
-            :loading="savingAbout"
-            @click="saveAbout"
-          />
-        </div>
-      </template>
-    </UCard>
-
-    <UCard v-else-if="step === 'setup'">
-      <template #header>
-        <h2 class="font-semibold">
-          Choose a template
-        </h2>
-        <p class="text-sm text-(--ui-text-muted)">
-          A template fills in sensible answers. You can change them later.
-        </p>
-      </template>
-      <div class="divide-y divide-(--ui-border-accented)">
-        <div class="grid sm:grid-cols-2 gap-3 pb-6">
-          <button
-            v-for="t in meta?.templates ?? []"
-            :key="t.key"
-            type="button"
-            class="text-start rounded-lg border p-3 transition focus-visible:ring-2 focus-visible:ring-(--ui-primary)"
-            :class="templateKey === t.key ? 'border-(--ui-primary) ring-1 ring-(--ui-primary) bg-(--ui-bg-elevated)' : 'border-(--ui-border) hover:bg-(--ui-bg-elevated)'"
-            @click="chooseTemplate(t.key)"
-          >
-            <span class="flex items-center gap-2">
-              <UIcon
-                :name="PT_TEMPLATE_ICONS[t.key] ?? 'i-lucide-sparkles'"
-                class="size-5 shrink-0 text-(--ui-primary)"
-              />
-              <span class="font-medium">{{ PT_LABELS.template[t.key] }}</span>
-            </span>
-            <span class="block text-sm text-(--ui-text-muted) mt-1">{{ PT_LABELS.templateDescription[t.key] }}</span>
-          </button>
-        </div>
+        <PtTemplateChoice
+          v-model="templateKey"
+          :timezone="place.timezone"
+          class="pb-6"
+          @choose="chooseTemplate"
+        />
         <UFormField
           label="Campaign name"
           help="People see this, e.g. “Ramadan 2027”."
           :ui="{ label: 'text-base font-semibold' }"
-          class="py-6"
+          class="py-6 first:pt-0"
         >
           <UInput
             v-model="campaignName"
@@ -373,14 +278,52 @@ async function publish() {
           v-model="setup"
           :template-key="templateKey"
           :with-cadence="false"
-          class="pt-6"
+          :with-length="false"
+          class="py-6"
         />
+        <UFormField
+          label="Location (optional)"
+          description="Where the people you pray for are. Fills {place} in prayer content."
+          :ui="{ label: 'text-base font-semibold' }"
+          class="py-6"
+        >
+          <PtLocationSearch v-model="location" />
+        </UFormField>
+        <UFormField
+          label="People group (optional)"
+          description="Fills {people_group} in prayer content."
+          :ui="{ label: 'text-base font-semibold' }"
+          class="py-6"
+        >
+          <UInput
+            v-model="place.people_group"
+            placeholder="e.g. the Kurds of eastern Turkey"
+            class="w-full"
+          />
+        </UFormField>
+        <UFormField
+          label="Timezone"
+          description="Campaign days begin at midnight in this timezone."
+          :ui="{ label: 'text-base font-semibold' }"
+          class="py-6 last:pb-0"
+        >
+          <USelectMenu
+            v-model="place.timezone"
+            :items="ptTimezones()"
+            class="w-full sm:w-80"
+          />
+        </UFormField>
       </div>
       <template #footer>
-        <div class="flex justify-end">
+        <div class="flex items-center justify-end gap-3">
+          <span
+            v-if="!setup.goal"
+            class="text-sm text-(--ui-text-muted)"
+          >Choose a goal to continue.</span>
           <UButton
             label="Save and continue"
             :loading="savingSetup"
+            :disabled="!setup.goal"
             @click="saveSetup"
           />
         </div>
@@ -406,7 +349,7 @@ async function publish() {
           />
         </UFormField>
         <UFormField
-          v-if="site?.site.place_name"
+          v-if="existingCampaign?.place_name"
           label="How your place is written"
           description="Its name in each language, and how to say “in” and “of” it. Prayer guides use these to name your place."
           :ui="{ label: 'text-base font-semibold' }"
@@ -414,7 +357,7 @@ async function publish() {
         >
           <PtPlaceWording
             v-model="placeWording"
-            :place-name="site.site.place_name"
+            :place-name="existingCampaign.place_name"
             :languages="languages"
           />
         </UFormField>

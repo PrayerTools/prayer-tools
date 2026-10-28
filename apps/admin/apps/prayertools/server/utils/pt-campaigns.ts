@@ -5,6 +5,8 @@ import type { CampaignKind } from '@prayertools/shared/db/schema'
 import { campaignSlugError } from '@prayertools/shared/paths'
 import { isValidTimezone } from '@prayertools/shared/dates'
 import { parseText } from '@prayertools/shared/translatable'
+import { parsePlaceWording } from '@prayertools/shared/place'
+import { jsonb } from '@prayertools/shared/db/json'
 
 export function ptSetupFromBody(b: Record<string, unknown>, templateKey: string, base?: Partial<SetupAnswers>, kind: CampaignKind | null = null): SetupAnswers {
   const chosen: Partial<SetupAnswers> = { ...base }
@@ -44,6 +46,17 @@ export function ptCampaignExtras(b: Record<string, unknown>) {
   if ('timezone' in b && b.timezone) {
     if (!isValidTimezone(b.timezone)) ptBadRequest('Unknown timezone.')
     out.timezone = b.timezone
+  }
+  for (const k of ['place_name', 'people_group'] as const) {
+    if (k in b) out[k] = typeof b[k] === 'string' && (b[k] as string).trim() ? (b[k] as string).trim().slice(0, 200) : null
+  }
+  if ('place_wording' in b) out.place_wording = jsonb(parsePlaceWording(b.place_wording))
+  for (const k of ['latitude', 'longitude'] as const) {
+    if (k in b) {
+      const v = b[k]
+      if (v !== null && (typeof v !== 'number' || Math.abs(v) > (k === 'latitude' ? 90 : 180))) ptBadRequest(`Invalid ${k}.`)
+      out[k] = v
+    }
   }
   if ('goal_target' in b) {
     const v = b.goal_target

@@ -2,7 +2,6 @@
 // else pt.site.write. Settings keep only values that differ from the code
 // defaults.
 import { isLanguage } from '@prayertools/shared/languages'
-import { parsePlaceWording } from '@prayertools/shared/place'
 import { isValidTimezone } from '@prayertools/shared/dates'
 import { containsBlockedWord } from '@prayertools/shared/moderation'
 import { parseText } from '@prayertools/shared/translatable'
@@ -22,17 +21,7 @@ export default definePtHandler('pt.site.write', async (event, tx, ctx) => {
     await tx.updateTable('orgs').set({ name, updated_at: new Date().toISOString() }).where('id', '=', ctx.orgId).execute()
   }
   if ('description' in b) patch.description = b.description ? jsonb(parseText(b.description)) : null
-  for (const k of ['purpose', 'place_name', 'people_group'] as const) {
-    if (k in b) patch[k] = typeof b[k] === 'string' && (b[k] as string).trim() ? (b[k] as string).trim().slice(0, 200) : null
-  }
-  if ('place_wording' in b) patch.place_wording = jsonb(parsePlaceWording(b.place_wording))
-  for (const k of ['latitude', 'longitude'] as const) {
-    if (k in b) {
-      const v = b[k]
-      if (v !== null && (typeof v !== 'number' || Math.abs(v) > (k === 'latitude' ? 90 : 180))) ptBadRequest(`Invalid ${k}.`)
-      patch[k] = v
-    }
-  }
+  if ('purpose' in b) patch.purpose = typeof b.purpose === 'string' && b.purpose.trim() ? b.purpose.trim().slice(0, 200) : null
   if ('timezone' in b) {
     if (!isValidTimezone(b.timezone)) ptBadRequest('Unknown timezone.')
     patch.timezone = b.timezone

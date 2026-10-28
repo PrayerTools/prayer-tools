@@ -120,9 +120,9 @@ const vars = computed(() => {
     siteName: site.value?.org.name ?? '',
     campaignName: campaign.value?.name ?? '',
     lang: lang.value,
-    place: site.value?.site.place_name,
-    placeWording: site.value?.site.place_wording,
-    peopleGroup: site.value?.site.people_group,
+    place: campaign.value?.place_name,
+    placeWording: campaign.value?.place_wording,
+    peopleGroup: campaign.value?.people_group,
     startDate: date(campaign.value?.start_date ?? null),
     endDate: date(campaign.value?.end_date ?? null)
   })

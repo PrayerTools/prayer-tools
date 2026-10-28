@@ -1,5 +1,4 @@
 import type { TranslatableText } from '@prayertools/shared/db/schema'
-import type { SitePlaceWording } from '@prayertools/shared/place'
 
 export interface PtLanguage { code: string, name: string, native: string, dir: 'ltr' | 'rtl' }
 
@@ -25,11 +24,6 @@ export interface PtSiteResponse {
     status: 'draft' | 'published' | 'archived'
     description: TranslatableText | null
     purpose: string | null
-    place_name: string | null
-    place_wording: SitePlaceWording
-    people_group: string | null
-    latitude: number | null
-    longitude: number | null
     languages: string[]
     default_language: string
     timezone: string

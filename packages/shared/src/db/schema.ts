@@ -313,11 +313,6 @@ export interface PtSiteTable {
   status: Generated<SiteStatus>
   description: Json<TranslatableText | null> | null
   purpose: string | null
-  place_name: string | null
-  place_wording: JsonDefault<SitePlaceWording>
-  people_group: string | null
-  latitude: number | null
-  longitude: number | null
   languages: Generated<string[]>
   default_language: Generated<string>
   timezone: Generated<string>
@@ -358,6 +353,11 @@ export interface PtCampaignTable {
   goal_target: number | null
   slot_min: number | null
   timezone: string
+  place_name: string | null
+  place_wording: JsonDefault<SitePlaceWording>
+  people_group: string | null
+  latitude: number | null
+  longitude: number | null
   end_message: Json<TranslatableText | null> | null
   cta: JsonDefault<CampaignCta>
   landing: JsonDefault<CampaignLanding>

@@ -1,12 +1,15 @@
 // Creates a campaign on the site. `relaunchOf` starts from a previous
 // campaign's answers and reuses its libraries (copies the site edited carry
 // over; followed libraries pick up their latest published version), its kind,
-// landing page, images and share messages. Any other campaign takes its
-// images and share messages from the latest main campaign, and a main
-// campaign its landing page too, so the site's root page keeps its look.
+// landing page, images, share messages, place and people group. Any other
+// campaign takes its images, share messages, place and people group from the
+// latest main campaign, and a main campaign its landing page too, so the
+// site's root page keeps its look.
 import { suggestCampaignSlug, suggestSideSlug } from '@prayertools/shared/setup'
 import { jsonb } from '@prayertools/shared/db/json'
 import { parseText } from '@prayertools/shared/translatable'
+
+const PLACE_KEYS = ['place_name', 'place_wording', 'people_group', 'latitude', 'longitude'] as const
 
 export default definePtHandler('pt.campaigns.write', async (event, tx, ctx) => {
   const b = await ptBody(event)
@@ -37,7 +40,7 @@ export default definePtHandler('pt.campaigns.write', async (event, tx, ctx) => {
   const taken = (await tx.selectFrom('pt_campaign').select('slug').execute()).map(r => r.slug)
   const slug = (extras.slug as string) ?? (kind === 'side' ? suggestSideSlug(name, answers.start_date, taken) : suggestCampaignSlug(answers.start_date, taken))
   if (taken.includes(slug)) ptBadRequest('That campaign address is already used on this site.')
-  const look = previous ?? await tx.selectFrom('pt_campaign').select(['landing', 'branding', 'share']).where('kind', 'is', null)
+  const look = previous ?? await tx.selectFrom('pt_campaign').select(['landing', 'branding', 'share', ...PLACE_KEYS]).where('kind', 'is', null)
     .orderBy('start_date', ob => ob.desc().nullsLast()).orderBy('created_at', 'desc').executeTakeFirst()
   const created = await tx.insertInto('pt_campaign').values({
     slug,
@@ -46,6 +49,11 @@ export default definePtHandler('pt.campaigns.write', async (event, tx, ctx) => {
     kind,
     ...answers,
     timezone,
+    place_name: 'place_name' in extras ? extras.place_name : (look?.place_name ?? null),
+    place_wording: 'place_wording' in extras ? extras.place_wording : jsonb(look?.place_wording ?? {}),
+    people_group: 'people_group' in extras ? extras.people_group : (look?.people_group ?? null),
+    latitude: 'latitude' in extras ? extras.latitude : (look?.latitude ?? null),
+    longitude: 'longitude' in extras ? extras.longitude : (look?.longitude ?? null),
     goal_target: (extras.goal_target as number | null | undefined) ?? previous?.goal_target ?? null,
     slot_min: 'slot_min' in extras ? extras.slot_min as number | null : (previous?.slot_min ?? null),
     end_message: b.end_message ? jsonb(parseText(b.end_message)) : (previous?.end_message ? jsonb(previous.end_message) : null),

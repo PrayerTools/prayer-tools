@@ -20,10 +20,6 @@ export interface CreateSiteInput {
   slug: string
   description?: string
   purpose?: string | null
-  place_name?: string | null
-  people_group?: string | null
-  latitude?: number | null
-  longitude?: number | null
   languages?: string[]
   default_language?: string
   timezone?: string
@@ -84,16 +80,12 @@ export async function ptCreateSite(userId: string, input: CreateSiteInput): Prom
         org_id: orgId,
         description: input.description ? jsonb(makeText(input.default_language ?? languages[0]!, input.description)) : null,
         purpose: input.purpose ?? null,
-        place_name: input.place_name ?? null,
-        people_group: input.people_group ?? null,
-        latitude: input.latitude ?? null,
-        longitude: input.longitude ?? null,
         languages: pgArray(languages),
         default_language: input.default_language ?? languages[0]!,
         timezone: input.timezone ?? 'UTC',
         template_key: template.key,
         branding: jsonb({ color: randomBrandColor() }),
-        onboarding: jsonb({ step: 'about' })
+        onboarding: jsonb({ step: 'setup' })
       } as never).execute()
     })
   } catch (err: unknown) {

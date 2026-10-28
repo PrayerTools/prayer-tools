@@ -34,8 +34,8 @@ export async function ptLaunchChecklist(tx: Transaction<Database>, campaignId?: 
   const missing = [...new Set(libraries.flatMap(l => l.missingLanguages))]
   const landing = (campaign?.landing ?? {}) as CampaignLanding
   const branding = (campaign?.branding ?? {}) as CampaignBranding
-  const placeWording = (site.place_wording ?? {}) as SitePlaceWording
-  const usesPlacePhrases = !!campaign && !!site.place_name && await ptCampaignUsesPlacePhrases(tx, campaign.id)
+  const placeWording = (campaign?.place_wording ?? {}) as SitePlaceWording
+  const usesPlacePhrases = !!campaign && !!campaign.place_name && await ptCampaignUsesPlacePhrases(tx, campaign.id)
   const unworded = (site.languages as string[]).filter(l => !RELIABLE_PLACE_LANGUAGES.includes(l) && !hasPlacePhrases(placeWording, l))
   const forCampaign = campaign ? `?campaign=${campaign.id}` : ''
   // A side campaign has its own template and description; the main campaign uses the site's.
@@ -76,7 +76,7 @@ export async function ptLaunchChecklist(tx: Transaction<Database>, campaignId?: 
           done: unworded.length === 0,
           required: false,
           detail: unworded.length ? `Check: ${unworded.map(l => LANGUAGES.find(x => x.code === l)?.name ?? l).join(', ')}` : undefined,
-          to: '/site/settings'
+          to: `/site/campaigns/${campaign!.id}`
         }]
       : []),
     {

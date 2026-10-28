@@ -1,5 +1,6 @@
 // Display helpers shared by the campaign list and campaign pages.
 import type { TranslatableText } from '@prayertools/shared/db/schema'
+import type { SitePlaceWording } from '@prayertools/shared/place'
 import type { SetupState } from '../components/PtSetupForm.vue'
 
 export type PtCampaignSummary = Pick<SetupState, 'start_mode' | 'start_date' | 'end_mode' | 'end_date' | 'length_days' | 'goal' | 'cadence'>
@@ -26,6 +27,11 @@ export interface PtCampaign extends SetupState {
   // 'side' runs beside the main campaign at its own address; null is a main campaign.
   kind: 'side' | null
   timezone: string
+  place_name: string | null
+  place_wording: SitePlaceWording
+  people_group: string | null
+  latitude: number | null
+  longitude: number | null
   status: 'upcoming' | 'active' | 'ended'
   ended_at: string | null
   // Null while the campaign is a draft being set up.

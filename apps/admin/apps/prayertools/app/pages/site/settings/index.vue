@@ -4,8 +4,6 @@
 // color, logo and hero image are edited on the Landing page.
 // Only values that differ from the code defaults are stored.
 import type { TranslatableText } from '@prayertools/shared/db/schema'
-import type { SitePlaceWording } from '@prayertools/shared/place'
-import type { PtLocation } from '../../../components/PtLocationSearch.vue'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -55,11 +53,7 @@ async function patchSite(body: Record<string, unknown>, message = 'Saved') {
 }
 
 // Details
-const details = reactive({ name: '', purpose: 'place', place_name: '', place_wording: {} as SitePlaceWording, people_group: '', latitude: null as number | null, longitude: null as number | null })
-const location = computed<PtLocation | null>({
-  get: () => details.place_name ? { name: details.place_name, latitude: details.latitude, longitude: details.longitude } : null,
-  set: (v) => { Object.assign(details, { place_name: v?.name ?? '', latitude: v?.latitude ?? null, longitude: v?.longitude ?? null }) }
-})
+const details = reactive({ name: '' })
 // Languages and time zone
 const languages = ref<string[]>([])
 const defaultLanguage = ref('en')
@@ -79,7 +73,7 @@ function resetEmail() {
 
 type Site = NonNullable<typeof site.value>
 function detailsOf(s: Site) {
-  return { name: s.org.name, purpose: s.site.purpose ?? 'place', place_name: s.site.place_name ?? '', place_wording: { ...s.site.place_wording }, people_group: s.site.people_group ?? '', latitude: s.site.latitude, longitude: s.site.longitude }
+  return { name: s.org.name }
 }
 function languagesOf(s: Site) {
   return { languages: [...s.site.languages], default_language: s.site.default_language, timezone: s.site.timezone }
@@ -102,8 +96,6 @@ function canonical(v: unknown): string {
     return Object.fromEntries(Object.keys(o).sort().filter(k => o[k] !== undefined && o[k] !== null && o[k] !== '').map(k => [k, o[k]]))
   })
 }
-
-const purposeItems = computed(() => Object.entries(PT_LABELS.purpose).map(([value, label]) => ({ value, label, description: PT_LABELS.purposeDescription[value] })))
 
 // Behaviour: booleans save on toggle; numbers save with the rest of General.
 function settingValue(key: string) {
@@ -133,7 +125,7 @@ const savingGeneral = ref(false)
 async function saveGeneral() {
   savingGeneral.value = true
   const ok = await patchSite({
-    ...(detailsDirty.value ? { ...details, place_name: details.place_name || null, people_group: details.people_group || null } : {}),
+    ...(detailsDirty.value ? { ...details } : {}),
     ...(languagesDirty.value ? { languages: languages.value, default_language: defaultLanguage.value, timezone: timezone.value } : {}),
     ...(numbersDirty.value ? { settings: Object.fromEntries(numberSettings.value.map(k => [k, numberDraft.value[k] ?? meta.value?.settingDefaults[k]])) } : {})
   })
@@ -334,42 +326,9 @@ watch(tab, (t) => {
                 class="w-full"
               />
             </UFormField>
-            <UFormField label="What are you praying for?">
-              <URadioGroup
-                v-model="details.purpose"
-                :items="purposeItems"
-                orientation="horizontal"
-                variant="card"
-                class="w-full"
-                :ui="{ fieldset: 'grid grid-cols-1 sm:grid-cols-2 gap-2' }"
-              />
-            </UFormField>
             <UFormField>
               <template #label>
-                Location <InfoTip text="Where the people you pray for are. Its name fills content placeholders like {place}." />
-              </template>
-              <PtLocationSearch v-model="location" />
-            </UFormField>
-            <UFormField v-if="details.place_name">
-              <template #label>
-                How your place is written <InfoTip text="Its name in each language, and how to say “in” and “of” it." />
-              </template>
-              <PtPlaceWording
-                v-model="details.place_wording"
-                :place-name="details.place_name"
-                :languages="site.site.languages"
-                :disabled="!can('pt.site.write')"
-              />
-            </UFormField>
-            <UFormField label="People group">
-              <UInput
-                v-model="details.people_group"
-                class="w-full"
-              />
-            </UFormField>
-            <UFormField>
-              <template #label>
-                Dates, goal and content <InfoTip text="Each campaign has its own start, end, goal and rhythm." />
+                Dates, goal, place and content <InfoTip text="Each campaign has its own start, end, goal, rhythm, place and people group." />
               </template>
               <UButton
                 to="/site/campaigns"
@@ -405,7 +364,7 @@ watch(tab, (t) => {
           </UFormField>
           <UFormField>
             <template #label>
-              Time zone <InfoTip text="Used for campaign dates and the daily schedule." />
+              Time zone <InfoTip text="New campaigns start in this time zone. Each campaign can change its own." />
             </template>
             <USelectMenu
               v-model="timezone"

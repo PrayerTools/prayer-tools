@@ -20,9 +20,9 @@ export function contentVars(data: SiteData, siteName: string, c: CampaignRow, la
     siteName,
     campaignName: c.name,
     lang,
-    place: data.site.place_name,
-    placeWording: data.site.place_wording,
-    peopleGroup: data.site.people_group,
+    place: c.place_name,
+    placeWording: c.place_wording,
+    peopleGroup: c.people_group,
     startDate: formatDate(c.start_date, lang),
     endDate: formatDate(c.end_date, lang)
   })

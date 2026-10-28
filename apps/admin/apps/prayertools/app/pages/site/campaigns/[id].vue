@@ -1,7 +1,9 @@
 <script setup lang="ts">
-// One campaign: its numbers, setup answers, address and end-of-campaign
-// message. Opening it makes it the campaign the other campaign pages edit.
-import type { SetupState } from '../../../components/PtSetupForm.vue'
+// One campaign: its numbers, setup answers, address, place and people group,
+// and end-of-campaign message. Opening it makes it the campaign the other campaign pages edit.
+import type { SitePlaceWording } from '@prayertools/shared/place'
+import type { SetupDraft } from '../../../components/PtSetupForm.vue'
+import type { PtLocation } from '../../../components/PtLocationSearch.vue'
 import type { PtCampaign } from '../../../utils/pt-campaign-ui'
 
 definePageMeta({ middleware: 'auth' })
@@ -14,14 +16,18 @@ const { select } = usePtCampaign()
 watch(id, v => select(v), { immediate: true })
 const { data, refresh } = useFetch<{ campaign: PtCampaign & { entries: number | null, contentEntries: number }, libraries: { siteLibraryId: string, title: string, entryCount: number }[] }>(() => `/api/pt/campaigns/${id.value}`, { key: computed(() => `pt-campaign-${id.value}`) })
 
-const form = reactive({ name: '', slug: '', timezone: 'UTC' })
-const setup = ref<SetupState>({ start_mode: 'date', start_date: null, end_mode: 'date', end_date: null, length_days: null, goal: 'people', cadence: 'daily', track_time: false, goal_target: null, slot_min: null })
+const form = reactive({ name: '', slug: '', timezone: 'UTC', people_group: '', place_wording: {} as SitePlaceWording })
+const location = ref<PtLocation | null>(null)
+const setup = ref<SetupDraft>({ start_mode: 'date', start_date: null, end_mode: 'date', end_date: null, length_days: null, goal: null, cadence: 'daily', track_time: false, goal_target: null, slot_min: null })
 watch(data, (d) => {
   const c = d?.campaign
   if (!c) return
   form.name = c.name
   form.slug = c.slug
   form.timezone = c.timezone
+  form.people_group = c.people_group ?? ''
+  form.place_wording = { ...c.place_wording }
+  location.value = c.place_name ? { name: c.place_name, latitude: c.latitude, longitude: c.longitude } : null
   setup.value = { start_mode: c.start_mode, start_date: c.start_date, end_mode: c.end_mode, end_date: c.end_date, length_days: c.length_days, goal: c.goal, cadence: c.cadence, track_time: c.track_time, goal_target: c.goal_target, slot_min: c.slot_min ?? null }
 }, { immediate: true })
 
@@ -44,7 +50,14 @@ async function save() {
   try {
     await $fetch(`/api/pt/campaigns/${id.value}`, {
       method: 'PATCH',
-      body: { ...form, ...setup.value }
+      body: {
+        ...form,
+        ...setup.value,
+        people_group: form.people_group || null,
+        place_name: location.value?.name ?? null,
+        latitude: location.value?.latitude ?? null,
+        longitude: location.value?.longitude ?? null
+      }
     })
     await refresh()
     toast.ok('Campaign saved')
@@ -308,6 +321,29 @@ async function remove() {
             :lock-template="false"
             :dated="data.campaign.kind === 'side'"
           />
+          <UFormField>
+            <template #label>
+              Location (optional) <InfoTip text="Where the people you pray for are. Its name fills content placeholders like {place}." />
+            </template>
+            <PtLocationSearch v-model="location" />
+          </UFormField>
+          <UFormField v-if="location">
+            <template #label>
+              How your place is written <InfoTip text="Its name in each language, and how to say “in” and “of” it." />
+            </template>
+            <PtPlaceWording
+              v-model="form.place_wording"
+              :place-name="location.name"
+              :languages="site.site.languages"
+              :disabled="!can('pt.campaigns.write')"
+            />
+          </UFormField>
+          <UFormField label="People group (optional)">
+            <UInput
+              v-model="form.people_group"
+              class="w-full"
+            />
+          </UFormField>
         </fieldset>
       </div>
       <template
