@@ -1,8 +1,9 @@
 <script setup lang="ts">
 // The setup wizard for a campaign, the same in site onboarding and for a
 // campaign of a live site: the campaign (template, setup answers, place and
-// timezone), the site's languages and the place's wording, prayer content,
-// landing page, then the checklist, a preview link and Publish. `onboarding`
+// timezone), the site's languages, prayer content (with the place's wording
+// once the content names the place), landing page, then the checklist, a
+// preview link and Publish. `onboarding`
 // creates the campaign when the site has none yet and makes its timezone the
 // site's. The page publishes (the site or the campaign) on `publish` and
 // calls `refreshChecklist` when that fails; `reload` refetches the campaign.
@@ -70,14 +71,10 @@ async function saveCampaign() {
 // ── Step: languages ─────────────────────────────────────────────────────
 const languages = ref<string[]>(['en'])
 const defaultLanguage = ref('en')
-const placeWording = ref<SitePlaceWording>({})
 watch(site, (s) => {
   if (!s) return
   languages.value = [...s.site.languages]
   defaultLanguage.value = s.site.default_language
-}, { immediate: true })
-watch(() => props.campaign, (c) => {
-  placeWording.value = { ...c?.place_wording }
 }, { immediate: true })
 const savingLanguages = ref(false)
 async function saveLanguages() {
@@ -85,7 +82,6 @@ async function saveLanguages() {
   try {
     if (!languages.value.includes(defaultLanguage.value)) defaultLanguage.value = languages.value[0] ?? 'en'
     await $fetch('/api/pt/site', { method: 'PATCH', body: { languages: languages.value, default_language: defaultLanguage.value } })
-    if (props.campaign?.place_name) await $fetch(`/api/pt/campaigns/${props.campaign.id}`, { method: 'PATCH', body: { place_wording: placeWording.value } })
     await reloadAll()
     step.value = 'content'
   } catch (err) {
@@ -98,7 +94,41 @@ async function saveLanguages() {
 // ── Steps: content, landing page and publish ────────────────────────────
 const contentSetup = ref<{ save: () => Promise<boolean> } | null>(null)
 async function continueFromContent() {
-  if (await contentSetup.value?.save() !== false) step.value = 'landing'
+  if (await contentSetup.value?.save() === false) return
+  if (usesPlaceWording.value && !await savePlaceWording()) return
+  step.value = 'landing'
+}
+
+// The place's wording, shown only when the campaign's content names the place.
+const placeWording = ref<SitePlaceWording>({})
+watch(() => props.campaign?.id, () => {
+  placeWording.value = { ...props.campaign?.place_wording }
+}, { immediate: true })
+const usesPlaceWording = ref(false)
+async function checkPlaceWording() {
+  if (!props.campaign?.place_name) {
+    usesPlaceWording.value = false
+    return
+  }
+  try {
+    const res = await $fetch<{ campaign: { usesPlaceWording: boolean } }>(`/api/pt/campaigns/${props.campaign.id}`)
+    usesPlaceWording.value = res.campaign.usesPlaceWording
+  } catch (err) {
+    toast.fail(err)
+  }
+}
+watch([step, () => props.campaign?.id], ([s]) => {
+  if (s === 'content') checkPlaceWording()
+}, { immediate: true })
+async function savePlaceWording(): Promise<boolean> {
+  try {
+    await $fetch(`/api/pt/campaigns/${props.campaign!.id}`, { method: 'PATCH', body: { place_wording: placeWording.value } })
+    await props.reload()
+    return true
+  } catch (err) {
+    toast.fail(err)
+    return false
+  }
 }
 
 // The campaign on the site's root address previews there; others at their own path.
@@ -187,20 +217,6 @@ defineExpose({ refreshChecklist: () => checklist.value?.refresh() })
             v-model:default="defaultLanguage"
           />
         </UFormField>
-        <UFormField
-          v-if="campaign?.place_name"
-          :ui="{ label: 'text-base font-semibold' }"
-          class="py-6 first:pt-0 last:pb-0"
-        >
-          <template #label>
-            How your place is written <InfoTip text="Its name in each language, and how to say “in” and “of” it. Prayer guides use these to name your place." />
-          </template>
-          <PtPlaceWording
-            v-model="placeWording"
-            :place-name="campaign.place_name"
-            :languages="languages"
-          />
-        </UFormField>
       </div>
       <template #footer>
         <div class="flex justify-end">
@@ -227,7 +243,25 @@ defineExpose({ refreshChecklist: () => checklist.value?.refresh() })
           :campaign="campaign"
           :template-key="campaign.template_key ?? 'generic'"
           @changed="reload"
-        />
+          @added="checkPlaceWording"
+        >
+          <template #after-libraries>
+            <UFormField
+              v-if="campaign.place_name && usesPlaceWording"
+              :ui="{ label: 'text-base font-semibold' }"
+              class="py-6 first:pt-0 last:pb-0"
+            >
+              <template #label>
+                How your place is written <InfoTip text="Its name in each language, and how to say “in” and “of” it. Prayer guides use these to name your place." />
+              </template>
+              <PtPlaceWording
+                v-model="placeWording"
+                :place-name="campaign.place_name"
+                :languages="languages"
+              />
+            </UFormField>
+          </template>
+        </PtCampaignContentSetup>
         <template #footer>
           <div class="flex justify-end">
             <UButton

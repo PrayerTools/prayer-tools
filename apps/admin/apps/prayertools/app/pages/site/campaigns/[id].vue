@@ -11,7 +11,7 @@ const { data: site, can } = usePtSite()
 const toast = usePtToast()
 const { select } = usePtCampaign()
 watch(id, v => select(v), { immediate: true })
-const { data, refresh } = useFetch<{ campaign: PtCampaign & { entries: number | null, contentEntries: number }, libraries: { siteLibraryId: string, title: string, entryCount: number }[] }>(() => `/api/pt/campaigns/${id.value}`, { key: computed(() => `pt-campaign-${id.value}`) })
+const { data, refresh } = useFetch<{ campaign: PtCampaign & { entries: number | null, contentEntries: number, usesPlaceWording: boolean }, libraries: { siteLibraryId: string, title: string, entryCount: number }[] }>(() => `/api/pt/campaigns/${id.value}`, { key: computed(() => `pt-campaign-${id.value}`) })
 
 const { draft, fillFrom, toBody } = usePtCampaignDraft()
 const slugField = ref('')
@@ -264,6 +264,7 @@ async function remove() {
         <PtCampaignFields
           v-model="draft"
           :dated="data.campaign.kind === 'side'"
+          :with-place-wording="data.campaign.usesPlaceWording"
           :languages="site.site.languages"
           :disabled="!can('pt.campaigns.write')"
         >

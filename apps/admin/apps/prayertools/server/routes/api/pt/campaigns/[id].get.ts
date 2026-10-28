@@ -17,7 +17,9 @@ export default definePtHandler('pt.site.read', async (event, tx) => {
       entries: await campaignEntries(ptTx(tx), c),
       commitments: Number(commitments?.n ?? 0),
       contentEntries: await contentLength(ptTx(tx), c.id),
-      progress: await goalProgress(ptTx(tx), c, site.settings_merged.default_duration_min)
+      progress: await goalProgress(ptTx(tx), c, site.settings_merged.default_duration_min),
+      // The place wording matters only when the campaign's content names the place.
+      usesPlaceWording: await ptCampaignUsesPlacePhrases(tx, c.id, { name: true })
     },
     libraries: await campaignLibraries(ptTx(tx), c.id)
   }

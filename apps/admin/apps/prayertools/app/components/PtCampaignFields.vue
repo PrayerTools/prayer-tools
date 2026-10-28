@@ -15,7 +15,7 @@ withDefaults(defineProps<{
   dated?: boolean
   languages?: string[]
   disabled?: boolean
-}>(), { withTemplate: false, withPlaceWording: true, withCadence: true, withLength: true, lockTemplate: false, dated: false, languages: () => [], disabled: false })
+}>(), { withTemplate: false, withPlaceWording: false, withCadence: true, withLength: true, lockTemplate: false, dated: false, languages: () => [], disabled: false })
 const draft = defineModel<PtCampaignDraft>({ required: true })
 const emit = defineEmits<{ choose: [key: string] }>()
 </script>

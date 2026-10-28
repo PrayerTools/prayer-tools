@@ -2,7 +2,9 @@
 // A campaign's prayer content while it is set up: how often there is new
 // content, how many entries each person goes through (personal-start
 // campaigns without an end), what is in the campaign, and adding a library or
-// content of one's own. Emits `changed` after the campaign itself is saved.
+// content of one's own. Emits `changed` after the campaign itself is saved,
+// and `added` after a library is added. The `after-libraries` slot follows
+// the campaign's content.
 // `save()` adds the campaign's own content when that is the choice; the
 // wizard calls it on Continue.
 import type { SetupState } from './PtSetupForm.vue'
@@ -11,7 +13,7 @@ const props = defineProps<{
   campaign: { id: string, cadence: SetupState['cadence'], start_mode: string, end_mode: string, length_days: number | null }
   templateKey: string
 }>()
-const emit = defineEmits<{ changed: [] }>()
+const emit = defineEmits<{ changed: [], added: [] }>()
 
 const { data: site } = usePtSite()
 const { data: meta } = usePtMeta()
@@ -25,6 +27,7 @@ async function useLibrary(libraryId: string) {
   try {
     await $fetch('/api/pt/content/libraries', { method: 'POST', body: { campaignId: props.campaign.id, libraryId } })
     await refreshContent()
+    emit('added')
     toast.ok('Added to your campaign')
   } catch (err) {
     toast.fail(err)
@@ -153,6 +156,7 @@ defineExpose({ save })
         />
       </div>
     </section>
+    <slot name="after-libraries" />
     <section class="space-y-4 py-6 first:pt-0 last:pb-0">
       <h3 class="text-base font-semibold">
         Add prayer content
