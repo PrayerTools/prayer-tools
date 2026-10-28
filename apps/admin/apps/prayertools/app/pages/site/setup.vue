@@ -33,6 +33,11 @@ async function go(next: Step) {
   await $fetch('/api/pt/site', { method: 'PATCH', body: { onboarding: { step: next } } }).catch(() => {})
 }
 
+const contentSetup = ref<{ save: () => Promise<boolean> } | null>(null)
+async function continueFromContent() {
+  if (await contentSetup.value?.save() !== false) await go('look')
+}
+
 // ── Step: about the site ─────────────────────────────────────────────────
 const about = reactive({ purpose: 'place', people_group: '', timezone: 'UTC' })
 const location = ref<PtLocation | null>(null)
@@ -438,6 +443,7 @@ async function publish() {
       </template>
       <PtCampaignContentSetup
         v-if="existingCampaign"
+        ref="contentSetup"
         :campaign="existingCampaign"
         :template-key="templateKey"
         @changed="refreshSite"
@@ -446,7 +452,7 @@ async function publish() {
         <div class="flex justify-end">
           <UButton
             label="Continue"
-            @click="go('look')"
+            @click="continueFromContent"
           />
         </div>
       </template>

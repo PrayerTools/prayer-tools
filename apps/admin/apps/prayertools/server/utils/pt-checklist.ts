@@ -12,6 +12,8 @@ export interface PtChecklistItem {
   done: boolean
   // Publishing waits for required items; the others are recommendations.
   required: boolean
+  // Not needed to publish, but flagged until done.
+  important?: boolean
   detail?: string
   // Admin page that fixes it, relative to the site.
   to: string
@@ -52,10 +54,11 @@ export async function ptLaunchChecklist(tx: Transaction<Database>, campaignId?: 
     },
     {
       key: 'content',
-      label: 'Prayer content chosen',
+      label: libraries.length ? 'Prayer content written' : 'Prayer content chosen',
       done: entries > 0,
-      required: true,
-      detail: entries > 0 ? `${entries} ${entries === 1 ? 'entry' : 'entries'}` : undefined,
+      required: false,
+      important: true,
+      detail: entries > 0 ? `${entries} ${entries === 1 ? 'entry' : 'entries'}` : libraries.length ? 'No entries yet' : undefined,
       to: `/site/content${forCampaign}`
     },
     {

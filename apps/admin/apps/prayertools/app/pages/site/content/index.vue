@@ -697,7 +697,7 @@ function sourceBadge(l: Lib): { label: string, color: 'info' | 'warning' | 'neut
           </template>
         </UCard>
 
-        <UCard v-if="can('pt.content.write')">
+        <UCard v-if="can('pt.content.write') && libraries.length > 1">
           <template #header>
             <h2 class="font-semibold">
               Sections shown every {{ unit }}
@@ -763,6 +763,14 @@ function sourceBadge(l: Lib): { label: string, color: 'info' | 'warning' | 'neut
             />
           </template>
         </UCard>
+        <div v-else-if="can('pt.content.write')">
+          <UButton
+            variant="soft"
+            icon="i-lucide-plus"
+            label="Add a section"
+            @click="catalogOpen = true"
+          />
+        </div>
       </div>
     </div>
 

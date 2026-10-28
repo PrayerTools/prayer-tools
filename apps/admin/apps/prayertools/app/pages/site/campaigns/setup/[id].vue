@@ -40,6 +40,11 @@ watch([step, campaign], ([s, c]) => {
   if (s === 'publish' && c && !preview.value) makePreview()
 }, { immediate: true })
 
+const contentSetup = ref<{ save: () => Promise<boolean> } | null>(null)
+async function continueFromContent() {
+  if (await contentSetup.value?.save() !== false) step.value = 'landing'
+}
+
 const checklist = ref<{ refresh: () => Promise<void>, data: PtChecklist | null } | null>(null)
 const publishing = ref(false)
 async function publish() {
@@ -112,6 +117,7 @@ async function publish() {
         </h2>
       </template>
       <PtCampaignContentSetup
+        ref="contentSetup"
         :campaign="campaign"
         :template-key="campaign.template_key ?? 'generic'"
         @changed="refresh"
@@ -120,7 +126,7 @@ async function publish() {
         <div class="flex justify-end">
           <UButton
             label="Continue"
-            @click="step = 'landing'"
+            @click="continueFromContent"
           />
         </div>
       </template>

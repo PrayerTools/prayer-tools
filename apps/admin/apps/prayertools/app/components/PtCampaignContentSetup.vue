@@ -3,6 +3,8 @@
 // content, how many entries each person goes through (personal-start
 // campaigns without an end), what is in the campaign, and adding a library or
 // content of one's own. Emits `changed` after the campaign itself is saved.
+// `save()` adds the campaign's own content when that is the choice; the
+// wizard calls it on Continue.
 import type { SetupState } from './PtSetupForm.vue'
 
 const props = defineProps<{
@@ -62,17 +64,24 @@ async function saveLength(length: number | null | undefined) {
     toast.fail(err)
   }
 }
-const ownTitle = ref('')
-async function createOwn() {
+const writeUrl = computed(() => `/site/content?campaign=${props.campaign.id}`)
+const hasOwn = computed(() => (content.value?.libraries ?? []).some(l => !l.libraryId))
+const source = ref<'existing' | 'own'>('existing')
+watch(hasOwn, (own) => {
+  if (own) source.value = 'own'
+}, { immediate: true })
+async function save(): Promise<boolean> {
+  if (source.value !== 'own' || hasOwn.value) return true
   try {
-    await $fetch('/api/pt/content/libraries', { method: 'POST', body: { campaignId: props.campaign.id, title: ownTitle.value || 'Our prayer guide' } })
-    ownTitle.value = ''
+    await $fetch('/api/pt/content/libraries', { method: 'POST', body: { campaignId: props.campaign.id } })
     await refreshContent()
-    toast.ok('Created. Write the entries on the Prayer content page.')
+    return true
   } catch (err) {
     toast.fail(err)
+    return false
   }
 }
+defineExpose({ save })
 </script>
 
 <template>
@@ -119,9 +128,25 @@ async function createOwn() {
         :key="l.siteLibraryId"
         class="flex items-center justify-between rounded-md border border-(--ui-border) px-3 py-2 text-sm"
       >
-        <span>{{ l.title }} · {{ l.entryCount }} entries</span>
+        <span>{{ l.libraryId ? l.title : 'Your own content' }} · {{ l.entryCount }} entries</span>
+        <div
+          v-if="!l.entryCount"
+          class="flex items-center gap-2"
+        >
+          <UBadge
+            color="warning"
+            variant="soft"
+            label="Not written yet"
+          />
+          <UButton
+            :to="writeUrl"
+            size="xs"
+            variant="link"
+            label="Write entries"
+          />
+        </div>
         <UBadge
-          v-if="l.missingLanguages.length"
+          v-else-if="l.missingLanguages.length"
           color="warning"
           variant="soft"
           :label="`Missing: ${l.missingLanguages.map(x => languageName(meta, x)).join(', ')}`"
@@ -132,31 +157,29 @@ async function createOwn() {
       <h3 class="text-base font-semibold">
         Add prayer content
       </h3>
+      <URadioGroup
+        v-model="source"
+        :items="[
+          { label: 'Choose from existing content', description: 'Use a prayer guide from the library.', value: 'existing' },
+          { label: 'Write my own content', description: 'Write the entries yourself.', value: 'own' }
+        ]"
+        orientation="horizontal"
+        variant="card"
+      />
       <PtLibraryCatalog
+        v-if="source === 'existing'"
         :template="templateKey"
         :cadence="cadence"
         :site-languages="site?.site.languages ?? []"
         :used-ids="(content?.libraries ?? []).map(l => l.libraryId).filter(Boolean) as string[]"
         @use="useLibrary"
       />
-      <USeparator label="or" />
-      <div class="flex flex-wrap items-end gap-2">
-        <UFormField
-          label="Write your own content"
-          class="flex-1"
-        >
-          <UInput
-            v-model="ownTitle"
-            placeholder="Our prayer guide"
-            class="w-full"
-          />
-        </UFormField>
-        <UButton
-          label="Create"
-          variant="soft"
-          @click="createOwn"
-        />
-      </div>
+      <p
+        v-else
+        class="text-sm text-(--ui-text-muted)"
+      >
+        You will create the campaign content after setting up the campaign.
+      </p>
     </section>
   </div>
 </template>

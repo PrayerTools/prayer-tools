@@ -3,7 +3,7 @@
 // lists just what is still to do and hides itself when nothing is. With
 // `campaignId` it checks that campaign instead of the current one.
 export interface PtChecklist {
-  items: { key: string, label: string, done: boolean, required: boolean, detail?: string, to: string }[]
+  items: { key: string, label: string, done: boolean, required: boolean, important?: boolean, detail?: string, to: string }[]
   canPublish: boolean
 }
 
@@ -43,9 +43,9 @@ defineExpose({ refresh, data })
         class="flex items-start gap-3"
       >
         <UIcon
-          :name="item.done ? 'i-lucide-circle-check' : item.required ? 'i-lucide-circle-alert' : 'i-lucide-circle'"
+          :name="item.done ? 'i-lucide-circle-check' : item.required || item.important ? 'i-lucide-circle-alert' : 'i-lucide-circle'"
           class="size-5 shrink-0 mt-0.5"
-          :class="item.done ? 'text-(--ui-success)' : item.required ? 'text-(--ui-warning)' : 'text-(--ui-text-muted)'"
+          :class="item.done ? 'text-(--ui-success)' : item.important ? 'text-(--ui-error)' : item.required ? 'text-(--ui-warning)' : 'text-(--ui-text-muted)'"
         />
         <div class="flex-1 min-w-0">
           <div class="text-sm">
@@ -54,6 +54,10 @@ defineExpose({ refresh, data })
               v-if="item.required && !item.done"
               class="text-xs text-(--ui-warning)"
             >(needed to publish)</span>
+            <span
+              v-else-if="item.important && !item.done"
+              class="text-xs text-(--ui-error)"
+            >(missing)</span>
           </div>
           <div
             v-if="item.detail"
