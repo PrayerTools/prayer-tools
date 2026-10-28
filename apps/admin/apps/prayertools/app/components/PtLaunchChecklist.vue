@@ -1,15 +1,19 @@
 <script setup lang="ts">
 // The site's launch checklist, with a link to fix each open item. `openOnly`
-// lists just what is still to do and hides itself when nothing is.
+// lists just what is still to do and hides itself when nothing is. With
+// `campaignId` it checks that campaign instead of the current one.
 export interface PtChecklist {
   items: { key: string, label: string, done: boolean, required: boolean, detail?: string, to: string }[]
   canPublish: boolean
 }
 
-const props = withDefaults(defineProps<{ openOnly?: boolean, title?: string }>(), { openOnly: false, title: 'Launch checklist' })
+const props = withDefaults(defineProps<{ openOnly?: boolean, title?: string, campaignId?: string }>(), { openOnly: false, title: 'Launch checklist', campaignId: undefined })
 
 const { slug } = usePtSite()
-const { data, refresh } = useFetch<PtChecklist>('/api/pt/site/checklist', { key: computed(() => `pt-checklist-${slug.value}`) })
+const { data, refresh } = useFetch<PtChecklist>('/api/pt/site/checklist', {
+  query: computed(() => ({ campaign: props.campaignId })),
+  key: computed(() => `pt-checklist-${slug.value}-${props.campaignId ?? 'current'}`)
+})
 const items = computed(() => (data.value?.items ?? []).filter(i => !props.openOnly || !i.done))
 
 defineExpose({ refresh, data })

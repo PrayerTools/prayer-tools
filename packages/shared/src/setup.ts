@@ -235,6 +235,13 @@ export interface CampaignLike extends CampaignDates {
   id: string
   kind?: CampaignKind | null
   created_at?: Date | string
+  published_at?: Date | string | null
+}
+
+// A draft campaign (no `published_at`) is being set up: it stays off the
+// public site until it is published.
+export function isPublishedCampaign(c: { published_at?: Date | string | null }): boolean {
+  return c.published_at !== null
 }
 
 // A side campaign runs beside the main campaign at its own address
@@ -243,11 +250,11 @@ export function isSideCampaign(c: { kind?: CampaignKind | null }): boolean {
   return c.kind === 'side'
 }
 
-// The site's current campaign, from its main campaigns: the active one, else
-// the next upcoming one (signup opens before the start), else the most recent
-// ended one (the site is between campaigns).
+// The site's current campaign, from its published main campaigns: the active
+// one, else the next upcoming one (signup opens before the start), else the
+// most recent ended one (the site is between campaigns).
 export function pickCurrentCampaign<T extends CampaignLike>(campaigns: T[], now: Date = new Date()): { campaign: T, state: 'upcoming' | 'active' | 'between' } | null {
-  const withStatus = campaigns.filter(c => !isSideCampaign(c)).map(c => ({ c, s: campaignStatus(c, now) }))
+  const withStatus = campaigns.filter(c => !isSideCampaign(c) && isPublishedCampaign(c)).map(c => ({ c, s: campaignStatus(c, now) }))
   const active = withStatus.filter(x => x.s === 'active')
   if (active.length) {
     active.sort((a, b) => (b.c.start_date ?? '').localeCompare(a.c.start_date ?? ''))

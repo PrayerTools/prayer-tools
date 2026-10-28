@@ -110,6 +110,13 @@ async function doConfirm() {
                   {{ c.name }}
                 </NuxtLink>
                 <UBadge
+                  v-if="!c.published_at"
+                  color="neutral"
+                  variant="subtle"
+                  label="Draft"
+                />
+                <UBadge
+                  v-else
                   :color="ptStatusColor(c.status)"
                   variant="subtle"
                   :label="PT_LABELS.campaignStatus[c.status]"
@@ -158,6 +165,13 @@ async function doConfirm() {
           </div>
           <div class="flex items-center gap-2 flex-wrap">
             <UButton
+              v-if="canEdit && !c.published_at"
+              :to="`/site/campaigns/setup/${c.id}`"
+              size="sm"
+              icon="i-lucide-list-checks"
+              label="Continue setup"
+            />
+            <UButton
               :to="`/site/campaigns/${c.id}`"
               size="sm"
               variant="outline"
@@ -193,7 +207,6 @@ async function doConfirm() {
               @click="ask('delete', c)"
             />
             <UButton
-              v-if="c.kind === 'side'"
               :to="{ path: '/site/landing', query: { campaign: c.id } }"
               size="sm"
               variant="ghost"

@@ -1,11 +1,12 @@
 // The admin landing-page editor shows the site in a frame. Its `pt_edit`
 // token lets the admin origin frame the site (draft or published) and render
-// the editor's unsaved landing page.
+// the editor's unsaved landing page, hero image, color and logo.
 import type { H3Event } from 'h3'
-import type { LandingCustomSection, SiteLanding, TiptapDoc, TranslatableText } from '@prayertools/shared/db/schema'
+import type { CampaignBranding, CampaignLanding, LandingCustomSection, SiteBranding, TiptapDoc, TranslatableText } from '@prayertools/shared/db/schema'
 import { editorTokenOrg } from '@prayertools/shared/links'
 import { platformConfig } from '@prayertools/shared/config'
 import { parseText } from '@prayertools/shared/translatable'
+import { parseHex } from '@prayertools/shared/colors'
 import { videoEmbed } from '@prayertools/shared/video'
 import { EDITABLE_SITE_STRINGS } from '@prayertools/shared/site-strings'
 import ar from '../../i18n/locales/ar.json'
@@ -17,8 +18,12 @@ import pt from '../../i18n/locales/pt.json'
 const LOCALES: Record<string, unknown> = { ar, en, es, fr, pt }
 
 export interface LandingDraft {
-  landing: SiteLanding
+  landing: CampaignLanding
   description: TranslatableText | null
+  // The campaign's hero image; absent when the editor sends none.
+  branding?: CampaignBranding
+  // The site's color and logo.
+  brand?: SiteBranding
   // The editor's wording for the page language; an empty value means the standard wording.
   strings: Record<string, string>
 }
@@ -68,6 +73,32 @@ function url(v: unknown): string | undefined {
   return typeof v === 'string' && /^(https?:\/\/|\/)/.test(v.trim()) ? v.trim().slice(0, 2000) : undefined
 }
 
+function unit(v: unknown): number | undefined {
+  return typeof v === 'number' && v >= 0 && v <= 1 ? v : undefined
+}
+
+function parseHero(input: unknown): CampaignBranding | undefined {
+  if (!input || typeof input !== 'object') return undefined
+  const b = input as Record<string, unknown>
+  return {
+    image_url: url(b.image_url),
+    image_alt: parseText(b.image_alt) ?? undefined,
+    image_credit: typeof b.image_credit === 'string' ? b.image_credit.slice(0, 200) : undefined,
+    focal_x: unit(b.focal_x),
+    focal_y: unit(b.focal_y),
+    share_image_url: url(b.share_image_url)
+  }
+}
+
+function parseBrand(input: unknown): SiteBranding | undefined {
+  if (!input || typeof input !== 'object') return undefined
+  const b = input as Record<string, unknown>
+  return {
+    color: typeof b.color === 'string' && parseHex(b.color) ? b.color : undefined,
+    logo_url: url(b.logo_url)
+  }
+}
+
 export function parseLandingDraft(input: unknown): LandingDraft {
   const b = (input ?? {}) as Record<string, unknown>
   const l = (b.landing ?? {}) as Record<string, unknown>
@@ -94,6 +125,8 @@ export function parseLandingDraft(input: unknown): LandingDraft {
       stories: typeof l.stories === 'boolean' ? l.stories : undefined
     },
     description: parseText(b.description),
+    branding: parseHero(b.branding),
+    brand: parseBrand(b.brand),
     strings: parseStrings(b.strings)
   }
 }

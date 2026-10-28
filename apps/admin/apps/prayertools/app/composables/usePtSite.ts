@@ -35,8 +35,6 @@ export interface PtSiteResponse {
     timezone: string
     branding: Record<string, any>
     email_identity: Record<string, any>
-    landing: Record<string, any>
-    share: Record<string, any>
     settings: Record<string, any>
     overrides: Record<string, any>
     onboarding: { step?: string, completed?: boolean }

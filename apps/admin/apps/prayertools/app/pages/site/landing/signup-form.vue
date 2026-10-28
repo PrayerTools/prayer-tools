@@ -136,9 +136,17 @@ async function saveOption(o: Option, patch: Record<string, unknown>) {
   >
     <PtLandingTabs />
     <header>
-      <h1 class="text-2xl font-bold">
-        Signup form
-      </h1>
+      <div class="flex flex-wrap items-center gap-3">
+        <h1 class="text-2xl font-bold">
+          Signup form
+        </h1>
+        <UBadge
+          color="neutral"
+          variant="outline"
+          icon="i-lucide-layers"
+          label="Shared by all campaigns"
+        />
+      </div>
       <p class="text-sm text-muted max-w-xl">
         Ask intercessors a few questions of your own when they sign up, and add your own consent boxes.
         Answers show on each intercessor’s record and in exports. They are never sent to analytics.

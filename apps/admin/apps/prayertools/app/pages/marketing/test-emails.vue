@@ -1,13 +1,14 @@
 <script setup lang="ts">
 // "Send me a test email" for every email the site sends, in any site
-// language. Test emails never contain live personal links. Also push
-// announcements to people who pray with the app.
+// language, for the campaign chosen in the switcher. Test emails never
+// contain live personal links. Also push announcements to people who pray
+// with the app.
 import type { TranslatableText } from '@prayertools/shared/db/schema'
 
 definePageMeta({ middleware: 'auth' })
 
-const route = useRoute()
 const { data: site } = usePtSite()
+const { id: campaignId } = usePtCampaign()
 const { data: meta } = usePtMeta()
 const toast = usePtToast()
 const lang = ref('en')
@@ -43,7 +44,7 @@ async function sendPush() {
 async function send(kind: string) {
   sending.value = kind
   try {
-    const res = await $fetch<{ sentTo: string }>('/api/pt/test-email', { method: 'POST', body: { kind, language: lang.value } })
+    const res = await $fetch<{ sentTo: string }>('/api/pt/test-email', { method: 'POST', body: { kind, language: lang.value, campaignId: campaignId.value } })
     toast.ok('Test email sent', `Check ${res.sentTo}.`)
   } catch (err) {
     toast.fail(err, 'Could not send')
@@ -55,16 +56,15 @@ async function send(kind: string) {
 
 <template>
   <div class="max-w-3xl mx-auto space-y-6">
-    <PtCampaignTabs
-      v-if="typeof route.query.campaign === 'string'"
-      :campaign-id="route.query.campaign"
-    />
-    <MarketingTabs v-else />
+    <MarketingTabs />
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <h1 class="text-2xl font-semibold">
-          Test emails
-        </h1>
+        <div class="flex flex-wrap items-center gap-3">
+          <h1 class="text-2xl font-semibold">
+            Test emails
+          </h1>
+          <PtCampaignSwitcher />
+        </div>
         <p class="text-sm text-(--ui-text-muted)">
           See exactly what people receive. Site emails to groups of people are under Site email.
         </p>

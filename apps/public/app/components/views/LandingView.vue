@@ -8,7 +8,7 @@ const has = (s: string) => props.page.sections.includes(s)
 const placeholder = (s: string) => props.page.placeholders?.includes(s)
 const campaign = computed(() => site.value.campaign)
 
-useHead({ title: () => site.value.name })
+useHead({ title: () => campaign.value?.side ? `${campaign.value.name} · ${site.value.name}` : site.value.name })
 
 const signupIntro = computed(() => campaign.value?.state === 'upcoming' && campaign.value.startDate
   ? t('signup.starts_on', { date: date(campaign.value.startDate) })
@@ -43,8 +43,9 @@ function onJoined(verify: boolean) {
       </template>
       <div class="relative max-w-3xl mx-auto px-4 py-16 sm:py-28 text-center">
         <div class="space-y-5">
-          <p v-if="campaign" class="text-sm uppercase tracking-wide opacity-90">{{ campaign.name }}</p>
-          <h1 id="top-title" class="text-3xl sm:text-5xl font-bold leading-tight">{{ site.name }}</h1>
+          <!-- A side campaign's page is titled with its own name; the main campaign's with the site's. -->
+          <p v-if="campaign" class="text-sm uppercase tracking-wide opacity-90">{{ campaign.side ? site.name : campaign.name }}</p>
+          <h1 id="top-title" class="text-3xl sm:text-5xl font-bold leading-tight">{{ campaign?.side ? campaign.name : site.name }}</h1>
           <p v-if="site.description" class="text-lg opacity-95">{{ site.description }}</p>
           <p v-if="campaign?.state === 'upcoming' && campaign.startDate" class="font-medium">{{ t('landing.starts_on', { date: date(campaign.startDate) }) }}</p>
           <GoalProgress v-if="page.progress" :progress="page.progress" on-brand />

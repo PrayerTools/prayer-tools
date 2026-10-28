@@ -1,14 +1,24 @@
 <script setup lang="ts">
-// Share: the live link, QR code (PNG and SVG), share messages per language
-// with a WhatsApp preview, the share image for link previews, and the Give line.
+// Share, for the campaign chosen in the switcher: its live link, QR code (PNG
+// and SVG), share messages per language with a WhatsApp preview, the share
+// image for link previews, and the Give line.
 import type { TranslatableText } from '@prayertools/shared/db/schema'
 
 definePageMeta({ middleware: 'auth' })
 
-const { data: site, can, refresh: refreshSite } = usePtSite()
+const { data: site, can } = usePtSite()
 const { data: meta } = usePtMeta()
 const toast = usePtToast()
-const { data } = useFetch<{ url: string, qrPng: string, qrSvg: string, share: { messages?: TranslatableText }, languages: string[], defaultLanguage: string, donateUrl: string }>('/api/pt/share', { key: 'pt-share' })
+const { id: campaignId } = usePtCampaign()
+const { data, refresh } = useFetch<{ url: string, qrPng: string, qrSvg: string, share: { messages?: TranslatableText }, shareImageUrl: string | null, languages: string[], defaultLanguage: string, donateUrl: string }>('/api/pt/share', {
+  query: computed(() => ({ campaign: campaignId.value })),
+  key: computed(() => `pt-share-${campaignId.value}`),
+  immediate: false,
+  watch: [campaignId]
+})
+watch(campaignId, (id) => {
+  if (id) refresh()
+}, { immediate: true })
 
 const messages = ref<TranslatableText | null>(null)
 watch(data, (d) => {
@@ -51,8 +61,8 @@ const saving = ref(false)
 async function save() {
   saving.value = true
   try {
-    await $fetch('/api/pt/site', { method: 'PATCH', body: { share: { ...(site.value?.site.share ?? {}), messages: messages.value } } })
-    await refreshSite()
+    await $fetch(`/api/pt/campaigns/${campaignId.value}`, { method: 'PATCH', body: { share: { ...(data.value?.share ?? {}), messages: messages.value } } })
+    await refresh()
     toast.ok('Saved')
   } catch (err) {
     toast.fail(err)
@@ -64,8 +74,8 @@ async function save() {
 const pickingImage = ref(false)
 async function setShareImage(url: string | undefined) {
   try {
-    await $fetch('/api/pt/site', { method: 'PATCH', body: { branding: { ...(site.value?.site.branding ?? {}), share_image_url: url } } })
-    await refreshSite()
+    await $fetch(`/api/pt/campaigns/${campaignId.value}`, { method: 'PATCH', body: { share_image_url: url ?? null } })
+    await refresh()
     toast.ok(url ? 'Share image saved' : 'Share image removed')
   } catch (err) {
     toast.fail(err)
@@ -79,13 +89,12 @@ async function setShareImage(url: string | undefined) {
     class="max-w-4xl mx-auto space-y-6"
   >
     <PtLandingTabs />
-    <header>
+    <header class="flex flex-wrap items-center gap-3">
       <h1 class="text-2xl font-bold">
         Share
+        <InfoTip :text="`Invite people to pray with ${site.org.name}. Each campaign has its own link, message and image.`" />
       </h1>
-      <p class="text-sm text-muted">
-        Invite people to pray with {{ site.org.name }}.
-      </p>
+      <PtCampaignSwitcher />
     </header>
 
     <UAlert
@@ -101,7 +110,7 @@ async function setShareImage(url: string | undefined) {
       <UCard>
         <template #header>
           <h2 class="font-semibold">
-            Site link
+            Link
           </h2>
         </template>
         <div class="space-y-3">
@@ -219,11 +228,11 @@ async function setShareImage(url: string | undefined) {
               :dir="langDir"
             >
               <div
-                v-if="site.site.branding.share_image_url"
+                v-if="data.shareImageUrl"
                 class="mb-2 overflow-hidden rounded"
               >
                 <img
-                  :src="site.site.branding.share_image_url"
+                  :src="data.shareImageUrl"
                   alt=""
                   class="w-full h-32 object-cover"
                 >
@@ -261,11 +270,11 @@ async function setShareImage(url: string | undefined) {
       </p>
       <div class="flex flex-wrap items-end gap-4">
         <div
-          v-if="site.site.branding.share_image_url"
+          v-if="data.shareImageUrl"
           class="w-64 aspect-[1200/630] rounded-md overflow-hidden border border-default"
         >
           <img
-            :src="site.site.branding.share_image_url"
+            :src="data.shareImageUrl"
             alt=""
             class="size-full object-cover"
           >
@@ -275,11 +284,11 @@ async function setShareImage(url: string | undefined) {
             size="sm"
             variant="soft"
             icon="i-lucide-image"
-            :label="site.site.branding.share_image_url ? 'Change' : 'Choose an image'"
+            :label="data.shareImageUrl ? 'Change' : 'Choose an image'"
             @click="pickingImage = true"
           />
           <UButton
-            v-if="site.site.branding.share_image_url"
+            v-if="data.shareImageUrl"
             size="sm"
             variant="ghost"
             color="neutral"

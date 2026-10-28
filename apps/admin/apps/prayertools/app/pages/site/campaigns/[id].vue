@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // One campaign: its numbers, setup answers, address and end-of-campaign
-// message; a side campaign also links to its own landing page.
+// message. Opening it makes it the campaign the other campaign pages edit.
 import type { SetupState } from '../../../components/PtSetupForm.vue'
 import type { PtCampaign } from '../../../utils/pt-campaign-ui'
 
@@ -10,6 +10,8 @@ const route = useRoute()
 const id = computed(() => String(route.params.id))
 const { data: site, can } = usePtSite()
 const toast = usePtToast()
+const { select } = usePtCampaign()
+watch(id, v => select(v), { immediate: true })
 const { data, refresh } = useFetch<{ campaign: PtCampaign & { entries: number | null, contentEntries: number }, libraries: { siteLibraryId: string, title: string, entryCount: number }[] }>(() => `/api/pt/campaigns/${id.value}`, { key: computed(() => `pt-campaign-${id.value}`) })
 
 const form = reactive({ name: '', slug: '', timezone: 'UTC' })
@@ -80,7 +82,6 @@ async function remove() {
     v-if="data && site"
     class="max-w-4xl mx-auto space-y-6"
   >
-    <PtCampaignTabs :campaign-id="id" />
     <header class="flex flex-wrap items-start justify-between gap-4">
       <div class="min-w-0">
         <UButton
@@ -96,6 +97,13 @@ async function remove() {
             {{ data.campaign.name }}
           </h1>
           <UBadge
+            v-if="!data.campaign.published_at"
+            label="Draft"
+            color="neutral"
+            variant="subtle"
+          />
+          <UBadge
+            v-else
             :label="PT_LABELS.campaignStatus[data.campaign.status]"
             :color="ptStatusColor(data.campaign.status)"
             variant="subtle"
@@ -122,8 +130,7 @@ async function remove() {
       </div>
       <div class="flex items-center gap-2 flex-wrap">
         <UButton
-          v-if="data.campaign.kind === 'side'"
-          :to="{ path: '/site/landing', query: { campaign: id } }"
+          to="/site/landing"
           variant="outline"
           color="neutral"
           icon="i-lucide-panels-top-left"
@@ -147,6 +154,16 @@ async function remove() {
         />
       </div>
     </header>
+
+    <UAlert
+      v-if="!data.campaign.published_at"
+      icon="i-lucide-list-checks"
+      color="neutral"
+      variant="subtle"
+      title="This campaign is a draft"
+      description="It is not on your site yet. Add its prayer content and landing page, then publish it."
+      :actions="can('pt.campaigns.write') ? [{ label: 'Continue setup', to: `/site/campaigns/setup/${id}`, trailingIcon: 'i-lucide-arrow-right' }] : []"
+    />
 
     <div class="grid gap-4 md:grid-cols-3">
       <UCard>

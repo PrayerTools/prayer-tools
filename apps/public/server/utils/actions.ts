@@ -125,11 +125,13 @@ export async function checkinAnswer(event: H3Event, ctx: SiteContext, token: str
   return sendRedirect(event, ok ? `/notice/checkin_${answer}` : '/notice/link_invalid', 302)
 }
 
+// `?to=/<path>` opens that page of the site, such as a draft campaign's.
 export async function previewLink(event: H3Event, ctx: SiteContext, token: string) {
   const row = await withOrg(useDb(), ctx.orgId, tx => tx.selectFrom('pt_site').select('preview_token_hash').executeTakeFirst())
   if (!row?.preview_token_hash || row.preview_token_hash !== hashToken(token)) return false
   setPreviewCookie(event, ctx.orgId, row.preview_token_hash)
-  await sendRedirect(event, '/', 302)
+  const to = getQuery(event).to
+  await sendRedirect(event, typeof to === 'string' && /^\/(?!\/)[\w\-/]*$/.test(to) ? to : '/', 302)
   return true
 }
 

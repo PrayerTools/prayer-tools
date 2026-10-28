@@ -1,10 +1,9 @@
 <script setup lang="ts">
-// Site settings: general (details, languages, behaviour), look, email,
-// contact form, wording, and status (publishing, directory, exports, deleting).
+// Site settings: general (details, languages, behaviour), email, contact
+// form, wording, and status (publishing, directory, exports, deleting). The
+// color, logo and hero image are edited on the Landing page.
 // Only values that differ from the code defaults are stored.
 import type { TranslatableText } from '@prayertools/shared/db/schema'
-import { DEFAULT_BRAND_COLOR } from '@prayertools/shared/colors'
-import { heroImage } from '@prayertools/shared/hero-images'
 import type { SitePlaceWording } from '@prayertools/shared/place'
 import type { PtLocation } from '../../../components/PtLocationSearch.vue'
 
@@ -18,7 +17,6 @@ const router = useRouter()
 
 const tabs = computed(() => [
   { label: 'General', value: 'details', icon: 'i-lucide-info' },
-  { label: 'Look', value: 'look', icon: 'i-lucide-palette' },
   ...(can('pt.site.manage') ? [{ label: 'Email', value: 'email', icon: 'i-lucide-mail' }] : []),
   { label: 'Contact form', value: 'contact', icon: 'i-lucide-message-square' },
   { label: 'Wording', value: 'wording', icon: 'i-lucide-type' },
@@ -26,8 +24,9 @@ const tabs = computed(() => [
 ])
 // Section names accepted in ?tab=, opening the tab that holds that section.
 const TAB_ALIASES: Record<string, string> = { languages: 'details', behaviour: 'details', sending: 'email' }
-// The signup form has its own page under Landing.
+// The signup form has its own page under Landing, and the look is edited on the landing page.
 if (route.query.tab === 'signup') await navigateTo('/site/landing/signup-form', { replace: true })
+if (route.query.tab === 'look') await navigateTo('/site/landing', { replace: true })
 const tab = computed({
   get: () => {
     const t = String(route.query.tab ?? 'details')
@@ -37,7 +36,6 @@ const tab = computed({
 })
 const TAB_INTRO: Record<string, string> = {
   details: 'What your site is about, its languages and how it behaves.',
-  look: 'Your site’s colors and images.',
   email: 'How reminders and site emails appear in people’s inboxes, and where replies go.',
   contact: 'What your contact form asks, and who is notified of new messages.',
   wording: 'Change the standard wording on your site. Leave a field empty to use the standard wording.',
@@ -66,20 +64,12 @@ const location = computed<PtLocation | null>({
 const languages = ref<string[]>([])
 const defaultLanguage = ref('en')
 const timezone = ref('UTC')
-// Look
-const branding = ref<Record<string, any>>({})
-const imagePicker = ref<'image' | 'logo' | null>(null)
 // Sending
 const identity = ref<Record<string, any>>({})
 const signature = ref<TranslatableText | null>(null)
 // Behaviour
 const settings = ref<Record<string, any>>({})
 
-function resetLook() {
-  const s = site.value
-  if (!s) return
-  branding.value = { ...s.site.branding }
-}
 function resetEmail() {
   const s = site.value
   if (!s) return
@@ -161,34 +151,15 @@ watch(site, (s, prev) => {
   if (!s) return
   if (!prev || canonical(details) === canonical(detailsOf(prev))) Object.assign(details, detailsOf(s))
   if (!prev || canonical(languagesNow()) === canonical(languagesOf(prev))) resetLanguages()
-  if (!prev || comparable(branding.value) === comparable(prev.site.branding)) resetLook()
   if (!prev || comparable({ ...identity.value, signature: signature.value }) === comparable(prev.site.email_identity)) resetEmail()
   const numbersClean = !prev || !numbersDirty.value
   settings.value = { ...s.site.settings }
   if (numbersClean) resetNumbers()
 }, { immediate: true })
 
-// Look
-const brandColor = computed({
-  get: () => branding.value.color ?? DEFAULT_BRAND_COLOR,
-  // The default color is not stored, so choosing it clears the override.
-  set: (v: string) => { branding.value.color = v.toLowerCase() === DEFAULT_BRAND_COLOR ? undefined : v }
-})
-const IMAGE_SLOTS = [
-  { slot: 'logo', key: 'logo_url', label: 'Logo', help: 'Shown at the top of your site and emails. Without one, the site name is shown.' },
-  { slot: 'image', key: 'image_url', label: 'Hero image', help: 'Shown behind the top of your landing page, tinted with your color.' }
-] as const
 function comparable(o: Record<string, unknown> | null | undefined) {
   return JSON.stringify(Object.keys(o ?? {}).sort().filter(k => o![k] !== undefined && o![k] !== null && o![k] !== '').map(k => [k, o![k]]))
 }
-const brandingDirty = computed(() => comparable(branding.value) !== comparable(site.value?.site.branding))
-const savingLook = ref(false)
-async function saveLook() {
-  savingLook.value = true
-  if (await patchSite({ branding: branding.value })) resetLook()
-  savingLook.value = false
-}
-
 // Email
 const emailDirty = computed(() => comparable({ ...identity.value, signature: signature.value }) !== comparable(site.value?.site.email_identity))
 const savingEmail = ref(false)
@@ -304,7 +275,6 @@ async function deleteSite() {
 const contactForm = useTemplateRef<{ dirty: boolean, reset: () => void }>('contactForm')
 const TAB_EDITS: Record<string, { dirty: () => boolean, discard: () => void }> = {
   details: { dirty: () => generalDirty.value, discard: resetGeneral },
-  look: { dirty: () => brandingDirty.value, discard: resetLook },
   email: { dirty: () => emailDirty.value, discard: resetEmail },
   contact: { dirty: () => !!contactForm.value?.dirty, discard: () => contactForm.value?.reset() },
   wording: { dirty: () => wordingDirty.value, discard: resetWording }
@@ -489,137 +459,6 @@ watch(tab, (t) => {
       />
     </template>
 
-    <template v-else-if="tab === 'look'">
-      <UCard>
-        <template #header>
-          <h2 class="font-semibold">
-            Branding
-            <InfoTip>
-              <p>Your color is used for buttons and highlights on your site and in emails.</p>
-              <p>
-                The image for link previews is on the
-                <ULink
-                  to="/site/landing/share"
-                  class="underline"
-                >Share</ULink> page.
-              </p>
-            </InfoTip>
-          </h2>
-        </template>
-        <fieldset
-          :disabled="!can('pt.site.write')"
-          class="space-y-6"
-        >
-          <PtColorField v-model="brandColor" />
-
-          <div class="grid gap-6 sm:grid-cols-2">
-            <UFormField
-              v-for="s in IMAGE_SLOTS"
-              :key="s.slot"
-            >
-              <template #label>
-                {{ s.label }} <InfoTip :text="s.help" />
-              </template>
-              <div class="space-y-2">
-                <div
-                  v-if="branding[s.key]"
-                  class="rounded-md overflow-hidden border border-(--ui-border)"
-                  :class="s.slot === 'logo' ? 'h-32 bg-(--ui-bg-elevated) p-4' : 'aspect-video'"
-                >
-                  <img
-                    :src="branding[s.key]"
-                    alt=""
-                    class="size-full"
-                    :class="s.slot === 'logo' ? 'object-contain' : 'object-cover'"
-                    :style="s.slot === 'image' ? { objectPosition: `${(branding.focal_x ?? 0.5) * 100}% ${(branding.focal_y ?? 0.5) * 100}%` } : {}"
-                  >
-                </div>
-                <div
-                  v-else
-                  class="h-32 rounded-md border border-dashed border-(--ui-border-accented) flex flex-col items-center justify-center gap-1 text-(--ui-text-muted)"
-                >
-                  <UIcon
-                    name="i-lucide-image"
-                    class="size-6"
-                  />
-                  <span class="text-xs">No image yet</span>
-                </div>
-                <div class="flex gap-2">
-                  <UButton
-                    size="sm"
-                    variant="soft"
-                    icon="i-lucide-image"
-                    :label="branding[s.key] ? 'Change' : 'Choose'"
-                    @click="imagePicker = s.slot"
-                  />
-                  <UButton
-                    v-if="branding[s.key]"
-                    size="sm"
-                    variant="ghost"
-                    color="neutral"
-                    icon="i-lucide-x"
-                    label="Remove"
-                    @click="branding[s.key] = undefined"
-                  />
-                </div>
-              </div>
-            </UFormField>
-          </div>
-
-          <div
-            v-if="branding.image_url"
-            class="space-y-5 border-t border-(--ui-border) pt-5"
-          >
-            <UFormField>
-              <template #label>
-                Focal point of the hero image <InfoTip text="Keeps the important part visible when phones crop the image." />
-              </template>
-              <div class="grid grid-cols-2 gap-4 max-w-md">
-                <USlider
-                  v-model="branding.focal_x"
-                  :min="0"
-                  :max="1"
-                  :step="0.05"
-                  aria-label="Horizontal focal point"
-                />
-                <USlider
-                  v-model="branding.focal_y"
-                  :min="0"
-                  :max="1"
-                  :step="0.05"
-                  aria-label="Vertical focal point"
-                />
-              </div>
-            </UFormField>
-            <template v-if="!heroImage(branding.image_url)">
-              <PtTranslatableInput
-                v-model="branding.image_alt"
-                :languages="site.site.languages"
-                :default-language="site.site.default_language"
-                label="Image description (alt text)"
-                required
-              />
-              <UFormField label="Image credit (shown under the image)">
-                <UInput
-                  v-model="branding.image_credit"
-                  class="w-full"
-                />
-              </UFormField>
-            </template>
-          </div>
-        </fieldset>
-      </UCard>
-
-      <SaveBar
-        v-if="can('pt.site.write')"
-        :dirty="brandingDirty"
-        :saving="savingLook"
-        label="Save look"
-        @save="saveLook"
-        @discard="resetLook"
-      />
-    </template>
-
     <template v-else-if="tab === 'email' && can('pt.site.manage')">
       <UCard>
         <template #header>
@@ -671,7 +510,7 @@ watch(tab, (t) => {
               </template>
               <UInput
                 v-model="identity.logo_url"
-                :placeholder="branding.logo_url"
+                :placeholder="site.site.branding.logo_url"
                 class="w-full"
               />
             </UFormField>
@@ -946,22 +785,6 @@ watch(tab, (t) => {
         />
       </SettingsGroup>
     </template>
-
-    <PtImagePicker
-      :open="!!imagePicker"
-      :language="site.site.default_language"
-      :hero-for="imagePicker === 'image' ? site.site.template_key : undefined"
-      @update:open="(v) => { if (!v) imagePicker = null }"
-      @hero="(url) => {
-        Object.assign(branding, { image_url: url, image_alt: undefined, image_credit: undefined, focal_x: undefined, focal_y: undefined })
-        imagePicker = null
-      }"
-      @select="(a) => {
-        branding[`${imagePicker}_url`] = a.url
-        if (imagePicker === 'image') { branding.image_alt = a.asset.alt ?? undefined; branding.image_credit = a.credit ?? undefined; branding.focal_x = a.asset.focal_x; branding.focal_y = a.asset.focal_y }
-        imagePicker = null
-      }"
-    />
 
     <ConfirmModal
       v-model:open="archiveOpen"

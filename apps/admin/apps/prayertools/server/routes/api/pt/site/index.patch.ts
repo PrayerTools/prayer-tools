@@ -9,7 +9,6 @@ import { parseText } from '@prayertools/shared/translatable'
 import { settingsOverrides } from '@prayertools/shared/site'
 import { jsonb, pgArray } from '@prayertools/shared/db/json'
 import { TEMPLATES } from '@prayertools/shared/setup'
-import { isTemplateWhy } from '@prayertools/shared/i18n/landing'
 
 export default definePtHandler('pt.site.write', async (event, tx, ctx) => {
   const b = await ptBody(event)
@@ -55,14 +54,6 @@ export default definePtHandler('pt.site.write', async (event, tx, ctx) => {
     ptNeed(ctx, 'pt.site.manage')
     patch.email_identity = jsonb(ptIdentity(b.email_identity))
   }
-  if ('landing' in b) {
-    const landing = ptLanding(b.landing)
-    // The template's standard "why" text shows by default, so it is not stored.
-    const templateKey = (patch.template_key as string | undefined) ?? site.template_key
-    if (landing.why) landing.why = Object.fromEntries(Object.entries(landing.why).filter(([lang, doc]) => !isTemplateWhy(doc, templateKey, lang)))
-    patch.landing = jsonb(landing)
-  }
-  if ('share' in b) patch.share = jsonb(ptShare(b.share))
   if ('settings' in b && b.settings && typeof b.settings === 'object') {
     patch.settings = jsonb(settingsOverrides({ ...(site.settings as Record<string, unknown>), ...(b.settings as Record<string, unknown>) }))
   }

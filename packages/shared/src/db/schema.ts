@@ -240,10 +240,15 @@ export interface PtLegacyKeyTable {
 
 // ── Site-scoped tables (org_id + RLS) ──────────────────────────────────────
 
+// Site-wide look: shown on every campaign's pages and in emails.
 export interface SiteBranding {
   color?: string
   logo_asset_id?: string
   logo_url?: string
+}
+
+// A campaign's hero image and link-preview image.
+export interface CampaignBranding {
   image_asset_id?: string
   image_url?: string
   image_alt?: TranslatableText
@@ -272,14 +277,14 @@ export interface LandingCustomSection {
   button_url?: string
 }
 
-export interface SiteLanding {
+export interface CampaignLanding {
   why?: Record<string, TiptapDoc>
   hidden?: string[]
   custom?: LandingCustomSection[]
   stories?: boolean
 }
 
-export interface SiteShare {
+export interface CampaignShare {
   messages?: TranslatableText
 }
 
@@ -318,8 +323,6 @@ export interface PtSiteTable {
   timezone: Generated<string>
   branding: JsonDefault<SiteBranding>
   email_identity: JsonDefault<SiteEmailIdentity>
-  landing: JsonDefault<SiteLanding>
-  share: JsonDefault<SiteShare>
   settings: JsonDefault<Record<string, unknown>>
   onboarding: JsonDefault<SiteOnboarding>
   contact_form: JsonDefault<SiteContactForm>
@@ -357,9 +360,12 @@ export interface PtCampaignTable {
   timezone: string
   end_message: Json<TranslatableText | null> | null
   cta: JsonDefault<CampaignCta>
-  // A side campaign's own landing page; the main campaign uses the site's.
-  landing: Json<SiteLanding | null> | null
+  landing: JsonDefault<CampaignLanding>
+  branding: JsonDefault<CampaignBranding>
+  share: JsonDefault<CampaignShare>
   description: Json<TranslatableText | null> | null
+  // Null while the campaign is a draft being set up.
+  published_at: NullableTimestamp
   ended_at: NullableTimestamp
   created_at: Timestamp
   updated_at: Timestamp

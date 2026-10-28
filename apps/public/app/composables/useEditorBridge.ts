@@ -6,6 +6,8 @@ interface EditorMessage {
   type: 'draft' | 'focus'
   landing?: unknown
   description?: unknown
+  branding?: unknown
+  brand?: unknown
   strings?: unknown
   section?: string
   id?: string
@@ -31,7 +33,7 @@ export function useEditorBridge(view: Ref<ViewResponse | undefined>) {
       const next = await $fetch<ViewResponse>('/api/editor/view', {
         method: 'POST',
         query: { pt_edit: token },
-        body: { path: location.pathname, landing: msg.landing, description: msg.description, strings: msg.strings }
+        body: { path: location.pathname, landing: msg.landing, description: msg.description, branding: msg.branding, brand: msg.brand, strings: msg.strings }
       })
       if (n === seq) view.value = next
     } catch (err) {

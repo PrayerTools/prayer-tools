@@ -28,6 +28,8 @@ export interface PtCampaign extends SetupState {
   timezone: string
   status: 'upcoming' | 'active' | 'ended'
   ended_at: string | null
+  // Null while the campaign is a draft being set up.
+  published_at: string | null
   end_message: TranslatableText | null
   cta: { url?: string, label?: TranslatableText } | null
   commitments: number

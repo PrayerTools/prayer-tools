@@ -55,7 +55,7 @@ export async function apiSite(slug: string | undefined): Promise<ApiSite> {
 }
 
 export async function campaignsOf(tx: Tx): Promise<CampaignRow[]> {
-  return (await tx.selectFrom('pt_campaign').selectAll().orderBy('start_date').execute()).map(normalizeCampaign) as CampaignRow[]
+  return (await tx.selectFrom('pt_campaign').selectAll().where('published_at', 'is not', null).orderBy('start_date').execute()).map(normalizeCampaign) as CampaignRow[]
 }
 
 export async function appSubscription(tx: Tx, intercessorId: string): Promise<SubscriptionRow | null> {

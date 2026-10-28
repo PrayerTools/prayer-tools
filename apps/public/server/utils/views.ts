@@ -37,7 +37,7 @@ export function appAvailable(): boolean {
 export async function buildSiteResponse(event: H3Event, ctx: SiteContext, fullPath: string, draft?: LandingDraft): Promise<SiteResponse> {
   const url = new URL(fullPath, 'http://x')
   return await withOrg(useDb(), ctx.orgId, async (tx) => {
-    const data = await loadSiteData(tx)
+    const data = await loadSiteData(tx, { drafts: ctx.preview || ctx.editor })
     const parsed = parseSitePath(url.pathname, data.site.languages, data.campaigns.map(c => c.slug))
     const lang = parsed.lang ?? data.site.default_language
     const def = data.site.default_language
@@ -45,13 +45,20 @@ export async function buildSiteResponse(event: H3Event, ctx: SiteContext, fullPa
       ? data.campaigns.find(c => c.slug === parsed.campaignSlug) ?? null
       : data.current?.campaign ?? null
     // The editor's draft is the landing page of the page it previews.
-    if (draft && campaign && isSideCampaign(campaign)) {
-      const edited = { ...campaign, landing: draft.landing, description: draft.description }
+    if (draft && campaign) {
+      const side = isSideCampaign(campaign)
+      const edited = {
+        ...campaign,
+        landing: draft.landing,
+        ...(side ? { description: draft.description } : {}),
+        ...(draft.branding ? { branding: draft.branding } : {})
+      }
       data.campaigns = data.campaigns.map(c => c.id === edited.id ? edited : c)
+      if (data.current?.campaign.id === edited.id) data.current = { ...data.current, campaign: edited }
       campaign = edited
-    } else if (draft) {
-      data.site = { ...data.site, landing: draft.landing, description: draft.description }
+      if (!side) data.site = { ...data.site, description: draft.description }
     }
+    if (draft?.brand) data.site = { ...data.site, branding: { ...(data.site.branding ?? {}), ...draft.brand } }
     const site = await buildSiteView(tx, ctx, data, lang, campaign, url.pathname)
     if (draft) site.strings = withDraftStrings(site.strings, draft.strings)
     const cv = site.campaign

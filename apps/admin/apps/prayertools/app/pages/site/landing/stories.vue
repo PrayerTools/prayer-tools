@@ -40,9 +40,17 @@ async function setPublished(s: Story, published: boolean) {
     <PtLandingTabs />
     <header class="flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h1 class="text-2xl font-semibold">
-          Stories
-        </h1>
+        <div class="flex flex-wrap items-center gap-3">
+          <h1 class="text-2xl font-semibold">
+            Stories
+          </h1>
+          <UBadge
+            color="neutral"
+            variant="outline"
+            icon="i-lucide-layers"
+            label="Shared by all campaigns"
+          />
+        </div>
         <p class="text-sm text-(--ui-text-muted) max-w-xl">
           Prayer stories sent from your site, with what each writer allowed. Read and answer them in the inbox; add the ones you may publish to your landing page.
         </p>

@@ -3,7 +3,7 @@ import { applyTemplate, campaignLength, campaignStatus, campaignsOverlap, defaul
 
 const NY = 'America/New_York'
 
-function c(p: Partial<CampaignDates> & { id?: string, kind?: 'side' | null }): CampaignDates & { id: string, kind?: 'side' | null } {
+function c(p: Partial<CampaignDates> & { id?: string, kind?: 'side' | null, published_at?: string | null }): CampaignDates & { id: string, kind?: 'side' | null, published_at?: string | null } {
   return { id: p.id ?? 'x', start_mode: 'date', start_date: '2026-03-01', end_mode: 'date', end_date: '2026-03-30', length_days: null, cadence: 'daily', timezone: NY, ended_at: null, ...p }
 }
 
@@ -60,6 +60,11 @@ describe('pickCurrentCampaign', () => {
     expect(pickCurrentCampaign([ongoing, ramadan], now)).toEqual({ campaign: ongoing, state: 'active' })
     expect(pickCurrentCampaign([past, ramadan], now)).toEqual({ campaign: past, state: 'between' })
     expect(pickCurrentCampaign([ramadan], now)).toBeNull()
+  })
+
+  it('never picks a draft', () => {
+    const draft = c({ id: 'draft', start_date: '2026-06-10', end_date: '2026-07-09', published_at: null })
+    expect(pickCurrentCampaign([past, draft], now)).toEqual({ campaign: past, state: 'between' })
   })
 })
 
