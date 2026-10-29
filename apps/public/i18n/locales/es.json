@@ -36,6 +36,8 @@
   "landing": {
     "starts_on": "Comienza el {date}",
     "pray_today": "Ora hoy",
+    "signed_up": "Ya estás orando con {site}. Allí puedes añadir, cambiar o dejar tus horarios de oración.",
+    "manage_times": "Gestionar tus horarios de oración",
     "continue_praying": "Sigue leyendo y ora",
     "side": {
       "now": "También en curso",
