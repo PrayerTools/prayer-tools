@@ -22,18 +22,37 @@ const emit = defineEmits<{ use: [string] }>()
 const { data: meta } = usePtMeta()
 
 const q = ref('')
+const searchQuery = ref('')
+let searchTimer: ReturnType<typeof setTimeout> | undefined
+watch(q, value => {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => { searchQuery.value = value.trim() }, 350)
+})
+onBeforeUnmount(() => clearTimeout(searchTimer))
 const cadence = ref<string | undefined>(props.cadence)
 watch(() => props.cadence, (v) => {
   cadence.value = v
 })
 const seeMore = ref(false)
-const { data, status } = useFetch<{ libraries: Library[] }>('/api/pt/libraries', {
-  query: computed(() => ({ template: props.template ?? undefined, cadence: cadence.value, q: q.value || undefined })),
-  key: computed(() => `pt-catalog-${props.template}-${cadence.value}-${q.value}`)
+const { data, status, error: catalogError, refresh } = useFetch<{ libraries: Library[] }>('/api/pt/libraries', {
+  query: computed(() => ({ template: props.template ?? undefined, cadence: cadence.value, q: searchQuery.value || undefined })),
+  key: `pt-catalog-${useId()}`,
+  dedupe: 'cancel'
 })
 
-const suggested = computed(() => (data.value?.libraries ?? []).filter(l => l.suggested))
-const others = computed(() => (data.value?.libraries ?? []).filter(l => !l.suggested))
+const results = shallowRef<Library[]>([])
+const hasResults = ref(false)
+const completedQuery = ref('')
+watch([data, status], ([response, requestStatus]) => {
+  if (requestStatus === 'success' && response) {
+    results.value = response.libraries
+    hasResults.value = true
+    completedQuery.value = searchQuery.value
+  }
+}, { immediate: true })
+const isSearching = computed(() => status.value === 'pending' || q.value.trim() !== searchQuery.value)
+const suggested = computed(() => results.value.filter(l => l.suggested))
+const others = computed(() => results.value.filter(l => !l.suggested))
 const shown = computed(() => (seeMore.value || !suggested.value.length ? [...suggested.value, ...others.value] : suggested.value))
 
 const preview = reactive({ open: false, lib: null as Library | null, day: 1, lang: 'en', doc: null as Record<string, any> | null, loading: false })
@@ -81,6 +100,8 @@ function coverage(lib: Library): string {
         v-model="q"
         icon="i-lucide-search"
         placeholder="Search libraries"
+        aria-label="Search libraries"
+        :loading="status === 'pending'"
         class="w-full sm:w-72"
       />
       <USelect
@@ -98,25 +119,25 @@ function coverage(lib: Library): string {
         @click="cadence = undefined"
       />
     </div>
-    <div
-      v-if="status === 'pending' && !data"
-      class="text-sm text-(--ui-text-muted)"
-    >
-      Loading…
+    <p class="text-xs text-(--ui-text-muted)">Results update as you type. The daily or weekly filter also affects your results.</p>
+    <div class="min-h-88 space-y-4" :aria-busy="isSearching">
+    <div class="min-h-6" aria-live="polite" aria-atomic="true">
+      <p v-if="isSearching" class="text-sm text-(--ui-text-muted)" role="status">{{ hasResults ? 'Updating results…' : 'Searching libraries…' }}</p>
+      <UAlert v-else-if="catalogError" color="error" variant="soft" icon="i-lucide-triangle-alert" title="We couldn't load the libraries" description="The search did not complete. Try again; this does not mean there are no matching libraries." :actions="[{ label: 'Try again', color: 'neutral', variant: 'outline', onClick: () => refresh() }]" />
+      <p v-else-if="hasResults" class="text-sm text-(--ui-text-muted)">{{ results.length }} {{ results.length === 1 ? 'library found' : 'libraries found' }}{{ !seeMore && suggested.length && others.length ? ' · showing suggested libraries first' : '' }}</p>
     </div>
-    <div
-      v-else-if="!shown.length"
-      class="text-sm text-(--ui-text-muted)"
-    >
-      No libraries match. You can write your own content instead.
-    </div>
+      <div v-if="hasResults && !shown.length && !catalogError" class="rounded-xl border border-(--ui-border) bg-(--ui-bg-muted) p-5 space-y-3">
+        <p class="font-semibold">{{ completedQuery ? `No libraries found for “${completedQuery}”` : 'No libraries match these filters' }}</p>
+        <p class="text-sm text-(--ui-text-muted)">The search completed. Try a different search or clear the filters to browse all available libraries. You can also write your own content below.</p>
+        <UButton v-if="q || cadence" label="Clear search and filters" color="neutral" variant="outline" @click="q = ''; cadence = undefined; seeMore = true" />
+      </div>
     <h3
-      v-if="suggested.length && shown.length"
+      v-if="hasResults && !catalogError && suggested.length && shown.length"
       class="text-sm font-semibold text-(--ui-text-muted)"
     >
       Suggested for your site
     </h3>
-    <div class="grid md:grid-cols-2 gap-3">
+    <div v-if="hasResults && !catalogError" class="grid md:grid-cols-2 gap-3">
       <template
         v-for="(lib, i) in shown"
         :key="lib.id"
@@ -211,13 +232,14 @@ function coverage(lib: Library): string {
       </template>
     </div>
     <UButton
-      v-if="suggested.length && others.length && !seeMore"
+      v-if="hasResults && !catalogError && suggested.length && others.length && !seeMore"
       variant="soft"
       color="neutral"
       trailing-icon="i-lucide-chevron-down"
       :label="`See more (${others.length})`"
       @click="seeMore = true"
     />
+    </div>
 
     <UModal
       v-model:open="preview.open"

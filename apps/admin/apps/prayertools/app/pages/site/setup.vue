@@ -10,6 +10,8 @@ import type { SitePlaceWording } from '@prayertools/shared/place'
 import type { SetupState } from '../../components/PtSetupForm.vue'
 import type { PtChecklist } from '../../components/PtLaunchChecklist.vue'
 import type { PtLocation } from '../../components/PtLocationSearch.vue'
+import { campaignDateError } from '../../utils/pt-setup-validation'
+import PtPrayerContentEditor from '../../components/PtPrayerContentEditor.vue'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -23,6 +25,16 @@ const route = useRoute()
 const slug = computed(() => String(route.params.orgSlug))
 
 const step = ref<Step>('about')
+const stepItems = computed(() => [
+  { label: 'About', value: 'about', icon: 'i-lucide-info', description: 'Who you are praying for' },
+  { label: 'Campaign', value: 'setup', icon: 'i-lucide-calendar-range', description: 'Dates and prayer goals' },
+  { label: 'Languages', value: 'languages', icon: 'i-lucide-languages', description: 'Welcome your community' },
+  { label: 'Content', value: 'content', icon: 'i-lucide-book-open', description: 'Your daily prayer guide', disabled: !existingCampaign.value },
+  { label: 'Look', value: 'look', icon: 'i-lucide-palette', description: 'Colors, photos, and logo' },
+  { label: 'Landing page', value: 'landing', icon: 'i-lucide-panels-top-left', description: 'Tell your story' },
+  { label: 'Publish', value: 'publish', icon: 'i-lucide-rocket', description: 'Review and share your site' }
+])
+const stepNumber = computed(() => STEPS.indexOf(step.value) + 1)
 watch(site, (s) => {
   const saved = s?.site.onboarding?.step as Step | undefined
   if (saved && STEPS.includes(saved) && step.value === 'about') step.value = saved
@@ -31,6 +43,11 @@ watch(site, (s) => {
 async function go(next: Step) {
   step.value = next
   await $fetch('/api/pt/site', { method: 'PATCH', body: { onboarding: { step: next } } }).catch(() => {})
+}
+function fixSetupItem(key: string) {
+  const steps: Record<string, Step> = { dates: 'setup', content: 'content', content_languages: 'content', place_wording: 'languages', why: 'landing', description: 'landing', image: 'look' }
+  const target = steps[key]
+  if (target) go(target)
 }
 
 // ── Step: about the site ─────────────────────────────────────────────────
@@ -68,6 +85,11 @@ async function saveAbout() {
 
 // ── Step: template + campaign setup ─────────────────────────────────────
 const templateKey = ref('generic')
+const templateItems = computed(() => (meta.value?.templates ?? []).map(t => ({
+  value: t.key,
+  label: PT_LABELS.template[t.key],
+  description: PT_LABELS.templateDescription[t.key]
+})))
 watch(site, s => { if (s?.site.template_key) templateKey.value = s.site.template_key }, { immediate: true })
 const campaignName = ref('')
 const setup = ref<SetupState>({ start_mode: 'date', start_date: null, end_mode: 'date', end_date: null, length_days: null, goal: 'people', cadence: 'daily', track_time: false, goal_target: 100, slot_min: null })
@@ -103,7 +125,9 @@ function fillEndDate() {
 watch(() => setup.value.start_date, fillEndDate)
 
 const savingSetup = ref(false)
+const setupDateError = computed(() => campaignDateError(setup.value))
 async function saveSetup() {
+  if (setupDateError.value) return
   savingSetup.value = true
   try {
     await $fetch('/api/pt/site', { method: 'PATCH', body: { template_key: templateKey.value } })
@@ -148,8 +172,8 @@ async function saveLanguages() {
 // ── Step: content ────────────────────────────────────────────────────────
 const { data: content, refresh: refreshContent } = useFetch<{ libraries: { siteLibraryId: string, libraryId: string | null, title: string, entryCount: number, missingLanguages: string[] }[] }>('/api/pt/content', {
   query: computed(() => ({ campaign: existingCampaign.value?.id })),
-  key: computed(() => `pt-setup-content-${existingCampaign.value?.id}`),
-  immediate: false
+  key: 'pt-setup-content',
+  immediate: true
 })
 watch(() => [step.value, existingCampaign.value?.id], () => { if (step.value === 'content' && existingCampaign.value) refreshContent() }, { immediate: true })
 async function useLibrary(libraryId: string) {
@@ -194,14 +218,40 @@ async function saveLength(length: number | null | undefined) {
   }
 }
 const ownTitle = ref('')
-async function createOwn() {
+const creatingOwn = ref(false)
+const editingContent = ref(true)
+const prayerEditor = ref<{ dirty: boolean, saving: boolean } | null>(null)
+watch(() => content.value?.libraries, (libraries) => {
+  if (libraries?.length) editingContent.value = true
+}, { immediate: true })
+const contentChoice = ref<'library' | 'own'>()
+const contentChoices = [
+  { value: 'library', label: 'Use an existing guide', description: 'Browse prayer guides and add one to your campaign.' },
+  { value: 'own', label: 'Write my own', description: 'Name your guide, then write its prayer entries here.' }
+]
+const ownGuide = computed(() => content.value?.libraries.find(l => !l.libraryId))
+watch(ownGuide, (guide) => {
+  if (guide && !contentChoice.value) {
+    contentChoice.value = 'own'
+    ownTitle.value = guide.title
+  }
+}, { immediate: true })
+const canContinueContent = computed(() => contentChoice.value === 'own'
+  ? !!ownGuide.value || !!ownTitle.value.trim()
+  : contentChoice.value === 'library' && !!content.value?.libraries.length)
+async function saveContentAndContinue() {
+  if (creatingOwn.value || !canContinueContent.value) return
+  creatingOwn.value = true
   try {
-    await $fetch('/api/pt/content/libraries', { method: 'POST', body: { campaignId: existingCampaign.value?.id, title: ownTitle.value || 'Our prayer guide' } })
-    ownTitle.value = ''
-    await refreshContent()
-    toast.ok('Created. Write the entries on the Prayer content page.')
+    if (contentChoice.value === 'own' && !ownGuide.value) {
+      await $fetch('/api/pt/content/libraries', { method: 'POST', body: { campaignId: existingCampaign.value?.id, title: ownTitle.value.trim() } })
+      await refreshContent()
+    }
+    editingContent.value = true
   } catch (err) {
     toast.fail(err)
+  } finally {
+    creatingOwn.value = false
   }
 }
 
@@ -277,12 +327,13 @@ async function publish() {
 
 <template>
   <div
-    class="mx-auto space-y-6"
-    :class="step === 'landing' ? 'max-w-[96rem]' : 'max-w-3xl'"
+    class="setup-page mx-auto space-y-8 py-3 sm:py-5"
+    :class="step === 'landing' ? 'max-w-[96rem]' : 'max-w-6xl'"
   >
-    <div class="max-w-3xl mx-auto space-y-6">
-      <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-semibold">
+    <div class="space-y-4">
+      <p class="text-xs font-semibold uppercase tracking-[0.18em] text-(--ui-primary)">Campaign setup</p>
+      <div class="flex items-center justify-between gap-4">
+        <h1 class="text-3xl font-semibold sm:text-4xl">
           Set up {{ site?.org.name }}
         </h1>
         <UBadge
@@ -291,24 +342,27 @@ async function publish() {
           variant="subtle"
         />
       </div>
-      <UTabs
-        :model-value="step"
-        :items="[
-          { label: 'About', value: 'about', icon: 'i-lucide-info' },
-          { label: 'Campaign', value: 'setup', icon: 'i-lucide-calendar-range' },
-          { label: 'Languages', value: 'languages', icon: 'i-lucide-languages' },
-          { label: 'Content', value: 'content', icon: 'i-lucide-book-open', disabled: !existingCampaign },
-          { label: 'Look', value: 'look', icon: 'i-lucide-palette' },
-          { label: 'Landing page', value: 'landing', icon: 'i-lucide-panels-top-left' },
-          { label: 'Publish', value: 'publish', icon: 'i-lucide-rocket' }
-        ]"
-        :content="false"
-        class="w-full"
-        @update:model-value="(v) => go(v as Step)"
-      />
+      <p class="text-(--ui-text-muted)">Shape your campaign one step at a time. Your site stays a draft until you publish it.</p>
     </div>
 
-    <UCard v-if="step === 'about'">
+    <div class="setup-workspace">
+      <nav class="setup-navigation" aria-label="Campaign setup steps">
+        <p class="mb-4 text-xs font-semibold uppercase tracking-wider text-(--ui-text-muted)">Step {{ stepNumber }} of {{ STEPS.length }}</p>
+        <ol class="setup-step-list">
+          <li v-for="item in stepItems" :key="item.value">
+            <button type="button" class="setup-step" :class="{ 'is-current': step === item.value }" :disabled="item.disabled" :aria-current="step === item.value ? 'step' : undefined" @click="go(item.value as Step)">
+              <UIcon :name="item.icon" class="size-5 shrink-0" aria-hidden="true" />
+              <span class="text-start">
+                <span class="block text-sm font-semibold whitespace-nowrap">{{ item.label }}</span>
+                <span class="step-description mt-0.5 block text-xs text-(--ui-text-muted)">{{ item.description }}</span>
+              </span>
+            </button>
+          </li>
+        </ol>
+        <p v-if="!existingCampaign" class="mt-3 text-sm leading-relaxed text-(--ui-text-muted)">Save your campaign to unlock prayer content.</p>
+      </nav>
+      <div class="setup-content min-w-0">
+    <UCard class="setup-panel" v-if="step === 'about'">
       <template #header>
         <h2 class="font-semibold">
           About the site
@@ -329,7 +383,7 @@ async function publish() {
               variant="card"
               orientation="horizontal"
               class="w-full"
-              :ui="{ fieldset: 'grid grid-cols-1 sm:grid-cols-2 gap-2' }"
+              :ui="{ fieldset: 'grid grid-cols-1 sm:grid-cols-2 gap-3' }"
             />
           </UFormField>
           <UFormField
@@ -367,7 +421,7 @@ async function publish() {
       <template #footer>
         <div class="flex justify-end">
           <UButton
-            label="Save and continue"
+            label="Save and continue" size="lg" icon="i-lucide-save"
             :loading="savingAbout"
             @click="saveAbout"
           />
@@ -375,7 +429,7 @@ async function publish() {
       </template>
     </UCard>
 
-    <UCard v-else-if="step === 'setup'">
+    <UCard class="setup-panel" v-else-if="step === 'setup'">
       <template #header>
         <h2 class="font-semibold">
           Choose a template
@@ -385,25 +439,15 @@ async function publish() {
         </p>
       </template>
       <div class="divide-y divide-(--ui-border-accented)">
-        <div class="grid sm:grid-cols-2 gap-3 pb-6">
-          <button
-            v-for="t in meta?.templates ?? []"
-            :key="t.key"
-            type="button"
-            class="text-start rounded-lg border p-3 transition focus-visible:ring-2 focus-visible:ring-(--ui-primary)"
-            :class="templateKey === t.key ? 'border-(--ui-primary) ring-1 ring-(--ui-primary) bg-(--ui-bg-elevated)' : 'border-(--ui-border) hover:bg-(--ui-bg-elevated)'"
-            @click="chooseTemplate(t.key)"
-          >
-            <span class="flex items-center gap-2">
-              <UIcon
-                :name="PT_TEMPLATE_ICONS[t.key] ?? 'i-lucide-sparkles'"
-                class="size-5 shrink-0 text-(--ui-primary)"
-              />
-              <span class="font-medium">{{ PT_LABELS.template[t.key] }}</span>
-            </span>
-            <span class="block text-sm text-(--ui-text-muted) mt-1">{{ PT_LABELS.templateDescription[t.key] }}</span>
-          </button>
-        </div>
+        <URadioGroup
+          :model-value="templateKey"
+          :items="templateItems"
+          variant="card"
+          aria-label="Campaign template"
+          :ui="{ fieldset: 'grid grid-cols-1 sm:grid-cols-2 gap-3' }"
+          class="pb-6"
+          @update:model-value="(value) => chooseTemplate(String(value))"
+        />
         <UFormField
           label="Campaign name"
           help="People see this, e.g. “Ramadan 2027”."
@@ -425,15 +469,16 @@ async function publish() {
       <template #footer>
         <div class="flex justify-end">
           <UButton
-            label="Save and continue"
+            label="Save and continue" size="lg" icon="i-lucide-save"
             :loading="savingSetup"
+            :disabled="!!setupDateError"
             @click="saveSetup"
           />
         </div>
       </template>
     </UCard>
 
-    <UCard v-else-if="step === 'languages'">
+    <UCard class="setup-panel" v-else-if="step === 'languages'">
       <template #header>
         <h2 class="font-semibold">
           Languages
@@ -468,7 +513,7 @@ async function publish() {
       <template #footer>
         <div class="flex justify-end">
           <UButton
-            label="Save and continue"
+            label="Save and continue" size="lg" icon="i-lucide-save"
             :loading="savingLanguages"
             :disabled="!languages.length"
             @click="saveLanguages"
@@ -477,17 +522,17 @@ async function publish() {
       </template>
     </UCard>
 
-    <UCard v-else-if="step === 'content'">
+    <UCard class="setup-panel" v-else-if="step === 'content'">
       <template #header>
         <h2 class="font-semibold">
           Prayer content
         </h2>
         <p class="text-sm text-(--ui-text-muted)">
-          Use a library as it is (fixes and new translations reach you automatically), change it to suit
-          your site, or write your own.
+          Choose a guide, then write or review its prayer entries before continuing setup.
         </p>
       </template>
-      <div class="divide-y divide-(--ui-border-accented)">
+      <PtPrayerContentEditor v-if="editingContent" ref="prayerEditor" embedded :initial-campaign-id="existingCampaign?.id" />
+      <div v-else class="divide-y divide-(--ui-border-accented)">
         <UFormField
           label="How often is there new prayer content?"
           :help="!cadenceOpen ? 'Set by the template.' : undefined"
@@ -531,6 +576,7 @@ async function publish() {
             class="flex items-center justify-between rounded-md border border-(--ui-border) px-3 py-2 text-sm"
           >
             <span>{{ l.title }} · {{ l.entryCount }} entries</span>
+            <span v-if="!l.entryCount" class="text-(--ui-text-muted)">Ready for prayer entries</span>
             <UBadge
               v-if="l.missingLanguages.length"
               color="warning"
@@ -541,46 +587,52 @@ async function publish() {
         </section>
         <section class="space-y-4 py-6 first:pt-0 last:pb-0">
           <h3 class="text-base font-semibold">
-            Add prayer content
+            How would you like to add your prayer guide?
           </h3>
+          <URadioGroup v-model="contentChoice" :items="contentChoices" variant="card" />
           <PtLibraryCatalog
+            v-if="contentChoice === 'library'"
             :template="templateKey"
             :cadence="existingCampaign?.cadence"
             :site-languages="site?.site.languages ?? []"
             :used-ids="(content?.libraries ?? []).map(l => l.libraryId).filter(Boolean) as string[]"
             @use="useLibrary"
           />
-          <USeparator label="or" />
-          <div class="flex flex-wrap items-end gap-2">
+          <div v-if="contentChoice === 'own'" class="space-y-2">
+            <p class="text-sm text-(--ui-text-muted)">{{ ownGuide ? 'Your guide is saved. Continue below to write its prayer entries here.' : 'Give your guide a name. Continue below to create it and write its prayer entries here.' }}</p>
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
             <UFormField
-              label="Write your own content"
-              class="flex-1"
+              label="Prayer guide name"
+              class="min-w-0 flex-1"
             >
               <UInput
                 v-model="ownTitle"
+                :disabled="!!ownGuide"
                 placeholder="Our prayer guide"
+                size="lg"
+                :ui="{ base: 'h-11' }"
                 class="w-full"
               />
             </UFormField>
-            <UButton
-              label="Create"
-              variant="soft"
-              @click="createOwn"
-            />
+            </div>
           </div>
         </section>
       </div>
       <template #footer>
         <div class="flex justify-end">
           <UButton
-            label="Continue"
-            @click="go('look')"
+            :label="editingContent ? 'Save and continue' : 'Continue to prayer entries'"
+            size="lg" icon="i-lucide-save"
+            :loading="creatingOwn"
+            :disabled="editingContent ? !!prayerEditor?.dirty || !!prayerEditor?.saving : !canContinueContent"
+            @click="editingContent ? go('look') : saveContentAndContinue()"
           />
         </div>
+        <p v-if="editingContent && prayerEditor?.dirty" class="mt-2 text-right text-sm text-(--ui-text-muted)">Save your current prayer entry before continuing.</p>
       </template>
     </UCard>
 
-    <UCard v-else-if="step === 'look'">
+    <UCard class="setup-panel" v-else-if="step === 'look'">
       <template #header>
         <h2 class="font-semibold">
           Look
@@ -648,7 +700,7 @@ async function publish() {
         </div>
         <div class="flex justify-end">
           <UButton
-            label="Save and continue"
+            label="Save and continue" size="lg" icon="i-lucide-save"
             :loading="savingLook"
             @click="saveLookAndContinue"
           />
@@ -675,9 +727,9 @@ async function publish() {
       v-else-if="step === 'publish'"
       class="space-y-6"
     >
-      <PtLaunchChecklist ref="checklist" />
+      <PtLaunchChecklist ref="checklist" within-setup @fix="fixSetupItem" />
 
-      <UCard v-if="preview">
+      <UCard class="setup-panel" v-if="preview">
         <template #header>
           <h3 class="font-semibold">
             Preview
@@ -724,6 +776,9 @@ async function publish() {
       </div>
     </div>
 
+      </div>
+    </div>
+
     <PtImagePicker
       v-model:open="pickerOpen"
       :language="site?.site.default_language"
@@ -733,3 +788,33 @@ async function publish() {
     />
   </div>
 </template>
+
+<style scoped>
+.setup-workspace { display: grid; gap: 1.5rem; }
+.setup-navigation { min-width: 0; }
+.setup-step-list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.setup-step { display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 1rem; border: 1px solid var(--ui-border); border-radius: 0.85rem; color: var(--ui-text-muted); background: var(--ui-bg-elevated); transition: background 150ms ease, border-color 150ms ease; }
+.setup-step:hover:not(:disabled) { border-color: var(--ui-primary); }
+.setup-step.is-current { background: #fff0e3; border-color: #f58220; color: #8a3b0a; }
+.setup-step:disabled { opacity: 0.45; cursor: not-allowed; }
+.step-description { display: none; }
+.setup-content :deep(.setup-panel) { background: var(--ui-bg-elevated); border-radius: var(--radius-lg); box-shadow: 0 8px 30px #20283305; }
+.setup-content :deep(.setup-panel > div) { padding: 1.5rem; }
+.setup-content :deep(h2) { font-size: 1.2rem; line-height: 1.5; }
+.setup-content :deep(input:not([type='radio']):not([type='checkbox'])) { min-height: 2.5rem; }
+.setup-content :deep(.setup-continue) {
+  min-height: 3rem;
+  padding: 0.8rem 1.5rem;
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-weight: 650;
+}
+@media (min-width: 1200px) {
+  .setup-workspace { grid-template-columns: 15rem minmax(0, 1fr); gap: 2rem; }
+  .setup-navigation { position: sticky; top: 5.5rem; align-self: start; }
+  .setup-step-list { flex-direction: column; overflow: visible; }
+  .setup-step { width: 100%; padding: 1rem; }
+  .step-description { display: block; }
+}
+:global(.dark) .setup-step.is-current { background: #472f1d; color: #ffb376; }
+</style>

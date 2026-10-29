@@ -1,7 +1,7 @@
 <script setup lang="ts">
+import { campaignDateError } from '../utils/pt-setup-validation'
 // The setup answers (start, end, goal and, unless withCadence is false,
-// cadence), each explained. A template pre-fills them; answers the template
-// fixes are shown but locked.
+// cadence). Only editable decisions and compatible choices are shown.
 export interface SetupState {
   start_mode: 'date' | 'join'
   start_date: string | null
@@ -17,6 +17,7 @@ export interface SetupState {
 
 const props = withDefaults(defineProps<{ templateKey?: string, lockTemplate?: boolean, withCadence?: boolean }>(), { templateKey: 'generic', lockTemplate: true, withCadence: true })
 const state = defineModel<SetupState>({ required: true })
+const dateError = computed(() => campaignDateError(state.value))
 const { data: meta } = usePtMeta()
 
 const template = computed(() => meta.value?.templates.find(t => t.key === props.templateKey))
@@ -37,11 +38,10 @@ const endItems = computed(() => state.value.start_mode === 'join'
     ])
 // 24/7 coverage is a grid over the campaign's dates, so it needs both.
 const datedCampaign = computed(() => state.value.start_mode === 'date' && state.value.end_mode === 'date')
-const goalItems = computed(() => (meta.value?.setup.goals ?? ['people', 'prayer_time', 'coverage']).map(g => ({
+const goalItems = computed(() => (meta.value?.setup.goals ?? ['people', 'prayer_time', 'coverage']).filter(g => g !== 'coverage' || datedCampaign.value).map(g => ({
   value: g,
   label: g === 'people' ? `${PT_LABELS.goal[g]} (recommended)` : PT_LABELS.goal[g],
-  description: g === 'coverage' && !datedCampaign.value ? 'Needs a start date and an end date.' : PT_LABELS.goalDescription[g],
-  disabled: g === 'coverage' && !datedCampaign.value
+  description: PT_LABELS.goalDescription[g]
 })))
 const defaultSlot = computed(() => meta.value?.setup.defaultSlot ?? 15)
 const slotItems = computed(() => (meta.value?.setup.slotOptions ?? [5, 10, 15, 30, 60]).map(m => ({
@@ -52,6 +52,12 @@ const slot = computed({
   get: () => state.value.slot_min ?? defaultSlot.value,
   set: (v: number) => { state.value.slot_min = v === defaultSlot.value ? null : v }
 })
+
+function openDatePicker(event: MouseEvent) {
+  const target = event.currentTarget
+  if (!(target instanceof HTMLInputElement) || target.disabled) return
+  try { target.showPicker?.() } catch { /* Native keyboard entry remains available. */ }
+}
 
 watch(datedCampaign, (dated) => {
   if (!dated && state.value.goal === 'coverage') state.value.goal = 'prayer_time'
@@ -70,12 +76,20 @@ const lengthLabel = computed(() => {
   const fixed = days - 1 <= (meta.value?.setup.fixedMaxDays ?? 50)
   return `${days} days · shows as ${fixed ? 'a fixed' : 'an ongoing'} campaign`
 })
+const fixedTiming = computed(() => {
+  if (open('start_mode') || open('end_mode')) return null
+  if (state.value.start_mode === 'join') return 'Each person starts when they join and goes through the prayer content once.'
+  const days = template.value?.setup.length_days
+  return days ? `This template runs for ${days} days from your chosen start date. The end date is set automatically.` : null
+})
 </script>
 
 <template>
   <div class="divide-y divide-(--ui-border-accented)">
-    <section class="space-y-4 py-6 first:pt-0 last:pb-0">
+    <p v-if="fixedTiming" class="pb-6 text-sm text-(--ui-text-muted)">{{ fixedTiming }}</p>
+    <section v-if="open('start_mode') || (state.start_mode === 'date' && open('start_date'))" class="space-y-4 py-6 first:pt-0 last:pb-0">
       <UFormField
+        v-if="open('start_mode')"
         label="When does it start?"
         :ui="{ label: 'text-base font-semibold' }"
         :help="!open('start_mode') ? 'Set by the template.' : undefined"
@@ -88,19 +102,22 @@ const lengthLabel = computed(() => {
         />
       </UFormField>
       <UFormField
-        v-if="state.start_mode === 'date'"
+        v-if="state.start_mode === 'date' && open('start_date')"
         label="Start date"
         required
       >
         <UInput
           :model-value="state.start_date ?? undefined"
           type="date"
+          class="cursor-pointer"
+          @click="openDatePicker"
           @update:model-value="(v) => { state.start_date = v ? String(v) : null }"
         />
       </UFormField>
     </section>
-    <section class="space-y-4 py-6 first:pt-0 last:pb-0">
+    <section v-if="open('end_mode') || (state.end_mode === 'date' && state.start_mode === 'date' && open('end_date')) || (state.end_mode === 'days' && open('length_days'))" class="space-y-4 py-6 first:pt-0 last:pb-0">
       <UFormField
+        v-if="open('end_mode')"
         label="When does it end?"
         :ui="{ label: 'text-base font-semibold' }"
       >
@@ -112,14 +129,18 @@ const lengthLabel = computed(() => {
         />
       </UFormField>
       <UFormField
-        v-if="state.end_mode === 'date' && state.start_mode === 'date'"
+        v-if="state.end_mode === 'date' && state.start_mode === 'date' && open('end_date')"
         label="End date"
+        :error="dateError"
         :hint="lengthLabel ?? undefined"
         required
       >
         <UInput
           :model-value="state.end_date ?? undefined"
+          :min="state.start_date ?? undefined"
           type="date"
+          class="cursor-pointer"
+          @click="openDatePicker"
           @update:model-value="(v) => { state.end_date = v ? String(v) : null }"
           :disabled="!open('end_date') && !!state.end_date && !open('start_date')"
         />
@@ -140,6 +161,7 @@ const lengthLabel = computed(() => {
     </section>
     <section class="space-y-4 py-6 first:pt-0 last:pb-0">
       <UFormField
+        v-if="open('goal')"
         label="What is the goal?"
         :ui="{ label: 'text-base font-semibold' }"
       >
@@ -151,9 +173,10 @@ const lengthLabel = computed(() => {
         />
       </UFormField>
       <UFormField
-        v-if="state.goal === 'people'"
-        label="Track time committed"
-        help="Ask people how long they will pray (15 minutes by default)."
+        v-if="state.goal === 'people' && open('track_time')"
+        label="Ask people how many minutes they plan to pray"
+        description="Turn this on to add a prayer-duration question to the sign-up form, alongside their reminder time."
+        :help="state.track_time ? 'On: people choose a duration, such as 15 minutes. You can total the time they commit to; this does not measure time actually spent praying.' : 'Off: people choose a reminder time only. Your campaign counts people, without asking for a duration.'"
       >
         <USwitch
           v-model="state.track_time"
@@ -184,7 +207,7 @@ const lengthLabel = computed(() => {
       </UFormField>
     </section>
     <section
-      v-if="withCadence"
+      v-if="withCadence && open('cadence')"
       class="space-y-4 py-6 first:pt-0 last:pb-0"
     >
       <UFormField

@@ -88,7 +88,7 @@ const quickLinks = computed(() => [
 </script>
 
 <template>
-  <div class="max-w-5xl mx-auto space-y-6">
+  <div class="campaign-dashboard max-w-6xl mx-auto space-y-8">
     <UCard v-if="notASite">
       <p class="text-sm">
         This organization isn't a prayer campaign site.
@@ -101,8 +101,9 @@ const quickLinks = computed(() => [
     </UCard>
 
     <template v-else-if="site">
-      <header class="flex items-start justify-between gap-4 flex-wrap">
+      <div class="dashboard-intro flex items-start justify-between gap-6 flex-wrap rounded-lg bg-[#202833] p-6 sm:p-8 text-white">
         <div class="min-w-0">
+          <p class="mb-3 text-xs font-semibold uppercase tracking-widest text-orange-300">Campaign dashboard</p>
           <div class="flex items-center gap-2">
             <h1 class="text-2xl font-bold truncate">
               {{ site.org.name }}
@@ -113,18 +114,18 @@ const quickLinks = computed(() => [
               variant="subtle"
             />
           </div>
-          <p class="text-sm text-(--ui-text-muted) mt-1">
+          <p class="text-sm text-slate-200 mt-3 max-w-xl leading-relaxed">
             {{ phaseText }}
           </p>
         </div>
         <div class="flex items-center gap-2 flex-wrap">
           <UButton
             v-if="can('pt.site.write')"
-            to="/site/setup"
+            :to="`/@${slug}/site/setup`"
             variant="outline"
             color="neutral"
             icon="i-lucide-wand-sparkles"
-            label="Setup wizard"
+            :label="status === 'draft' ? 'Continue setup' : 'Edit campaign setup'"
           />
           <UButton
             v-if="status === 'published'"
@@ -137,9 +138,9 @@ const quickLinks = computed(() => [
           />
           <UButton
             v-if="status === 'published'"
-            to="/site/landing/share"
+            :to="`/@${slug}/site/landing/share`"
             icon="i-lucide-share-2"
-            label="Share"
+            label="Invite people to pray"
           />
           <UButton
             v-if="status === 'draft' && can('pt.site.manage')"
@@ -150,7 +151,7 @@ const quickLinks = computed(() => [
             @click="publish"
           />
         </div>
-      </header>
+      </div>
 
       <UAlert
         v-if="status === 'draft' && !site.site.onboarding?.completed && can('pt.site.write')"
@@ -174,12 +175,12 @@ const quickLinks = computed(() => [
         description="It shows a short “this campaign has ended” page. No signups and no reminders. You can un-archive it in Settings."
       />
 
-      <div class="grid gap-4 md:grid-cols-3">
-        <UCard class="md:col-span-2">
+      <div>
+        <UCard>
           <div class="space-y-4">
             <div class="flex items-center justify-between gap-2">
               <h2 class="font-semibold">
-                Site link
+                Your campaign link
               </h2>
               <UBadge
                 v-if="hasCustomDomain"
@@ -191,11 +192,12 @@ const quickLinks = computed(() => [
             <div class="flex items-center gap-2 flex-wrap">
               <span class="font-mono text-sm break-all">{{ site.url }}</span>
               <UButton
-                size="xs"
-                variant="ghost"
+                size="sm"
+                variant="outline"
                 color="neutral"
                 icon="i-lucide-copy"
                 aria-label="Copy link"
+                label="Copy link"
                 @click="copyLink"
               />
             </div>
@@ -208,16 +210,11 @@ const quickLinks = computed(() => [
           </div>
         </UCard>
 
-        <UCard>
-          <div class="space-y-1">
-            <p class="text-sm text-(--ui-text-muted)">
-              Praying now
-            </p>
-            <p class="text-3xl font-bold">
-              {{ can('pt.stats.read') ? (stats?.prayingNow ?? 0) : '–' }}
-            </p>
-          </div>
-        </UCard>
+      </div>
+
+      <div class="space-y-1">
+        <h2 class="text-xl font-semibold">Campaign overview</h2>
+        <p class="text-sm text-(--ui-text-muted)">Signups, progress toward your goal, and prayer activity.</p>
       </div>
 
       <div
@@ -246,8 +243,12 @@ const quickLinks = computed(() => [
 
       <div
         v-else-if="stats?.progress"
-        class="grid gap-4 md:grid-cols-3"
+        class="grid gap-4 md:grid-cols-4"
       >
+        <UCard>
+          <p class="text-sm text-(--ui-text-muted)">Praying now</p>
+          <p class="mt-2 text-3xl font-bold">{{ can('pt.stats.read') ? (stats?.prayingNow ?? 0) : '–' }}</p>
+        </UCard>
         <UCard>
           <p class="text-sm text-(--ui-text-muted)">
             People signed up
@@ -271,7 +272,7 @@ const quickLinks = computed(() => [
             </p>
           </div>
         </UCard>
-        <UCard class="md:col-span-3">
+        <UCard class="md:col-span-4">
           <p class="text-sm text-(--ui-text-muted) mb-2">
             Prayer activity in {{ selectedName ?? 'this campaign' }}
           </p>
@@ -310,11 +311,13 @@ const quickLinks = computed(() => [
         title="Still to do"
       />
 
+      <section class="space-y-4">
+      <h2 class="text-xl font-semibold">Manage your campaign</h2>
       <div class="grid gap-3 grid-cols-2 sm:grid-cols-4">
         <UButton
           v-for="l in quickLinks"
           :key="l.to"
-          :to="l.to"
+          :to="`/@${slug}${l.to}`"
           :icon="l.icon"
           :label="l.label"
           variant="outline"
@@ -323,6 +326,7 @@ const quickLinks = computed(() => [
           class="justify-start"
         />
       </div>
+      </section>
 
       <UCard>
         <div class="flex items-start gap-4 flex-wrap">

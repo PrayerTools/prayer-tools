@@ -5,7 +5,7 @@
 import type { CommitmentInput } from '~/utils/commitment'
 
 const model = defineModel<CommitmentInput>({ required: true })
-const props = defineProps<{ durationRule: 'required' | 'optional' | 'hidden', durations: number[], idPrefix: string, lang: string, timeless?: boolean }>()
+const props = defineProps<{ durationRule: 'required' | 'optional' | 'hidden', durations: number[], idPrefix: string, lang: string, timeless?: boolean, compact?: boolean }>()
 const { t } = useI18n()
 
 const frequencies = computed(() => [
@@ -35,7 +35,11 @@ const durationItems = computed(() => props.durations.map(d => ({ label: formatMi
 <template>
   <div class="grid gap-4 sm:grid-cols-2">
     <UFormField :label="t('commitment.how_often')" :name="`${idPrefix}-frequency`">
-      <URadioGroup v-model="model.frequency" :items="frequencies" orientation="horizontal" />
+      <URadioGroup v-if="!compact" v-model="model.frequency" :items="frequencies" orientation="horizontal" />
+      <div v-else class="space-y-1">
+        <p class="text-sm">{{ t(model.frequency === 'daily' ? 'commitment.daily' : 'commitment.weekly') }}</p>
+        <button type="button" class="text-sm text-(--ui-primary) underline underline-offset-4" :aria-expanded="model.frequency === 'weekly'" @click="model.frequency = model.frequency === 'daily' ? 'weekly' : 'daily'">{{ t(model.frequency === 'daily' ? 'signup.choose_days' : 'commitment.daily') }}</button>
+      </div>
     </UFormField>
     <UFormField v-if="!timeless" :label="t('commitment.time')" :name="`${idPrefix}-time`" :help="t('commitment.time_help')" required>
       <UInput :id="`${idPrefix}-time`" v-model="model.time" type="time" required class="w-40" />

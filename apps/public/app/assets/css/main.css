@@ -17,6 +17,16 @@ body {
 }
 
 .brand-bg { background: var(--brand); color: var(--brand-text); }
+.public-campaign .bg-primary {
+  background-color: var(--brand);
+  color: var(--brand-text);
+}
+.public-campaign .bg-primary:hover,
+.public-campaign .bg-primary:active {
+  background-color: var(--brand);
+  color: var(--brand-text);
+}
+.public-campaign .bg-primary:focus-visible { outline-color: var(--brand-foreground); }
 
 /* Prayer content rendered by the shared Tiptap renderer (web mode). */
 .pt-content { font-size: 1.125rem; line-height: 1.75; }
@@ -29,14 +39,14 @@ body {
 .pt-content ul { list-style: disc; }
 .pt-content ol { list-style: decimal; }
 .pt-content li { margin: 0.25em 0; }
-.pt-content a { color: var(--brand); text-decoration: underline; }
+.pt-content a { color: var(--brand-foreground, var(--brand)); text-decoration: underline; }
 .pt-content blockquote { border-inline-start: 4px solid #d6d3d1; padding: 0.25em 1em; margin: 1em 0; color: #44403c; }
 .pt-content img { max-width: 100%; height: auto; border-radius: 0.5rem; margin: 1em 0; }
 .pt-content hr { border: 0; border-top: 1px solid #e7e5e4; margin: 2em 0; }
 .pt-content blockquote.verse { border-inline-start: 4px solid var(--brand); background: #f5f5f4; padding: 0.75em 1em; border-radius: 0.375rem; margin: 1em 0; }
 .pt-content .verse-ref { display: block; font-size: 0.875rem; color: #57534e; font-style: normal; margin-top: 0.5em; }
 
-:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+:focus-visible { outline: 3px solid var(--brand-foreground, var(--brand)); outline-offset: 2px; }
 .pt-content p.button a { display: inline-block; background: var(--brand); color: var(--brand-text); padding: 0.6em 1.4em; border-radius: 0.5rem; text-decoration: none; font-weight: 600; }
 .pt-content .video { position: relative; padding-top: 56.25%; margin: 1em 0; }
 .pt-content .video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; border-radius: 0.5rem; }

@@ -6,7 +6,7 @@ import { coverageByTimeOfDay, openOccurrences, type SlotCounts, type TimeOfDayCo
 import { formatTime } from '~/utils/commitment'
 
 const time = defineModel<string>({ required: true })
-const props = defineProps<{ counts: SlotCounts, tz: string, weekdays: number[], duration: number, lang: string, idPrefix: string }>()
+const props = defineProps<{ counts: SlotCounts, tz: string, weekdays: number[], duration: number, lang: string, idPrefix: string, compact?: boolean }>()
 const { t } = useI18n()
 const { num } = useSite()
 
@@ -14,6 +14,7 @@ const NEED_SHOWN = 3
 const now = ref(Date.now())
 const openHour = ref<number | null>(null)
 const showAllNeeds = ref(false)
+const showCoverage = ref(false)
 
 const rows = computed(() => coverageByTimeOfDay(props.counts, props.tz, new Date(now.value), props.weekdays))
 
@@ -112,16 +113,17 @@ onMounted(() => { now.value = Date.now() })
       <p :id="`${idPrefix}-needs`" class="text-sm font-medium">{{ t('picker.need_title') }}</p>
       <ul class="space-y-1" :aria-labelledby="`${idPrefix}-needs`">
         <li v-for="h in needs.slice(0, showAllNeeds ? 6 : NEED_SHOWN)" :key="h.hour">
-          <button type="button" class="w-full flex items-center gap-3 rounded-md border border-stone-200 bg-white px-3 py-2 text-start text-sm hover:border-stone-400" @click="chooseNeed(h)">
-            <span class="font-medium tabular-nums">{{ formatTime(hhmm(h.hour * 60), lang) }} – {{ formatTime(hhmm(((h.hour + 1) % 24) * 60), lang) }}</span>
+          <button type="button" class="w-full flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-stone-200 bg-white px-3 py-3 text-start text-sm hover:border-stone-400 cursor-pointer" :aria-pressed="selectedMinute === neediest(h)?.minute" @click="chooseNeed(h)">
+            <span class="font-medium tabular-nums">{{ compact ? formatTime(hhmm(neediest(h)?.minute ?? h.hour * 60), lang) : `${formatTime(hhmm(h.hour * 60), lang)} – ${formatTime(hhmm(((h.hour + 1) % 24) * 60), lang)}` }}</span>
             <span class="text-stone-600">{{ needLabel(h) }}</span>
           </button>
         </li>
       </ul>
-      <UButton v-if="!showAllNeeds && needs.length > NEED_SHOWN" variant="link" color="neutral" size="sm" :label="t('picker.show_more')" @click="showAllNeeds = true" />
+      <UButton v-if="!compact && !showAllNeeds && needs.length > NEED_SHOWN" variant="link" color="neutral" size="sm" :label="t('picker.show_more')" @click="showAllNeeds = true" />
     </div>
 
-    <div class="space-y-2">
+    <button v-if="compact" type="button" class="text-sm font-medium underline underline-offset-4 cursor-pointer" :aria-expanded="showCoverage" :aria-controls="`${idPrefix}-coverage-grid`" @click="showCoverage = !showCoverage">{{ t(showCoverage ? 'picker.hide_coverage' : 'picker.view_coverage') }}</button>
+    <div v-if="!compact || showCoverage" :id="`${idPrefix}-coverage-grid`" class="space-y-2">
       <p :id="`${idPrefix}-hours`" class="text-sm font-medium">{{ t('picker.title') }}</p>
       <div class="grid grid-cols-6 gap-1" role="group" :aria-labelledby="`${idPrefix}-hours`">
         <button
@@ -148,7 +150,7 @@ onMounted(() => { now.value = Date.now() })
       <p class="text-xs text-stone-500">{{ t('coverage.times_in', { tz }) }}</p>
     </div>
 
-    <div v-if="hourTimes.length > 1" class="grid grid-cols-4 gap-1" role="group" :aria-label="hourLabel(openHour!)">
+    <div v-if="(!compact || showCoverage) && hourTimes.length > 1" class="grid grid-cols-4 gap-1" role="group" :aria-label="hourLabel(openHour!)">
       <button
         v-for="r in hourTimes"
         :key="r.minute"

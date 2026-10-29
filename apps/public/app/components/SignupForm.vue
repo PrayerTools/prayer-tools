@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { SignupFormView } from '~~/shared/view'
 import type { SlotCounts } from '@prayertools/shared/coverage'
-import { browserTimezone, newCommitment, timezones, type CommitmentInput } from '~/utils/commitment'
+import { browserTimezone, newCommitment, timezones, formatTime, type CommitmentInput } from '~/utils/commitment'
 
 const props = defineProps<{ form: SignupFormView }>()
 const emit = defineEmits<{ joined: [verify: boolean] }>()
@@ -43,6 +43,7 @@ const state = reactive({
   idToken: null as null | { provider: 'google' | 'apple', token: string, email: string }
 })
 const sending = ref(false)
+const showTimezone = ref(false)
 const error = ref<string | null>(null)
 const turnstile = ref<{ reset: () => void } | null>(null)
 const signupEmail = useState<string | null>('pt-signup-email', () => null)
@@ -137,48 +138,8 @@ function onIdToken(provider: 'google' | 'apple', token: string) {
 </script>
 
 <template>
-  <form class="@container" novalidate @submit.prevent="submit">
-    <div class="grid gap-8 @2xl:grid-cols-2 @2xl:gap-10">
-      <fieldset class="space-y-4">
-        <legend class="text-lg font-semibold">{{ t('signup.when_title') }}</legend>
-        <p class="text-sm text-stone-600">{{ t(isCoverage ? 'signup.when_help_coverage' : 'signup.when_help') }}</p>
-        <div v-for="(c, i) in state.commitments" :key="i" class="rounded-lg border border-stone-200 bg-white p-4 space-y-3">
-          <CommitmentFields v-model="state.commitments[i]!" :duration-rule="campaign.durationRule" :durations="campaign.durations" :id-prefix="`c${i}`" :lang="site.lang" :timeless="usePicker" />
-          <template v-if="usePicker">
-            <CoveragePicker
-              v-if="coverage"
-              v-model="state.commitments[i]!.time"
-              :counts="coverage"
-              :tz="state.timezone"
-              :weekdays="c.frequency === 'weekly' ? c.days_of_week : []"
-              :duration="c.duration_min ?? campaign.defaultDuration"
-              :lang="site.lang"
-              :id-prefix="`c${i}`"
-            />
-            <p v-else class="text-sm text-stone-600">{{ t('common.loading') }}</p>
-          </template>
-          <UButton v-if="state.commitments.length > 1 || state.picks.length" variant="link" color="neutral" icon="i-lucide-x" :label="t('commitment.remove')" @click="state.commitments.splice(i, 1)" />
-        </div>
-        <div v-if="state.picks.length" class="rounded-lg border border-stone-200 bg-white p-4">
-          <p class="font-medium">{{ t('signup.picked_times') }}</p>
-          <ul class="mt-2 space-y-1">
-            <li v-for="p in state.picks" :key="p" class="flex items-center gap-2">
-              <span>{{ pickLabel(p) }}</span>
-              <UButton size="xs" variant="ghost" color="neutral" icon="i-lucide-x" :aria-label="t('commitment.remove')" @click="removePick(p)" />
-            </li>
-          </ul>
-        </div>
-        <div class="flex flex-wrap gap-3">
-          <UButton v-if="campaign.startMode !== 'join'" variant="soft" icon="i-lucide-plus" :label="t('signup.add_time')" @click="addCommitment" />
-          <UButton v-if="campaign.goal === 'coverage'" variant="ghost" icon="i-lucide-calendar" :label="t('signup.pick_slots')" :to="link('coverage')" />
-        </div>
-        <UFormField :label="t('signup.timezone')" name="timezone" :help="t('signup.timezone_help')">
-          <USelectMenu v-model="state.timezone" :items="tzItems" class="w-full" />
-        </UFormField>
-      </fieldset>
-
-      <div class="space-y-8">
-        <fieldset class="space-y-4">
+  <form class="max-w-2xl mx-auto space-y-8" novalidate @submit.prevent="submit">
+    <fieldset class="space-y-4">
           <legend class="text-lg font-semibold">{{ t('signup.contact_title') }}</legend>
           <SignInButtons
             v-if="(form.googleClientId || form.appleServicesId) && !state.idToken"
@@ -191,18 +152,63 @@ function onIdToken(provider: 'google' | 'apple', token: string) {
           </UFormField>
           <UAlert v-else color="success" variant="soft" icon="i-lucide-badge-check" :title="t('signup.signed_in_as', { email: state.idToken.email })" />
           <UFormField :label="t('signup.name')" :hint="t('common.optional')" name="name">
-            <UInput v-model="state.name" autocomplete="given-name" class="w-full" />
+            <UInput v-model="state.name" autocomplete="name" class="w-full" />
           </UFormField>
-          <UFormField v-if="languageItems.length > 1" :label="t('signup.language')" name="language">
-            <USelect v-model="state.language" :items="languageItems" class="w-full" />
-          </UFormField>
+
           <UFormField v-for="f in form.fields" :key="f.key" :label="f.kind === 'checkbox' ? undefined : f.label" :name="`field-${f.key}`" :required="f.required">
             <UInput v-if="f.kind === 'text'" v-model="(state.answers[f.key] as string)" :required="f.required" class="w-full" :aria-label="f.label" />
             <USelect v-else-if="f.kind === 'select'" v-model="(state.answers[f.key] as string)" :items="f.options.map(o => ({ label: o.label, value: o.key }))" :placeholder="t('common.choose')" class="w-full" :aria-label="f.label" />
             <UCheckbox v-else v-model="(state.answers[f.key] as boolean)" :label="f.label" :required="f.required" />
           </UFormField>
         </fieldset>
-
+    <fieldset class="space-y-4">
+        <legend class="text-lg font-semibold">{{ t('signup.when_title') }}</legend>
+        <p class="text-sm text-stone-600">{{ t(isCoverage ? 'signup.when_help_coverage' : 'signup.when_help') }}</p>
+        <div v-for="(c, i) in state.commitments" :key="i" class="rounded-lg border border-stone-200 bg-white p-4 space-y-3">
+          <CommitmentFields compact v-model="state.commitments[i]!" :duration-rule="campaign.durationRule" :durations="campaign.durations" :id-prefix="`c${i}`" :lang="site.lang" />
+          <template v-if="usePicker">
+            <CoveragePicker
+              compact
+              v-if="coverage"
+              v-model="state.commitments[i]!.time"
+              :counts="coverage"
+              :tz="state.timezone"
+              :weekdays="c.frequency === 'weekly' ? c.days_of_week : []"
+              :duration="c.duration_min ?? campaign.defaultDuration"
+              :lang="site.lang"
+              :id-prefix="`c${i}`"
+            />
+            <p v-else class="text-sm text-stone-600">{{ t('common.loading') }}</p>
+          </template>
+          <p v-if="usePicker && /^\d{2}:\d{2}$/.test(c.time)" class="rounded-lg bg-stone-50 border border-stone-200 p-3 text-sm font-medium" aria-live="polite">{{ t('picker.commitment_summary', { frequency: t(c.frequency === 'daily' ? 'commitment.daily' : 'commitment.weekly'), time: formatTime(c.time, site.lang), duration: c.duration_min ?? campaign.defaultDuration, timezone: state.timezone }) }}</p>
+          <UButton v-if="state.commitments.length > 1 || state.picks.length" variant="link" color="neutral" icon="i-lucide-x" :label="t('commitment.remove')" @click="state.commitments.splice(i, 1)" />
+        </div>
+        <div v-if="state.picks.length" class="rounded-lg border border-stone-200 bg-white p-4">
+          <p class="font-medium">{{ t('signup.picked_times') }}</p>
+          <ul class="mt-2 space-y-1">
+            <li v-for="p in state.picks" :key="p" class="flex items-center gap-2">
+              <span>{{ pickLabel(p) }}</span>
+              <UButton size="xs" variant="ghost" color="neutral" icon="i-lucide-x" :aria-label="t('commitment.remove')" @click="removePick(p)" />
+            </li>
+          </ul>
+        </div>
+        <div class="flex flex-wrap gap-3">
+          <UButton v-if="campaign.startMode !== 'join'" variant="link" icon="i-lucide-plus" class="px-0 text-sm" :label="t('signup.add_time')" @click="addCommitment" />
+          <UButton v-if="campaign.goal === 'coverage'" variant="ghost" icon="i-lucide-calendar" :label="t('signup.pick_slots')" :to="link('coverage')" />
+        </div>
+        <div class="space-y-3">
+          <p class="text-sm text-stone-600">{{ t('signup.times_shown', { timezone: state.timezone }) }}
+            <button type="button" class="ms-2 text-(--ui-primary) underline underline-offset-4" :aria-expanded="showTimezone" @click="showTimezone = !showTimezone">{{ t('signup.change_timezone') }}</button>
+          </p>
+          <UFormField v-if="showTimezone" :label="t('signup.timezone')" name="timezone" :help="t('signup.timezone_help')">
+          <USelectMenu v-model="state.timezone" :items="tzItems" class="w-full" />
+        </UFormField>
+        </div>
+      </fieldset>
+    <div class="space-y-6 border-t border-stone-200 pt-6">
+                  <UFormField v-if="languageItems.length > 1" :label="t('signup.language')" name="language">
+            <USelect v-model="state.language" :items="languageItems" class="w-full" />
+          </UFormField>
         <fieldset class="space-y-3">
           <legend class="text-sm font-semibold">{{ t('signup.consent_title') }}</legend>
           <UCheckbox v-model="state.siteUpdates" :label="t('consent.site_updates', { site: site.name })" />
@@ -216,13 +222,12 @@ function onIdToken(provider: 'google' | 'apple', token: string) {
           />
           <p class="text-xs text-stone-500">{{ t('signup.reminders_note') }}</p>
         </fieldset>
-
-        <TurnstileWidget ref="turnstile" v-model="state.turnstile" :site-key="site.turnstileSiteKey" />
-
-        <UAlert v-if="error" color="error" variant="soft" icon="i-lucide-circle-alert" :title="error" role="alert" />
-
-        <UButton type="submit" size="xl" block :loading="sending" :label="st('landing.signup.title')" />
-      </div>
+    </div>
+    <TurnstileWidget ref="turnstile" v-model="state.turnstile" :site-key="site.turnstileSiteKey" />
+    <UAlert v-if="error" color="error" variant="soft" icon="i-lucide-circle-alert" :title="error" role="alert" />
+    <div class="space-y-3">
+      <UButton type="submit" size="xl" block :loading="sending" :label="st('landing.signup.title')" />
+      <p class="text-center text-sm text-stone-600">{{ t(state.idToken ? 'signup.reassurance_verified' : 'signup.reassurance') }}</p>
     </div>
   </form>
 </template>

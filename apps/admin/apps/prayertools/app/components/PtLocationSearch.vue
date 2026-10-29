@@ -69,7 +69,10 @@ function clear() {
       />
       <UButton
         color="neutral"
-        variant="outline"
+        variant="solid"
+        size="lg"
+        icon="i-lucide-search"
+        class="min-h-10 rounded-lg bg-[#202833] px-5 font-semibold text-white hover:bg-[#354353]"
         :loading="searching"
         label="Search"
         @click="search"

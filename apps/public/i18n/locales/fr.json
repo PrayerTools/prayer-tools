@@ -126,6 +126,12 @@
     "prompt_body": "Vous connaissez quelqu'un qui aimerait prier aussi ? Envoyez-lui le lien."
   },
   "signup": {
+    "choose_days": "Choisir certains jours",
+    "times_shown": "Horaires dans le fuseau {timezone}",
+    "change_timezone": "Modifier",
+    "more_options": "Plus d’options",
+    "reassurance": "Nous vous enverrons un lien de confirmation par e-mail. Vous pouvez modifier vos horaires de prière à tout moment.",
+    "reassurance_verified": "Vous pouvez modifier vos horaires de prière à tout moment.",
     "email": "E-mail",
     "name": "Prénom",
     "language": "Langue",
@@ -178,6 +184,14 @@
     "praying_now": "En prière maintenant"
   },
   "coverage": {
+    "needs_prayer": "Besoin de prière",
+    "selected": "Sélectionné",
+    "load_error": "Le calendrier de prière n’a pas pu être chargé.",
+    "retry": "Réessayer",
+    "overnight": "Nuit",
+    "morning": "Matin",
+    "afternoon": "Après-midi",
+    "evening": "Soir",
     "title": "Calendrier de prière",
     "intro": "Voyez quels créneaux sont couverts par la prière. Choisissez des créneaux libres pour combler les manques, puis inscrivez-vous.",
     "local_time": "Afficher les heures dans mon fuseau horaire ({tz})",
@@ -191,7 +205,10 @@
   },
   "picker": {
     "title": "À quelle heure ?",
-    "need_title": "Horaires qui ont besoin de quelqu’un",
+    "need_title": "Aidez à couvrir un créneau — suggestions",
+    "view_coverage": "Voir la couverture et tous les horaires",
+    "hide_coverage": "Masquer la couverture",
+    "commitment_summary": "{frequency} à {time} · {duration} minutes · {timezone}",
     "nobody": "personne pour l’instant",
     "mostly_open": "presque libre",
     "some_gaps": "quelques trous",
@@ -338,6 +355,15 @@
     "status_unsubscribed": "Désabonné"
   },
   "home": {
+    "how_label": "Comment ça marche",
+    "how_title": "Rassemblez les gens. Faites de la prière un rythme quotidien.",
+    "how_intro": "De la première invitation à la prière régulière, Prayer.Tools vous aide à organiser les détails pour que votre communauté se concentre sur la prière.",
+    "step_setup_title": "Créez votre campagne",
+    "step_setup_body": "Choisissez le lieu ou le peuple pour lequel prier, fixez les dates et ajoutez du contenu de prière quotidien depuis une bibliothèque ou rédigez le vôtre.",
+    "step_invite_title": "Invitez des participants",
+    "step_invite_body": "Partagez le lien avec votre église, vos amis ou votre réseau. Chacun choisit un créneau adapté à sa journée pour couvrir les heures du jour et de la nuit.",
+    "step_pray_title": "Continuez à prier ensemble",
+    "step_pray_body": "Les participants reçoivent des rappels aux heures choisies et suivent le contenu quotidien. Vous voyez les créneaux couverts et pouvez inviter d’autres personnes à combler les manques.",
     "title": "Des campagnes de prière pour les lieux et les peuples qui vous tiennent à cœur",
     "intro": "Créez une campagne, invitez des personnes à prier et couvrez chaque heure avec un contenu de prière quotidien et des rappels.",
     "start": "Lancer une campagne de prière",

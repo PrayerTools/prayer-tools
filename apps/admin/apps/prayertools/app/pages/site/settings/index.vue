@@ -10,7 +10,7 @@ import type { PtLocation } from '../../../components/PtLocationSearch.vue'
 
 definePageMeta({ middleware: 'auth' })
 
-const { data: site, refresh, can, isOwner } = usePtSite()
+const { data: site, refresh, can, isOwner, slug } = usePtSite()
 const { data: meta } = usePtMeta()
 const toast = usePtToast()
 const route = useRoute()
@@ -234,23 +234,24 @@ watch(tab, (t) => {
 <template>
   <div
     v-if="site"
-    class="max-w-4xl mx-auto space-y-6"
+    class="settings-page max-w-6xl mx-auto space-y-6"
   >
     <PtSettingsTabs />
-    <header>
+    <div class="rounded-lg bg-[#202833] p-6 sm:p-8 text-white">
+      <p class="mb-3 text-xs font-semibold uppercase tracking-widest text-orange-300">Make it yours</p>
       <h1 class="text-2xl font-bold">
         Settings
       </h1>
-      <p class="text-sm text-muted max-w-2xl">
-        {{ TAB_INTRO[tab] }}
+      <p class="mt-3 text-sm leading-relaxed text-slate-200 max-w-2xl">
+        Manage your site’s details, appearance, emails, and publishing options.
       </p>
-    </header>
-    <UTabs
-      v-model="tab"
-      :items="tabs"
-      :content="false"
-      class="w-full"
-    />
+    </div>
+    <nav aria-label="Settings sections" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <button v-for="item in tabs" :key="item.value" type="button" :aria-current="tab === item.value ? 'page' : undefined" class="settings-section rounded-lg border p-4 text-left cursor-pointer transition-colors" :class="tab === item.value ? 'border-[#f58220] bg-[#fff0e3] text-[#a94300]' : 'border-(--ui-border) bg-(--ui-bg-elevated) hover:bg-(--ui-bg-muted)'" @click="tab = item.value">
+        <span class="flex items-center gap-2 font-semibold text-sm"><UIcon :name="item.icon" class="size-4" />{{ item.label }}</span>
+      </button>
+    </nav>
+    <p class="text-sm text-(--ui-text-muted)">{{ TAB_INTRO[tab] }}</p>
 
     <UAlert
       v-if="!can('pt.site.write') && tab !== 'wording'"
@@ -317,7 +318,7 @@ watch(tab, (t) => {
             </UFormField>
             <UButton
               type="submit"
-              label="Save"
+              label="Save changes" size="lg" icon="i-lucide-save"
             />
           </fieldset>
         </form>
@@ -334,7 +335,7 @@ watch(tab, (t) => {
             </p>
           </div>
           <UButton
-            to="/site/campaigns"
+            :to="`/@${slug}/site/campaigns`"
             variant="outline"
             color="neutral"
             icon="i-lucide-calendar-range"
@@ -374,7 +375,7 @@ watch(tab, (t) => {
             />
           </UFormField>
           <UButton
-            label="Save"
+            label="Save changes" size="lg" icon="i-lucide-save"
             :disabled="!languages.length || !languages.includes(defaultLanguage)"
             @click="patchSite({ languages, default_language: defaultLanguage, timezone })"
           />
@@ -411,8 +412,7 @@ watch(tab, (t) => {
               />
               <UButton
                 v-if="numberDraft[key] !== settingValue(key)"
-                size="sm"
-                label="Save"
+                label="Save changes" size="lg" icon="i-lucide-save"
                 :loading="savingSetting === key"
                 @click="saveSetting(key, numberDraft[key] ?? null)"
               />
@@ -535,7 +535,7 @@ watch(tab, (t) => {
           <p class="text-xs text-muted">
             The image for link previews is on the
             <ULink
-              to="/site/landing/share"
+              :to="`/@${slug}/site/landing/share`"
               class="underline"
             >Share</ULink> page.
           </p>
@@ -548,7 +548,7 @@ watch(tab, (t) => {
       >
         <UButton
           icon="i-lucide-save"
-          label="Save look"
+          label="Save look" size="lg"
           :loading="savingLook"
           :disabled="!brandingDirty"
           @click="saveLook"
@@ -639,7 +639,7 @@ watch(tab, (t) => {
       <div class="flex items-center gap-3">
         <UButton
           icon="i-lucide-save"
-          label="Save email"
+          label="Save email" size="lg"
           :loading="savingEmail"
           :disabled="!emailDirty"
           @click="saveEmail"
@@ -700,9 +700,8 @@ watch(tab, (t) => {
             />
           </UFormField>
           <UButton
-            size="sm"
             variant="soft"
-            label="Save"
+            label="Save changes" size="lg" icon="i-lucide-save"
             @click="saveWording(e.key)"
           />
         </div>

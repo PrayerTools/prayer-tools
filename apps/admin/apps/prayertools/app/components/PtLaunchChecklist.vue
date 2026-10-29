@@ -6,7 +6,8 @@ export interface PtChecklist {
   canPublish: boolean
 }
 
-const props = withDefaults(defineProps<{ openOnly?: boolean, title?: string }>(), { openOnly: false, title: 'Launch checklist' })
+const props = withDefaults(defineProps<{ openOnly?: boolean, title?: string, withinSetup?: boolean }>(), { openOnly: false, title: 'Launch checklist' })
+const emit = defineEmits<{ fix: [key: string] }>()
 
 const { slug } = usePtSite()
 const { data, refresh } = useFetch<PtChecklist>('/api/pt/site/checklist', { key: computed(() => `pt-checklist-${slug.value}`) })
@@ -60,7 +61,8 @@ defineExpose({ refresh, data })
         </div>
         <UButton
           v-if="!item.done"
-          :to="item.to"
+          :to="withinSetup ? undefined : item.to"
+          @click="withinSetup && emit('fix', item.key)"
           size="xs"
           variant="link"
           :label="openOnly ? 'Open' : 'Fix'"

@@ -79,19 +79,29 @@ async function copy(text: string) {
 <template>
   <div
     v-if="site"
-    class="max-w-3xl mx-auto space-y-6"
+    class="max-w-6xl mx-auto space-y-6"
   >
     <PtSettingsTabs />
-    <header>
+    <div class="rounded-lg bg-[#202833] p-6 sm:p-8 text-white">
+      <p class="mb-3 text-xs font-semibold uppercase tracking-widest text-orange-300">Your campaign’s address</p>
       <h1 class="text-2xl font-bold">
         Domains
       </h1>
-      <p class="text-sm text-muted">
-        Your site always works at <span class="font-mono">{{ site.subdomainUrl.replace(/^https?:\/\//, '') }}</span>.
-        You can also use a domain you own, like <span class="font-mono">pray.yourchurch.org</span>. Once it's active it
-        becomes the main address and the prayer.tools address redirects to it.
+      <p class="mt-3 max-w-2xl text-sm leading-relaxed text-slate-200">
+        Use your included address or connect a domain you own. Once a custom domain is active, it becomes your main address.
       </p>
-    </header>
+    </div>
+
+    <UCard>
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div class="space-y-2 min-w-0">
+          <h2 class="text-lg font-semibold">Included site address</h2>
+          <p class="font-mono text-sm break-all">{{ site.subdomainUrl.replace(/^https?:\/\//, '') }}</p>
+          <p class="text-sm text-(--ui-text-muted)">This address stays available and redirects to your custom domain once it is active.</p>
+        </div>
+        <UButton label="Copy address" icon="i-lucide-copy" variant="outline" color="neutral" @click="copy(site.subdomainUrl)" />
+      </div>
+    </UCard>
 
     <UAlert
       v-if="!can('pt.site.manage')"
@@ -103,29 +113,48 @@ async function copy(text: string) {
 
     <template v-else>
       <UCard>
+        <template #header><h2 class="text-lg font-semibold">Connect a custom domain</h2></template>
+        <ol class="mb-6 grid gap-4 sm:grid-cols-3 text-sm">
+          <li><p class="font-semibold">Add your domain</p><p class="mt-1 text-(--ui-text-muted)">Enter a subdomain you own, such as pray.yourchurch.org.</p></li>
+          <li><p class="font-semibold">Update your DNS</p><p class="mt-1 text-(--ui-text-muted)">Copy the records we provide to your domain provider.</p></li>
+          <li><p class="font-semibold">Check the connection</p><p class="mt-1 text-(--ui-text-muted)">Choose Check now after the records have updated.</p></li>
+        </ol>
         <form
-          class="space-y-2"
+          class="space-y-3"
           @submit.prevent="add"
         >
-          <div class="flex gap-2 flex-wrap">
+          <div class="flex gap-3 flex-wrap">
             <UInput
               v-model="hostname"
               placeholder="pray.example.org"
               aria-label="Your domain"
+              size="lg"
               class="flex-1 min-w-60 font-mono"
             />
             <UButton
               type="submit"
               icon="i-lucide-plus"
               label="Add domain"
+              size="lg"
               :loading="adding"
-              :disabled="!hostname.trim()"
+              :disabled="!hostname.trim() || site.domains.length >= 3"
             />
           </div>
           <p class="text-xs text-muted">
             Use a subdomain such as pray.yourchurch.org. A site can have up to three.
           </p>
         </form>
+      </UCard>
+
+      <div class="flex items-center justify-between gap-3">
+        <h2 class="text-xl font-semibold">Custom domains</h2>
+        <UBadge color="neutral" variant="soft" :label="`${site.domains.length} of 3`" />
+      </div>
+      <UCard v-if="!site.domains.length">
+        <div class="flex items-start gap-3">
+          <UIcon name="i-lucide-globe" class="mt-1 size-5 text-(--ui-text-muted)" />
+          <div><p class="font-semibold">No custom domains connected</p><p class="mt-1 text-sm text-(--ui-text-muted)">Your included address is ready to use. Connecting your own domain is optional.</p></div>
+        </div>
       </UCard>
 
       <UCard
@@ -135,8 +164,8 @@ async function copy(text: string) {
         <div class="space-y-4">
           <div class="flex items-start justify-between gap-3 flex-wrap">
             <div>
-              <div class="flex items-center gap-2">
-                <span class="font-mono font-semibold">{{ d.hostname }}</span>
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="font-mono font-semibold break-all">{{ d.hostname }}</span>
                 <UBadge
                   :label="PT_LABELS.domainStatus[d.status] ?? d.status"
                   :color="ptStatusColor(d.status)"
@@ -187,7 +216,7 @@ async function copy(text: string) {
             class="space-y-3 text-sm"
           >
             <p>At your domain provider, add {{ records(d).length > 1 ? 'these DNS records' : 'this DNS record' }}:</p>
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto rounded-lg border border-(--ui-border) p-3 bg-(--ui-bg-muted)">
               <table class="w-full text-left text-sm">
                 <thead class="text-xs text-muted">
                   <tr>

@@ -8,7 +8,7 @@ interface Member { membership_id: string, user_id: string, email: string, displa
 const { data: site, can, slug } = usePtSite()
 const { user } = useAuth()
 const toast = usePtToast()
-const { data, refresh } = useFetch<{ rows: Member[] }>(() => `/api/o/${slug.value}/members`, { key: computed(() => `pt-team-${slug.value}`) })
+const { data, refresh, pending, error } = useFetch<{ rows: Member[] }>(() => `/api/o/${slug.value}/members`, { key: computed(() => `pt-team-${slug.value}`) })
 
 const ROLE_ITEMS = PT_ROLE_KEYS.map(value => ({ value, label: PT_LABELS.role[value], description: PT_LABELS.roleDescription[value] }))
 const invite = reactive({ email: '', display_name: '', role: 'pt-editor' })
@@ -76,32 +76,46 @@ async function remove(m: Member) {
 </script>
 
 <template>
-  <div class="max-w-4xl mx-auto space-y-6">
-    <header class="flex flex-wrap items-start justify-between gap-4">
+  <div class="max-w-6xl mx-auto space-y-8">
+    <div class="flex flex-wrap items-start justify-between gap-6 rounded-lg bg-[#202833] p-6 sm:p-8 text-white">
       <div>
+        <p class="mb-3 text-xs font-semibold uppercase tracking-widest text-orange-300">Working together</p>
         <h1 class="text-2xl font-bold">
           Team
         </h1>
-        <p class="text-sm text-(--ui-text-muted)">
-          People you add see this site only, never your other sites.
+        <p class="mt-3 max-w-xl text-sm leading-relaxed text-slate-200">
+          Invite people to help manage your campaign, write prayers, or translate content. Access applies to this site only.
         </p>
       </div>
       <UButton
         v-if="can('org.members.invite')"
         icon="i-lucide-user-plus"
-        label="Invite someone"
+        label="Invite team member"
+        size="lg"
         @click="inviteOpen = true"
       />
-    </header>
+    </div>
 
+    <UAlert v-if="error" color="error" title="Team members could not be loaded" :description="ptErrorMessage(error)" :actions="[{ label: 'Try again', onClick: () => refresh() }]" />
+    <div v-else-if="pending && !data" class="space-y-3" role="status" aria-label="Loading team members">
+      <USkeleton v-for="n in 3" :key="n" class="h-24 rounded-lg" />
+    </div>
+
+    <div v-else class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_19rem]">
     <UCard :ui="{ body: 'p-0 sm:p-0' }">
+      <template #header>
+        <div class="flex items-center justify-between gap-3">
+          <h2 class="text-lg font-semibold">Team members</h2>
+          <UBadge color="neutral" variant="soft" :label="String(data?.rows.length ?? 0)" />
+        </div>
+      </template>
       <ul class="divide-y divide-(--ui-border)">
         <li
           v-for="m in data?.rows ?? []"
           :key="m.membership_id"
-          class="px-4 sm:px-6 py-4 flex flex-wrap items-center gap-4"
+          class="px-4 sm:px-6 py-5 flex flex-wrap items-center gap-4"
         >
-          <div class="shrink-0 size-10 rounded-full bg-gradient-to-br from-(--ui-primary) to-(--ui-primary)/60 text-white flex items-center justify-center text-sm font-semibold">
+          <div class="shrink-0 size-11 rounded-full bg-[#fff0e3] text-[#a94300] flex items-center justify-center text-sm font-semibold">
             {{ initials(m) }}
           </div>
           <div class="flex-1 min-w-0">
@@ -117,7 +131,7 @@ async function remove(m: Member) {
                 size="sm"
               />
               <UBadge
-                v-if="m.status !== 'active' && STATUS_META[m.status]"
+                v-if="STATUS_META[m.status]"
                 :color="STATUS_META[m.status]!.color"
                 :icon="STATUS_META[m.status]!.icon"
                 :label="STATUS_META[m.status]!.label"
@@ -136,12 +150,13 @@ async function remove(m: Member) {
               <span class="truncate">{{ m.email }}</span>
             </a>
           </div>
-          <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center gap-2">
             <USelect
               :model-value="roleOf(m)"
               :items="ROLE_ITEMS.map(r => ({ value: r.value, label: r.label }))"
               :disabled="!can('org.members.manage_roles')"
               class="w-36"
+              size="lg"
               :aria-label="`Role of ${m.display_name}`"
               @update:model-value="(v) => setRole(m, v as string)"
             />
@@ -163,6 +178,17 @@ async function remove(m: Member) {
         title="No team members yet"
       />
     </UCard>
+
+    <UCard>
+      <template #header><h2 class="text-lg font-semibold">What each role can do</h2></template>
+      <dl class="space-y-5">
+        <div v-for="role in ROLE_ITEMS" :key="role.value">
+          <dt class="font-semibold text-sm">{{ role.label }}</dt>
+          <dd class="mt-1 text-sm leading-relaxed text-(--ui-text-muted)">{{ role.description }}</dd>
+        </div>
+      </dl>
+    </UCard>
+    </div>
 
     <UAlert
       v-if="site"
@@ -191,7 +217,7 @@ async function remove(m: Member) {
             </div>
             <div class="flex-1 min-w-0">
               <h3 class="text-lg font-semibold">
-                Invite someone
+                Invite team member
               </h3>
               <p class="text-sm text-(--ui-text-muted) mt-1">
                 Someone who already has an account is added right away. Anyone else gets an email invitation.
@@ -209,11 +235,13 @@ async function remove(m: Member) {
                 placeholder="name@example.com"
                 autocomplete="off"
                 class="w-full"
+                size="lg"
               />
             </UFormField>
             <UFormField label="Name">
               <UInput
                 v-model="invite.display_name"
+                size="lg"
                 autocomplete="off"
                 class="w-full"
               />
@@ -239,6 +267,7 @@ async function remove(m: Member) {
               type="submit"
               icon="i-lucide-send"
               label="Send invite"
+              size="lg"
               :loading="inviting"
               :disabled="!invite.email.includes('@')"
             />

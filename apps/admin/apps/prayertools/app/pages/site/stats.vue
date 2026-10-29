@@ -7,7 +7,7 @@ const { data: campaigns } = useFetch<{ campaigns: { id: string, name: string }[]
 const campaignId = ref<string | undefined>(typeof route.query.campaign === 'string' ? route.query.campaign : undefined)
 watch([campaigns, site], () => { if (!campaignId.value) campaignId.value = site.value?.currentCampaign?.id ?? campaigns.value?.campaigns[0]?.id }, { immediate: true })
 
-const { data, pending, error } = useFetch<{
+const { data, pending, error, refresh } = useFetch<{
   totals: Record<string, number>
   series: { day: string, metric: string, value: number }[]
   dims: Record<string, { key: string, total: number }[]>
@@ -63,17 +63,19 @@ const DIM_ICONS: Record<string, string> = { country: 'i-lucide-globe', source: '
 </script>
 
 <template>
-  <div class="max-w-6xl mx-auto space-y-6">
+  <div class="stats-page max-w-6xl mx-auto space-y-8">
     <PtCampaignTabs
       v-if="typeof route.query.campaign === 'string'"
       :campaign-id="route.query.campaign"
     />
-    <header class="flex flex-wrap items-start justify-between gap-4">
+    <div class="rounded-lg bg-[#202833] p-6 sm:p-8 text-white">
       <div>
+        <p class="mb-3 text-xs font-semibold uppercase tracking-widest text-orange-300">Campaign insights</p>
         <h1 class="text-2xl font-bold">
           Stats
         </h1>
-        <p class="text-sm text-(--ui-text-muted)">
+        <p class="mt-3 text-sm text-slate-200 leading-relaxed">See how people are joining, praying, and sharing your campaign.</p>
+        <p class="mt-2 text-sm text-slate-300">
           <template v-if="campaign">
             {{ campaign.name }}: {{ ptFormatDate(campaign.start_date) }} – {{ campaign.end_date ? ptFormatDate(campaign.end_date) : 'ongoing' }}
           </template>
@@ -82,24 +84,29 @@ const DIM_ICONS: Record<string, string> = { country: 'i-lucide-globe', source: '
           </template>
         </p>
       </div>
-      <div class="flex flex-wrap gap-2">
+    </div>
+      <div class="flex flex-wrap items-end justify-between gap-4">
+        <UFormField label="Showing stats for">
+          <USelect
+            v-if="campaigns?.campaigns.length"
+            v-model="campaignId"
+            :items="campaigns.campaigns.map(c => ({ label: c.name, value: c.id }))"
+            class="w-64 max-w-full"
+            size="lg"
+            aria-label="Campaign"
+          />
+          <p v-else class="text-sm text-(--ui-text-muted)">All time</p>
+        </UFormField>
         <UButton
           v-if="can('pt.intercessors.export')"
           icon="i-lucide-download"
-          variant="soft"
+          variant="outline"
           color="neutral"
+          size="lg"
           label="Export intercessors"
           @click="downloadIntercessors"
         />
-        <USelect
-          v-if="campaigns?.campaigns.length"
-          v-model="campaignId"
-          :items="campaigns.campaigns.map(c => ({ label: c.name, value: c.id }))"
-          class="w-64"
-          aria-label="Campaign"
-        />
       </div>
-    </header>
 
     <UAlert
       v-if="site && !can('pt.stats.read')"
@@ -115,16 +122,24 @@ const DIM_ICONS: Record<string, string> = { country: 'i-lucide-globe', source: '
       icon="i-lucide-circle-alert"
       title="Stats could not be loaded."
       :description="ptErrorMessage(error)"
+      :actions="[{ label: 'Try again', onClick: () => refresh() }]"
     />
+    <div v-else-if="pending && !data" class="grid grid-cols-2 lg:grid-cols-4 gap-4" role="status" aria-label="Loading statistics">
+      <USkeleton v-for="n in 4" :key="n" class="h-36 rounded-lg" />
+    </div>
 
     <template v-else-if="data">
+      <div class="space-y-1">
+        <h2 class="text-xl font-semibold">At a glance</h2>
+        <p class="text-sm text-(--ui-text-muted)">Participation and prayer commitments for the selected campaign.</p>
+      </div>
       <div
         class="grid gap-4 grid-cols-2 lg:grid-cols-4"
         :class="pending ? 'opacity-60' : ''"
       >
         <UCard>
           <div class="text-sm text-(--ui-text-muted)">
-            People praying
+            People signed up
           </div>
           <div class="text-3xl font-bold tabular-nums">
             {{ (data.progress?.people ?? 0).toLocaleString() }}
@@ -176,7 +191,7 @@ const DIM_ICONS: Record<string, string> = { country: 'i-lucide-globe', source: '
       <UCard v-if="data.progress">
         <template #header>
           <h2 class="font-semibold">
-            Goal: {{ PT_LABELS.goal[data.progress.goal] }}
+            Campaign goal · {{ PT_LABELS.goal[data.progress.goal] }}
           </h2>
         </template>
         <div class="space-y-4">
@@ -268,6 +283,10 @@ const DIM_ICONS: Record<string, string> = { country: 'i-lucide-globe', source: '
         </div>
       </UCard>
 
+      <div class="space-y-1">
+        <h2 class="text-xl font-semibold">People and reach</h2>
+        <p class="text-sm text-(--ui-text-muted)">Who has joined and how people are finding your site.</p>
+      </div>
       <div class="grid gap-4 sm:grid-cols-2">
         <UCard>
           <template #header>
@@ -392,3 +411,9 @@ const DIM_ICONS: Record<string, string> = { country: 'i-lucide-globe', source: '
     </template>
   </div>
 </template>
+
+<style scoped>
+.stats-page :deep(.text-3xl) { margin-top: 0.5rem; margin-bottom: 0.5rem; }
+.stats-page :deep([data-slot='header'] h2) { font-size: 1.05rem; }
+.stats-page :deep([data-slot='header']) { background: transparent; }
+</style>

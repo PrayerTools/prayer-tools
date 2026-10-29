@@ -1,7 +1,14 @@
 <script setup lang="ts">
+import { DEFAULT_BRAND_COLOR, brandColor, brandForeground } from '@prayertools/shared/colors'
+
 const props = defineProps<{ page: string }>()
 const { site, link, st, campaignLink } = useSite()
 const { t } = useI18n()
+const themeStyle = computed(() => ({
+  '--brand-text': brandColor(site.value.brand.color).textColor,
+  '--brand-foreground': brandForeground(site.value.brand.color),
+  '--ui-primary': brandForeground(site.value.brand.color)
+}))
 
 const nav = computed(() => {
   const items = site.value.campaign?.state === 'upcoming' ? [] : [{ label: t('nav.pray'), to: link('pray') }]
@@ -15,7 +22,7 @@ const showFeedback = computed(() => !!site.value.feedback && props.page !== 'emb
 </script>
 
 <template>
-  <div class="min-h-dvh flex flex-col">
+  <div class="public-campaign min-h-dvh flex flex-col" :style="themeStyle" :class="{ 'campaign-theme': page === 'landing' && site.brand.color.toLowerCase() === DEFAULT_BRAND_COLOR }">
     <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:start-2 focus:z-50 focus:bg-white focus:px-3 focus:py-2 focus:rounded">{{ t('a11y.skip') }}</a>
     <div v-if="site.preview && !site.editor" class="bg-amber-100 text-amber-900 text-sm text-center px-4 py-2" role="status">
       {{ t('preview.banner') }}
@@ -66,3 +73,33 @@ const showFeedback = computed(() => !!site.value.feedback && props.page !== 'emb
     </ClientOnly>
   </div>
 </template>
+
+<style scoped>
+.campaign-theme {
+  --brand: #b84c0b;
+  --brand-text: #ffffff;
+  --ui-primary: #b84c0b;
+  background: #fffaf5;
+  color: #202833;
+}
+.campaign-theme > header { background: #202833; color: #ffffff; }
+.campaign-theme > footer { background: #fffaf5; border-color: #e8ded5; }
+.campaign-theme :deep([data-pt-section='top']) {
+  background: linear-gradient(120deg, #202833, #354353);
+  color: #ffffff;
+}
+.campaign-theme :deep([data-pt-section='top'] > .absolute) { background-color: #202833; }
+.campaign-theme :deep(.campaign-join),
+.campaign-theme :deep(.pt-content p.button a),
+.campaign-theme :deep(#signup button[type='submit']) {
+  background: #c45100;
+  color: #ffffff;
+  font-weight: 600;
+}
+.campaign-theme :deep(.campaign-join:hover),
+.campaign-theme :deep(#signup button[type='submit']:hover:not(:disabled)) { background: #a94300; }
+.campaign-theme :deep(#signup) { background: #f5ede5; }
+.campaign-theme :deep(#signup > div > div) { border-color: #e8ded5; border-radius: 1.5rem; }
+.campaign-theme :deep(#signup h2),
+.campaign-theme :deep(h1) { letter-spacing: -0.035em; }
+</style>

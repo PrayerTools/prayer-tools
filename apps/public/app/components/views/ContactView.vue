@@ -41,7 +41,19 @@ async function submit() {
       </UFormField>
       <TurnstileWidget v-model="state.turnstile" :site-key="site.turnstileSiteKey" />
       <UAlert v-if="error" color="error" variant="soft" :title="error" role="alert" />
-      <UButton type="submit" :loading="sending" :label="t('contact.send')" />
+      <UButton type="submit" :loading="sending" :label="t('contact.send')" class="campaign-contact-button" />
     </form>
   </div>
 </template>
+
+<style scoped>
+.campaign-contact-button {
+  background-color: var(--brand);
+  color: var(--brand-text);
+}
+.campaign-contact-button:hover,
+.campaign-contact-button:active {
+  background-color: var(--brand);
+  color: var(--brand-text);
+}
+</style>
