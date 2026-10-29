@@ -41,6 +41,7 @@ export async function startAccountSession(event: H3Event, userId: string): Promi
   }).execute()
   setSessionCookie(event, token, SESSION_DAYS * 86_400, scope.cookieDomain)
   event.context.accountUserId = userId
+  event.context.accountSignedInAt = new Date()
 }
 
 function sessionIdOf(token: string): string | null {
@@ -57,7 +58,7 @@ export async function sessionUserId(event: H3Event): Promise<string | null> {
   if (id) {
     const row = await useDb()
       .selectFrom('pt_account_session')
-      .select(['user_id', 'last_used_at'])
+      .select(['user_id', 'last_used_at', 'created_at'])
       .where('id', '=', id)
       .where('token_hash', '=', hashToken(token))
       .where('host', '=', sessionScope(event).key)
@@ -65,6 +66,7 @@ export async function sessionUserId(event: H3Event): Promise<string | null> {
       .executeTakeFirst()
     if (row) {
       userId = row.user_id
+      event.context.accountSignedInAt = new Date(row.created_at)
       if (Date.now() - new Date(row.last_used_at).getTime() > TOUCH_MS) {
         await useDb().updateTable('pt_account_session').set({ last_used_at: new Date(), expires_at: new Date(Date.now() + SESSION_DAYS * 86_400_000) }).where('id', '=', id).execute()
       }
@@ -72,6 +74,17 @@ export async function sessionUserId(event: H3Event): Promise<string | null> {
   }
   event.context.accountUserId = userId
   return userId
+}
+
+// When the signed-in person on this host last proved who they are (the
+// session's start; staying active extends a session but never moves this).
+export async function sessionSignedInAt(event: H3Event): Promise<Date | null> {
+  return (await sessionUserId(event)) ? event.context.accountSignedInAt as Date : null
+}
+
+// Ends every public sign-in of the account, on every host.
+export async function endAllAccountSessions(userId: string): Promise<void> {
+  await useDb().deleteFrom('pt_account_session').where('user_id', '=', userId).execute()
 }
 
 export async function sessionAccount(event: H3Event): Promise<Account | null> {

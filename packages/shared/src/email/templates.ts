@@ -363,6 +363,21 @@ export function myPrayerEmail(lang: string, url: string, hours: number, minutes?
 
 // Confirms a new address for the person's account; a platform email like
 // the My prayer link.
+// To the current address when a change to another one is asked for.
+export function emailChangeNoticeEmail(lang: string, url: string, newEmail: string, days: number): Rendered {
+  const ctx: SiteMailContext = {
+    orgId: '', slug: '', siteName: 'Prayer.Tools', siteUrl: platformOrigin(), color: '#2f6f5e', textOnColor: '#ffffff',
+    logoUrl: null, fromName: 'Prayer.Tools', fromLocal: 'my', replyTo: null, signature: {}, defaultLanguage: 'en'
+  }
+  const bodyText = emailT(lang, 'email_notice.body', { email: newEmail, days })
+  const body = heading(emailT(lang, 'email_notice.heading')) + paragraph(bodyText) + button(ctx, url, emailT(lang, 'email_notice.button'))
+  return {
+    subject: emailT(lang, 'email_notice.subject'),
+    html: layout(ctx, lang, body, { reason: bodyText, hideMy: true }),
+    text: `${emailT(lang, 'email_notice.heading')}\n\n${bodyText}\n\n${url}`
+  }
+}
+
 export function emailChangeEmail(lang: string, url: string, minutes: number): Rendered {
   const ctx: SiteMailContext = {
     orgId: '', slug: '', siteName: 'Prayer.Tools', siteUrl: platformOrigin(), color: '#2f6f5e', textOnColor: '#ffffff',

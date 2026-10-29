@@ -107,11 +107,12 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     CREATE TABLE pt_auth_code (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      purpose text NOT NULL CHECK (purpose IN ('sign_in', 'handoff', 'email_change')),
+      purpose text NOT NULL CHECK (purpose IN ('sign_in', 'handoff', 'email_change', 'email_undo')),
       code_hash text NOT NULL UNIQUE,
       host text,
       email text,
       return_to text,
+      authenticated_at timestamptz,
       expires_at timestamptz NOT NULL,
       used_at timestamptz,
       created_at timestamptz NOT NULL DEFAULT now()

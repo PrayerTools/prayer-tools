@@ -1,6 +1,7 @@
 // Single-use codes for a person's account, stored hashed in `pt_auth_code`:
 // emailed sign-in links, the hand-off of a sign-in to another host (the
-// admin app, a site's own domain), and confirmation of a new address.
+// admin app, a site's own domain), confirmation of a new address, and the
+// old address's way to undo that change.
 import type { Selectable } from 'kysely'
 import type { Db, Tx } from './db/scope'
 import type { AuthCodePurpose, PtAuthCodeTable } from './db/schema'
@@ -11,6 +12,7 @@ export const SIGN_IN_MINUTES = 30
 export const TEAM_SIGN_IN_HOURS = 24
 export const HANDOFF_SECONDS = 120
 export const EMAIL_CHANGE_MINUTES = 60
+export const EMAIL_UNDO_DAYS = 7
 
 export type AuthCode = Selectable<PtAuthCodeTable>
 
@@ -21,6 +23,7 @@ export async function issueAuthCode(db: Db | Tx, input: {
   host?: string | null
   email?: string | null
   returnTo?: string | null
+  authenticatedAt?: Date | null
 }): Promise<string> {
   const code = randomToken(32)
   await db.insertInto('pt_auth_code').values({
@@ -30,6 +33,7 @@ export async function issueAuthCode(db: Db | Tx, input: {
     host: input.host ?? null,
     email: input.email ?? null,
     return_to: input.returnTo ?? null,
+    authenticated_at: input.authenticatedAt ?? null,
     expires_at: new Date(Date.now() + input.ttlMs)
   }).execute()
   return code

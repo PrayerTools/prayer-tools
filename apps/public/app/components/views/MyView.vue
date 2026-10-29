@@ -67,6 +67,18 @@ async function changeEmail() {
   }
 }
 
+async function requestFreshLink() {
+  busy.value = true
+  try {
+    await $fetch('/api/my/link', { method: 'POST', body: { email: props.my.account?.email, language: props.lang, continue: props.continueTo } })
+    sent.value = true
+  } catch {
+    toast.add({ title: t('errors.generic'), color: 'error' })
+  } finally {
+    busy.value = false
+  }
+}
+
 async function continueToSite(site: MyConfirmSiteView) {
   busy.value = true
   try {
@@ -123,6 +135,11 @@ function languageItems(s: MySiteView) {
       </section>
 
       <template v-else>
+        <section v-if="notice === 'reauth' && my.account?.email" class="rounded-2xl bg-white border border-stone-200 p-6 space-y-4" aria-labelledby="my-reauth">
+          <h2 id="my-reauth" class="text-xl font-bold">{{ t('my.reauth_title') }}</h2>
+          <UAlert v-if="sent" color="success" variant="soft" icon="i-lucide-mail" :title="t('my.reauth_sent', { email: my.account.email })" role="status" />
+          <UButton v-else :loading="busy" icon="i-lucide-send" :label="t('my.reauth_send')" @click="requestFreshLink" />
+        </section>
         <section v-if="confirmSite" class="rounded-2xl bg-white border border-stone-200 p-6 space-y-4" aria-labelledby="my-confirm-site">
           <h2 id="my-confirm-site" class="text-xl font-bold">{{ t('my.continue_title', { site: confirmSite.name }) }}</h2>
           <p class="text-stone-700">{{ t('my.continue_body', { site: confirmSite.name, host: confirmSite.host, email: my.account?.email ?? '' }) }}</p>

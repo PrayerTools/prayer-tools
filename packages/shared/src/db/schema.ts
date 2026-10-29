@@ -72,7 +72,7 @@ export interface PtUserDeviceTable {
   last_seen_at: Timestamp
 }
 
-export type AuthCodePurpose = 'sign_in' | 'handoff' | 'email_change'
+export type AuthCodePurpose = 'sign_in' | 'handoff' | 'email_change' | 'email_undo'
 
 export interface PtAuthCodeTable {
   id: Generated<string>
@@ -81,9 +81,11 @@ export interface PtAuthCodeTable {
   code_hash: string
   // handoff: the host the code may be redeemed on.
   host: string | null
-  // email_change: the new address.
+  // email_change: the new address; email_undo: the address to go back to.
   email: string | null
   return_to: string | null
+  // handoff: when the person signed in, carried to the session it starts.
+  authenticated_at: NullableTimestamp
   expires_at: Timestamp
   used_at: NullableTimestamp
   created_at: Timestamp

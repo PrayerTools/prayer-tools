@@ -8,10 +8,12 @@ import { classifyHost } from '@prayertools/shared/site'
 import { HANDOFF_SECONDS, issueAuthCode, safeReturnPath, takeAuthCode } from '@prayertools/shared/auth-codes'
 import { accountByEmail, accountById, markAccountVerified, syncAccountContacts } from '@prayertools/shared/accounts'
 import { useDb } from './db'
-import { sessionUserId, startAccountSession } from './account-session'
+import { endAllAccountSessions, sessionSignedInAt, sessionUserId, startAccountSession } from './account-session'
 import { accountSiteIds, personSubscriptions } from './my'
 import { resolveSiteCached } from './site-context'
 import type { SiteContext } from './site-context'
+
+export const ADMIN_SIGN_IN_HOURS = 24
 
 function myRedirect(event: H3Event, query: Record<string, string>) {
   return sendRedirect(event, `/my?${new URLSearchParams(query)}`, 302)
@@ -29,18 +31,41 @@ export async function exchangeSignInLink(event: H3Event, code: string) {
 }
 
 // `/my/email/<code>`: confirms a new address and copies it onto the
-// person's contact on every site.
+// person's contact on every site. Opening the link doesn't sign anyone in:
+// a mistyped address would otherwise hand its owner the account.
 export async function confirmEmailChange(event: H3Event, code: string) {
   const db = useDb()
   const row = await takeAuthCode(db, code, 'email_change')
   if (!row?.email) return myRedirect(event, { notice: 'link_invalid' })
-  const taken = await accountByEmail(db, row.email)
-  if (taken && taken.id !== row.user_id) return myRedirect(event, { notice: 'email_taken' })
-  await db.updateTable('users').set({ email: row.email, verified: true, updated: new Date() }).where('id', '=', row.user_id).execute()
-  const account = (await accountById(db, row.user_id))!
+  return myRedirect(event, { notice: (await setAccountEmail(row.user_id, row.email)) ? 'email_changed' : 'email_taken' })
+}
+
+// `/my/email-undo/<code>`: from the notice sent to the old address. Keeps or
+// restores that address, cancels pending changes, and signs out everyone
+// else, since whoever holds the other address may have signed in with it.
+export async function undoEmailChange(event: H3Event, code: string) {
+  const db = useDb()
+  const row = await takeAuthCode(db, code, 'email_undo')
+  if (!row?.email) return myRedirect(event, { notice: 'link_invalid' })
+  await db.updateTable('pt_auth_code').set({ used_at: new Date() }).where('user_id', '=', row.user_id).where('purpose', '=', 'email_change').where('used_at', 'is', null).execute()
+  if (!(await setAccountEmail(row.user_id, row.email))) return myRedirect(event, { notice: 'email_taken' })
+  await endAllAccountSessions(row.user_id)
+  await db.deleteFrom('sessions').where('user_id', '=', row.user_id).execute()
+  await startAccountSession(event, row.user_id)
+  return myRedirect(event, { notice: 'email_kept' })
+}
+
+// Gives the account this address and copies it to every site's contact.
+// False when another account already uses it.
+async function setAccountEmail(userId: string, email: string): Promise<boolean> {
+  const db = useDb()
+  const taken = await accountByEmail(db, email)
+  if (taken && taken.id !== userId) return false
+  if (taken?.id === userId && taken.email === email) return true
+  await db.updateTable('users').set({ email, verified: true, updated: new Date() }).where('id', '=', userId).execute()
+  const account = (await accountById(db, userId))!
   await syncAccountContacts(db, await accountSiteIds(account.id), account)
-  if ((await sessionUserId(event)) !== account.id) await startAccountSession(event, account.id)
-  return myRedirect(event, { notice: 'email_changed' })
+  return true
 }
 
 export interface HandoffSite {
@@ -94,10 +119,15 @@ export async function continueToSite(event: H3Event) {
 }
 
 // `/my/admin?to=<admin path>`: opens the admin app signed in as the person.
+// Only a sign-in from the last day opens it; an older one asks for a fresh
+// email link first. The admin session keeps the sign-in's time, so it counts
+// as recently authenticated only as long as that sign-in does.
 export async function continueToAdmin(event: H3Event) {
   const userId = await sessionUserId(event)
   if (!userId) return continueLater(event)
-  const code = await issueAuthCode(useDb(), { userId, purpose: 'handoff', host: adminHost(), ttlMs: HANDOFF_SECONDS * 1000 })
+  const signedInAt = (await sessionSignedInAt(event))!
+  if (Date.now() - signedInAt.getTime() > ADMIN_SIGN_IN_HOURS * 3_600_000) return myRedirect(event, { notice: 'reauth', continue: event.path })
+  const code = await issueAuthCode(useDb(), { userId, purpose: 'handoff', host: adminHost(), ttlMs: HANDOFF_SECONDS * 1000, authenticatedAt: signedInAt })
   const to = safeReturnPath(getQuery(event).to)
   return sendRedirect(event, `${new URL(platformConfig().adminUrl).origin}/api/pt/handoff?code=${encodeURIComponent(code)}&to=${encodeURIComponent(to)}`, 302)
 }
