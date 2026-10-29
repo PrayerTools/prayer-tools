@@ -193,7 +193,8 @@ export interface SignupInput {
 
 export interface SignupResult {
   subscription: SubscriptionRow
-  userId: string
+  // Set once the address is verified: the account the subscription is linked to.
+  userId: string | null
   contactId: string
   channelId: string
   verifyToken: string | null
@@ -203,7 +204,7 @@ export interface SignupResult {
 }
 
 export async function createWebSignup(tx: Tx, input: SignupInput): Promise<SignupResult> {
-  const account = await ensureAccount(tx, input.email)
+  let userId: string | null = null
   const contact = await upsertContact(tx, {
     email: input.email,
     name: input.name,
@@ -261,8 +262,10 @@ export async function createWebSignup(tx: Tx, input: SignupInput): Promise<Signu
       .executeTakeFirstOrThrow()
   } else {
     await markChannelVerified(tx, contact.channelId)
+    const account = await ensureAccount(tx, input.email)
     await markAccountVerified(tx, account.id)
     await linkSubscriptionToAccount(tx, sub.id, { ...account, verified: true })
+    userId = account.id
     sub = await tx.selectFrom('pt_subscription').selectAll().where('id', '=', sub.id).executeTakeFirstOrThrow()
   }
   for (const c of input.commitments) await insertCommitment(tx, sub, input.campaign, c)
@@ -279,7 +282,7 @@ export async function createWebSignup(tx: Tx, input: SignupInput): Promise<Signu
     if (sub.referred_by) await bumpStat(tx, input.campaign.id, today, 'share_signups')
   }
   if (sub.verified_at && newSubscription) await bumpStat(tx, input.campaign.id, today, 'verifications')
-  return { subscription: sub, userId: account.id, contactId: contact.contactId, channelId: contact.channelId, verifyToken, newSubscription, verifiedNow: !!sub.verified_at && !wasVerified }
+  return { subscription: sub, userId, contactId: contact.contactId, channelId: contact.channelId, verifyToken, newSubscription, verifiedNow: !!sub.verified_at && !wasVerified }
 }
 
 export async function verifySubscription(tx: Tx, token: string): Promise<SubscriptionRow | null> {

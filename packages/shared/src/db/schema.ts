@@ -684,6 +684,12 @@ export interface UserIdentitiesTable {
   last_used_at: Generated<Date>
 }
 
+// Core's admin app sign-ins.
+export interface SessionsTable {
+  id: Generated<string>
+  user_id: string
+}
+
 export interface OrgsTable {
   id: Generated<string>
   slug: string
@@ -839,6 +845,7 @@ export interface NotificationsTable {
 export interface LayerTables {
   users: UsersTable
   user_identities: UserIdentitiesTable
+  sessions: SessionsTable
   orgs: OrgsTable
   memberships: MembershipsTable
   crm_records: CrmRecordsTable

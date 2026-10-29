@@ -1,6 +1,6 @@
 // Contacts linked to an account whose name or address no longer matches it.
-// Changes made on the public server are copied at once; this catches the ones
-// made in the admin app's own profile settings.
+// Changes are copied at once (the public server, and the admin app through
+// core's `user.updated` hook); this catches any a failed copy left behind.
 import { sql } from 'kysely'
 import { forEachOrg } from '@prayertools/shared/db/scope'
 import { accountById, syncContactFromAccount } from '@prayertools/shared/accounts'

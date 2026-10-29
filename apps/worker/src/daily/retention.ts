@@ -1,9 +1,9 @@
-// Data retention: per-org anonymization (12 months unsubscribed or archived), unused accounts, and
-// platform-wide expiry of raw analytics, old session partitions, the email log, account codes and
-// expired sign-ins on the admin connection.
+// Data retention: per-org anonymization (12 months unsubscribed or archived), idle app devices,
+// unused accounts, and platform-wide expiry of raw analytics, old session partitions, the email
+// log, account codes and expired sign-ins on the admin connection.
 import { sql } from 'kysely'
 import { forEachOrg } from '@prayertools/shared/db/scope'
-import { anonymizeSubscription, VERIFY_TOKEN_DAYS } from '@prayertools/shared/subscriptions'
+import { anonymizeSubscription } from '@prayertools/shared/subscriptions'
 import { deleteAccountIfUnused } from '@prayertools/shared/accounts'
 import type { WorkerContext } from '../context'
 import type { Logger } from '../log'
@@ -14,6 +14,7 @@ export const ARCHIVED_RETENTION_MONTHS = 12
 export const EVENT_RETENTION_DAYS = 90
 export const VISITOR_DAY_RETENTION_DAYS = 7
 export const SESSION_RETENTION_MONTHS = 24
+export const DEVICE_IDLE_MONTHS = 12
 const BATCH = 5000
 
 function monthsAgo(now: Date, months: number): Date {
@@ -64,11 +65,34 @@ export async function anonymizeArchivedSites(ctx: WorkerContext, log: Logger): P
   return n
 }
 
-// On the admin connection: whether an account is unused spans every site. An
-// account a signup created waits out the verification window, since its
-// subscription is linked only once verified.
+// App devices not seen for a year are taken as uninstalled. An account left
+// with no address and no device can never be reached again, so its app
+// subscriptions let go of it (the rows stay, so campaign counts don't change)
+// and deleteUnusedAccounts removes it.
+export async function expireIdleDevices(ctx: WorkerContext, log: Logger): Promise<{ devices: number, released: number }> {
+  const cutoff = monthsAgo(ctx.now(), DEVICE_IDLE_MONTHS)
+  const devices = await deleteInBatches(ctx, async () => Number((await sql`
+    DELETE FROM pt_user_device WHERE id IN (SELECT id FROM pt_user_device WHERE last_seen_at < ${cutoff}::timestamptz LIMIT ${BATCH})
+  `.execute(ctx.admin)).numAffectedRows ?? 0))
+  const due = await sql<{ id: string, org_id: string }>`
+    SELECT s.id::text AS id, s.org_id::text AS org_id
+    FROM pt_subscription s JOIN users u ON u.id = s.user_id
+    WHERE u.email IS NULL AND NOT EXISTS (SELECT 1 FROM pt_user_device d WHERE d.user_id = u.id)
+    LIMIT ${BATCH}
+  `.execute(ctx.admin)
+  let released = 0
+  const byOrg = groupBy(due.rows, r => r.org_id)
+  await forEachOrg(ctx.app, byOrg.keys(), async (tx, orgId) => {
+    const ids = (byOrg.get(orgId) ?? []).map(r => r.id)
+    const res = await tx.updateTable('pt_subscription').set({ user_id: null, updated_at: ctx.now() }).where('id', 'in', ids).executeTakeFirst()
+    released += Number(res.numUpdatedRows)
+  }, (orgId, err) => log.error('retention.device_release_failed', { site: orgId, err }))
+  return { devices, released }
+}
+
+// On the admin connection: whether an account is unused spans every site.
 export async function deleteUnusedAccounts(ctx: WorkerContext): Promise<number> {
-  const graceCutoff = new Date(ctx.now().getTime() - (VERIFY_TOKEN_DAYS + 1) * DAY)
+  const graceCutoff = new Date(ctx.now().getTime() - DAY)
   const candidates = await sql<{ id: string }>`
     SELECT u.id::text AS id FROM users u
     WHERE u.created < ${graceCutoff}::timestamptz AND u.password IS NULL AND NOT u.is_admin
@@ -164,6 +188,7 @@ export async function purgeSignupRequests(ctx: WorkerContext): Promise<number> {
 export async function runRetention(ctx: WorkerContext, log: Logger): Promise<Record<string, number>> {
   const unsubscribed = await anonymizeUnsubscribed(ctx, log)
   const archived = await anonymizeArchivedSites(ctx, log)
+  const idle = await expireIdleDevices(ctx, log)
   const accounts = await deleteUnusedAccounts(ctx)
   const raw = await purgeRawAnalytics(ctx)
   const parts = await maintainSessionPartitions(ctx, log)
@@ -173,6 +198,8 @@ export async function runRetention(ctx: WorkerContext, log: Logger): Promise<Rec
   return {
     anonymized_unsubscribed: unsubscribed,
     anonymized_archived: archived,
+    devices_expired: idle.devices,
+    app_subscriptions_released: idle.released,
     accounts_deleted: accounts,
     events_deleted: raw.events,
     visitor_days_deleted: raw.visitor_days,

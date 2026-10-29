@@ -1,7 +1,7 @@
-// The person's user account (Nuxtinator `users`). A web signup finds the
-// account for its address or creates an unverified one; the subscription is
-// linked to the account once the address is verified, and so is the site's
-// CRM contact, which from then on shows the account's name and email. App
+// The person's user account (Nuxtinator `users`). A web signup finds or
+// creates the account for its address once the address is verified, and
+// links the subscription and the site's CRM contact to it; the contact from
+// then on shows the account's name and email. App
 // installs get an account without an address. `users` has no RLS: every
 // lookup here is by an explicit id or address.
 import { sql } from 'kysely'
@@ -27,7 +27,7 @@ export async function accountByEmail(db: Db | Tx, email: string): Promise<Accoun
 }
 
 // The account for an address, created unverified and nameless when there is
-// none. It takes a name only once a verified subscription links its contact.
+// none. It takes a name once a verified subscription links its contact.
 export async function ensureAccount(db: Db | Tx, email: string): Promise<Account> {
   const { normalized } = normalizeEmail(email)
   const existing = await accountByEmail(db, normalized)
@@ -46,8 +46,12 @@ export async function createAnonymousAccount(db: Db | Tx): Promise<string> {
   return row.id
 }
 
+// Someone proved they hold the account's address. A password set before
+// that was chosen by whoever registered the address, who may not own it, so
+// it is cleared and that account's admin sign-ins end.
 export async function markAccountVerified(db: Db | Tx, userId: string): Promise<void> {
-  await db.updateTable('users').set({ verified: true, updated: new Date() }).where('id', '=', userId).where('verified', '=', false).execute()
+  const res = await db.updateTable('users').set({ verified: true, password: null, updated: new Date() }).where('id', '=', userId).where('verified', '=', false).executeTakeFirst()
+  if (Number(res.numUpdatedRows)) await db.deleteFrom('sessions').where('user_id', '=', userId).execute()
 }
 
 // The contact shows the account's name and address. A nameless account
