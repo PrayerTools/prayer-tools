@@ -41,6 +41,8 @@ async function call(s: MySiteView, path: string, method: 'POST' | 'PATCH' | 'DEL
 const name = ref(props.my.account?.name ?? '')
 const newEmail = ref('')
 const emailSent = ref(false)
+// Set when an action needs a fresh sign-in (an email change after a while).
+const reauthNeeded = ref(false)
 
 async function saveName() {
   busy.value = true
@@ -60,8 +62,9 @@ async function changeEmail() {
   try {
     await $fetch('/api/my/email', { method: 'POST', body: { email: newEmail.value, language: props.lang } })
     emailSent.value = true
-  } catch {
-    toast.add({ title: t('errors.generic'), color: 'error' })
+  } catch (err) {
+    if ((err as { data?: { data?: { reauth?: boolean } } }).data?.data?.reauth) reauthNeeded.value = true
+    else toast.add({ title: t('errors.generic'), color: 'error' })
   } finally {
     busy.value = false
   }
@@ -135,8 +138,9 @@ function languageItems(s: MySiteView) {
       </section>
 
       <template v-else>
-        <section v-if="notice === 'reauth' && my.account?.email" class="rounded-2xl bg-white border border-stone-200 p-6 space-y-4" aria-labelledby="my-reauth">
+        <section v-if="(notice === 'reauth' || reauthNeeded) && my.account?.email" class="rounded-2xl bg-white border border-stone-200 p-6 space-y-4" aria-labelledby="my-reauth">
           <h2 id="my-reauth" class="text-xl font-bold">{{ t('my.reauth_title') }}</h2>
+          <p v-if="notice !== 'reauth'" class="text-stone-700">{{ t('my.reauth_email') }}</p>
           <UAlert v-if="sent" color="success" variant="soft" icon="i-lucide-mail" :title="t('my.reauth_sent', { email: my.account.email })" role="status" />
           <UButton v-else :loading="busy" icon="i-lucide-send" :label="t('my.reauth_send')" @click="requestFreshLink" />
         </section>

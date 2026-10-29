@@ -6,7 +6,7 @@ import type { H3Event } from 'h3'
 import { platformConfig, platformOrigin } from '@prayertools/shared/config'
 import { classifyHost } from '@prayertools/shared/site'
 import { HANDOFF_SECONDS, issueAuthCode, safeReturnPath, takeAuthCode } from '@prayertools/shared/auth-codes'
-import { accountByEmail, accountById, markAccountVerified, syncAccountContacts } from '@prayertools/shared/accounts'
+import { accountByEmail, accountById, markAccountVerified, resetAdminAccess, syncAccountContacts } from '@prayertools/shared/accounts'
 import { useDb } from './db'
 import { endAllAccountSessions, sessionSignedInAt, sessionUserId, startAccountSession } from './account-session'
 import { accountSiteIds, personSubscriptions } from './my'
@@ -14,6 +14,13 @@ import { resolveSiteCached } from './site-context'
 import type { SiteContext } from './site-context'
 
 export const ADMIN_SIGN_IN_HOURS = 24
+export const EMAIL_CHANGE_SIGN_IN_MINUTES = 15
+
+// Whether the signed-in person proved who they are within the window.
+export async function signedInWithin(event: H3Event, ms: number): Promise<boolean> {
+  const at = await sessionSignedInAt(event)
+  return !!at && Date.now() - at.getTime() <= ms
+}
 
 function myRedirect(event: H3Event, query: Record<string, string>) {
   return sendRedirect(event, `/my?${new URLSearchParams(query)}`, 302)
@@ -41,8 +48,9 @@ export async function confirmEmailChange(event: H3Event, code: string) {
 }
 
 // `/my/email-undo/<code>`: from the notice sent to the old address. Keeps or
-// restores that address, cancels pending changes, and signs out everyone
-// else, since whoever holds the other address may have signed in with it.
+// restores that address, cancels pending changes, signs out everyone else
+// and resets admin access, since whoever holds the other address may have
+// signed in with it and set a password.
 export async function undoEmailChange(event: H3Event, code: string) {
   const db = useDb()
   const row = await takeAuthCode(db, code, 'email_undo')
@@ -50,7 +58,7 @@ export async function undoEmailChange(event: H3Event, code: string) {
   await db.updateTable('pt_auth_code').set({ used_at: new Date() }).where('user_id', '=', row.user_id).where('purpose', '=', 'email_change').where('used_at', 'is', null).execute()
   if (!(await setAccountEmail(row.user_id, row.email))) return myRedirect(event, { notice: 'email_taken' })
   await endAllAccountSessions(row.user_id)
-  await db.deleteFrom('sessions').where('user_id', '=', row.user_id).execute()
+  await resetAdminAccess(db, row.user_id)
   await startAccountSession(event, row.user_id)
   return myRedirect(event, { notice: 'email_kept' })
 }
@@ -125,9 +133,8 @@ export async function continueToSite(event: H3Event) {
 export async function continueToAdmin(event: H3Event) {
   const userId = await sessionUserId(event)
   if (!userId) return continueLater(event)
-  const signedInAt = (await sessionSignedInAt(event))!
-  if (Date.now() - signedInAt.getTime() > ADMIN_SIGN_IN_HOURS * 3_600_000) return myRedirect(event, { notice: 'reauth', continue: event.path })
-  const code = await issueAuthCode(useDb(), { userId, purpose: 'handoff', host: adminHost(), ttlMs: HANDOFF_SECONDS * 1000, authenticatedAt: signedInAt })
+  if (!(await signedInWithin(event, ADMIN_SIGN_IN_HOURS * 3_600_000))) return myRedirect(event, { notice: 'reauth', continue: event.path })
+  const code = await issueAuthCode(useDb(), { userId, purpose: 'handoff', host: adminHost(), ttlMs: HANDOFF_SECONDS * 1000, authenticatedAt: await sessionSignedInAt(event) })
   const to = safeReturnPath(getQuery(event).to)
   return sendRedirect(event, `${new URL(platformConfig().adminUrl).origin}/api/pt/handoff?code=${encodeURIComponent(code)}&to=${encodeURIComponent(to)}`, 302)
 }

@@ -5,7 +5,8 @@ export interface Me {
   email: string | null
   name: string | null
   account: { email: string, name: string | null } | null
-  subscribed: boolean
+  // Campaigns the visitor's active subscription here has prayer times in.
+  campaigns: string[]
 }
 
 let pending: { path: string, promise: Promise<Me | null> } | null = null

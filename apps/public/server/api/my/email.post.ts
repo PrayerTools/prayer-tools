@@ -1,5 +1,6 @@
 // The person asks to change their address: a confirmation link goes to the
-// new one, and nothing changes until it is opened. The current address is
+// new one, and nothing changes until it is opened. It needs a sign-in from
+// the last few minutes, so a stolen long-lived session can't move the account. The current address is
 // told, with a link that keeps it. An address another account already uses
 // gets no link; the answer is the same either way.
 import { normalizeEmail } from '@prayertools/shared/crm'
@@ -13,10 +14,14 @@ import { useDb } from '../../utils/db'
 import { background, limit, readJson, str } from '../../utils/request'
 import { UI_LANGUAGES } from '../../utils/site-data'
 import { requireSessionUser } from '../../utils/account-session'
+import { EMAIL_CHANGE_SIGN_IN_MINUTES, signedInWithin } from '../../utils/account-links'
 
 export default defineEventHandler(async (event) => {
   limit(event, 'my-email', 5, 3_600_000)
   const userId = await requireSessionUser(event)
+  if (!(await signedInWithin(event, EMAIL_CHANGE_SIGN_IN_MINUTES * 60_000))) {
+    throw createError({ statusCode: 403, statusMessage: 'Sign in again', data: { reauth: true } })
+  }
   const body = await readJson(event)
   const { normalized, valid } = normalizeEmail(str(body.email, 254))
   if (!valid) throw createError({ statusCode: 400, statusMessage: 'email' })

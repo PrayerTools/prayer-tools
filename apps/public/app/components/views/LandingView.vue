@@ -23,11 +23,11 @@ const verifyPrompt = ref(false)
 const formKey = ref(0)
 const signupEmail = useState<string | null>('pt-signup-email', () => null)
 
-// Visitors this browser already manages a subscription for get their prayer times instead of the signup form.
+// Visitors already praying in the campaign shown get their prayer times instead of the signup form.
 const subscribed = ref(false)
 onMounted(async () => {
   const me = await fetchMe()
-  subscribed.value = !!me?.subscribed
+  subscribed.value = !!campaign.value && !!me?.campaigns.includes(campaign.value.id)
 })
 
 function onJoined(verify: boolean) {
