@@ -12,12 +12,8 @@ export function useReferral() {
       // storage blocked
     }
     if (code.value) return
-    try {
-      const me = await $fetch<{ referral_code: string | null }>('/api/me')
-      if (me.referral_code) code.value = me.referral_code
-    } catch {
-      // not known here
-    }
+    const me = await fetchMe()
+    if (me?.referral_code) code.value = me.referral_code
   })
   return code
 }

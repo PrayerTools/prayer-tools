@@ -261,6 +261,7 @@
     "intro": "Connecté en tant que {email} pour {site}.",
     "signed_out": "Ouvrez le lien de l'un de nos e-mails pour gérer ici vos moments de prière, ou utilisez Ma prière pour voir toutes vos campagnes.",
     "unverified": "Votre adresse e-mail n'est pas encore confirmée. Les rappels commenceront dès que vous aurez cliqué sur le lien de notre e-mail.",
+    "name_on_my": "Votre nom est le même dans toutes les campagnes avec lesquelles vous priez. Modifiez-le dans",
     "status_unsubscribed": "Vous êtes désabonné. Vous ne recevrez pas de rappels.",
     "status_inactive": "Vos rappels sont en pause, car nous ne vous avons pas vu prier depuis un moment.",
     "resubscribe": "Relancer mes rappels",
@@ -347,6 +348,7 @@
     "notice_link_invalid": "Ce lien de connexion n'est pas valide ou a déjà été utilisé. Demandez-en un nouveau ci-dessous.",
     "notice_signed_out": "Vous êtes déconnecté.",
     "notice_deleted": "Vos données ont été supprimées.",
+    "notice_deleted_kept": "Vos données de prière ont été supprimées. Votre compte est conservé, car vous l'utilisez encore ailleurs sur Prayer.Tools.",
     "notice_link_sent": "Consultez vos e-mails pour trouver votre lien.",
     "status_active": "Active",
     "status_inactive": "En pause",
@@ -365,7 +367,10 @@
     "create_campaign": "Lancer une campagne de prière",
     "praying_title": "Campagnes avec lesquelles vous priez",
     "notice_email_changed": "Votre adresse e-mail a été changée pour toutes les campagnes.",
-    "notice_email_taken": "Un autre compte utilise déjà cette adresse ; rien n’a changé."
+    "notice_email_taken": "Un autre compte utilise déjà cette adresse ; rien n’a changé.",
+    "continue_title": "Se connecter à {site} ?",
+    "continue_body": "{site} ({host}) verra votre nom et votre adresse e-mail, {email}.",
+    "continue_button": "Continuer vers {site}"
   },
   "home": {
     "title": "Des campagnes de prière pour les lieux et les peuples qui vous tiennent à cœur",

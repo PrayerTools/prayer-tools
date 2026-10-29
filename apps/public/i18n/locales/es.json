@@ -261,6 +261,7 @@
     "intro": "Sesión iniciada como {email} en {site}.",
     "signed_out": "Abre el enlace de uno de nuestros correos para administrar aquí tus horarios de oración, o usa Mi oración para ver todas tus campañas.",
     "unverified": "Tu correo aún no está confirmado. Los recordatorios comenzarán cuando hagas clic en el enlace de nuestro correo.",
+    "name_on_my": "Tu nombre es el mismo en todas las campañas con las que oras. Cámbialo en",
     "status_unsubscribed": "Cancelaste tu suscripción. No recibirás recordatorios.",
     "status_inactive": "Tus recordatorios están en pausa porque hace un tiempo que no te vemos orar.",
     "resubscribe": "Reactivar mis recordatorios",
@@ -347,6 +348,7 @@
     "notice_link_invalid": "Este enlace de inicio de sesión no es válido o ya se usó. Solicita uno nuevo abajo.",
     "notice_signed_out": "Cerraste sesión.",
     "notice_deleted": "Tus datos han sido eliminados.",
+    "notice_deleted_kept": "Tus datos de oración se han eliminado. Tu cuenta se mantiene porque todavía la usas en otra parte de Prayer.Tools.",
     "notice_link_sent": "Revisa tu correo para encontrar tu enlace.",
     "status_active": "Activa",
     "status_inactive": "En pausa",
@@ -365,7 +367,10 @@
     "create_campaign": "Comenzar una campaña de oración",
     "praying_title": "Campañas con las que oras",
     "notice_email_changed": "Tu correo se cambió en todas las campañas.",
-    "notice_email_taken": "Otra cuenta ya usa esa dirección, así que no cambió nada."
+    "notice_email_taken": "Otra cuenta ya usa esa dirección, así que no cambió nada.",
+    "continue_title": "¿Iniciar sesión en {site}?",
+    "continue_body": "{site} ({host}) verá tu nombre y tu correo electrónico, {email}.",
+    "continue_button": "Continuar a {site}"
   },
   "home": {
     "title": "Campañas de oración por los lugares y pueblos que te importan",

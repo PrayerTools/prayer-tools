@@ -89,6 +89,19 @@ export interface PtAuthCodeTable {
   created_at: Timestamp
 }
 
+export interface PtAccountSessionTable {
+  id: Generated<string>
+  user_id: string
+  // The only host the session's cookie is accepted on.
+  host: string
+  token_hash: string
+  created_at: Generated<Date>
+  last_used_at: Generated<Date>
+  expires_at: Timestamp
+  user_agent: string | null
+  ip: string | null
+}
+
 export interface PtSuppressionTable {
   id: Generated<string>
   address_hash: string
@@ -610,6 +623,7 @@ export interface PtCoverageCacheTable {
 export interface PtTables {
   pt_user_device: PtUserDeviceTable
   pt_auth_code: PtAuthCodeTable
+  pt_account_session: PtAccountSessionTable
   pt_suppression: PtSuppressionTable
   pt_job: PtJobTable
   pt_site_domain: PtSiteDomainTable
@@ -658,19 +672,15 @@ export interface UsersTable {
   verified: Generated<boolean>
 }
 
-// Core's signed-in devices. The public server keeps its sign-ins here too, so
-// they share the account's session list and end with it.
-export interface SessionsTable {
+// The social-auth layer's Google / Apple accounts linked to a user.
+export interface UserIdentitiesTable {
   id: Generated<string>
   user_id: string
-  client: string
-  refresh_token_hash: string
+  provider: string
+  subject: string
+  email: string | null
   created_at: Generated<Date>
   last_used_at: Generated<Date>
-  authenticated_at: Generated<Date>
-  expires_at: Timestamp
-  user_agent: string | null
-  ip: string | null
 }
 
 export interface OrgsTable {
@@ -827,7 +837,7 @@ export interface NotificationsTable {
 
 export interface LayerTables {
   users: UsersTable
-  sessions: SessionsTable
+  user_identities: UserIdentitiesTable
   orgs: OrgsTable
   memberships: MembershipsTable
   crm_records: CrmRecordsTable

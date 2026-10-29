@@ -68,6 +68,8 @@ export default defineEventHandler(async (event) => {
   }
 
   if (kind.kind === 'platform') {
+    // My prayer's confirm buttons must not be clickable from inside another site's frame.
+    setResponseHeader(event, 'content-security-policy', "frame-ancestors 'none'")
     // With PT_MARKETING_URL set, the marketing site owns "/"; otherwise the landing view renders.
     if ((pathname === '/' || pathname === '') && process.env.PT_MARKETING_URL) return sendRedirect(event, marketingUrl(), 302)
     if (pathname === '/' || pathname === '' || pathname === '/robots.txt' || pathname === '/privacy' || pathname === '/terms') return

@@ -26,22 +26,15 @@ export async function accountByEmail(db: Db | Tx, email: string): Promise<Accoun
   return await db.selectFrom('users').select(COLUMNS).where(sql`lower(email)`, '=', normalized).executeTakeFirst() ?? null
 }
 
-// The account for an address, created unverified when there is none. An
-// existing account keeps its name; a nameless one takes the signup's.
-export async function ensureAccount(db: Db | Tx, email: string, name?: string | null): Promise<Account> {
+// The account for an address, created unverified and nameless when there is
+// none. It takes a name only once a verified subscription links its contact.
+export async function ensureAccount(db: Db | Tx, email: string): Promise<Account> {
   const { normalized } = normalizeEmail(email)
-  const displayName = (name ?? '').trim().slice(0, 200)
   const existing = await accountByEmail(db, normalized)
-  if (existing) {
-    if (!existing.display_name && displayName) {
-      await db.updateTable('users').set({ display_name: displayName, updated: new Date() }).where('id', '=', existing.id).execute()
-      return { ...existing, display_name: displayName }
-    }
-    return existing
-  }
+  if (existing) return existing
   await db
     .insertInto('users')
-    .values({ email: normalized, display_name: displayName, verified: false })
+    .values({ email: normalized, display_name: '', verified: false })
     .onConflict(oc => oc.doNothing())
     .execute()
   return (await accountByEmail(db, normalized))!
@@ -120,8 +113,9 @@ export async function accountOrgIds(admin: Db, userId: string): Promise<string[]
 }
 
 // Removes an account nothing uses any more: no subscription, contact, app
-// device or membership, no password and not a platform admin. Runs on the
-// admin connection, since use spans every site.
+// device or membership, no admin app sign-in (password, Google / Apple
+// identity, live session) and not a platform admin. Runs on the admin
+// connection, since use spans every site.
 export async function deleteAccountIfUnused(tx: Tx, userId: string): Promise<boolean> {
   const res = await sql<{ id: string }>`
     DELETE FROM users u
@@ -130,6 +124,8 @@ export async function deleteAccountIfUnused(tx: Tx, userId: string): Promise<boo
       AND NOT EXISTS (SELECT 1 FROM crm_records r WHERE r.user_id = u.id)
       AND NOT EXISTS (SELECT 1 FROM pt_user_device d WHERE d.user_id = u.id)
       AND NOT EXISTS (SELECT 1 FROM memberships m WHERE m.user_id = u.id)
+      AND NOT EXISTS (SELECT 1 FROM user_identities i WHERE i.user_id = u.id)
+      AND NOT EXISTS (SELECT 1 FROM sessions se WHERE se.user_id = u.id AND se.expires_at > now())
     RETURNING u.id
   `.execute(tx)
   return res.rows.length > 0

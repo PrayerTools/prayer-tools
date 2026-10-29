@@ -50,14 +50,14 @@ const signupEmail = useState<string | null>('pt-signup-email', () => null)
 // without a confirmation email.
 const account = ref<{ email: string, name: string | null } | null>(null)
 const useAccount = ref(false)
-const signInUrl = computed(() => `/account/sign-in?return=${encodeURIComponent(route.fullPath)}`)
+const signInUrl = computed(() => `/account/sign-in?return=${encodeURIComponent(route.fullPath.split('#')[0]!)}`)
 
 onMounted(async () => {
   state.timezone = browserTimezone()
   const slots = typeof route.query.slots === 'string' ? route.query.slots.split(',') : []
   state.picks = slots.filter(s => !Number.isNaN(Date.parse(s))).slice(0, 100)
   if (state.picks.length) state.commitments = []
-  const me = await $fetch<{ account: { email: string, name: string | null } | null }>('/api/me').catch(() => null)
+  const me = await fetchMe()
   if (me?.account) {
     account.value = me.account
     useAccount.value = true

@@ -261,6 +261,7 @@
     "intro": "Conectado como {email} em {site}.",
     "signed_out": "Abra o link de um dos nossos e-mails para gerenciar aqui seus horários de oração, ou use Minha oração para ver todas as suas campanhas.",
     "unverified": "Seu e-mail ainda não foi confirmado. Os lembretes começam assim que você clicar no link do nosso e-mail.",
+    "name_on_my": "Seu nome é o mesmo em todas as campanhas com as quais você ora. Altere-o em",
     "status_unsubscribed": "Sua inscrição foi cancelada. Você não receberá lembretes.",
     "status_inactive": "Seus lembretes estão pausados porque faz algum tempo que você não ora conosco.",
     "resubscribe": "Retomar meus lembretes",
@@ -347,6 +348,7 @@
     "notice_link_invalid": "Este link de acesso não é válido ou já foi usado. Solicite um novo abaixo.",
     "notice_signed_out": "Você saiu da sua conta.",
     "notice_deleted": "Seus dados foram excluídos.",
+    "notice_deleted_kept": "Seus dados de oração foram excluídos. Sua conta continua porque você ainda a usa em outro lugar no Prayer.Tools.",
     "notice_link_sent": "Confira seu e-mail para encontrar o link.",
     "status_active": "Ativa",
     "status_inactive": "Pausada",
@@ -365,7 +367,10 @@
     "create_campaign": "Começar uma campanha de oração",
     "praying_title": "Campanhas com que você ora",
     "notice_email_changed": "Seu e-mail foi alterado em todas as campanhas.",
-    "notice_email_taken": "Outra conta já usa esse endereço, então nada mudou."
+    "notice_email_taken": "Outra conta já usa esse endereço, então nada mudou.",
+    "continue_title": "Entrar em {site}?",
+    "continue_body": "{site} ({host}) verá seu nome e seu endereço de e-mail, {email}.",
+    "continue_button": "Continuar para {site}"
   },
   "home": {
     "title": "Campanhas de oração pelos lugares e povos que importam para você",

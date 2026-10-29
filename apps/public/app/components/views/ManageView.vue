@@ -34,7 +34,7 @@ const add = (campaignId: string, input: CommitmentInput) => call('commitments', 
 const update = (id: string, input: CommitmentInput) => call(`commitments/${id}`, 'PATCH', { ...input })
 const pause = (id: string, paused: boolean) => call(`commitments/${id}`, 'PATCH', { paused })
 const remove = (id: string) => call(`commitments/${id}`, 'DELETE', undefined, t('manage.removed'))
-const saveProfile = () => call('profile', 'POST', { ...profile })
+const saveProfile = () => call('profile', 'POST', props.manage?.accountLinked ? { language: profile.language, timezone: profile.timezone } : { ...profile })
 const setConsent = (purpose: string, grant: boolean) => call('consent', 'POST', { purpose, grant })
 const setStatus = (status: 'active' | 'unsubscribed') => call('status', 'POST', { status }, status === 'unsubscribed' ? t('manage.unsubscribed') : t('manage.resubscribed'))
 
@@ -102,7 +102,10 @@ async function deleteData() {
         <h2 id="profile-title" class="text-xl font-semibold">{{ t('manage.profile') }}</h2>
         <div class="grid gap-4 sm:grid-cols-2">
           <UFormField :label="t('signup.name')" name="m-name">
-            <UInput v-model="profile.name" autocomplete="name" class="w-full" />
+            <UInput v-model="profile.name" autocomplete="name" :disabled="manage.accountLinked" class="w-full" />
+            <template v-if="manage.accountLinked" #help>
+              {{ t('manage.name_on_my') }} <a :href="site.myUrl" class="underline">{{ t('footer.my') }}</a>
+            </template>
           </UFormField>
           <UFormField v-if="languageItems.length > 1" :label="t('signup.language')" name="m-language">
             <USelect v-model="profile.language" :items="languageItems" class="w-full" />

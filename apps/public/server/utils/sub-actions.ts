@@ -56,9 +56,9 @@ export async function removeCommitment(tx: Tx, sub: SubscriptionRow, id: string)
   if (!Number(res.numDeletedRows)) throw createError({ statusCode: 404, statusMessage: 'Not found' })
 }
 
-// A new name on a subscription linked to an account renames the account;
-// the caller copies it to the person's other sites (returned user id).
-export async function updateProfile(tx: Tx, sub: SubscriptionRow, input: { name?: unknown, language?: unknown, timezone?: unknown }, siteLanguages: string[]): Promise<string | null> {
+// The name of a subscription linked to an account belongs to the account and
+// changes only on My prayer, so a forwarded manage link cannot rename it.
+export async function updateProfile(tx: Tx, sub: SubscriptionRow, input: { name?: unknown, language?: unknown, timezone?: unknown }, siteLanguages: string[]): Promise<void> {
   const patch: { language?: string, timezone?: string, updated_at: Date } = { updated_at: new Date() }
   if (typeof input.language === 'string' && input.language !== sub.language) {
     if (!siteLanguages.includes(input.language)) bad('language')
@@ -75,18 +75,13 @@ export async function updateProfile(tx: Tx, sub: SubscriptionRow, input: { name?
     await refreshReminders(tx, sub.id)
   }
   if (sub.contact_id) {
-    const name = typeof input.name === 'string' ? input.name.trim().slice(0, 200) : null
+    const name = typeof input.name === 'string' && !sub.user_id ? input.name.trim().slice(0, 200) : null
     const contact = await tx.selectFrom('crm_records').select(['data']).where('id', '=', sub.contact_id).executeTakeFirst()
     if (contact) {
       const data = { ...(contact.data as Record<string, unknown>), ...(patch.language ? { pt_language: patch.language } : {}) }
       await tx.updateTable('crm_records').set({ ...(name ? { name } : {}), data: jsonb(data), updated_at: new Date() }).where('id', '=', sub.contact_id).execute()
     }
-    if (name && sub.user_id) {
-      await tx.updateTable('users').set({ display_name: name, updated: new Date() }).where('id', '=', sub.user_id).execute()
-      return sub.user_id
-    }
   }
-  return null
 }
 
 export async function setSubscriptionConsent(tx: Tx, sub: SubscriptionRow, purpose: unknown, grant: unknown, capture: Omit<ConsentCapture, 'wording'>): Promise<void> {

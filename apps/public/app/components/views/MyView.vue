@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { MyView, MySiteView } from '~~/shared/view'
+import type { MyConfirmSiteView, MyView, MySiteView } from '~~/shared/view'
 import { timezones, type CommitmentInput } from '~/utils/commitment'
 
-const props = defineProps<{ my: MyView, notice: string | null, continueTo: string | null, lang: string, donateUrl: string }>()
+const props = defineProps<{ my: MyView, notice: string | null, continueTo: string | null, confirmSite: MyConfirmSiteView | null, lang: string, donateUrl: string }>()
 const { t } = useI18n()
 const route = useRoute()
 const toast = useToast()
@@ -67,6 +67,17 @@ async function changeEmail() {
   }
 }
 
+async function continueToSite(site: MyConfirmSiteView) {
+  busy.value = true
+  try {
+    const res = await $fetch<{ url: string }>('/api/my/continue', { method: 'POST', body: { host: site.host, return: site.returnTo } })
+    await navigateTo(res.url, { external: true })
+  } catch {
+    toast.add({ title: t('errors.generic'), color: 'error' })
+    busy.value = false
+  }
+}
+
 async function signOut() {
   await $fetch('/api/my/logout', { method: 'POST' }).catch(() => null)
   await navigateTo('/my?notice=signed_out', { external: true })
@@ -75,8 +86,8 @@ async function signOut() {
 async function deleteAll() {
   busy.value = true
   try {
-    await $fetch('/api/my/delete', { method: 'POST' })
-    await navigateTo('/my?notice=deleted', { external: true })
+    const res = await $fetch<{ account_deleted: boolean }>('/api/my/delete', { method: 'POST' })
+    await navigateTo(`/my?notice=${res.account_deleted ? 'deleted' : 'deleted_kept'}`, { external: true })
   } finally {
     busy.value = false
   }
@@ -112,6 +123,14 @@ function languageItems(s: MySiteView) {
       </section>
 
       <template v-else>
+        <section v-if="confirmSite" class="rounded-2xl bg-white border border-stone-200 p-6 space-y-4" aria-labelledby="my-confirm-site">
+          <h2 id="my-confirm-site" class="text-xl font-bold">{{ t('my.continue_title', { site: confirmSite.name }) }}</h2>
+          <p class="text-stone-700">{{ t('my.continue_body', { site: confirmSite.name, host: confirmSite.host, email: my.account?.email ?? '' }) }}</p>
+          <div class="flex flex-wrap gap-2">
+            <UButton :loading="busy" :label="t('my.continue_button', { site: confirmSite.name })" @click="continueToSite(confirmSite)" />
+            <UButton variant="outline" color="neutral" to="/my" :label="t('common.cancel')" />
+          </div>
+        </section>
         <section v-if="my.account" class="rounded-2xl bg-white border border-stone-200 p-6 space-y-4" aria-labelledby="my-account">
           <h2 id="my-account" class="text-xl font-bold">{{ t('my.account_title') }}</h2>
           <p class="text-sm text-stone-600">{{ t('my.account_help') }}</p>

@@ -26,7 +26,7 @@ const signupEmail = useState<string | null>('pt-signup-email', () => null)
 // Visitors this browser already manages a subscription for get their prayer times instead of the signup form.
 const subscribed = ref(false)
 onMounted(async () => {
-  const me = await $fetch<{ subscribed: boolean }>('/api/me').catch(() => null)
+  const me = await fetchMe()
   subscribed.value = !!me?.subscribed
 })
 

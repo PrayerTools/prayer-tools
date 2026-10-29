@@ -8,7 +8,7 @@ import { HANDOFF_SECONDS, issueAuthCode, safeReturnPath, takeAuthCode } from '@p
 import { accountByEmail, accountById, markAccountVerified, syncAccountContacts } from '@prayertools/shared/accounts'
 import { useDb } from './db'
 import { sessionUserId, startAccountSession } from './account-session'
-import { accountSiteIds } from './my'
+import { accountSiteIds, personSubscriptions } from './my'
 import { resolveSiteCached } from './site-context'
 import type { SiteContext } from './site-context'
 
@@ -42,11 +42,28 @@ export async function confirmEmailChange(event: H3Event, code: string) {
   return myRedirect(event, { notice: 'email_changed' })
 }
 
-async function siteHost(host: string): Promise<string | null> {
-  const h = host.toLowerCase()
+export interface HandoffSite {
+  host: string
+  orgId: string
+  name: string
+}
+
+export async function siteForHandoff(host: unknown): Promise<HandoffSite | null> {
+  const h = typeof host === 'string' ? host.toLowerCase() : ''
   if (!/^[a-z0-9.-]+(:\d+)?$/.test(h) || h === platformConfig().platformHost) return null
   const resolved = await resolveSiteCached(h)
-  return resolved && !resolved.suspended ? h : null
+  return resolved && !resolved.suspended ? { host: h, orgId: resolved.orgId, name: resolved.name } : null
+}
+
+// A site the person prays with or helps run.
+async function isOwnSite(userId: string, orgId: string): Promise<boolean> {
+  if ((await personSubscriptions(userId)).some(s => s.org_id === orgId)) return true
+  return !!await useDb().selectFrom('memberships').select('id').where('user_id', '=', userId).where('org_id', '=', orgId).executeTakeFirst()
+}
+
+export async function handoffUrl(userId: string, host: string, back: string): Promise<string> {
+  const code = await issueAuthCode(useDb(), { userId, purpose: 'handoff', host, ttlMs: HANDOFF_SECONDS * 1000 })
+  return `${platformConfig().siteScheme}://${host}/account/claim/${code}?return=${encodeURIComponent(back)}`
 }
 
 function adminHost(): string {
@@ -58,16 +75,17 @@ function continueLater(event: H3Event) {
 }
 
 // `/my/continue?host=<site host>&return=<path>`: sends the signed-in person
-// back to the site with a one-time code.
+// back to the site with a one-time code. Any site other than their own waits
+// for them to confirm on My prayer, since its owner then learns who they are.
 export async function continueToSite(event: H3Event) {
   const q = getQuery(event)
-  const host = await siteHost(typeof q.host === 'string' ? q.host : '')
-  if (!host) return myRedirect(event, { notice: 'link_invalid' })
+  const site = await siteForHandoff(q.host)
+  if (!site) return myRedirect(event, { notice: 'link_invalid' })
   const userId = await sessionUserId(event)
   if (!userId) return continueLater(event)
-  const code = await issueAuthCode(useDb(), { userId, purpose: 'handoff', host, ttlMs: HANDOFF_SECONDS * 1000 })
   const back = safeReturnPath(q.return)
-  return sendRedirect(event, `${platformConfig().siteScheme}://${host}/account/claim/${code}?return=${encodeURIComponent(back)}`, 302)
+  if (await isOwnSite(userId, site.orgId)) return sendRedirect(event, await handoffUrl(userId, site.host, back), 302)
+  return myRedirect(event, { confirm: site.host, return: back })
 }
 
 // `/my/admin?to=<admin path>`: opens the admin app signed in as the person.

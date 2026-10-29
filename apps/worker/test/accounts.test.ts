@@ -37,13 +37,13 @@ describe('accounts', () => {
       return await createWebSignup(tx, { campaign, email, name: 'Ruth', language: 'en', timezone: 'UTC', commitments: [], consents: {}, capture: { surface: 'test', source: 'test' } })
     })
     let account = await accountByEmail(env.admin, email)
-    expect(account).toMatchObject({ id: res.userId, verified: false, display_name: 'Ruth' })
+    expect(account).toMatchObject({ id: res.userId, verified: false, display_name: '' })
     expect(res.subscription.user_id).toBeNull()
     expect((await contactOf(orgId, res.contactId)).row.user_id).toBeNull()
 
     const verified = await withOrg(env.app, orgId, tx => verifySubscription(tx, res.verifyToken!))
     account = await accountByEmail(env.admin, email)
-    expect(account!.verified).toBe(true)
+    expect(account).toMatchObject({ verified: true, display_name: 'Ruth' })
     expect(verified!.user_id).toBe(account!.id)
     expect((await contactOf(orgId, res.contactId)).row.user_id).toBe(account!.id)
   })
@@ -82,6 +82,23 @@ describe('accounts', () => {
     expect(consent.old).toHaveLength(0)
   })
 
+  it('does not name an account from an unverified signup', async () => {
+    const { orgId } = await createSite(env)
+    const campaignId = await createCampaign(env, orgId, { endMode: 'none' })
+    const email = testEmail(env)
+    await withOrg(env.app, orgId, async (tx) => {
+      const campaign = await tx.selectFrom('pt_campaign').selectAll().where('id', '=', campaignId).executeTakeFirstOrThrow()
+      await createWebSignup(tx, { campaign, email, name: '', language: 'en', timezone: 'UTC', commitments: [], consents: {}, preVerified: true, capture: { surface: 'test', source: 'test' } })
+    })
+    const other = await createSite(env)
+    const otherCampaignId = await createCampaign(env, other.orgId, { endMode: 'none' })
+    await withOrg(env.app, other.orgId, async (tx) => {
+      const campaign = await tx.selectFrom('pt_campaign').selectAll().where('id', '=', otherCampaignId).executeTakeFirstOrThrow()
+      await createWebSignup(tx, { campaign, email, name: 'Impostor', language: 'en', timezone: 'UTC', commitments: [], consents: {}, capture: { surface: 'test', source: 'test' } })
+    })
+    expect((await accountByEmail(env.admin, email))!.display_name).toBe('')
+  })
+
   it('catches up contacts whose account changed elsewhere', async () => {
     const { orgId } = await createSite(env)
     const email = testEmail(env)
@@ -91,6 +108,18 @@ describe('accounts', () => {
     const ctx = testCtx(env)
     expect((await syncLinkedContacts(ctx, ctx.log)).synced).toBeGreaterThanOrEqual(1)
     expect((await contactOf(orgId, sub.contactId)).row.name).toBe('Naomi')
+  })
+
+  it('does not count a contact as due again once its trimmed name matches', async () => {
+    const { orgId } = await createSite(env)
+    const email = testEmail(env)
+    const sub = await createSubscriber(env, orgId, await createCampaign(env, orgId, { endMode: 'none' }), { email })
+    const account = (await accountByEmail(env.admin, email))!
+    await env.admin.updateTable('users').set({ display_name: `  ${'N'.repeat(250)}  ` }).where('id', '=', account.id).execute()
+    const ctx = testCtx(env)
+    await syncLinkedContacts(ctx, ctx.log)
+    expect((await contactOf(orgId, sub.contactId)).row.name).toBe('N'.repeat(200))
+    expect((await syncLinkedContacts(ctx, ctx.log)).synced).toBe(0)
   })
 
   it('deletes an account only when nothing uses it', async () => {
@@ -106,6 +135,9 @@ describe('accounts', () => {
     await env.admin.insertInto('memberships').values({ user_id: account.id, org_id: orgId }).execute()
     expect(await env.admin.transaction().execute(tx => deleteAccountIfUnused(tx, account.id))).toBe(false)
     await env.admin.deleteFrom('memberships').where('user_id', '=', account.id).execute()
+    await env.admin.insertInto('user_identities').values({ user_id: account.id, provider: 'google', subject: uid() }).execute()
+    expect(await env.admin.transaction().execute(tx => deleteAccountIfUnused(tx, account.id))).toBe(false)
+    await env.admin.deleteFrom('user_identities').where('user_id', '=', account.id).execute()
     expect(await env.admin.transaction().execute(tx => deleteAccountIfUnused(tx, account.id))).toBe(true)
   })
 })

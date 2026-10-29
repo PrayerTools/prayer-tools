@@ -92,6 +92,7 @@ export async function manageView(tx: Tx, ctx: SiteContext, sub: SubscriptionRow,
   return {
     subscriptionId: sub.id,
     name: contact?.name ?? '',
+    accountLinked: !!sub.user_id,
     email: email?.email ?? null,
     language: sub.language,
     timezone: sub.timezone,

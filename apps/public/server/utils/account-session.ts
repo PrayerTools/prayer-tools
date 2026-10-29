@@ -1,15 +1,15 @@
-// Sign-ins on the public server. Each one is a row in core's `sessions` table,
-// so it shows in the account's session list and ends with the account; the
-// browser holds `<session id>.<secret>` in a cookie on the host it signed in
-// on (the platform host, or a site that received a hand-off), stored as a
-// SHA-256 hash.
+// Sign-ins on the public server, rows in `pt_account_session` that end with
+// the account. The browser holds `<session id>.<secret>` in a cookie on the
+// host it signed in on (the platform host, or a site that received a
+// hand-off), stored as a SHA-256 hash; the session is accepted on that host
+// only, so a site's server never holds a sign-in that works elsewhere.
 import type { H3Event } from 'h3'
 import { randomUUID } from 'node:crypto'
 import { hashToken, randomToken } from '@prayertools/shared/tokens'
 import { accountById, type Account } from '@prayertools/shared/accounts'
 import { useDb } from './db'
 import { clearSessionCookie, SESSION_COOKIE, setSessionCookie } from './cookies'
-import { clientIp } from './request'
+import { clientIp, requestHost } from './request'
 
 export const SESSION_DAYS = 30
 const TOUCH_MS = 3_600_000
@@ -18,11 +18,11 @@ export async function startAccountSession(event: H3Event, userId: string): Promi
   const id = randomUUID()
   const token = `${id}.${randomToken(32)}`
   const ip = clientIp(event)
-  await useDb().insertInto('sessions').values({
+  await useDb().insertInto('pt_account_session').values({
     id,
     user_id: userId,
-    client: 'web',
-    refresh_token_hash: hashToken(token),
+    host: requestHost(event),
+    token_hash: hashToken(token),
     expires_at: new Date(Date.now() + SESSION_DAYS * 86_400_000),
     user_agent: getRequestHeader(event, 'user-agent')?.slice(0, 500) ?? null,
     ip: ip && ip !== 'unknown' ? ip : null
@@ -44,16 +44,17 @@ export async function sessionUserId(event: H3Event): Promise<string | null> {
   let userId: string | null = null
   if (id) {
     const row = await useDb()
-      .selectFrom('sessions')
+      .selectFrom('pt_account_session')
       .select(['user_id', 'last_used_at'])
       .where('id', '=', id)
-      .where('refresh_token_hash', '=', hashToken(token))
+      .where('token_hash', '=', hashToken(token))
+      .where('host', '=', requestHost(event))
       .where('expires_at', '>', new Date())
       .executeTakeFirst()
     if (row) {
       userId = row.user_id
       if (Date.now() - new Date(row.last_used_at).getTime() > TOUCH_MS) {
-        await useDb().updateTable('sessions').set({ last_used_at: new Date(), expires_at: new Date(Date.now() + SESSION_DAYS * 86_400_000) }).where('id', '=', id).execute()
+        await useDb().updateTable('pt_account_session').set({ last_used_at: new Date(), expires_at: new Date(Date.now() + SESSION_DAYS * 86_400_000) }).where('id', '=', id).execute()
       }
     }
   }
@@ -74,7 +75,7 @@ export async function requireSessionUser(event: H3Event): Promise<string> {
 
 export async function endAccountSession(event: H3Event): Promise<void> {
   const id = sessionIdOf(getCookie(event, SESSION_COOKIE) ?? '')
-  if (id) await useDb().deleteFrom('sessions').where('id', '=', id).execute()
+  if (id) await useDb().deleteFrom('pt_account_session').where('id', '=', id).where('host', '=', requestHost(event)).execute()
   clearSessionCookie(event)
   event.context.accountUserId = null
 }

@@ -203,7 +203,7 @@ export interface SignupResult {
 }
 
 export async function createWebSignup(tx: Tx, input: SignupInput): Promise<SignupResult> {
-  const account = await ensureAccount(tx, input.email, input.name)
+  const account = await ensureAccount(tx, input.email)
   const contact = await upsertContact(tx, {
     email: input.email,
     name: input.name,

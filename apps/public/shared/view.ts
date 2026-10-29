@@ -173,6 +173,8 @@ export interface ManageCampaignView {
 export interface ManageView {
   subscriptionId: string
   name: string
+  // The name belongs to the person's account and changes on My prayer.
+  accountLinked: boolean
   email: string | null
   language: string
   timezone: string
@@ -183,6 +185,13 @@ export interface ManageView {
   consents: { key: string, label: string, granted: boolean }[]
   icsUrl: string
   prayUrl: string
+}
+
+// A site waiting for the signed-in person to confirm signing in to it.
+export interface MyConfirmSiteView {
+  host: string
+  name: string
+  returnTo: string
 }
 
 export interface MySiteView {
@@ -246,7 +255,7 @@ export interface PlatformResponse {
   host: 'platform'
   lang: string
   donateUrl: string
-  page: { kind: 'my', my: MyView, notice: string | null, continueTo: string | null } | { kind: 'home', adminUrl: string } | { kind: 'legal', doc: 'privacy' | 'terms' } | { kind: 'not_found' }
+  page: { kind: 'my', my: MyView, notice: string | null, continueTo: string | null, confirmSite: MyConfirmSiteView | null } | { kind: 'home', adminUrl: string } | { kind: 'legal', doc: 'privacy' | 'terms' } | { kind: 'not_found' }
   status: number
   cache: 'private'
   title: string

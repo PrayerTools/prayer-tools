@@ -76,6 +76,8 @@ export async function deleteUnusedAccounts(ctx: WorkerContext): Promise<number> 
       AND NOT EXISTS (SELECT 1 FROM crm_records r WHERE r.user_id = u.id)
       AND NOT EXISTS (SELECT 1 FROM pt_user_device d WHERE d.user_id = u.id)
       AND NOT EXISTS (SELECT 1 FROM memberships m WHERE m.user_id = u.id)
+      AND NOT EXISTS (SELECT 1 FROM user_identities i WHERE i.user_id = u.id)
+      AND NOT EXISTS (SELECT 1 FROM sessions se WHERE se.user_id = u.id AND se.expires_at > now())
     LIMIT ${BATCH}
   `.execute(ctx.admin)
   let n = 0
@@ -149,7 +151,7 @@ export async function purgeEmailLog(ctx: WorkerContext): Promise<number> {
 export async function purgeAuthCodes(ctx: WorkerContext): Promise<{ codes: number, sessions: number }> {
   const now = ctx.now()
   const codes = await ctx.admin.deleteFrom('pt_auth_code').where('expires_at', '<', new Date(now.getTime() - DAY)).executeTakeFirst()
-  const sessions = await ctx.admin.deleteFrom('sessions').where('expires_at', '<', now).executeTakeFirst()
+  const sessions = await ctx.admin.deleteFrom('pt_account_session').where('expires_at', '<', now).executeTakeFirst()
   return { codes: Number(codes.numDeletedRows ?? 0), sessions: Number(sessions.numDeletedRows ?? 0) }
 }
 

@@ -83,7 +83,7 @@ Admin app, public server, worker and a shared package (domain logic, types, emai
 - Active, inactive and completed subscriptions are kept while the site exists (relaunch audience; inactive people can come back).
 - Unsubscribed: 12 months after unsubscribing the subscription and its contact are anonymized (name, custom answers, reminder times removed); it remains as a count in stats.
 - Archived sites: 12 months after archiving, their intercessors' personal data is anonymized; stats remain.
-- An account with no subscription, linked contact, app device, membership or password is deleted with its email; a hashed address stays in the global suppression list only if it bounced or complained.
+- An account with no subscription, linked contact, app device, membership, password, Google / Apple identity or live admin session is deleted with its email; a hashed address stays in the global suppression list only if it bounced or complained.
 - Raw `prayer_session` rows older than 2 years are dropped by partition, once the site, campaign and per-person rollups hold everything shown (see [analytics.md](analytics.md)).
 - Champions can't shorten these yet.
 
@@ -91,7 +91,7 @@ Admin app, public server, worker and a shared package (domain logic, types, emai
 
 - **Champions:** accounts on the admin app — Nuxtinator's JWT auth with password, recovered through forgot password. Google and Apple sign-in may be added.
 - **Web intercessors:** email, verified by the email link, or Google / Apple sign-in (email already verified). Signing in to Prayer.Tools on a site with the same address also counts as verified. This is separate from the subscriber magic links used to manage prayer times.
-- **Signing in:** every sign-in happens on `prayer.tools` (email link to the account's address); a site's own domain and the admin app receive it through a one-time code. Public-server sign-ins are rows in core's `sessions`, like the admin app's.
+- **Signing in:** every sign-in happens on `prayer.tools` (email link to the account's address); a site's own domain and the admin app receive it through a one-time code. Public-server sign-ins are rows in `pt_account_session`, each accepted only on the host it was issued for, and never usable as an admin app sign-in.
 - **My prayer:** a signed-in person sees their account (name, email change with confirmation), the campaigns they pray with across sites, past ones, and the sites they help run, with a way into the admin app and to start a new campaign (see [public-server.md](public-server.md)).
 - **App intercessors:** anonymous first (Doxa model): an account without an address; email linking added later, which joins them to the same account as their web signups.
 - Who counts toward the people number: see [campaign-setup.md](campaign-setup.md). Anonymous commitments count toward the campaign's goal while active. Champions see counts and activity for anonymous intercessors, never individual records; anonymous app intercessors are not CRM contacts.

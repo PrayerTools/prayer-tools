@@ -5,12 +5,13 @@ import type { PlatformResponse, ViewResponse } from '../../shared/view'
 import { buildSiteResponse } from './views'
 import { buildMyView } from './my'
 import { sessionUserId } from './account-session'
+import { siteForHandoff } from './account-links'
 import { safeReturnPath } from '@prayertools/shared/auth-codes'
 import { UI_LANGUAGES } from './site-data'
 import type { SiteContext } from './site-context'
 import { NOT_FOUND_CACHE, PRIVATE_CACHE, SHARED_CACHE, setCache } from './request'
 
-const NOTICES = new Set(['link_invalid', 'link_sent', 'signed_out', 'deleted', 'email_changed', 'email_taken'])
+const NOTICES = new Set(['link_invalid', 'link_sent', 'signed_out', 'deleted', 'deleted_kept', 'email_changed', 'email_taken'])
 
 export async function buildPlatformResponse(event: H3Event, fullPath: string): Promise<PlatformResponse> {
   const url = new URL(fullPath, 'http://x')
@@ -23,11 +24,19 @@ export async function buildPlatformResponse(event: H3Event, fullPath: string): P
   const notice = url.searchParams.get('notice')
   // Where to go once signed in: a hand-off to a site or the admin app.
   const continueTo = safeReturnPath(url.searchParams.get('continue'), '')
+  const userId = await sessionUserId(event)
+  const confirm = userId ? await siteForHandoff(url.searchParams.get('confirm')) : null
   return {
     host: 'platform',
     lang,
     donateUrl: platformConfig().donateUrl,
-    page: { kind: 'my', my: await buildMyView(await sessionUserId(event)), notice: notice && NOTICES.has(notice) ? notice : null, continueTo: continueTo.startsWith('/my/') ? continueTo : null },
+    page: {
+      kind: 'my',
+      my: await buildMyView(userId),
+      notice: notice && NOTICES.has(notice) ? notice : null,
+      continueTo: continueTo.startsWith('/my/') ? continueTo : null,
+      confirmSite: confirm ? { host: confirm.host, name: confirm.name, returnTo: safeReturnPath(url.searchParams.get('return')) } : null
+    },
     status: 200,
     cache: 'private',
     title: 'Prayer.Tools'

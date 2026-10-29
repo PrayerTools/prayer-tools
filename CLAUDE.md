@@ -62,7 +62,7 @@ Three processes on one Postgres, one Docker image each (`apps/<app>/Dockerfile`,
 
 - Settings follow code-owned defaults: the DB stores only explicit overrides; defaults and labels live in code / i18n.
 - Manage and unsubscribe links are signed tokens (rotated via `manage_version`); verification, check-in and account codes (`pt_auth_code`: sign-in links, hand-offs to other hosts, email changes) are random and stored hashed.
-- Every person is a `users` row (`@prayertools/shared/accounts`). The account owns name and email; site contacts link to it via `crm_records.user_id` and get those fields copied. Public-server sign-ins are rows in core's `sessions`.
+- Every person is a `users` row (`@prayertools/shared/accounts`). The account owns name and email; site contacts link to it via `crm_records.user_id` and get those fields copied. Public-server sign-ins are rows in `pt_account_session`, bound to the host they were issued on.
 - The admin UI is English only; the public site is translated.
 - Nuxtinator improvements needed by prayer.tools are made in this repo (e.g. the marketing layer), not upstream.
 - Don't read other worktrees (`.worktrees/`) or branches.
