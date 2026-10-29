@@ -15,6 +15,8 @@ export async function buildPlatformResponse(event: H3Event, fullPath: string): P
   const wanted = url.searchParams.get('lang')
   const lang = wanted && UI_LANGUAGES.includes(wanted) ? wanted : negotiateLanguage(getRequestHeader(event, 'accept-language'), UI_LANGUAGES, 'en')
   if (url.pathname === '/') return { host: 'platform', lang, donateUrl: platformConfig().donateUrl, page: { kind: 'home', adminUrl: platformConfig().adminUrl }, status: 200, cache: 'private', title: 'Prayer.Tools' }
+  // Legal pages are written in English only.
+  if (url.pathname === '/privacy' || url.pathname === '/terms') return { host: 'platform', lang: 'en', donateUrl: platformConfig().donateUrl, page: { kind: 'legal', doc: url.pathname === '/privacy' ? 'privacy' : 'terms' }, status: 200, cache: 'private', title: 'Prayer.Tools' }
   if (url.pathname !== '/my') return { host: 'platform', lang, donateUrl: platformConfig().donateUrl, page: { kind: 'not_found' }, status: 404, cache: 'private', title: 'Prayer.Tools' }
   const notice = url.searchParams.get('notice')
   return {
