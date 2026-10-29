@@ -145,6 +145,8 @@ export async function buildSiteView(tx: Tx, ctx: SiteContext, data: SiteData, la
     settings: { showPeopleCount: data.settings.show_people_count, showPrayingNow: data.settings.show_praying_now, sharePrompts: data.settings.share_prompts },
     donateUrl: cfg.donateUrl,
     myUrl: `${platformOrigin()}/my`,
+    privacyUrl: `${platformOrigin()}/privacy`,
+    termsUrl: `${platformOrigin()}/terms`,
     goUrl: `${goOrigin()}/${ctx.slug}`,
     appStoreUrl: cfg.appStoreUrl || null,
     playStoreUrl: cfg.playStoreUrl || null,

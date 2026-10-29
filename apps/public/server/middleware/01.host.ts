@@ -70,7 +70,7 @@ export default defineEventHandler(async (event) => {
   if (kind.kind === 'platform') {
     // With PT_MARKETING_URL set, the marketing site owns "/"; otherwise the landing view renders.
     if ((pathname === '/' || pathname === '') && process.env.PT_MARKETING_URL) return sendRedirect(event, marketingUrl(), 302)
-    if (pathname === '/' || pathname === '' || pathname === '/robots.txt') return
+    if (pathname === '/' || pathname === '' || pathname === '/robots.txt' || pathname === '/privacy' || pathname === '/terms') return
     const m = pathname.match(/^\/my\/(login|email)\/([^/]+)$/)
     if (m && isGet) return m[1] === 'login' ? await exchangeSignInLink(event, decodeURIComponent(m[2]!)) : await confirmEmailChange(event, decodeURIComponent(m[2]!))
     if (pathname === '/my/continue' && isGet) return await continueToSite(event)

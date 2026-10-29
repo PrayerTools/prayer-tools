@@ -214,8 +214,10 @@ function languageItems(s: MySiteView) {
       </template>
     </main>
     <footer class="border-t border-stone-200 bg-white text-sm text-stone-600">
-      <div class="max-w-4xl mx-auto px-4 py-6">
-        <a :href="donateUrl" class="underline">{{ t('footer.give') }}</a>
+      <div class="max-w-4xl mx-auto px-4 py-6 flex flex-wrap gap-x-6 gap-y-2">
+        <a :href="donateUrl" class="underline me-auto">{{ t('footer.give') }}</a>
+        <a href="/privacy" class="underline">{{ t('footer.privacy') }}</a>
+        <a href="/terms" class="underline">{{ t('footer.terms') }}</a>
       </div>
     </footer>
   </div>

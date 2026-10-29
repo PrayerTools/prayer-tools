@@ -13,6 +13,13 @@
     "source": "github:corsacca/nuxtinator/layers/tenancy",
     "tagPrefix": "@nuxtinator/tenancy@"
   },
+  "social-auth": {
+    "pkg": "@nuxtinator/social-auth",
+    "version": "master",
+    "ref": "master",
+    "source": "github:corsacca/nuxtinator/layers/social-auth",
+    "tagPrefix": "@nuxtinator/social-auth@"
+  },
   "email-mailgun": {
     "pkg": "@nuxtinator/email-mailgun",
     "version": "master",

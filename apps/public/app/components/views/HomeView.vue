@@ -36,5 +36,6 @@ const features = [
         </div>
       </section>
     </main>
+    <PlatformFooter />
   </div>
 </template>

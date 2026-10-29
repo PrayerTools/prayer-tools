@@ -68,6 +68,8 @@ export interface SiteView {
   settings: { showPeopleCount: boolean, showPrayingNow: boolean, sharePrompts: boolean }
   donateUrl: string
   myUrl: string
+  privacyUrl: string
+  termsUrl: string
   goUrl: string
   appStoreUrl: string | null
   playStoreUrl: string | null
@@ -244,7 +246,7 @@ export interface PlatformResponse {
   host: 'platform'
   lang: string
   donateUrl: string
-  page: { kind: 'my', my: MyView, notice: string | null, continueTo: string | null } | { kind: 'home', adminUrl: string } | { kind: 'not_found' }
+  page: { kind: 'my', my: MyView, notice: string | null, continueTo: string | null } | { kind: 'home', adminUrl: string } | { kind: 'legal', doc: 'privacy' | 'terms' } | { kind: 'not_found' }
   status: number
   cache: 'private'
   title: string
