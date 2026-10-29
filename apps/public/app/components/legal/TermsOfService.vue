@@ -3,8 +3,9 @@
   <p class="text-sm text-stone-600">Last updated: October 28, 2026</p>
 
   <p>
-    These terms apply to everyone who uses Prayer.Tools: the prayer campaign sites, the My prayer page, the mobile app and
-    the app where organizers manage their campaigns. By using Prayer.Tools you agree to them. Our
+    Prayer.Tools is a project of Gospel Ambition, a 501(c)(3) nonprofit organization ("we", "us"). These terms apply to
+    everyone who uses Prayer.Tools: the prayer campaign sites, the My prayer page and the app where organizers manage
+    their campaigns. By using Prayer.Tools you agree to them. Our
     <a href="/privacy">Privacy Policy</a> explains how we handle your information.
   </p>
 
@@ -72,7 +73,7 @@
 
   <h2>Third-party services</h2>
   <p>
-    Some features rely on others, such as signing in with Google or Apple, app stores and custom domains. Your use of those
+    Some features rely on others, such as signing in with Google or Apple and custom domains. Your use of those
     services is governed by their own terms.
   </p>
 
@@ -85,17 +86,25 @@
 
   <h2>Limitation of liability</h2>
   <p>
-    To the extent the law allows, Prayer.Tools and the people who run it aren't liable for indirect, incidental or
+    To the extent the law allows, Gospel Ambition and the people who run Prayer.Tools aren't liable for indirect, incidental or
     consequential losses, or for lost data, arising from your use of the service. Nothing in these terms limits liability
     that can't be limited by law.
   </p>
 
+  <h2>Governing law and disputes</h2>
+  <p>
+    These terms are governed by and construed in accordance with the laws of the State of Texas, United States. If you
+    have a dispute with us, please contact us first so we can try to resolve it informally before either of us takes
+    formal legal action.
+  </p>
+
   <h2>Changes to these terms</h2>
   <p>
-    We'll post any changes on this page with a new date. If a change is significant, we'll tell organizers by email before
-    it takes effect. Continuing to use Prayer.Tools after a change means you accept the new terms.
+    We'll post any changes on this page with a new date. Continuing to use Prayer.Tools after a change means you accept
+    the new terms.
   </p>
 
   <h2>Contact us</h2>
   <p>Questions about these terms: <a href="mailto:support@prayer.tools">support@prayer.tools</a>.</p>
+  <p>Gospel Ambition, 19500 State Highway 249, Ste 230, Houston, TX 77070-3015, USA.</p>
 </template>
