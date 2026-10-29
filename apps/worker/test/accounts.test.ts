@@ -90,10 +90,12 @@ describe('accounts', () => {
     const email = testEmail(env)
     const created = await env.admin.insertInto('users').values({ email, display_name: 'Squatter', password: 'hash', verified: false }).returning('id').executeTakeFirstOrThrow()
     await env.admin.insertInto('sessions').values({ user_id: created.id, client: 'web', refresh_token_hash: uid(), expires_at: new Date(Date.now() + DAY) } as never).execute()
+    await env.admin.insertInto('user_identities').values({ user_id: created.id, provider: 'google', subject: uid() }).execute()
     await createSubscriber(env, orgId, await createCampaign(env, orgId, { endMode: 'none' }), { email })
     const row = await env.admin.selectFrom('users').select(['verified', 'password']).where('id', '=', created.id).executeTakeFirstOrThrow()
     expect(row).toEqual({ verified: true, password: null })
     expect(await env.admin.selectFrom('sessions').select('id').where('user_id', '=', created.id).execute()).toHaveLength(0)
+    expect(await env.admin.selectFrom('user_identities').select('id').where('user_id', '=', created.id).execute()).toHaveLength(0)
   })
 
   it('does not name an account from an unverified signup', async () => {

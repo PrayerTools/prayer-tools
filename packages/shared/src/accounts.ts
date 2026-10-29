@@ -46,12 +46,16 @@ export async function createAnonymousAccount(db: Db | Tx): Promise<string> {
   return row.id
 }
 
-// Someone proved they hold the account's address. A password set before
-// that was chosen by whoever registered the address, who may not own it, so
-// it is cleared and that account's admin sign-ins end.
+// Someone proved they hold the account's address. Whatever was set up on it
+// before then came from whoever registered the address, who may not own it:
+// its password, admin sign-ins, Google / Apple links and pending password
+// resets are removed.
 export async function markAccountVerified(db: Db | Tx, userId: string): Promise<void> {
   const res = await db.updateTable('users').set({ verified: true, password: null, updated: new Date() }).where('id', '=', userId).where('verified', '=', false).executeTakeFirst()
-  if (Number(res.numUpdatedRows)) await db.deleteFrom('sessions').where('user_id', '=', userId).execute()
+  if (!Number(res.numUpdatedRows)) return
+  await db.deleteFrom('sessions').where('user_id', '=', userId).execute()
+  await db.deleteFrom('user_identities').where('user_id', '=', userId).execute()
+  await sql`DELETE FROM password_reset_requests WHERE user_id = ${userId}`.execute(db)
 }
 
 // The contact shows the account's name and address. A nameless account

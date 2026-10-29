@@ -21,11 +21,17 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     SELECT user_id, created_at, created_at, lower(email), '', email_verified_at IS NOT NULL
     FROM pt_account_map WHERE new_user
   `.execute(db)
+  // An unverified account whose address a person proved here gets verified,
+  // and loses what whoever registered the address set up (see markAccountVerified).
   await sql`
-    UPDATE users u SET verified = true
-    FROM pt_account_map m
-    WHERE m.user_id = u.id AND NOT m.new_user AND m.email_verified_at IS NOT NULL AND NOT u.verified
+    CREATE TEMP TABLE pt_account_proved ON COMMIT DROP AS
+    SELECT u.id FROM users u JOIN pt_account_map m ON m.user_id = u.id
+    WHERE NOT m.new_user AND m.email_verified_at IS NOT NULL AND NOT u.verified
   `.execute(db)
+  await sql`UPDATE users SET verified = true, password = NULL WHERE id IN (SELECT id FROM pt_account_proved)`.execute(db)
+  await sql`DELETE FROM sessions WHERE user_id IN (SELECT id FROM pt_account_proved)`.execute(db)
+  await sql`DELETE FROM user_identities WHERE user_id IN (SELECT id FROM pt_account_proved)`.execute(db)
+  await sql`DELETE FROM password_reset_requests WHERE user_id IN (SELECT id FROM pt_account_proved)`.execute(db)
 
   // Person-scope policies name the old column; they come back below.
   await sql`DROP POLICY person_read ON pt_person_total`.execute(db)
