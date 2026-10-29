@@ -12,7 +12,7 @@ export default defineEventHandler(async (event) => {
   const ctx = siteContext(event)
   const account = await sessionAccount(event)
   const signedIn = account?.email ? { email: account.email, name: account.display_name || null } : null
-  if (!readManageCookie(event, ctx.orgId)) return { referral_code: null, email: signedIn?.email ?? null, name: signedIn?.name ?? null, account: signedIn, subscribed: false }
+  if (!account && !readManageCookie(event, ctx.orgId)) return { referral_code: null, email: null, name: null, account: null, subscribed: false }
   return await withOrg(useDb(), ctx.orgId, async (tx) => {
     const sub = await managedSubscription(tx, event, ctx.orgId)
     if (!sub) return { referral_code: null, email: signedIn?.email ?? null, name: signedIn?.name ?? null, account: signedIn, subscribed: false }

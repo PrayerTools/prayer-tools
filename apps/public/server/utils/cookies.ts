@@ -30,12 +30,13 @@ export function readManageCookie(event: H3Event, orgId: string): { subscriptionI
   return { subscriptionId: link.subscriptionId, version: link.version ?? 0 }
 }
 
-export function setSessionCookie(event: H3Event, token: string, maxAgeSeconds: number): void {
-  setCookie(event, SESSION_COOKIE, token, { ...base(event), maxAge: maxAgeSeconds })
+// `domain` set: the cookie covers that domain and all its subdomains.
+export function setSessionCookie(event: H3Event, token: string, maxAgeSeconds: number, domain: string | null): void {
+  setCookie(event, SESSION_COOKIE, token, { ...base(event), maxAge: maxAgeSeconds, ...(domain ? { domain } : {}) })
 }
 
-export function clearSessionCookie(event: H3Event): void {
-  deleteCookie(event, SESSION_COOKIE, base(event))
+export function clearSessionCookie(event: H3Event, domain: string | null): void {
+  deleteCookie(event, SESSION_COOKIE, { ...base(event), ...(domain ? { domain } : {}) })
 }
 
 // Draft preview: the cookie carries a prefix of the current preview token

@@ -20,7 +20,7 @@ Monorepo for prayer.tools v3 (with orgs). Plans live in `plans/` — they are th
   - App role URL: `postgres://pt2_app:dev@localhost:5432/<db>` (RLS enforced; admin requests, public server)
 - Migrations run when the admin app boots; `scripts/migrate.ts` runs the same set standalone (the test suites use it), loading layer migrations from `NUXTINATOR_SOURCE_DIR` when set.
 - Mailpit: SMTP localhost:1025, UI http://localhost:8025 (`MAIL_PROVIDER=smtp`).
-- Sites in dev: `http://<slug>.localhost:3480`; platform host (My prayer) `http://localhost:3480/my`; API `http://api.localhost:3480`; go host `http://go.localhost:3480`. (`PT_SITE_BASE_HOST=localhost:3480`.)
+- Sites in dev: `http://<slug>.localhost:3480`; platform host (My prayer) `http://localhost:3480/my`; API `http://api.localhost:3480`; go host `http://go.localhost:3480`. (`PT_SITE_BASE_HOST=localhost:3480`.) Browsers refuse `localhost` as a cookie domain, so there sites get the My prayer sign-in by hand-off. To try the sign-in shared across subdomain sites, use `PT_SITE_BASE_HOST=lvh.me:3480` and `PT_SITE_SCHEME=http` in every app, and start the public server with `--host 127.0.0.1` (`lvh.me` and its subdomains resolve to 127.0.0.1).
 
 ## RLS and scopes
 

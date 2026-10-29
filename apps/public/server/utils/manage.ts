@@ -12,15 +12,26 @@ import type { TranslatableText } from '@prayertools/shared/db/schema'
 import type { CommitmentView, ManageCampaignView, ManageView } from '../../shared/view'
 import { readManageCookie } from './cookies'
 import { useDb } from './db'
+import { sessionUserId } from './account-session'
 import type { SiteContext } from './site-context'
 
-// The subscription the manage cookie names, if its version is still current.
+// The subscription the manage cookie names, if its version is still current;
+// otherwise the signed-in person's email subscription on this site.
 export async function managedSubscription(tx: Tx, event: H3Event, orgId: string): Promise<SubscriptionRow | null> {
   const c = readManageCookie(event, orgId)
-  if (!c) return null
-  const sub = await tx.selectFrom('pt_subscription').selectAll().where('id', '=', c.subscriptionId).executeTakeFirst()
-  if (!sub || sub.manage_version !== c.version || sub.anonymized_at) return null
-  return sub
+  if (c) {
+    const sub = await tx.selectFrom('pt_subscription').selectAll().where('id', '=', c.subscriptionId).executeTakeFirst()
+    if (sub && sub.manage_version === c.version && !sub.anonymized_at) return sub
+  }
+  const userId = await sessionUserId(event)
+  if (!userId) return null
+  return await tx
+    .selectFrom('pt_subscription')
+    .selectAll()
+    .where('user_id', '=', userId)
+    .where('delivery', '=', 'email')
+    .where('anonymized_at', 'is', null)
+    .executeTakeFirst() ?? null
 }
 
 export function commitmentView(row: CommitmentRow, campaign: CampaignRow | undefined): CommitmentView {

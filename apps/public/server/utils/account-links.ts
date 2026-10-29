@@ -4,6 +4,7 @@
 // and redeeming the hand-off code it comes back with.
 import type { H3Event } from 'h3'
 import { platformConfig, platformOrigin } from '@prayertools/shared/config'
+import { classifyHost } from '@prayertools/shared/site'
 import { HANDOFF_SECONDS, issueAuthCode, safeReturnPath, takeAuthCode } from '@prayertools/shared/auth-codes'
 import { accountByEmail, accountById, markAccountVerified, syncAccountContacts } from '@prayertools/shared/accounts'
 import { useDb } from './db'
@@ -75,7 +76,8 @@ function continueLater(event: H3Event) {
 }
 
 // `/my/continue?host=<site host>&return=<path>`: sends the signed-in person
-// back to the site with a one-time code. Any site other than their own waits
+// back to the site. A site on the shared domain already sees the sign-in; a
+// custom domain gets a one-time code, and one that is not their own waits
 // for them to confirm on My prayer, since its owner then learns who they are.
 export async function continueToSite(event: H3Event) {
   const q = getQuery(event)
@@ -84,6 +86,9 @@ export async function continueToSite(event: H3Event) {
   const userId = await sessionUserId(event)
   if (!userId) return continueLater(event)
   const back = safeReturnPath(q.return)
+  if (platformConfig().sharedSessionDomain && classifyHost(site.host).kind === 'site') {
+    return sendRedirect(event, `${platformConfig().siteScheme}://${site.host}${back}`, 302)
+  }
   if (await isOwnSite(userId, site.orgId)) return sendRedirect(event, await handoffUrl(userId, site.host, back), 302)
   return myRedirect(event, { confirm: site.host, return: back })
 }

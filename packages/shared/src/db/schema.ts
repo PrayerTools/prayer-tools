@@ -92,7 +92,8 @@ export interface PtAuthCodeTable {
 export interface PtAccountSessionTable {
   id: Generated<string>
   user_id: string
-  // The only host the session's cookie is accepted on.
+  // The only host the session's cookie is accepted on, or `.<domain>` for
+  // the platform host and sites sharing one cookie.
   host: string
   token_hash: string
   created_at: Generated<Date>
