@@ -27,7 +27,7 @@ export default defineEventHandler(async (event) => {
     if (rule.duration_min === null && campaign.goal !== 'people') rule.duration_min = defaultDuration(campaign, settings.default_duration_min)
     const errors = validateRuleForCampaign(rule, campaign)
     if (errors.length) throw createError({ statusCode: 400, statusMessage: 'commitment', data: { errors } })
-    const sub = await ensureAppSubscription(tx, device.intercessorId, { timezone: rule.timezone ?? null, language: typeof body.language === 'string' ? body.language : null })
+    const sub = await ensureAppSubscription(tx, device.userId, { timezone: rule.timezone ?? null, language: typeof body.language === 'string' ? body.language : null })
     if (sub.status === 'unsubscribed') throw createError({ statusCode: 409, statusMessage: 'Unsubscribed' })
     return await insertCommitment(tx, sub, campaign, rule)
   })

@@ -7,7 +7,7 @@ export default defineEventHandler(async (event) => {
   const device = await requireDevice(event)
   const site = await apiSite(getRouterParam(event, 'slug'))
   await withOrg(useDb(), site.orgId, async (tx) => {
-    const sub = await appSubscription(tx, device.intercessorId)
+    const sub = await appSubscription(tx, device.userId)
     if (sub && sub.status !== 'unsubscribed') await setSubscriptionStatus(tx, sub.id, 'unsubscribed')
   })
   return { ok: true, status: 'unsubscribed' }

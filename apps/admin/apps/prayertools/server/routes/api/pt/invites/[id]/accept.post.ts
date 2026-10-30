@@ -10,7 +10,7 @@ export default defineEventHandler(async (event) => {
   if (!/^[0-9a-f-]{36}$/i.test(id)) ptNotFound('Invitation not found.')
   const me = await db.selectFrom('users').select(['email', 'verified']).where('id', '=', user.userId).executeTakeFirstOrThrow()
   const invite = await db.selectFrom('invites').select(['id', 'email', 'invited_by']).where('id', '=', id).executeTakeFirst()
-  if (!invite || !me.verified || invite.email?.toLowerCase() !== me.email.toLowerCase()) ptNotFound('Invitation not found.')
+  if (!invite || !me.verified || !me.email || invite.email?.toLowerCase() !== me.email.toLowerCase()) ptNotFound('Invitation not found.')
   const memberships = await db.transaction().execute(trx => acceptInvite(trx, invite.id, user.userId))
   await emitAcceptedMemberships(memberships, user.userId, invite.invited_by)
   await emitInviteAccepted(invite.id, user.userId, invite.invited_by)

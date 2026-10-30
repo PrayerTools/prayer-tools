@@ -3,7 +3,8 @@
 // (smoke+<run>@example.com) and removes them at the end.
 // Usage (from apps/public): bun run scripts/smoke.ts
 // Env: PT_SECRET and APP_DATABASE_URL (read from .env), ADMIN_DATABASE_URL (the
-//      same database on the admin role), PUBLIC_URL (the running public server).
+//      same database on the admin role), PUBLIC_URL (the running public server;
+//      its host is the site base host, e.g. localhost or lvh.me).
 import { sql } from 'kysely'
 import { createDb } from '@prayertools/shared/db/connect'
 import { withOrg } from '@prayertools/shared/db/scope'
@@ -16,11 +17,15 @@ if (!process.env.PUBLIC_URL || !process.env.ADMIN_DATABASE_URL) {
 }
 const BASE = process.env.PUBLIC_URL
 const PORT = new URL(BASE).port || '80'
+// The site base host: `localhost`, or a real domain (e.g. `lvh.me`) where My
+// prayer and the subdomain sites share one sign-in cookie.
+const ROOT = new URL(BASE).hostname
+const SHARED = ROOT !== 'localhost' && ROOT.includes('.')
 const admin = createDb(process.env.ADMIN_DATABASE_URL)
 const app = createDb(process.env.APP_DATABASE_URL!)
 const run = Date.now().toString(36)
 const emails: string[] = []
-const intercessors: string[] = []
+const accounts: string[] = []
 let failures = 0
 
 function email(tag: string): string {
@@ -77,20 +82,20 @@ async function orgId(slug: string): Promise<string> {
   return (await admin.selectFrom('orgs').select('id').where('slug', '=', slug).executeTakeFirstOrThrow()).id
 }
 
-const SITE = 'ramadan-demo.localhost'
-const COVERAGE = 'demo-247.localhost'
+const SITE = `ramadan-demo.${ROOT}`
+const COVERAGE = `demo-247.${ROOT}`
 
 console.log('Hosts')
-check('unknown host → 404', (await req('nope-nope.localhost', '/')).status === 404)
+check('unknown host → 404', (await req(`nope-nope.${ROOT}`, '/')).status === 404)
 check('custom domain not in pt_site_domain → 404', (await req('example.org', '/')).status === 404)
-check('draft site without preview → 404', (await req('draft-site.localhost', '/')).status === 404)
-const plat = await req('localhost', '/')
+check('draft site without preview → 404', (await req(`draft-site.${ROOT}`, '/')).status === 404)
+const plat = await req(ROOT, '/')
 check('platform / → landing page or marketing redirect', plat.status === 200 || (plat.status === 302 && /prayer\.tools/.test(plat.headers.get('location') ?? '')))
-check('api host root → 404', (await req('api.localhost', '/')).status === 404)
-check('api host serves no site pages', (await req('api.localhost', '/pray')).status === 404)
-const go = await req('go.localhost', '/ramadan-demo?utm_source=qr')
-check('go host → site redirect keeps query', go.status === 302 && go.headers.get('location') === `http://ramadan-demo.localhost:${PORT}?utm_source=qr`, go.headers.get('location'))
-check('go host draft → 404', (await req('go.localhost', '/draft-site')).status === 404)
+check('api host root → 404', (await req(`api.${ROOT}`, '/')).status === 404)
+check('api host serves no site pages', (await req(`api.${ROOT}`, '/pray')).status === 404)
+const go = await req(`go.${ROOT}`, '/ramadan-demo?utm_source=qr')
+check('go host → site redirect keeps query', go.status === 302 && go.headers.get('location') === `http://ramadan-demo.${ROOT}:${PORT}?utm_source=qr`, go.headers.get('location'))
+check('go host draft → 404', (await req(`go.${ROOT}`, '/draft-site')).status === 404)
 check('site host has no /my', (await req(SITE, '/my')).status === 404)
 check('site host has no /v1', (await req(SITE, '/v1/directory')).status === 404)
 
@@ -139,8 +144,6 @@ const sub1 = await withOrg(admin, ramadan, tx => tx.selectFrom('pt_subscription 
 check('subscription row created (fr, Europe/Paris, unverified)', sub1 && !sub1.verified_at && sub1.language === 'fr' && sub1.timezone === 'Europe/Paris', sub1)
 const cm1 = await admin.selectFrom('pt_commitment').selectAll().where('subscription_id', '=', sub1!.id).execute()
 check('commitment stored without reminder until verified', cm1.length === 1 && cm1[0]!.next_reminder_utc === null)
-const staffNews = await sql<{ n: number }>`select count(*)::int n from crm_channel_consents c join orgs o on o.id = c.org_id join crm_channels ch on ch.id = c.channel_id where o.slug = 'staff' and c.purpose = 'platform_news' and ch.normalized_value = ${e1}`.execute(admin)
-check('platform news consent in staff org', staffNews.rows[0]!.n === 1)
 const verifyMail = await mailTo(e1, /\/verify\/[A-Za-z0-9_-]+/)
 check('verification email arrives in French', !!verifyMail && /Confirmez/.test(verifyMail.subject), verifyMail)
 const verify = await req(SITE, verifyMail!.match)
@@ -148,6 +151,12 @@ const manageCookie = cookieOf(verify, 'pt_m')
 check('verify → today\'s prayer content with confirmed note + manage cookie', verify.status === 302 && verify.headers.get('location') === '/fr/pray?confirmed=1' && !!manageCookie, verify.headers.get('location'))
 const cm1b = await admin.selectFrom('pt_commitment').select('next_reminder_utc').where('subscription_id', '=', sub1!.id).executeTakeFirstOrThrow()
 check('reminder scheduled after verification', cm1b.next_reminder_utc !== null)
+let staffNews = 0
+for (let i = 0; i < 20 && !staffNews; i++) {
+  staffNews = (await sql<{ n: number }>`select count(*)::int n from crm_channel_consents c join orgs o on o.id = c.org_id join crm_channels ch on ch.id = c.channel_id where o.slug = 'staff' and c.purpose = 'platform_news' and ch.normalized_value = ${e1}`.execute(admin)).rows[0]!.n
+  if (!staffNews) await Bun.sleep(250)
+}
+check('platform news consent in staff org once verified', staffNews === 1)
 check('verify link is single-use', (await req(SITE, verifyMail!.match)).status === 200)
 const again = await req(SITE, '/api/signup', { body: { email: e1, language: 'en', timezone: 'UTC', commitments: [{ frequency: 'daily', time: '05:00' }], consents: {} } })
 check('re-signup of a verified address adds nothing (manage link sent instead)', again.json().verify === true && (await admin.selectFrom('pt_commitment').select('id').where('subscription_id', '=', sub1!.id).execute()).length === 1)
@@ -243,11 +252,11 @@ const prev = await withOrg(admin, draft, tx => tx.selectFrom('pt_site').select('
 const pvToken = randomToken(24)
 await withOrg(admin, draft, tx => tx.updateTable('pt_site').set({ preview_token_hash: hashToken(pvToken) }).execute())
 try {
-  const enter = await req('draft-site.localhost', `/preview/${pvToken}`)
+  const enter = await req(`draft-site.${ROOT}`, `/preview/${pvToken}`)
   const pc = cookieOf(enter, 'pt_preview')
-  const page = await req('draft-site.localhost', '/', { cookie: pc })
+  const page = await req(`draft-site.${ROOT}`, '/', { cookie: pc })
   check('preview link opens the draft, never cached', enter.status === 302 && page.status === 200 && page.headers.get('cache-control') === 'private, no-store')
-  check('wrong preview token → 404', (await req('draft-site.localhost', '/preview/nope')).status === 404)
+  check('wrong preview token → 404', (await req(`draft-site.${ROOT}`, '/preview/nope')).status === 404)
 } finally {
   await withOrg(admin, draft, tx => tx.updateTable('pt_site').set({ preview_token_hash: prev.preview_token_hash }).execute())
 }
@@ -259,47 +268,146 @@ check('unknown legacy key → polite 404', (await req(SITE, '/subscriptions_app/
 await admin.deleteFrom('pt_legacy_key').where('key_hash', '=', hashToken(legacyKey)).execute()
 
 console.log('My prayer')
-check('link request always answers the same', (await req('localhost', '/api/my/link', { body: { email: 'nobody@example.com' } })).json().ok === true)
-await req('localhost', '/api/my/link', { body: { email: e1.toUpperCase(), language: 'en' } })
+check('link request always answers the same', (await req(ROOT, '/api/my/link', { body: { email: 'nobody@example.com' } })).json().ok === true)
+await req(ROOT, '/api/my/link', { body: { email: e1.toUpperCase(), language: 'en' } })
 const myMail = await mailTo(e1, /\/my\/login\/[A-Za-z0-9_-]+/)
 check('My prayer link emailed', !!myMail)
-const login = await req('localhost', new URL(myMail!.match, 'http://x').pathname.replace(/^.*\/my\//, '/my/'))
-const myCookie = cookieOf(login, 'pt_my')
+const login = await req(ROOT, new URL(myMail!.match, 'http://x').pathname.replace(/^.*\/my\//, '/my/'))
+const myCookie = cookieOf(login, 'pt_session')
 check('login exchanges the token for a session cookie', login.status === 302 && login.headers.get('location') === '/my' && !!myCookie)
-check('login token is single-use', (await req('localhost', new URL(myMail!.match, 'http://x').pathname.replace(/^.*\/my\//, '/my/'))).headers.get('location') === '/my?notice=link_invalid')
-const my = (await req('localhost', '/api/view?path=/my', { cookie: myCookie })).json()
+check('login token is single-use', (await req(ROOT, new URL(myMail!.match, 'http://x').pathname.replace(/^.*\/my\//, '/my/'))).headers.get('location') === '/my?notice=link_invalid')
+const my = (await req(ROOT, '/api/view?path=/my', { cookie: myCookie })).json()
 const mySite = my.page.my.sites.find((s: { orgId: string }) => s.orgId === ramadan)
 check('My prayer lists the verified site', my.page.my.signedIn && !!mySite)
-check('My prayer change applied in the site org', (await req('localhost', `/api/my/${ramadan}/${mySite.subscriptionId}/profile`, { cookie: myCookie, body: { language: 'ar' } })).status === 200
+check('My prayer change applied in the site org', (await req(ROOT, `/api/my/${ramadan}/${mySite.subscriptionId}/profile`, { cookie: myCookie, body: { language: 'ar' } })).status === 200
   && (await admin.selectFrom('pt_subscription').select('language').where('id', '=', sub1!.id).executeTakeFirstOrThrow()).language === 'ar')
-check('My prayer export', (await req('localhost', '/api/my/export', { cookie: myCookie })).status === 200)
-await req('localhost', '/api/my/logout', { method: 'POST', cookie: myCookie })
-check('sign out revokes the session', (await req('localhost', '/api/my/export', { cookie: myCookie })).status === 401)
+check('My prayer export', (await req(ROOT, '/api/my/export', { cookie: myCookie })).status === 200)
+await req(ROOT, '/api/my/logout', { method: 'POST', cookie: myCookie })
+check('sign out revokes the session', (await req(ROOT, '/api/my/export', { cookie: myCookie })).status === 401)
+
+console.log('Accounts and sign-in')
+const mailSeen = new Set<string>()
+let mailSince = Date.now()
+// A link of this kind sent to the address since the last request this
+// section made, and not used yet.
+async function freshLink(address: string, pattern: RegExp): Promise<string | null> {
+  for (let i = 0; i < 40; i++) {
+    const list = await (await fetch(`http://localhost:8025/api/v1/search?query=${encodeURIComponent(`to:${address}`)}`)).json() as { messages: { ID: string, Created: string }[] }
+    for (const m of list.messages ?? []) {
+      if (new Date(m.Created).getTime() < mailSince) continue
+      const found = ((await (await fetch(`http://localhost:8025/api/v1/message/${m.ID}`)).json()) as { Text: string }).Text.match(pattern)
+      if (found && !mailSeen.has(found[0])) {
+        mailSeen.add(found[0])
+        return new URL(found[0]).pathname
+      }
+    }
+    await Bun.sleep(250)
+  }
+  return null
+}
+async function signIn(address: string): Promise<{ cookie: string, raw: string }> {
+  mailSince = Date.now()
+  await req(ROOT, '/api/my/link', { body: { email: address } })
+  const link = await freshLink(address, /https?:\/\/\S+?\/my\/login\/[A-Za-z0-9_-]+/)
+  const res = await req(ROOT, link!)
+  return { cookie: cookieOf(res, 'pt_session'), raw: res.cookies.find(c => c.startsWith('pt_session=')) ?? '' }
+}
+const sessionId = (cookie: string) => cookie.split('=')[1]!.split('.')[0]!
+const account = await admin.selectFrom('users').select(['id']).where('email', '=', e1).executeTakeFirstOrThrow()
+const s1 = await signIn(e1)
+check(SHARED ? 'sign-in cookie set for the shared domain' : 'sign-in cookie set for the platform host only', !!s1.cookie && (SHARED ? new RegExp(`Domain=\\.?${ROOT}`, 'i').test(s1.raw) : !/Domain=/i.test(s1.raw)), s1.raw)
+
+check('cross-site write refused (Sec-Fetch-Site)', (await req(ROOT, '/api/my/account', { cookie: s1.cookie, body: { name: 'Smoke' }, headers: { 'sec-fetch-site': 'same-site' } })).status === 403)
+check('cross-site write refused (Origin)', (await req(ROOT, '/api/my/account', { cookie: s1.cookie, body: { name: 'Smoke' }, headers: { origin: `http://${SITE}:${PORT}` } })).status === 403)
+check('same-origin write accepted', (await req(ROOT, '/api/my/account', { cookie: s1.cookie, body: { name: 'Smoke' }, headers: { 'sec-fetch-site': 'same-origin' } })).status === 200)
+
+const siteHost = `${SITE}:${PORT}`
+const pathOf = (loc: string | null) => loc ? new URL(loc).pathname + new URL(loc).search : ''
+const toSite = await req(ROOT, `/my/continue?host=${encodeURIComponent(siteHost)}&return=/signup`, { cookie: s1.cookie })
+if (SHARED) {
+  check('subdomain site sees the shared sign-in', (await req(SITE, '/api/me', { cookie: s1.cookie })).json().account?.email === e1)
+  check('subdomain sign-in returns without a code', toSite.status === 302 && toSite.headers.get('location') === `http://${siteHost}/signup`, toSite.headers.get('location'))
+} else {
+  check('platform sign-in not accepted on a site host', (await req(SITE, '/api/me', { cookie: s1.cookie })).json().account === null)
+  check('own site gets a hand-off code at once', toSite.status === 302 && /\/account\/claim\//.test(toSite.headers.get('location') ?? ''), toSite.headers.get('location'))
+  const wrongHost = await req(COVERAGE, pathOf(toSite.headers.get('location')))
+  check('hand-off code refused on another host', !cookieOf(wrongHost, 'pt_session'))
+  const again = await req(ROOT, `/my/continue?host=${encodeURIComponent(siteHost)}&return=/signup`, { cookie: s1.cookie })
+  const claimed = await req(SITE, pathOf(again.headers.get('location')))
+  const siteCookie = cookieOf(claimed, 'pt_session')
+  check('hand-off code signs in on its host', claimed.status === 302 && claimed.headers.get('location') === '/signup' && (await req(SITE, '/api/me', { cookie: siteCookie })).json().account?.email === e1)
+  check('site sign-in not accepted on the platform host', (await req(ROOT, '/api/view?path=/my', { cookie: siteCookie })).json().page.my.signedIn === false)
+}
+const meHere = (await req(SITE, '/api/me', { cookie: manageCookie })).json()
+check('/api/me lists the campaigns with prayer times', Array.isArray(meHere.campaigns) && meHere.campaigns.includes(campaignId), meHere)
+
+const customHost = `smoke-${run}.example.test`
+await admin.insertInto('pt_site_domain').values({ org_id: beirut, hostname: customHost, status: 'failing', created_at: new Date() }).execute()
+try {
+  const toCustom = await req(ROOT, `/my/continue?host=${encodeURIComponent(`${customHost}:${PORT}`)}&return=/`, { cookie: s1.cookie })
+  check('unfamiliar custom domain waits for confirmation', toCustom.status === 302 && (toCustom.headers.get('location') ?? '').startsWith('/my?confirm='), toCustom.headers.get('location'))
+  const confirmed = await req(ROOT, '/api/my/continue', { cookie: s1.cookie, body: { host: `${customHost}:${PORT}`, return: '/' }, headers: { 'sec-fetch-site': 'same-origin' } })
+  const claimedCustom = await req(customHost, pathOf(confirmed.json().url))
+  const customCookie = cookieOf(claimedCustom, 'pt_session')
+  check('confirmed hand-off signs in on the custom domain', !!customCookie && (await req(customHost, '/api/me', { cookie: customCookie })).json().account?.email === e1)
+  check('custom-domain sign-in not accepted on the platform host', (await req(ROOT, '/api/view?path=/my', { cookie: customCookie })).json().page.my.signedIn === false)
+} finally {
+  await admin.deleteFrom('pt_site_domain').where('hostname', '=', customHost).execute()
+}
+
+const toAdmin = await req(ROOT, '/my/admin?to=/', { cookie: s1.cookie })
+check('recent sign-in opens the admin hand-off', toAdmin.status === 302 && /\/api\/pt\/handoff\?code=/.test(toAdmin.headers.get('location') ?? ''), toAdmin.headers.get('location'))
+const handoffCode = await admin.selectFrom('pt_auth_code').select('authenticated_at').where('user_id', '=', account.id).where('purpose', '=', 'handoff').orderBy('created_at', 'desc').executeTakeFirst()
+check('admin hand-off carries the sign-in time', !!handoffCode?.authenticated_at)
+
+const moved = email('moved')
+mailSince = Date.now()
+const changed = await req(ROOT, '/api/my/email', { cookie: s1.cookie, body: { email: moved, language: 'en' } })
+check('fresh sign-in may change the email', changed.status === 200, changed.text)
+const confirmPath = await freshLink(moved, /https?:\/\/\S+?\/my\/email\/[A-Za-z0-9_-]+/)
+const undoPath = await freshLink(e1, /https?:\/\/\S+?\/my\/email-undo\/[A-Za-z0-9_-]+/)
+check('old address told, with an undo link', !!undoPath)
+const confirmRes = await req(ROOT, confirmPath!)
+check('confirming the new address signs nobody in', confirmRes.headers.get('location') === '/my?notice=email_changed' && !cookieOf(confirmRes, 'pt_session'), confirmRes.headers.get('location'))
+check('address changed', (await admin.selectFrom('users').select('email').where('id', '=', account.id).executeTakeFirstOrThrow()).email === moved)
+await admin.updateTable('users').set({ password: 'set-by-someone-else' }).where('id', '=', account.id).execute()
+const undone = await req(ROOT, undoPath!)
+const afterUndo = await admin.selectFrom('users').select(['email', 'password']).where('id', '=', account.id).executeTakeFirstOrThrow()
+check('undo restores the old address and removes the password', undone.headers.get('location') === '/my?notice=email_kept' && afterUndo.email === e1 && afterUndo.password === null, afterUndo)
+check('undo ends earlier sign-ins', (await req(ROOT, '/api/my/export', { cookie: s1.cookie })).status === 401)
+
+const s2 = await signIn(e1)
+await admin.updateTable('pt_account_session').set({ created_at: new Date(Date.now() - 2 * 86_400_000) }).where('id', '=', sessionId(s2.cookie)).execute()
+const staleAdmin = await req(ROOT, '/my/admin?to=/', { cookie: s2.cookie })
+check('old sign-in asks for a fresh link before the admin app', (staleAdmin.headers.get('location') ?? '').startsWith('/my?notice=reauth'), staleAdmin.headers.get('location'))
+const staleEmail = await req(ROOT, '/api/my/email', { cookie: s2.cookie, body: { email: email('late') } })
+check('old sign-in may not change the email', staleEmail.status === 403 && staleEmail.json().data?.reauth === true, staleEmail.text)
+await req(ROOT, '/api/my/logout', { method: 'POST', cookie: s2.cookie })
 
 console.log('App API')
-const reg = await req('api.localhost', '/v1/devices', { body: { platform: 'ios', app_version: '1.0.0', timezone: 'Asia/Beirut', language: 'en' } })
+const reg = await req(`api.${ROOT}`, '/v1/devices', { body: { platform: 'ios', app_version: '1.0.0', timezone: 'Asia/Beirut', language: 'en' } })
 const device = reg.json()
-intercessors.push(device.intercessor_id)
+accounts.push(device.intercessor_id)
 const auth = { authorization: `Bearer ${device.credential}` }
 check('device registration', reg.status === 201 && !!device.credential)
-check('site info', (await req('api.localhost', '/v1/sites/demo-247')).json().current_campaign?.goal === 'coverage')
-check('content JSON', (await req('api.localhost', '/v1/sites/ramadan-demo/content/6?language=fr')).json().blocks.length > 0)
-check('subscribe', (await req('api.localhost', '/v1/sites/demo-247/subscription', { method: 'PUT', headers: auth, body: { language: 'en', timezone: 'Asia/Beirut' } })).status === 200)
-const appCm = await req('api.localhost', '/v1/sites/demo-247/commitments', { headers: auth, body: { kind: 'recurring', frequency: 'daily', time: '03:00', timezone: 'Asia/Beirut', duration_min: 30 } })
+check('site info', (await req(`api.${ROOT}`, '/v1/sites/demo-247')).json().current_campaign?.goal === 'coverage')
+check('content JSON', (await req(`api.${ROOT}`, '/v1/sites/ramadan-demo/content/6?language=fr')).json().blocks.length > 0)
+check('subscribe', (await req(`api.${ROOT}`, '/v1/sites/demo-247/subscription', { method: 'PUT', headers: auth, body: { language: 'en', timezone: 'Asia/Beirut' } })).status === 200)
+const appCm = await req(`api.${ROOT}`, '/v1/sites/demo-247/commitments', { headers: auth, body: { kind: 'recurring', frequency: 'daily', time: '03:00', timezone: 'Asia/Beirut', duration_min: 30 } })
 check('commitment created without email reminder', appCm.status === 201 && (await admin.selectFrom('pt_commitment').select('next_reminder_utc').where('id', '=', appCm.json().id).executeTakeFirstOrThrow()).next_reminder_utc === null)
 const appCampaign = appCm.json().campaign_id
-check('ping', (await req('api.localhost', '/v1/sites/demo-247/pings', { headers: auth, body: { id: crypto.randomUUID(), campaign: appCampaign, day: 1 } })).status === 200)
+check('ping', (await req(`api.${ROOT}`, '/v1/sites/demo-247/pings', { headers: auth, body: { id: crypto.randomUUID(), campaign: appCampaign, day: 1 } })).status === 200)
 const amenId = crypto.randomUUID()
-const a1 = await req('api.localhost', '/v1/sites/demo-247/amen', { headers: auth, body: { id: amenId, campaign: appCampaign, day: 1, seconds: 300 } })
-const a2 = await req('api.localhost', '/v1/sites/demo-247/amen', { headers: auth, body: { id: amenId, campaign: appCampaign, day: 1, seconds: 300 } })
+const a1 = await req(`api.${ROOT}`, '/v1/sites/demo-247/amen', { headers: auth, body: { id: amenId, campaign: appCampaign, day: 1, seconds: 300 } })
+const a2 = await req(`api.${ROOT}`, '/v1/sites/demo-247/amen', { headers: auth, body: { id: amenId, campaign: appCampaign, day: 1, seconds: 300 } })
 check('amen recorded once, repeat ignored', a1.json().recorded === true && a2.json().recorded === false)
-const subs = (await req('api.localhost', '/v1/me/subscriptions', { headers: auth })).json()
+const subs = (await req(`api.${ROOT}`, '/v1/me/subscriptions', { headers: auth })).json()
 check('subscription status list', subs.subscriptions.length === 1 && subs.subscriptions[0].campaigns[0].commitments.length === 1)
-check('directory', (await req('api.localhost', '/v1/directory')).status === 200)
-check('collect app_open', (await req('api.localhost', '/v1/collect', { headers: auth, body: { event_type: 'app_open' } })).status === 202)
-check('unsubscribe', (await req('api.localhost', '/v1/sites/demo-247/subscription', { method: 'DELETE', headers: auth })).json().status === 'unsubscribed')
-check('unauthenticated calls refused', (await req('api.localhost', '/v1/me/subscriptions')).status === 401)
-check('OpenAPI served', (await req('api.localhost', '/v1/openapi.json')).json().openapi?.startsWith('3.'))
+check('directory', (await req(`api.${ROOT}`, '/v1/directory')).status === 200)
+check('collect app_open', (await req(`api.${ROOT}`, '/v1/collect', { headers: auth, body: { event_type: 'app_open' } })).status === 202)
+check('unsubscribe', (await req(`api.${ROOT}`, '/v1/sites/demo-247/subscription', { method: 'DELETE', headers: auth })).json().status === 'unsubscribed')
+check('unauthenticated calls refused', (await req(`api.${ROOT}`, '/v1/me/subscriptions')).status === 401)
+check('OpenAPI served', (await req(`api.${ROOT}`, '/v1/openapi.json')).json().openapi?.startsWith('3.'))
 
 console.log('Clean-up')
 for (const org of [ramadan, beirut, await orgId('staff')]) {
@@ -318,8 +426,8 @@ for (const org of [ramadan, beirut, await orgId('staff')]) {
     await tx.deleteFrom('crm_channels').where('id', 'in', ids).execute()
   })
 }
-await admin.deleteFrom('pt_subscription').where('intercessor_id', 'in', intercessors).execute()
-await admin.deleteFrom('pt_intercessor').where(eb => eb.or([eb('email', 'in', emails), eb('id', 'in', intercessors)])).execute()
+await admin.deleteFrom('pt_subscription').where('user_id', 'in', accounts).execute()
+await admin.deleteFrom('users').where(eb => eb.or([eb('email', 'in', emails), eb('id', 'in', accounts)])).execute()
 await admin.destroy()
 await app.destroy()
 

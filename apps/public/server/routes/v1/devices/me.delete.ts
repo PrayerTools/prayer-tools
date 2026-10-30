@@ -4,6 +4,6 @@ import { requireDevice } from '../../../utils/app-api'
 
 export default defineEventHandler(async (event) => {
   const device = await requireDevice(event)
-  await useDb().deleteFrom('pt_intercessor_device').where('id', '=', device.deviceId).execute()
+  await useDb().deleteFrom('pt_user_device').where('id', '=', device.deviceId).execute()
   return { ok: true }
 })

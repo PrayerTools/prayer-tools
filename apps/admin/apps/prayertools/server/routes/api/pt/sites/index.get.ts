@@ -45,12 +45,13 @@ export default defineEventHandler(async (event) => {
 // Unexpired invitations addressed to the user's verified email.
 async function ptPendingInvites(userId: string) {
   const me = await db.selectFrom('users').select(['email', 'verified']).where('id', '=', userId).executeTakeFirst()
-  if (!me?.verified) return []
+  if (!me?.verified || !me.email) return []
+  const email = me.email
   const invites = await db
     .selectFrom('invites')
     .leftJoin('users as inviter', 'inviter.id', 'invites.invited_by')
     .select(['invites.id', 'invites.expires_at', 'inviter.display_name as invited_by'])
-    .where(eb => eb(eb.fn('lower', ['invites.email']), '=', me.email.toLowerCase()))
+    .where(eb => eb(eb.fn('lower', ['invites.email']), '=', email.toLowerCase()))
     .where('invites.accepted_at', 'is', null)
     .where('invites.expires_at', '>', new Date())
     .orderBy('invites.created_at', 'desc')

@@ -5,6 +5,7 @@ import { containsBlockedWord } from '@prayertools/shared/moderation'
 import { isLanguage, LANGUAGES } from '@prayertools/shared/languages'
 import { isValidTimezone } from '@prayertools/shared/dates'
 import { ensureSystemUser, upsertContact } from '@prayertools/shared/crm'
+import { accountById, linkContactToAccount } from '@prayertools/shared/accounts'
 import { withOrg } from '@prayertools/shared/db/scope'
 import { jsonb, pgArray } from '@prayertools/shared/db/json'
 import { forwardEvent } from '@prayertools/shared/statinator'
@@ -115,11 +116,13 @@ export async function ptStaffOrgId(): Promise<string> {
 
 // Champions are contacts in the staff org's CRM, tagged for platform mailings.
 export async function ptAddChampionToStaffCrm(userId: string): Promise<void> {
-  const user = await db.selectFrom('users').select(['email', 'display_name']).where('id', '=', userId).executeTakeFirst()
-  if (!user) return
+  const account = await accountById(db as never, userId)
+  if (!account?.email) return
+  const email = account.email
   const staffOrgId = await ptStaffOrgId()
   await withOrg(db as never, staffOrgId, async (tx) => {
-    const { contactId } = await upsertContact(tx, { email: user.email, name: user.display_name, data: { pt_role: 'champion' }, source: 'site creation', actorLabel: 'prayer.tools' })
+    const { contactId } = await upsertContact(tx, { email, name: account.display_name, data: { pt_role: 'champion' }, source: 'site creation', actorLabel: 'prayer.tools' })
+    await linkContactToAccount(tx, contactId, account)
     await tx.insertInto('crm_record_field_entries' as never).values({ record_id: contactId, field_key: 'tags', payload: jsonb({ value: 'champion' }), normalized_value: 'champion' } as never)
       .onConflict(oc => oc.doNothing()).execute()
   })

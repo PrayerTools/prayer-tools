@@ -50,7 +50,7 @@ Three processes on one Postgres, one Docker image each (`apps/<app>/Dockerfile`,
 ### Tenancy and RLS (summary; full rules in `docs/dev-context.md`)
 
 - Two DB URLs everywhere: `DATABASE_URL` (BYPASSRLS: migrations, sweeps, operator views) and `APP_DATABASE_URL` (RLS: requests).
-- Site tables carry `org_id` with policy `tenant_isolation`. Use `withOrg(db, orgId, tx => …)`; inserts omit `org_id`. Person scope: `withPerson(db, intercessorId, …)` for an intercessor's own subscriptions/commitments across sites.
+- Site tables carry `org_id` with policy `tenant_isolation`. Use `withOrg(db, orgId, tx => …)`; inserts omit `org_id`. Person scope: `withPerson(db, userId, …)` for a person's own subscriptions/commitments across sites.
 - **One site per transaction, always.** Cross-site work visits each site in turn (`listUserOrgs` / `withOrgScope` from `#tenant/server`, `forEachOrg` in the worker).
 - User-owned tables (`pt_personal_*`, `marketing_template`, `marketing_parent`) use `user_isolation` via `withUserContext(event, { appId: PT_LIBRARY_APP }, …)`.
 - A new table with `org_id` but no RLS must be added to the allow-list in `apps/worker/test/isolation.test.ts`, or that test fails.
@@ -61,7 +61,8 @@ Three processes on one Postgres, one Docker image each (`apps/<app>/Dockerfile`,
 ## Conventions
 
 - Settings follow code-owned defaults: the DB stores only explicit overrides; defaults and labels live in code / i18n.
-- Manage and unsubscribe links are signed tokens (rotated via `manage_version`); verification, check-in and My prayer tokens are random and stored hashed.
+- Manage and unsubscribe links are signed tokens (rotated via `manage_version`); verification, check-in and account codes (`pt_auth_code`: sign-in links, hand-offs to other hosts, email changes) are random and stored hashed.
+- Every person is a `users` row (`@prayertools/shared/accounts`). The account owns name and email; site contacts link to it via `crm_records.user_id` and get those fields copied. Public-server sign-ins are rows in `pt_account_session`: one cookie for `.<site base host>` shared by My prayer and subdomain sites, and host-bound sessions for custom domains.
 - The admin UI is English only; the public site is translated.
 - Nuxtinator improvements needed by prayer.tools are made in this repo (e.g. the marketing layer), not upstream.
 - Don't read other worktrees (`.worktrees/`) or branches.

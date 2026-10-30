@@ -16,6 +16,6 @@ export default defineEventHandler(async (event) => {
   if ('push_id' in body) patch.push_id = str(body.push_id, 400) || null
   if ('app_version' in body) patch.app_version = str(body.app_version, 40) || null
   if ('platform' in body) patch.platform = str(body.platform, 20) || null
-  await useDb().updateTable('pt_intercessor_device').set(patch).where('id', '=', device.deviceId).execute()
+  await useDb().updateTable('pt_user_device').set(patch).where('id', '=', device.deviceId).execute()
   return { ok: true }
 })

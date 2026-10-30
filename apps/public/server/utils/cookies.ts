@@ -5,7 +5,7 @@ import { signJson, verifySignedJson } from '@prayertools/shared/tokens'
 import { requestScheme } from './request'
 
 export const MANAGE_COOKIE = 'pt_m'
-export const MY_COOKIE = 'pt_my'
+export const SESSION_COOKIE = 'pt_session'
 export const PREVIEW_COOKIE = 'pt_preview'
 
 const DAY = 86_400
@@ -30,12 +30,13 @@ export function readManageCookie(event: H3Event, orgId: string): { subscriptionI
   return { subscriptionId: link.subscriptionId, version: link.version ?? 0 }
 }
 
-export function setMyCookie(event: H3Event, token: string, maxAgeSeconds: number): void {
-  setCookie(event, MY_COOKIE, token, { ...base(event), maxAge: maxAgeSeconds })
+// `domain` set: the cookie covers that domain and all its subdomains.
+export function setSessionCookie(event: H3Event, token: string, maxAgeSeconds: number, domain: string | null): void {
+  setCookie(event, SESSION_COOKIE, token, { ...base(event), maxAge: maxAgeSeconds, ...(domain ? { domain } : {}) })
 }
 
-export function clearMyCookie(event: H3Event): void {
-  deleteCookie(event, MY_COOKIE, base(event))
+export function clearSessionCookie(event: H3Event, domain: string | null): void {
+  deleteCookie(event, SESSION_COOKIE, { ...base(event), ...(domain ? { domain } : {}) })
 }
 
 // Draft preview: the cookie carries a prefix of the current preview token

@@ -23,6 +23,7 @@ export function requestHost(event: H3Event): string {
 export function requestScheme(event: H3Event): 'http' | 'https' {
   const proto = proxyHeader(event, 'x-forwarded-proto')?.split(',')[0]?.trim()
   if (proto === 'https' || proto === 'http') return proto
+  if (platformConfig().siteScheme === 'http') return 'http'
   return requestHost(event).startsWith('localhost') || requestHost(event).includes('.localhost') ? 'http' : 'https'
 }
 

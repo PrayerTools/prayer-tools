@@ -1,7 +1,8 @@
 // The two RLS scopes. Site scope sets `app.current_org` (the same GUC the
 // tenancy layer's `defineTenantHandler` sets); person scope sets
-// `app.current_intercessor`. Both are SET LOCAL, so they live only inside the
-// transaction — safe under PgBouncer transaction pooling.
+// `app.current_intercessor` to the person's user id. Both are SET LOCAL, so
+// they live only inside the transaction — safe under PgBouncer transaction
+// pooling.
 import { sql, type Kysely, type Transaction } from 'kysely'
 import type { DB } from './schema'
 
@@ -15,9 +16,9 @@ export async function withOrg<T>(db: Db, orgId: string, fn: (tx: Tx) => Promise<
   })
 }
 
-export async function withPerson<T>(db: Db, intercessorId: string, fn: (tx: Tx) => Promise<T>): Promise<T> {
+export async function withPerson<T>(db: Db, userId: string, fn: (tx: Tx) => Promise<T>): Promise<T> {
   return await db.transaction().execute(async (tx) => {
-    await sql`select set_config('app.current_intercessor', ${intercessorId}, true)`.execute(tx)
+    await sql`select set_config('app.current_intercessor', ${userId}, true)`.execute(tx)
     return await fn(tx)
   })
 }

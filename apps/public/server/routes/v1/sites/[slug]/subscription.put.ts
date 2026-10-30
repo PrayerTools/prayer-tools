@@ -1,5 +1,5 @@
 // Joins the site in the app (or updates language / timezone). App
-// subscriptions point at the device's intercessor and never get email reminders.
+// subscriptions point at the device's account and never get email reminders.
 import { withOrg } from '@prayertools/shared/db/scope'
 import { isValidTimezone } from '@prayertools/shared/dates'
 import { recordActivity, refreshReminders } from '@prayertools/shared/subscriptions'
@@ -16,7 +16,7 @@ export default defineEventHandler(async (event) => {
   return await withOrg(useDb(), site.orgId, async (tx) => {
     const languages = (await tx.selectFrom('pt_site').select('languages').executeTakeFirstOrThrow()).languages
     const lang = str(body.language, 10)
-    let sub = await ensureAppSubscription(tx, device.intercessorId, { language: lang, timezone: tz || null, referral: str(body.referral, 20) || null })
+    let sub = await ensureAppSubscription(tx, device.userId, { language: lang, timezone: tz || null, referral: str(body.referral, 20) || null })
     const patch: { language?: string, timezone?: string, updated_at: Date } = { updated_at: new Date() }
     if (lang && languages.includes(lang)) patch.language = lang
     if (tz) patch.timezone = tz

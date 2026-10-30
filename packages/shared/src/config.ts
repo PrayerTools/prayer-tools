@@ -19,6 +19,11 @@ export interface PlatformConfig {
   siteScheme: 'https' | 'http'
   // The platform host serving the My prayer page (`prayer.tools`).
   platformHost: string
+  // The domain whose cookie carries one sign-in for the platform host and
+  // every `{slug}.<siteBaseHost>` site. Null when the platform host is
+  // elsewhere or the base is `localhost`, which browsers refuse as a cookie
+  // domain; sites then get the sign-in by hand-off like custom domains.
+  sharedSessionDomain: string | null
   adminUrl: string
   apiHost: string
   goHost: string
@@ -41,10 +46,13 @@ export interface PlatformConfig {
 export function platformConfig(): PlatformConfig {
   const siteBaseHost = env('PT_SITE_BASE_HOST', 'localhost:3380')
   const siteScheme = env('PT_SITE_SCHEME', siteBaseHost.startsWith('localhost') ? 'http' : 'https') as 'https' | 'http'
+  const platformHost = env('PT_PLATFORM_HOST', siteBaseHost)
+  const baseName = siteBaseHost.replace(/:\d+$/, '')
   return {
     siteBaseHost,
     siteScheme,
-    platformHost: env('PT_PLATFORM_HOST', siteBaseHost),
+    platformHost,
+    sharedSessionDomain: platformHost === siteBaseHost && baseName.includes('.') && !/^[\d.]+$/.test(baseName) ? baseName : null,
     adminUrl: env('PT_ADMIN_URL', 'http://localhost:2380'),
     apiHost: env('PT_API_HOST', `api.${siteBaseHost}`),
     goHost: env('PT_GO_HOST', `go.${siteBaseHost}`),

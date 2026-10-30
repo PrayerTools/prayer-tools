@@ -23,6 +23,13 @@ const verifyPrompt = ref(false)
 const formKey = ref(0)
 const signupEmail = useState<string | null>('pt-signup-email', () => null)
 
+// Visitors already praying in the campaign shown get their prayer times instead of the signup form.
+const subscribed = ref(false)
+onMounted(async () => {
+  const me = await fetchMe()
+  subscribed.value = !!campaign.value && !!me?.campaigns.includes(campaign.value.id)
+})
+
 function onJoined(verify: boolean) {
   joined.value = true
   needsVerify.value = verify
@@ -51,7 +58,8 @@ function onJoined(verify: boolean) {
           <GoalProgress v-if="page.progress" :progress="page.progress" on-brand />
           <p v-if="page.prayingNow > 0" class="text-sm">{{ t('pray.praying_now', { n: num(page.prayingNow) }, page.prayingNow) }}</p>
           <div class="flex flex-wrap justify-center gap-3">
-            <UButton to="#signup" size="xl" color="neutral" variant="solid" class="bg-white text-stone-900 hover:bg-stone-100" :label="st('landing.signup.title')" />
+            <UButton v-if="subscribed" :to="link('manage')" size="xl" color="neutral" variant="solid" class="bg-white text-stone-900 hover:bg-stone-100" :label="t('landing.manage_times')" />
+            <UButton v-else to="#signup" size="xl" color="neutral" variant="solid" class="bg-white text-stone-900 hover:bg-stone-100" :label="st('landing.signup.title')" />
             <UButton v-if="page.today" :to="link('pray')" size="xl" variant="outline" class="text-(--brand-text) ring-(--brand-text)/60 hover:bg-white/10" :label="t('landing.pray_today')" />
           </div>
         </div>
@@ -112,16 +120,23 @@ function onJoined(verify: boolean) {
     <section id="signup" class="scroll-mt-4 bg-stone-100/70" aria-labelledby="signup-title" data-pt-section="signup">
       <div class="max-w-5xl mx-auto px-4 py-12">
         <div class="rounded-xl border border-stone-200 bg-white shadow-sm">
-          <div class="border-b border-stone-200 px-5 py-6 text-center sm:px-8">
-            <h2 id="signup-title" class="text-2xl font-bold">{{ st('landing.signup.title') }}</h2>
-            <p class="mt-2 text-stone-600">{{ signupIntro }}</p>
+          <div v-if="subscribed && !joined" class="px-5 py-8 text-center sm:px-8 space-y-4">
+            <h2 id="signup-title" class="text-2xl font-bold">{{ t('manage.title') }}</h2>
+            <p class="text-stone-600">{{ t('landing.signed_up', { site: site.name }) }}</p>
+            <UButton :to="link('manage')" size="lg" :label="t('landing.manage_times')" trailing-icon="i-lucide-arrow-right" />
           </div>
-          <div class="px-5 py-6 sm:px-8 space-y-6">
-            <UAlert v-if="joined && needsVerify" color="warning" variant="soft" icon="i-lucide-mail" :title="t('pray.check_email_title')" :description="t('pray.check_email_body_not_started')" role="status" />
-            <UAlert v-else-if="joined" color="success" variant="soft" icon="i-lucide-check" :title="st('signup.success')" role="status" />
-            <UAlert v-if="!page.form.open || !campaign" color="neutral" variant="soft" icon="i-lucide-info" :title="t('signup.closed')" />
-            <LazySignupForm v-else :key="formKey" :form="page.form" hydrate-on-visible @joined="onJoined" />
-          </div>
+          <template v-else>
+            <div class="border-b border-stone-200 px-5 py-6 text-center sm:px-8">
+              <h2 id="signup-title" class="text-2xl font-bold">{{ st('landing.signup.title') }}</h2>
+              <p class="mt-2 text-stone-600">{{ signupIntro }}</p>
+            </div>
+            <div class="px-5 py-6 sm:px-8 space-y-6">
+              <UAlert v-if="joined && needsVerify" color="warning" variant="soft" icon="i-lucide-mail" :title="t('pray.check_email_title')" :description="t('pray.check_email_body_not_started')" role="status" />
+              <UAlert v-else-if="joined" color="success" variant="soft" icon="i-lucide-check" :title="st('signup.success')" role="status" />
+              <UAlert v-if="!page.form.open || !campaign" color="neutral" variant="soft" icon="i-lucide-info" :title="t('signup.closed')" />
+              <LazySignupForm v-else :key="formKey" :form="page.form" hydrate-on-visible @joined="onJoined" />
+            </div>
+          </template>
         </div>
       </div>
     </section>

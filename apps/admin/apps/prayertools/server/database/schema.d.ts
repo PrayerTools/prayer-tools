@@ -5,10 +5,8 @@ import type { PtTables } from '@prayertools/shared/db/schema'
 
 declare global {
   interface NuxtinatorDatabaseTables {
-    pt_intercessor: PtTables['pt_intercessor']
-    pt_intercessor_device: PtTables['pt_intercessor_device']
-    pt_my_token: PtTables['pt_my_token']
-    pt_my_session: PtTables['pt_my_session']
+    pt_user_device: PtTables['pt_user_device']
+    pt_auth_code: PtTables['pt_auth_code']
     pt_suppression: PtTables['pt_suppression']
     pt_job: PtTables['pt_job']
     pt_site_domain: PtTables['pt_site_domain']

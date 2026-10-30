@@ -9,13 +9,9 @@ const done = ref(false)
 const error = ref<string | null>(null)
 
 onMounted(async () => {
-  try {
-    const me = await $fetch<{ email: string | null, name: string | null }>('/api/me')
-    if (me.email && !state.email) state.email = me.email
-    if (me.name && !state.name) state.name = me.name
-  } catch {
-    // not known here
-  }
+  const me = await fetchMe()
+  if (me?.email && !state.email) state.email = me.email
+  if (me?.name && !state.name) state.name = me.name
 })
 
 const nameChoices = computed(() => [

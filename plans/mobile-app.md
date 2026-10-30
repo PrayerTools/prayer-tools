@@ -44,5 +44,5 @@ Copy the Doxa prayer app (`doxa-prayer-mobile-app`, Flutter, open source, copyin
 
 ## Later
 
-- **Email linking** — adds recovery on a new phone, the web manage and My prayer pages, optional email reminders and each site's custom signup fields (which creates the person's CRM contact on that site); magic link that opens the app (no codes). Merging an anonymous `intercessor` into an existing email identity is a repoint of the intercessor id.
+- **Email linking** — adds recovery on a new phone, the web manage and My prayer pages, optional email reminders and each site's custom signup fields (which creates the person's CRM contact on that site); magic link that opens the app (no codes). Merging an anonymous account into an existing email account is a repoint of the user id.
 - App Attest / Play Integrity if fake commitments appear.

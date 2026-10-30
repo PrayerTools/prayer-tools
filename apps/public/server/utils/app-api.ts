@@ -11,19 +11,19 @@ import { useDb } from './db'
 
 export interface Device {
   deviceId: string
-  intercessorId: string
+  userId: string
 }
 
 export async function requireDevice(event: H3Event): Promise<Device> {
   const auth = getRequestHeader(event, 'authorization') ?? ''
   const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : ''
   if (!token || token.length > 200) throw createError({ statusCode: 401, statusMessage: 'Missing credential' })
-  const row = await useDb().selectFrom('pt_intercessor_device').select(['id', 'intercessor_id', 'last_seen_at']).where('credential_hash', '=', hashToken(token)).executeTakeFirst()
+  const row = await useDb().selectFrom('pt_user_device').select(['id', 'user_id', 'last_seen_at']).where('credential_hash', '=', hashToken(token)).executeTakeFirst()
   if (!row) throw createError({ statusCode: 401, statusMessage: 'Unknown credential' })
   if (Date.now() - new Date(row.last_seen_at).getTime() > 3_600_000) {
-    await useDb().updateTable('pt_intercessor_device').set({ last_seen_at: new Date() }).where('id', '=', row.id).execute()
+    await useDb().updateTable('pt_user_device').set({ last_seen_at: new Date() }).where('id', '=', row.id).execute()
   }
-  return { deviceId: row.id, intercessorId: row.intercessor_id }
+  return { deviceId: row.id, userId: row.user_id }
 }
 
 export interface ApiSite {
@@ -54,13 +54,13 @@ export async function apiSite(slug: string | undefined): Promise<ApiSite> {
   return value
 }
 
-export async function appSubscription(tx: Tx, intercessorId: string): Promise<SubscriptionRow | null> {
-  return await tx.selectFrom('pt_subscription').selectAll().where('intercessor_id', '=', intercessorId).where('delivery', '=', 'app').executeTakeFirst() ?? null
+export async function appSubscription(tx: Tx, userId: string): Promise<SubscriptionRow | null> {
+  return await tx.selectFrom('pt_subscription').selectAll().where('user_id', '=', userId).where('delivery', '=', 'app').executeTakeFirst() ?? null
 }
 
 // Creates the device's app subscription on the site on first use.
-export async function ensureAppSubscription(tx: Tx, intercessorId: string, opts: { language?: string | null, timezone?: string | null, referral?: string | null }): Promise<SubscriptionRow> {
-  const existing = await appSubscription(tx, intercessorId)
+export async function ensureAppSubscription(tx: Tx, userId: string, opts: { language?: string | null, timezone?: string | null, referral?: string | null }): Promise<SubscriptionRow> {
+  const existing = await appSubscription(tx, userId)
   if (existing) return existing
   const site = await tx.selectFrom('pt_site').select(['languages', 'default_language', 'timezone']).executeTakeFirstOrThrow()
   let referredBy: string | null = null
@@ -69,12 +69,12 @@ export async function ensureAppSubscription(tx: Tx, intercessorId: string, opts:
     referredBy = ref?.referral_code ?? null
   }
   await sql`
-    INSERT INTO pt_subscription (intercessor_id, delivery, language, timezone, referral_code, referred_by, last_activity_at, checkin_cycle_started_at)
-    VALUES (${intercessorId}, 'app', ${opts.language && site.languages.includes(opts.language) ? opts.language : site.default_language},
+    INSERT INTO pt_subscription (user_id, delivery, language, timezone, referral_code, referred_by, last_activity_at, checkin_cycle_started_at)
+    VALUES (${userId}, 'app', ${opts.language && site.languages.includes(opts.language) ? opts.language : site.default_language},
             ${opts.timezone || site.timezone}, ${shortCode(6)}, ${referredBy}, now(), now())
-    ON CONFLICT (org_id, intercessor_id) WHERE delivery = 'app' DO NOTHING
+    ON CONFLICT (org_id, user_id) WHERE delivery = 'app' DO NOTHING
   `.execute(tx)
-  return (await appSubscription(tx, intercessorId))!
+  return (await appSubscription(tx, userId))!
 }
 
 export function commitmentJson(c: CommitmentRow) {

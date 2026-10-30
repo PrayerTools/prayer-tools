@@ -10,12 +10,13 @@ export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, 'id') ?? ''
   if (!/^[0-9a-f-]{36}$/i.test(id)) ptNotFound('Invitation not found.')
   const me = await db.selectFrom('users').select(['email', 'verified']).where('id', '=', user.userId).executeTakeFirstOrThrow()
-  if (!me.verified) ptNotFound('Invitation not found.')
+  if (!me.verified || !me.email) ptNotFound('Invitation not found.')
+  const email = me.email
   const res = await db
     .deleteFrom('invites')
     .where('id', '=', id)
     .where('accepted_at', 'is', null)
-    .where(eb => eb(eb.fn('lower', ['email']), '=', me.email.toLowerCase()))
+    .where(eb => eb(eb.fn('lower', ['email']), '=', email.toLowerCase()))
     .executeTakeFirst()
   if (!Number(res.numDeletedRows)) ptNotFound('Invitation not found.')
   await logEvent({ eventType: 'invite_declined', tableName: 'invites', recordId: id, userId: user.userId }).catch(() => {})

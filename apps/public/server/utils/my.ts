@@ -1,52 +1,32 @@
-// My prayer: the person's subscriptions across sites. The list is read in
-// person scope; each site's details (and every change) are read inside that
-// site's org, one site at a time.
+// My prayer: the signed-in person's account, their subscriptions across
+// sites and the sites they help run. The list is read in person scope; each
+// site's details (and every change) are read inside that site's org, one site
+// at a time.
 import type { H3Event } from 'h3'
 import { withOrg, withPerson, type Tx } from '@prayertools/shared/db/scope'
-import { hashToken } from '@prayertools/shared/tokens'
+import { accountById, syncAccountContacts } from '@prayertools/shared/accounts'
 import { campaignStatus, defaultDuration, durationOptions, durationRule, pickCurrentCampaign } from '@prayertools/shared/setup'
 import { primaryEmailOf, PURPOSE_SITE_UPDATES } from '@prayertools/shared/crm'
 import { siteSettings, siteUrlFor } from '@prayertools/shared/site'
 import { getLanguage } from '@prayertools/shared/languages'
 import type { SubscriptionRow } from '@prayertools/shared/subscriptions'
 import { loadCampaigns } from '@prayertools/shared/campaigns'
-import type { MySiteView, MyView } from '../../shared/view'
+import type { MyManagedSiteView, MySiteView, MyView } from '../../shared/view'
 import { useDb } from './db'
-import { MY_COOKIE } from './cookies'
 import { commitmentsOf, consentList } from './manage'
-
-export const MY_SESSION_DAYS = 30
-export const MY_TOKEN_MINUTES = 30
-
-export async function mySession(event: H3Event): Promise<string | null> {
-  const token = getCookie(event, MY_COOKIE)
-  if (!token) return null
-  const row = await useDb()
-    .selectFrom('pt_my_session')
-    .select('intercessor_id')
-    .where('token_hash', '=', hashToken(token))
-    .where('revoked_at', 'is', null)
-    .where('expires_at', '>', new Date())
-    .executeTakeFirst()
-  return row?.intercessor_id ?? null
-}
-
-export async function requireMySession(event: H3Event): Promise<string> {
-  const id = await mySession(event)
-  if (!id) throw createError({ statusCode: 401, statusMessage: 'Sign in again' })
-  return id
-}
+import { requireSessionUser } from './account-session'
+import { staffOrgId } from './staff'
 
 export interface PersonSubscription {
   id: string
   org_id: string
 }
 
-export async function personSubscriptions(intercessorId: string): Promise<PersonSubscription[]> {
-  return await withPerson(useDb(), intercessorId, async tx => await tx
+export async function personSubscriptions(userId: string): Promise<PersonSubscription[]> {
+  return await withPerson(useDb(), userId, async tx => await tx
     .selectFrom('pt_subscription')
     .select(['id', 'org_id'])
-    .where('intercessor_id', '=', intercessorId)
+    .where('user_id', '=', userId)
     .where('anonymized_at', 'is', null)
     .orderBy('created_at', 'desc')
     .execute())
@@ -54,15 +34,42 @@ export async function personSubscriptions(intercessorId: string): Promise<Person
 
 // Loads one of the person's subscriptions inside its site's org, re-checking
 // that it belongs to them.
-export async function ownedSubscription(tx: Tx, intercessorId: string, subscriptionId: string): Promise<SubscriptionRow> {
-  const sub = await tx.selectFrom('pt_subscription').selectAll().where('id', '=', subscriptionId).where('intercessor_id', '=', intercessorId).executeTakeFirst()
+export async function ownedSubscription(tx: Tx, userId: string, subscriptionId: string): Promise<SubscriptionRow> {
+  const sub = await tx.selectFrom('pt_subscription').selectAll().where('id', '=', subscriptionId).where('user_id', '=', userId).executeTakeFirst()
   if (!sub) throw createError({ statusCode: 404, statusMessage: 'Not found' })
   return sub
 }
 
-export async function buildMyView(intercessorId: string | null): Promise<MyView> {
-  if (!intercessorId) return { signedIn: false, sites: [] }
-  const subs = await personSubscriptions(intercessorId)
+// The sites whose contact may be linked to the account: those it subscribes
+// on, and the staff org that holds News from Prayer.Tools.
+export async function accountSiteIds(userId: string): Promise<string[]> {
+  return [...new Set([...(await personSubscriptions(userId)).map(s => s.org_id), await staffOrgId()])]
+}
+
+// Copies the account's name and address onto its contact on each site.
+export async function syncAccountEverywhere(userId: string): Promise<void> {
+  const account = await accountById(useDb(), userId)
+  if (account) await syncAccountContacts(useDb(), await accountSiteIds(userId), account)
+}
+
+// Sites the person is on the team of, with the admin page each opens.
+async function managedSites(userId: string): Promise<MyManagedSiteView[]> {
+  const rows = await useDb()
+    .selectFrom('memberships as m')
+    .innerJoin('orgs as o', 'o.id', 'm.org_id')
+    .select(['o.slug', 'o.name'])
+    .where('m.user_id', '=', userId)
+    .where('o.suspended_at', 'is', null)
+    .where('o.slug', '!=', 'staff')
+    .orderBy('o.name')
+    .execute()
+  return rows.map(r => ({ name: r.name, adminUrl: `/my/admin?to=${encodeURIComponent(`/@${r.slug}/site`)}` }))
+}
+
+export async function buildMyView(userId: string | null): Promise<MyView> {
+  const account = userId ? await accountById(useDb(), userId) : null
+  if (!account) return { signedIn: false, account: null, sites: [], managing: [], createUrl: null }
+  const subs = await personSubscriptions(account.id)
   const sites: MySiteView[] = []
   for (const s of subs) {
     const org = await useDb().selectFrom('orgs').select(['slug', 'name', 'suspended_at']).where('id', '=', s.org_id).executeTakeFirst()
@@ -116,18 +123,24 @@ export async function buildMyView(intercessorId: string | null): Promise<MyView>
     })
     if (view) sites.push(view)
   }
-  return { signedIn: true, sites }
+  return {
+    signedIn: true,
+    account: { name: account.display_name, email: account.email },
+    sites,
+    managing: await managedSites(account.id),
+    createUrl: `/my/admin?to=${encodeURIComponent('/orgs/new')}`
+  }
 }
 
 // Runs `fn` inside the site's org for one of the signed-in person's subscriptions.
 export async function withMySubscription<T>(event: H3Event, fn: (tx: Tx, sub: SubscriptionRow) => Promise<T>): Promise<T> {
-  const intercessorId = await requireMySession(event)
+  const userId = await requireSessionUser(event)
   const org = getRouterParam(event, 'org')
   const subId = getRouterParam(event, 'sub')
   const uuid = /^[0-9a-f-]{36}$/i
   if (!org || !subId || !uuid.test(org) || !uuid.test(subId)) throw createError({ statusCode: 404 })
   return await withOrg(useDb(), org, async (tx) => {
-    const sub = await ownedSubscription(tx, intercessorId, subId)
+    const sub = await ownedSubscription(tx, userId, subId)
     return await fn(tx, sub)
   })
 }

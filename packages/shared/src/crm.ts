@@ -244,3 +244,62 @@ export async function consentHistory(tx: Tx, channelId: string) {
     .orderBy('occurred_at', 'asc')
     .execute()
 }
+
+// An address still linked to another contact, or to an inbox conversation
+// (whose foreign key has no cascade), is kept.
+export async function deleteChannelIfUnused(tx: Tx, channelId: string): Promise<boolean> {
+  const linked = await tx.selectFrom('crm_contact_channels').select('id').where('channel_id', '=', channelId).executeTakeFirst()
+  if (linked) return false
+  const conversation = await tx.selectFrom('inbox_conversations').select('id').where('channel_id', '=', channelId).executeTakeFirst()
+  if (conversation) return false
+  await tx.deleteFrom('crm_channels').where('id', '=', channelId).execute()
+  return true
+}
+
+export const ACCOUNT_ACTOR_LABEL = 'Their account'
+
+export async function setContactName(tx: Tx, contactId: string, name: string): Promise<boolean> {
+  const next = name.trim().slice(0, 200)
+  const row = await tx.selectFrom('crm_records').select('name').where('id', '=', contactId).executeTakeFirst()
+  if (!next || !row || row.name === next) return false
+  await tx.updateTable('crm_records').set({ name: next, updated_at: new Date() }).where('id', '=', contactId).execute()
+  await activity(tx, contactId, 'field_changed', { fieldKey: 'name', old: row.name, new: next, label: ACCOUNT_ACTOR_LABEL })
+  return true
+}
+
+// Makes `email` the contact's primary address. Consent given at the old
+// address carries over with its original wording; the old address is
+// unlinked and removed when nothing else uses it.
+export async function replaceContactEmail(tx: Tx, contactId: string, email: string, verified: boolean): Promise<{ channelId: string, changed: boolean }> {
+  const current = await primaryEmailOf(tx, contactId)
+  const next = await claimEmailChannel(tx, email)
+  if (verified) await markChannelVerified(tx, next.id)
+  if (current?.channelId === next.id) return { channelId: next.id, changed: false }
+  if (current) {
+    const granted = await tx
+      .selectFrom('crm_channel_consents')
+      .select(['purpose', 'capture_meta'])
+      .where('channel_id', '=', current.channelId)
+      .where('status', '=', 'opt_in')
+      .execute()
+    for (const c of granted) {
+      const meta = (c.capture_meta ?? {}) as { wording_key?: string | null, wording_version?: string | null, wording_label?: string | null, language?: string | null }
+      await setConsent(tx, next.id, c.purpose, true, {
+        wording: { key: meta.wording_key ?? undefined, version: meta.wording_version ?? undefined, label: meta.wording_label ?? undefined },
+        surface: 'account',
+        source: 'email_change',
+        language: meta.language ?? undefined
+      })
+    }
+    await tx.deleteFrom('crm_contact_channels').where('record_id', '=', contactId).where('channel_id', '=', current.channelId).execute()
+    await activity(tx, contactId, 'channel_unlinked', { fieldKey: CONTACT_EMAIL_FIELD, old: { channel_id: current.channelId, channel_type: 'email', value: current.email }, label: ACCOUNT_ACTOR_LABEL })
+  }
+  await tx
+    .insertInto('crm_contact_channels')
+    .values({ record_id: contactId, channel_id: next.id, field_key: CONTACT_EMAIL_FIELD, is_primary: true, sort_order: 0 })
+    .onConflict(oc => oc.doNothing())
+    .execute()
+  await activity(tx, contactId, 'channel_linked', { fieldKey: CONTACT_EMAIL_FIELD, new: { channel_id: next.id, channel_type: 'email', value: next.value }, label: ACCOUNT_ACTOR_LABEL })
+  if (current) await deleteChannelIfUnused(tx, current.channelId)
+  return { channelId: next.id, changed: true }
+}

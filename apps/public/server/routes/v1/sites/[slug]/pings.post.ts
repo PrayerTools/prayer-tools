@@ -21,10 +21,10 @@ export default defineEventHandler(async (event) => {
   const result = await withOrg(useDb(), site.orgId, async (tx) => {
     const campaign = await campaignById(tx, body.campaign)
     if (!campaign) throw createError({ statusCode: 404 })
-    const sub = await appSubscription(tx, device.intercessorId)
+    const sub = await appSubscription(tx, device.userId)
     const ping = await recordPing(tx, {
       id: body.id as string, campaignId: campaign.id, timezone: campaign.timezone, day, language, source: 'app',
-      subscriptionId: sub?.id ?? null, intercessorId: device.intercessorId, country: getRequestHeader(event, 'cf-ipcountry')?.slice(0, 2) ?? null
+      subscriptionId: sub?.id ?? null, userId: device.userId, country: getRequestHeader(event, 'cf-ipcountry')?.slice(0, 2) ?? null
     })
     if (ping.first && sub) await openEntry(tx, sub.id, campaign, day)
     return { ping, now: await prayingNow(tx) }

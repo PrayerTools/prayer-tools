@@ -59,17 +59,9 @@ export interface TiptapNode {
 
 // ── Global tables ──────────────────────────────────────────────────────────
 
-export interface PtIntercessorTable {
+export interface PtUserDeviceTable {
   id: Generated<string>
-  email: string | null
-  email_verified_at: NullableTimestamp
-  created_at: Timestamp
-  last_active_at: NullableTimestamp
-}
-
-export interface PtIntercessorDeviceTable {
-  id: Generated<string>
-  intercessor_id: string
+  user_id: string
   credential_hash: string
   platform: string | null
   app_version: string | null
@@ -80,22 +72,37 @@ export interface PtIntercessorDeviceTable {
   last_seen_at: Timestamp
 }
 
-export interface PtMyTokenTable {
+export type AuthCodePurpose = 'sign_in' | 'handoff' | 'email_change' | 'email_undo'
+
+export interface PtAuthCodeTable {
   id: Generated<string>
-  intercessor_id: string
-  token_hash: string
+  user_id: string
+  purpose: AuthCodePurpose
+  code_hash: string
+  // handoff: the host the code may be redeemed on.
+  host: string | null
+  // email_change: the new address; email_undo: the address to go back to.
+  email: string | null
+  return_to: string | null
+  // handoff: when the person signed in, carried to the session it starts.
+  authenticated_at: NullableTimestamp
   expires_at: Timestamp
   used_at: NullableTimestamp
   created_at: Timestamp
 }
 
-export interface PtMySessionTable {
+export interface PtAccountSessionTable {
   id: Generated<string>
-  intercessor_id: string
+  user_id: string
+  // The only host the session's cookie is accepted on, or `.<domain>` for
+  // the platform host and sites sharing one cookie.
+  host: string
   token_hash: string
+  created_at: Generated<Date>
+  last_used_at: Generated<Date>
   expires_at: Timestamp
-  revoked_at: NullableTimestamp
-  created_at: Timestamp
+  user_agent: string | null
+  ip: string | null
 }
 
 export interface PtSuppressionTable {
@@ -402,7 +409,7 @@ export interface PtSubscriptionTable {
   id: Generated<string>
   org_id: Generated<string>
   contact_id: string | null
-  intercessor_id: string | null
+  user_id: string | null
   status: Generated<SubscriptionStatus>
   delivery: Generated<Delivery>
   language: string
@@ -498,7 +505,7 @@ export interface PtPrayerSessionTable {
   org_id: Generated<string>
   campaign_id: string | null
   subscription_id: string | null
-  intercessor_id: string | null
+  user_id: string | null
   source: SessionSource
   day: number | null
   language: string | null
@@ -617,10 +624,9 @@ export interface PtCoverageCacheTable {
 }
 
 export interface PtTables {
-  pt_intercessor: PtIntercessorTable
-  pt_intercessor_device: PtIntercessorDeviceTable
-  pt_my_token: PtMyTokenTable
-  pt_my_session: PtMySessionTable
+  pt_user_device: PtUserDeviceTable
+  pt_auth_code: PtAuthCodeTable
+  pt_account_session: PtAccountSessionTable
   pt_suppression: PtSuppressionTable
   pt_job: PtJobTable
   pt_site_domain: PtSiteDomainTable
@@ -660,12 +666,30 @@ export interface PtTables {
 
 export interface UsersTable {
   id: Generated<string>
-  created: Timestamp
-  updated: Timestamp
-  email: string
+  created: Generated<Date>
+  updated: Generated<Date>
+  email: string | null
   display_name: string
+  password: string | null
   is_admin: Generated<boolean>
   verified: Generated<boolean>
+}
+
+// The social-auth layer's Google / Apple accounts linked to a user.
+export interface UserIdentitiesTable {
+  id: Generated<string>
+  user_id: string
+  provider: string
+  subject: string
+  email: string | null
+  created_at: Generated<Date>
+  last_used_at: Generated<Date>
+}
+
+// Core's admin app sign-ins.
+export interface SessionsTable {
+  id: Generated<string>
+  user_id: string
 }
 
 export interface OrgsTable {
@@ -696,6 +720,8 @@ export interface CrmRecordsTable {
   created_by: string
   created_at: Timestamp
   updated_at: Timestamp
+  // The person's account; it owns the contact's name and email address.
+  user_id: string | null
 }
 
 export interface CrmChannelsTable {
@@ -820,6 +846,8 @@ export interface NotificationsTable {
 
 export interface LayerTables {
   users: UsersTable
+  user_identities: UserIdentitiesTable
+  sessions: SessionsTable
   orgs: OrgsTable
   memberships: MembershipsTable
   crm_records: CrmRecordsTable

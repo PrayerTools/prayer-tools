@@ -12,7 +12,7 @@ import { buildSiteContext, resolveSiteCached } from '../utils/site-context'
 import { PREVIEW_COOKIE, previewCookieMatches } from '../utils/cookies'
 import { addTimesLink, checkinAnswer, exchangeManageLink, legacyFuel, legacyManage, previewLink, unsubscribePost, verifyLink } from '../utils/actions'
 import { editorAccess, editorFrameAncestors } from '../utils/editor'
-import { exchangeMyToken } from '../utils/my-auth'
+import { claimHandoff, confirmEmailChange, continueToAdmin, continueToSite, exchangeSignInLink, signInFromSite, undoEmailChange } from '../utils/account-links'
 
 const ASSET_PREFIXES = ['/_nuxt/', '/__nuxt', '/@', '/node_modules/', '/_fonts/', '/__vite', '/api/_nuxt_icon/', '/_i18n/']
 
@@ -27,6 +27,21 @@ export function notFound(event: H3Event, cacheable = true) {
   return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Not found</title></head>'
     + '<body style="font-family:system-ui,sans-serif;max-width:32rem;margin:4rem auto;padding:0 1rem;color:#1c1917"><h1>Page not found</h1>'
     + '<p>There is no prayer campaign at this address.</p><p><a href="https://prayer.tools">Prayer.Tools</a></p></body></html>'
+}
+
+// Every `*.prayer.tools` host is the same site to the browser, so SameSite
+// cookies don't stop a page on one site posting to another; writes to the
+// cookie-backed /api routes must come from the host's own pages.
+function crossOriginWrite(event: H3Event, host: string): boolean {
+  const fetchSite = getRequestHeader(event, 'sec-fetch-site')
+  if (fetchSite) return fetchSite !== 'same-origin'
+  const origin = getRequestHeader(event, 'origin')
+  if (!origin) return false
+  try {
+    return new URL(origin).host.toLowerCase() !== host
+  } catch {
+    return true
+  }
 }
 
 function marketingUrl(): string {
@@ -67,12 +82,24 @@ export default defineEventHandler(async (event) => {
     return sendRedirect(event, `${target}/${segs.slice(1).join('/')}${query}`.replace(/\/(\?|$)/, '$1'), 302)
   }
 
+  if (!isGet && pathname.startsWith('/api/') && crossOriginWrite(event, host)) {
+    throw createError({ statusCode: 403, statusMessage: 'Cross-origin request' })
+  }
+
   if (kind.kind === 'platform') {
+    // My prayer's confirm buttons must not be clickable from inside another site's frame.
+    setResponseHeader(event, 'content-security-policy', "frame-ancestors 'none'")
     // With PT_MARKETING_URL set, the marketing site owns "/"; otherwise the landing view renders.
     if ((pathname === '/' || pathname === '') && process.env.PT_MARKETING_URL) return sendRedirect(event, marketingUrl(), 302)
     if (pathname === '/' || pathname === '' || pathname === '/robots.txt' || pathname === '/privacy' || pathname === '/terms') return
-    const m = pathname.match(/^\/my\/login\/([^/]+)$/)
-    if (m && isGet) return await exchangeMyToken(event, decodeURIComponent(m[1]!))
+    const m = pathname.match(/^\/my\/(login|email|email-undo)\/([^/]+)$/)
+    if (m && isGet) {
+      const code = decodeURIComponent(m[2]!)
+      if (m[1] === 'login') return await exchangeSignInLink(event, code)
+      return m[1] === 'email' ? await confirmEmailChange(event, code) : await undoEmailChange(event, code)
+    }
+    if (pathname === '/my/continue' && isGet) return await continueToSite(event)
+    if (pathname === '/my/admin' && isGet) return await continueToAdmin(event)
     if (pathname === '/my' || pathname.startsWith('/my/') || pathname.startsWith('/api/my/') || pathname === '/api/view') return
     return notFound(event)
   }
@@ -127,6 +154,8 @@ export default defineEventHandler(async (event) => {
     return await unsubscribePost(event, ctx, second)
   }
   if (!isGet) return
+  if (first === 'account' && second === 'sign-in' && segs.length === 2) return signInFromSite(event, ctx)
+  if (first === 'account' && second === 'claim' && third && segs.length === 3) return await claimHandoff(event, ctx, third)
   if (first === 'm' && second && segs.length === 2) return await exchangeManageLink(event, ctx, second)
   if (first === 'verify' && second && segs.length === 2) return await verifyLink(event, ctx, second)
   if (first === 'add' && second && segs.length === 2) return await addTimesLink(event, ctx, second)

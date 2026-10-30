@@ -46,13 +46,28 @@ const sending = ref(false)
 const error = ref<string | null>(null)
 const turnstile = ref<{ reset: () => void } | null>(null)
 const signupEmail = useState<string | null>('pt-signup-email', () => null)
+// Signed in to Prayer.Tools on this site: the account's address signs up
+// without a confirmation email.
+const account = ref<{ email: string, name: string | null } | null>(null)
+const useAccount = ref(false)
+const signInUrl = computed(() => `/account/sign-in?return=${encodeURIComponent(route.fullPath.split('#')[0]!)}`)
 
-onMounted(() => {
+onMounted(async () => {
   state.timezone = browserTimezone()
   const slots = typeof route.query.slots === 'string' ? route.query.slots.split(',') : []
   state.picks = slots.filter(s => !Number.isNaN(Date.parse(s))).slice(0, 100)
   if (state.picks.length) state.commitments = []
+  const me = await fetchMe()
+  if (me?.account) {
+    account.value = me.account
+    useAccount.value = true
+    if (!state.name && me.account.name) state.name = me.account.name
+  }
 })
+
+function useOtherEmail() {
+  useAccount.value = false
+}
 
 const languageItems = computed(() => site.value.languages.map(l => ({ label: l.native, value: l.code })))
 
@@ -99,7 +114,7 @@ async function submit() {
       method: 'POST',
       body: {
         campaign: campaign.value.slug,
-        email: state.idToken?.email ?? state.email,
+        email: state.idToken?.email ?? (useAccount.value && account.value ? account.value.email : state.email),
         name: state.name,
         language: state.language,
         timezone: state.timezone,
@@ -113,7 +128,7 @@ async function submit() {
       }
     })
     if (res.referral_code) rememberReferral(site.value.orgId, res.referral_code)
-    signupEmail.value = state.idToken?.email ?? state.email
+    signupEmail.value = state.idToken?.email ?? (useAccount.value && account.value ? account.value.email : state.email)
     // Before a campaign starts there is nothing to pray yet, so the signup page stays.
     if (campaign.value.state === 'upcoming') emit('joined', res.verify)
     else await navigateTo(`${link('pray', [], { lang: state.language })}?joined=1${res.verify ? '&verify=1' : ''}`)
@@ -180,16 +195,25 @@ function onIdToken(provider: 'google' | 'apple', token: string) {
       <div class="space-y-8">
         <fieldset class="space-y-4">
           <legend class="text-lg font-semibold">{{ t('signup.contact_title') }}</legend>
-          <SignInButtons
-            v-if="(form.googleClientId || form.appleServicesId) && !state.idToken"
-            :google-client-id="form.googleClientId"
-            :apple-services-id="form.appleServicesId"
-            @token="onIdToken"
-          />
-          <UFormField v-if="!state.idToken" :label="t('signup.email')" name="email" required>
-            <UInput v-model="state.email" type="email" autocomplete="email" inputmode="email" required class="w-full" />
-          </UFormField>
-          <UAlert v-else color="success" variant="soft" icon="i-lucide-badge-check" :title="t('signup.signed_in_as', { email: state.idToken.email })" />
+          <template v-if="useAccount && account && !state.idToken">
+            <UAlert color="success" variant="soft" icon="i-lucide-badge-check" :title="t('signup.account_as', { email: account.email })" />
+            <UButton variant="link" color="neutral" size="sm" class="px-0" :label="t('signup.use_other_email')" @click="useOtherEmail" />
+          </template>
+          <template v-else>
+            <SignInButtons
+              v-if="(form.googleClientId || form.appleServicesId) && !state.idToken"
+              :google-client-id="form.googleClientId"
+              :apple-services-id="form.appleServicesId"
+              @token="onIdToken"
+            />
+            <UFormField v-if="!state.idToken" :label="t('signup.email')" name="email" required>
+              <UInput v-model="state.email" type="email" autocomplete="email" inputmode="email" required class="w-full" />
+            </UFormField>
+            <UAlert v-else color="success" variant="soft" icon="i-lucide-badge-check" :title="t('signup.signed_in_as', { email: state.idToken.email })" />
+            <p v-if="!state.idToken && !account" class="text-sm text-stone-600">
+              {{ t('signup.sign_in_prompt') }} <a :href="signInUrl" class="underline">{{ t('signup.sign_in') }}</a>
+            </p>
+          </template>
           <UFormField :label="t('signup.name')" :hint="t('common.optional')" name="name">
             <UInput v-model="state.name" autocomplete="given-name" class="w-full" />
           </UFormField>

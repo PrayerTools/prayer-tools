@@ -1,8 +1,10 @@
-// Data retention: per-org anonymization (12 months unsubscribed or archived), unused identities, and
-// platform-wide expiry of raw analytics, old session partitions, the email log and My prayer tokens on the admin connection.
+// Data retention: per-org anonymization (12 months unsubscribed or archived), idle app devices,
+// unused accounts, and platform-wide expiry of raw analytics, old session partitions, the email
+// log, account codes and expired sign-ins on the admin connection.
 import { sql } from 'kysely'
 import { forEachOrg } from '@prayertools/shared/db/scope'
-import { anonymizeSubscription, deleteIntercessorIfUnused } from '@prayertools/shared/subscriptions'
+import { anonymizeSubscription } from '@prayertools/shared/subscriptions'
+import { deleteAccountIfUnused } from '@prayertools/shared/accounts'
 import type { WorkerContext } from '../context'
 import type { Logger } from '../log'
 import { DAY, groupBy } from '../util'
@@ -12,6 +14,7 @@ export const ARCHIVED_RETENTION_MONTHS = 12
 export const EVENT_RETENTION_DAYS = 90
 export const VISITOR_DAY_RETENTION_DAYS = 7
 export const SESSION_RETENTION_MONTHS = 24
+export const DEVICE_IDLE_MONTHS = 12
 const BATCH = 5000
 
 function monthsAgo(now: Date, months: number): Date {
@@ -62,19 +65,52 @@ export async function anonymizeArchivedSites(ctx: WorkerContext, log: Logger): P
   return n
 }
 
-// On the admin connection: whether an identity is unused spans every site.
-export async function deleteUnusedIntercessors(ctx: WorkerContext): Promise<number> {
+// App devices not seen for a year are taken as uninstalled. An account left
+// with no address and no device can never be reached again, so its app
+// subscriptions let go of it (the rows stay, so campaign counts don't change)
+// and deleteUnusedAccounts removes it.
+export async function expireIdleDevices(ctx: WorkerContext, log: Logger): Promise<{ devices: number, released: number }> {
+  const cutoff = monthsAgo(ctx.now(), DEVICE_IDLE_MONTHS)
+  const devices = await deleteInBatches(ctx, async () => Number((await sql`
+    DELETE FROM pt_user_device WHERE id IN (SELECT id FROM pt_user_device WHERE last_seen_at < ${cutoff}::timestamptz LIMIT ${BATCH})
+  `.execute(ctx.admin)).numAffectedRows ?? 0))
+  const due = await sql<{ id: string, org_id: string }>`
+    SELECT s.id::text AS id, s.org_id::text AS org_id
+    FROM pt_subscription s JOIN users u ON u.id = s.user_id
+    WHERE u.email IS NULL AND NOT EXISTS (SELECT 1 FROM pt_user_device d WHERE d.user_id = u.id)
+    LIMIT ${BATCH}
+  `.execute(ctx.admin)
+  let released = 0
+  const byOrg = groupBy(due.rows, r => r.org_id)
+  await forEachOrg(ctx.app, byOrg.keys(), async (tx, orgId) => {
+    const ids = (byOrg.get(orgId) ?? []).map(r => r.id)
+    const res = await tx.updateTable('pt_subscription').set({ user_id: null, updated_at: ctx.now() }).where('id', 'in', ids).executeTakeFirst()
+    released += Number(res.numUpdatedRows)
+  }, (orgId, err) => log.error('retention.device_release_failed', { site: orgId, err }))
+  return { devices, released }
+}
+
+// On the admin connection: whether an account is unused spans every site.
+export async function deleteUnusedAccounts(ctx: WorkerContext): Promise<number> {
   const graceCutoff = new Date(ctx.now().getTime() - DAY)
   const candidates = await sql<{ id: string }>`
-    SELECT i.id::text AS id FROM pt_intercessor i
-    WHERE i.created_at < ${graceCutoff}::timestamptz
-      AND NOT EXISTS (SELECT 1 FROM pt_subscription s WHERE s.intercessor_id = i.id)
-      AND NOT EXISTS (SELECT 1 FROM pt_intercessor_device d WHERE d.intercessor_id = i.id)
+    SELECT u.id::text AS id FROM users u
+    WHERE u.created < ${graceCutoff}::timestamptz AND u.password IS NULL AND NOT u.is_admin
+      AND NOT EXISTS (SELECT 1 FROM pt_subscription s WHERE s.user_id = u.id)
+      AND NOT EXISTS (SELECT 1 FROM crm_records r WHERE r.user_id = u.id)
+      AND NOT EXISTS (SELECT 1 FROM pt_user_device d WHERE d.user_id = u.id)
+      AND NOT EXISTS (SELECT 1 FROM memberships m WHERE m.user_id = u.id)
+      AND NOT EXISTS (SELECT 1 FROM user_identities i WHERE i.user_id = u.id)
+      AND NOT EXISTS (SELECT 1 FROM sessions se WHERE se.user_id = u.id AND se.expires_at > now())
     LIMIT ${BATCH}
   `.execute(ctx.admin)
   let n = 0
   for (const { id } of candidates.rows) {
-    if (await ctx.admin.transaction().execute(tx => deleteIntercessorIfUnused(tx, id))) n++
+    try {
+      if (await ctx.admin.transaction().execute(tx => deleteAccountIfUnused(tx, id))) n++
+    } catch {
+      // Still referenced by a table outside prayer.tools (e.g. a record it created).
+    }
   }
   return n
 }
@@ -136,14 +172,11 @@ export async function purgeEmailLog(ctx: WorkerContext): Promise<number> {
   `.execute(ctx.admin)).numAffectedRows ?? 0))
 }
 
-export async function purgeMyTokens(ctx: WorkerContext): Promise<{ tokens: number, sessions: number }> {
+export async function purgeAuthCodes(ctx: WorkerContext): Promise<{ codes: number, sessions: number }> {
   const now = ctx.now()
-  const tokens = await ctx.admin.deleteFrom('pt_my_token').where('expires_at', '<', now).executeTakeFirst()
-  const sessions = await ctx.admin
-    .deleteFrom('pt_my_session')
-    .where(eb => eb.or([eb('expires_at', '<', now), eb('revoked_at', '<', new Date(now.getTime() - DAY))]))
-    .executeTakeFirst()
-  return { tokens: Number(tokens.numDeletedRows ?? 0), sessions: Number(sessions.numDeletedRows ?? 0) }
+  const codes = await ctx.admin.deleteFrom('pt_auth_code').where('expires_at', '<', new Date(now.getTime() - DAY)).executeTakeFirst()
+  const sessions = await ctx.admin.deleteFrom('pt_account_session').where('expires_at', '<', now).executeTakeFirst()
+  return { codes: Number(codes.numDeletedRows ?? 0), sessions: Number(sessions.numDeletedRows ?? 0) }
 }
 
 // Prayer times the signup form asked for that nobody confirmed in time.
@@ -155,22 +188,25 @@ export async function purgeSignupRequests(ctx: WorkerContext): Promise<number> {
 export async function runRetention(ctx: WorkerContext, log: Logger): Promise<Record<string, number>> {
   const unsubscribed = await anonymizeUnsubscribed(ctx, log)
   const archived = await anonymizeArchivedSites(ctx, log)
-  const intercessors = await deleteUnusedIntercessors(ctx)
+  const idle = await expireIdleDevices(ctx, log)
+  const accounts = await deleteUnusedAccounts(ctx)
   const raw = await purgeRawAnalytics(ctx)
   const parts = await maintainSessionPartitions(ctx, log)
   const emails = await purgeEmailLog(ctx)
-  const my = await purgeMyTokens(ctx)
+  const codes = await purgeAuthCodes(ctx)
   const requests = await purgeSignupRequests(ctx)
   return {
     anonymized_unsubscribed: unsubscribed,
     anonymized_archived: archived,
-    intercessors_deleted: intercessors,
+    devices_expired: idle.devices,
+    app_subscriptions_released: idle.released,
+    accounts_deleted: accounts,
     events_deleted: raw.events,
     visitor_days_deleted: raw.visitor_days,
     partitions_dropped: parts.dropped,
     email_log_deleted: emails,
-    my_tokens_deleted: my.tokens,
-    my_sessions_deleted: my.sessions,
+    auth_codes_deleted: codes.codes,
+    sessions_deleted: codes.sessions,
     signup_requests_deleted: requests
   }
 }

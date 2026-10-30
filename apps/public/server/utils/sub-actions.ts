@@ -56,6 +56,8 @@ export async function removeCommitment(tx: Tx, sub: SubscriptionRow, id: string)
   if (!Number(res.numDeletedRows)) throw createError({ statusCode: 404, statusMessage: 'Not found' })
 }
 
+// The name of a subscription linked to an account belongs to the account and
+// changes only on My prayer, so a forwarded manage link cannot rename it.
 export async function updateProfile(tx: Tx, sub: SubscriptionRow, input: { name?: unknown, language?: unknown, timezone?: unknown }, siteLanguages: string[]): Promise<void> {
   const patch: { language?: string, timezone?: string, updated_at: Date } = { updated_at: new Date() }
   if (typeof input.language === 'string' && input.language !== sub.language) {
@@ -73,7 +75,7 @@ export async function updateProfile(tx: Tx, sub: SubscriptionRow, input: { name?
     await refreshReminders(tx, sub.id)
   }
   if (sub.contact_id) {
-    const name = typeof input.name === 'string' ? input.name.trim().slice(0, 200) : null
+    const name = typeof input.name === 'string' && !sub.user_id ? input.name.trim().slice(0, 200) : null
     const contact = await tx.selectFrom('crm_records').select(['data']).where('id', '=', sub.contact_id).executeTakeFirst()
     if (contact) {
       const data = { ...(contact.data as Record<string, unknown>), ...(patch.language ? { pt_language: patch.language } : {}) }

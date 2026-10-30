@@ -13,6 +13,8 @@ export default definePtHandler('pt.email.send', async (event, tx, ctx) => {
   const site = await ptSite(tx)
   const lang = site.languages.includes(String(b.language)) ? String(b.language) : site.default_language
   const user = await db.selectFrom('users').select(['email']).where('id', '=', ctx.userId).executeTakeFirstOrThrow()
+  if (!user.email) ptBadRequest('Your account has no email address.')
+  const to = user.email
   const mail = await loadSiteMailContext(ptTx(tx), ctx.orgId)
   const dead = `${mail.siteUrl}/#test-email`
   const campaignRow = b.campaignId
@@ -52,7 +54,7 @@ export default definePtHandler('pt.email.send', async (event, tx, ctx) => {
   }
   await sendMail({
     stream: 'transactional',
-    to: user.email,
+    to,
     fromName: mail.fromName,
     fromLocal: mail.fromLocal,
     replyTo: mail.replyTo,
