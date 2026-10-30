@@ -58,12 +58,13 @@ const languages = computed(() => {
 
 const siteItems = computed(() => sites.value.filter(s => orgIds.value.includes(s.id)).map(s => ({ label: s.name, value: s.id })))
 
-// Audience keys across the chosen sites; site-specific options name their site.
+// Audience keys across the chosen sites; site-specific options (custom consents
+// and single campaigns) name their site.
 const audienceKeys = computed(() => {
   const map = new Map<string, { key: string, label: string, description?: string, perSite: { name: string, count: number }[] }>()
   for (const s of audienceSites.value) {
     for (const a of s.audiences) {
-      const entry = map.get(a.key) ?? { key: a.key, label: a.key.startsWith('custom:') ? `${a.label} (${s.site.name})` : a.label, description: a.description, perSite: [] }
+      const entry = map.get(a.key) ?? { key: a.key, label: a.key.startsWith('custom:') || a.key.startsWith('campaign:') ? `${a.label} (${s.site.name})` : a.label, description: a.description, perSite: [] }
       entry.perSite.push({ name: s.site.name, count: a.count })
       map.set(a.key, entry)
     }

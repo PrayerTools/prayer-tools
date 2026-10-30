@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Shown on CRM contact pages (registered in the pt-crm-panels plugin): the
-// contact's subscription on this site, prayer times, prayer totals and
-// check-ins. Renders nothing outside a site, without pt.intercessors.read, or
+// contact's subscription on this site, prayer times, activity, prayer totals
+// and check-ins. Renders nothing outside a site, without pt.intercessors.read, or
 // for a contact with no subscription.
 const props = defineProps<{ recordId: string, recordType?: string }>()
 
@@ -14,7 +14,7 @@ const { data, refresh } = useAsyncData<Record<string, any> | null>(
   () => allowed.value ? $fetch(`/api/pt/contacts/${props.recordId}/subscription`) : Promise.resolve(null),
   { watch: [allowed, () => props.recordId] }
 )
-const { data: campaigns, execute: loadCampaigns } = useFetch<{ campaigns: { id: string, name: string, goal: string, track_time: boolean }[] }>('/api/pt/campaigns', { key: 'pt-campaigns', immediate: false })
+const { data: campaigns, execute: loadCampaigns } = usePtCampaignList({ immediate: false })
 const subId = computed(() => data.value?.subscription?.id as string | undefined)
 
 async function patch(body: Record<string, unknown>, message = 'Saved') {
@@ -42,7 +42,7 @@ function describe(c: Record<string, any>): string {
   return `${when} at ${c.time} (${c.timezone})${c.duration_min ? ` · ${c.duration_min} min` : ''}`
 }
 
-const add = reactive({ open: false, campaignId: '', frequency: 'daily', days: [] as number[], time: '07:00', duration: 15 })
+const add = reactive({ open: false, campaignId: '', frequency: 'daily', days: [] as string[], time: '07:00', duration: 15 })
 async function openAdd() {
   if (!campaigns.value) await loadCampaigns()
   add.campaignId = campaigns.value?.campaigns[0]?.id ?? ''
@@ -52,7 +52,7 @@ async function addCommitment() {
   try {
     await $fetch(`/api/pt/intercessors/${subId.value}/commitments`, {
       method: 'POST',
-      body: { campaignId: add.campaignId, frequency: add.frequency, days_of_week: add.days, time: add.time, duration_min: add.duration }
+      body: { campaignId: add.campaignId, frequency: add.frequency, days_of_week: add.days.map(Number), time: add.time, duration_min: add.duration }
     })
     add.open = false
     await refresh()
@@ -214,6 +214,8 @@ async function remove() {
         </ul>
       </div>
 
+      <PtContactActivity :record-id="recordId" />
+
       <div class="px-4 py-3">
         <h3 class="text-sm font-medium mb-1">
           Prayer and check-ins
@@ -289,7 +291,7 @@ async function remove() {
           >
             <UCheckboxGroup
               v-model="add.days"
-              :items="PT_LABELS.weekday.map((label, value) => ({ label, value }))"
+              :items="PT_LABELS.weekday.map((label, value) => ({ label, value: String(value) }))"
               orientation="horizontal"
             />
           </UFormField>

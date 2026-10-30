@@ -24,6 +24,7 @@ Host middleware resolves the site from the hostname (`site_domain`), runs inside
 
 - Landing, signup and coverage, daily prayer content, stats, contact / stories — per campaign, per language
 - Past campaigns reachable (e.g. `/2025/stats`)
+- Side campaigns at their own address (e.g. `/ramadan-2027`), with their own landing page (see [campaign-setup.md](campaign-setup.md))
 - Subscriber manage page (see below)
 - Calendar feed (webcal subscription) and one-off `.ics`
 - Embeddable signup / coverage widget for external sites (replaces the WordPress shortcodes)
@@ -49,6 +50,8 @@ Sections in a fixed order; the section list and defaults live in code, and the s
 
 Templates set which sections show by default and pre-fill guidance text.
 
+While a side campaign is upcoming or running, the site's landing page shows a card for it under the top section, linking to its own landing page. A side campaign's landing page has the same sections with its own content.
+
 ## Rendering and caching
 
 - Shared pages (landing, prayer content, stats) are SSR and cached at Cloudflare; the origin renders roughly once per site × language × page × day.
@@ -60,6 +63,7 @@ Templates set which sections show by default and pre-fill guidance text.
 - The signup page offers two ways in: sign up on the web, or use the app (store link / QR that deep-links into this site).
 - Web signup uses email, verified by the email link, or Google / Apple sign-in, which gives an already-verified email. Apple's "Hide My Email" gives a relay address, so the same person typing their real email later becomes a second person.
 - After signing up, the person lands on today's prayer content with a note to confirm their email. No reminders are sent until the email is verified; unverified signups are deleted after 7 days.
+- An address already confirmed on the site, e.g. someone in the main campaign joining a side campaign, gets its chosen times by email: "Add these prayer times?", one button, valid 7 days, single use. Confirming adds them and lands on that campaign. A browser that already holds the address's manage cookie adds them at once. The form shows the same "check your email" message either way.
 - Every commitment has days and a reminder time; duration depends on the campaign's goal (see [campaign-setup.md](campaign-setup.md)).
 - On 24/7 campaigns each recurring prayer time is chosen on a coverage picker: the hours that most need someone are listed first, then a grid of the 24 hours shaded by how covered each is from now to the campaign's end (only the chosen weekdays for weekly), then the slots of the chosen hour. One line gives the numbers for the selected time ("still open on 12 of 30 days"). Specific dates are picked on the prayer calendar page. Other goals ask for a plain reminder time.
 - Consent boxes, unchecked: updates from this site, news from Prayer.Tools, and any custom options the champion added.

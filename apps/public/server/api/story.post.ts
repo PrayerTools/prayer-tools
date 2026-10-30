@@ -31,7 +31,8 @@ export default defineEventHandler(async (event) => {
   const result = await withOrg(useDb(), ctx.orgId, async (tx) => {
     const data = await loadSiteData(tx)
     const lang = data.site.languages.includes(str(body.language, 10)) ? str(body.language, 10) : data.site.default_language
-    const campaign = data.current?.campaign ?? null
+    const wanted = str(body.campaign, 40)
+    const campaign = (wanted ? data.campaigns.find(c => c.id === wanted) : null) ?? data.current?.campaign ?? null
     const contact = await upsertContact(tx, { email: normalized, name, source: 'story form' })
     const thread = await openInboxThread(tx, {
       channelId: contact.channelId,

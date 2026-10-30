@@ -1,11 +1,12 @@
 // Site and campaign data every page needs, read inside the site's org.
 import type { Selectable } from 'kysely'
 import type { Tx } from '@prayertools/shared/db/scope'
-import type { PtSiteTable, SiteBranding, SiteLanding, SiteShare, TranslatableText } from '@prayertools/shared/db/schema'
-import { campaignLength, campaignStatus, defaultDuration, durationOptions, durationRule, pickCurrentCampaign, slotMinutes } from '@prayertools/shared/setup'
+import type { CampaignBranding, CampaignShare, PtSiteTable, SiteBranding, TranslatableText } from '@prayertools/shared/db/schema'
+import { campaignLength, campaignStatus, defaultDuration, durationOptions, durationRule, isSideCampaign, pickCurrentCampaign, slotMinutes } from '@prayertools/shared/setup'
 import { entryNumber } from '@prayertools/shared/schedule'
 import { todayIn } from '@prayertools/shared/dates'
-import { normalizeCampaign, type CampaignRow } from '@prayertools/shared/subscriptions'
+import type { CampaignRow } from '@prayertools/shared/subscriptions'
+import { campaignSegment, loadCampaigns } from '@prayertools/shared/campaigns'
 import { siteSettings, type SiteSettings } from '@prayertools/shared/site'
 import { getLanguage, languageDir, UI_LANGUAGES } from '@prayertools/shared/languages'
 import { textIn } from '@prayertools/shared/translatable'
@@ -13,7 +14,7 @@ import { heroAlt, heroImage } from '@prayertools/shared/hero-images'
 import { brandColor } from '@prayertools/shared/colors'
 import { goOrigin, platformConfig, platformOrigin } from '@prayertools/shared/config'
 import { EDITABLE_SITE_STRINGS } from '@prayertools/shared/site-strings'
-import type { CampaignState, CampaignView, SiteView } from '../../shared/view'
+import type { CampaignState, CampaignView, SideCampaignView, SiteView } from '../../shared/view'
 import type { SiteContext } from './site-context'
 import { editorDefaults } from './editor'
 
@@ -28,11 +29,11 @@ export interface SiteData {
 
 export { UI_LANGUAGES }
 
-export async function loadSiteData(tx: Tx): Promise<SiteData> {
+// Draft campaigns are left out unless `drafts` (preview links and the admin editor).
+export async function loadSiteData(tx: Tx, opts: { drafts?: boolean } = {}): Promise<SiteData> {
   const site = await tx.selectFrom('pt_site').selectAll().executeTakeFirst()
   if (!site) throw createError({ statusCode: 404, statusMessage: 'Not found' })
-  const rows = await tx.selectFrom('pt_campaign').selectAll().orderBy('start_date', 'asc').orderBy('created_at', 'asc').execute()
-  const campaigns = rows.map(normalizeCampaign) as CampaignRow[]
+  const campaigns = await loadCampaigns(tx, opts)
   return { site, campaigns, current: pickCurrentCampaign(campaigns), settings: siteSettings(site.settings) }
 }
 
@@ -58,6 +59,7 @@ export function campaignView(data: SiteData, c: CampaignRow): CampaignView {
     name: c.name,
     state,
     isCurrent: data.current?.campaign.id === c.id,
+    side: isSideCampaign(c),
     goal: c.goal,
     goalTarget: c.goal_target,
     cadence: c.cadence,
@@ -96,7 +98,7 @@ export function feedbackConfig(): SiteView['feedback'] {
 }
 
 // Library hero images take their alt text from code unless the site wrote its own.
-function heroView(branding: SiteBranding, lang: string, def: string): SiteView['image'] {
+export function heroView(branding: CampaignBranding, lang: string, def: string): SiteView['image'] {
   if (!branding.image_url) return null
   const known = heroImage(branding.image_url)
   const alt = textIn(branding.image_alt, lang, def) || (known ? heroAlt(known, lang) : '')
@@ -107,11 +109,12 @@ export async function buildSiteView(tx: Tx, ctx: SiteContext, data: SiteData, la
   const { site } = data
   const def = site.default_language
   const branding = (site.branding ?? {}) as SiteBranding
-  const share = (site.share ?? {}) as SiteShare
+  const look = (campaign?.branding ?? {}) as CampaignBranding
+  const share = (campaign?.share ?? {}) as CampaignShare
   const bc = brandColor(branding.color)
   const cv = campaign ? campaignView(data, campaign) : null
   const cfg = platformConfig()
-  const image = heroView(branding, lang, def)
+  const image = heroView(look, lang, def)
   return {
     orgId: ctx.orgId,
     slug: ctx.slug,
@@ -126,13 +129,13 @@ export async function buildSiteView(tx: Tx, ctx: SiteContext, data: SiteData, la
     brand: { color: bc.color, text: bc.textColor },
     logoUrl: branding.logo_url ?? null,
     image,
-    shareImageUrl: branding.share_image_url ?? image?.url ?? null,
-    description: textIn(site.description as TranslatableText | null, lang, def),
+    shareImageUrl: look.share_image_url ?? image?.url ?? null,
+    description: textIn(campaign?.description as TranslatableText | null, lang, def),
     status: site.status,
     preview: ctx.preview,
     editor: ctx.editor ? { adminOrigin: new URL(cfg.adminUrl).origin, defaults: editorDefaults(uiLanguage(lang)) } : null,
     campaign: cv,
-    campaignSegment: cv && !cv.isCurrent ? cv.slug : null,
+    campaignSegment: campaign ? campaignSegment(campaign, data.current?.campaign.id) : null,
     pastCampaigns: data.campaigns
       .filter(c => c.id !== data.current?.campaign.id && campaignStatus(c) === 'ended')
       .reverse()
@@ -142,6 +145,8 @@ export async function buildSiteView(tx: Tx, ctx: SiteContext, data: SiteData, la
     settings: { showPeopleCount: data.settings.show_people_count, showPrayingNow: data.settings.show_praying_now, sharePrompts: data.settings.share_prompts },
     donateUrl: cfg.donateUrl,
     myUrl: `${platformOrigin()}/my`,
+    privacyUrl: `${platformOrigin()}/privacy`,
+    termsUrl: `${platformOrigin()}/terms`,
     goUrl: `${goOrigin()}/${ctx.slug}`,
     appStoreUrl: cfg.appStoreUrl || null,
     playStoreUrl: cfg.playStoreUrl || null,
@@ -150,6 +155,10 @@ export async function buildSiteView(tx: Tx, ctx: SiteContext, data: SiteData, la
   }
 }
 
-export function landingOf(site: SiteRow): SiteLanding {
-  return (site.landing ?? {}) as SiteLanding
+// Side campaigns open for signup or running now, soonest first.
+export function sideCampaigns(data: SiteData, now: Date = new Date()): SideCampaignView[] {
+  return data.campaigns
+    .filter(c => isSideCampaign(c) && campaignStatus(c, now) !== 'ended')
+    .sort((a, b) => (a.start_date ?? '').localeCompare(b.start_date ?? ''))
+    .map(c => ({ slug: c.slug, name: c.name, state: campaignStatus(c, now) === 'upcoming' ? 'upcoming' : 'active', startDate: c.start_date, endDate: c.end_date }))
 }

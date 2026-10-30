@@ -82,6 +82,8 @@ onBeforeUnmount(() => clearInterval(photoTimer))
         <a href="#how-it-works" class="hover:underline underline-offset-4">{{ t('home.how_label') }}</a>
         <a href="/my" class="hover:underline underline-offset-4">{{ t('my.title') }}</a>
         <a :href="adminUrl" class="hover:underline underline-offset-4">{{ t('home.sign_in') }}</a>
+        <a href="/privacy" class="hover:underline underline-offset-4">{{ t('footer.privacy') }}</a>
+        <a href="/terms" class="hover:underline underline-offset-4">{{ t('footer.terms') }}</a>
       </nav>
       <p>© 2026 Prayer.Tools. Operated by <a href="https://gospelambition.org/" target="_blank" rel="noopener noreferrer" class="underline underline-offset-4 hover:text-stone-800">Gospel Ambition</a>.</p>
       <p class="text-xs">Photos: <a href="https://www.imb.org/photos/browse/?collection=faces-of-the-world&amp;media=image" target="_blank" rel="noopener noreferrer" class="underline underline-offset-4 hover:text-stone-800">IMB</a> · <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener noreferrer" class="underline underline-offset-4 hover:text-stone-800">CC BY-NC 4.0</a> · Cropped</p>

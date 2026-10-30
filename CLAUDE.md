@@ -39,7 +39,7 @@ Ports come from each app's `.env`: `NUXT_PORT` for admin, `--port` for public, a
 Three processes on one Postgres, one Docker image each (`apps/<app>/Dockerfile`, built from the repo root):
 
 - **`packages/shared`** (`@prayertools/shared`, imported as `@prayertools/shared/<file>`, e.g. `@prayertools/shared/db/scope`): all domain logic: DB types (`src/db/schema.ts`), connections and RLS scopes, campaign setup, commitment schedules and DST-exact coverage, subscriptions/signup, CRM and inbox adapters, email transport and templates with email i18n, signed links, stats. Shared functions take the shared `Tx` type; the admin app casts its transaction with `ptTx()` (`apps/admin/apps/prayertools/server/utils/pt-context.ts`).
-- **`apps/admin`**: Nuxtinator host (SPA). `layers.ts` lists the fetched Nuxtinator layers (core, tenancy, email-mailgun, ai, crm, inbox), pinned in `layers.lock.json` and fetched into `_layers/`. **Never edit `_layers/`.** `NUXTINATOR_SOURCE_DIR` loads every layer from a local Nuxtinator checkout instead; `NUXTINATOR_<ID>_PATH` overrides one layer. Some admin features need unreleased Nuxtinator changes, so develop with `NUXTINATOR_SOURCE_DIR` set. prayer.tools' own layers are globbed from `apps/admin/apps/*`:
+- **`apps/admin`**: Nuxtinator host (SPA). `layers.ts` lists the fetched Nuxtinator layers (core, tenancy, email-mailgun, ai, crm, inbox), set to track Nuxtinator `master` (recorded in `layers.lock.json`) and fetched into `_layers/`. **Never edit `_layers/`.** `NUXTINATOR_SOURCE_DIR` loads every layer from a local Nuxtinator checkout instead; `NUXTINATOR_<ID>_PATH` overrides one layer. Develop with `NUXTINATOR_SOURCE_DIR` set when changing Nuxtinator alongside the app. prayer.tools' own layers are globbed from `apps/admin/apps/*`:
   - `prayertools`: sites, campaigns, content, libraries, landing page, stats, domains, team, operator (`/admin/pt/*`) screens. `server/plugins/register-pt.ts` registers permissions, roles, apps, rail items and admin sections with Nuxtinator's registries.
   - `marketing`: site email, templates, multi-site sends, one-click unsubscribe. Written to move into Nuxtinator later.
   - The admin app **owns every migration** (`apps/admin/apps/*/migrations/`). Tenancy-retrofit migrations are named `*_T<NNN>_*` and run after all regular ones.
@@ -65,3 +65,7 @@ Three processes on one Postgres, one Docker image each (`apps/<app>/Dockerfile`,
 - The admin UI is English only; the public site is translated.
 - Nuxtinator improvements needed by prayer.tools are made in this repo (e.g. the marketing layer), not upstream.
 - Don't read other worktrees (`.worktrees/`) or branches.
+
+## UI rules
+
+Before any UI work — in the host or in your own app layer — read `apps/admin/_layers/core/DESIGN.md` and follow it. It lists the core components to use (help icons, sidebars, settings rows, confirm dialogs) and the styling rules every nuxtinator page shares. It updates with core, so re-read it after a core update.

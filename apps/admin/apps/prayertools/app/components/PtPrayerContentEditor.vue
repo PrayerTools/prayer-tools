@@ -3,6 +3,7 @@
 // it falls on) and a language, then write what each section shows that day.
 // A section is a site library: a ready-made prayer guide the site follows
 // (the first edit gives the site its own copy), or content written for the site.
+// `embedded` leaves out the page header for the setup wizard; `initialCampaignId` fixes the campaign.
 import { campaignLength } from '@prayertools/shared/setup'
 import { entryDate, entryNumber } from '@prayertools/shared/schedule'
 import { addDays, todayIn } from '@prayertools/shared/dates'
@@ -30,32 +31,15 @@ interface Lib {
   staleCount: number
 }
 
-interface Campaign {
-  id: string
-  name: string
-  status: string
-  cadence: 'daily' | 'weekly'
-  timezone: string
-  start_mode: 'date' | 'join'
-  start_date: string | null
-  end_mode: 'date' | 'none' | 'days'
-  end_date: string | null
-  length_days: number | null
-}
-
 interface Entry { source: string, doc: Record<string, any> | null, stale: boolean, edited: boolean, languages: string[] }
 
 const { data: site, can } = usePtSite()
 const { data: meta } = usePtMeta()
 const toast = usePtToast()
-const route = useRoute()
 
-const { data: campaigns } = useFetch<{ campaigns: Campaign[] }>('/api/pt/campaigns', { key: 'pt-campaigns' })
-const campaignId = ref<string | undefined>(props.initialCampaignId ?? (typeof route.query.campaign === 'string' ? route.query.campaign : undefined))
-watch([campaigns, site], () => {
-  if (!campaignId.value) campaignId.value = site.value?.currentCampaign?.id ?? campaigns.value?.campaigns[0]?.id
-}, { immediate: true })
-const campaign = computed(() => campaigns.value?.campaigns.find(c => c.id === campaignId.value))
+const { id: selectedId, campaigns, status: campaignsStatus } = usePtCampaign()
+const campaignId = computed(() => props.initialCampaignId ?? selectedId.value)
+const campaign = computed(() => campaigns.value.find(c => c.id === campaignId.value) ?? null)
 
 const { data: content, refresh } = useFetch<{ libraries: Lib[], languages: string[], defaultLanguage: string }>('/api/pt/content', {
   query: computed(() => ({ campaign: campaignId.value })),
@@ -139,9 +123,9 @@ const vars = computed(() => {
     siteName: site.value?.org.name ?? '',
     campaignName: campaign.value?.name ?? '',
     lang: lang.value,
-    place: site.value?.site.place_name,
-    placeWording: site.value?.site.place_wording,
-    peopleGroup: site.value?.site.people_group,
+    place: campaign.value?.place_name,
+    placeWording: campaign.value?.place_wording,
+    peopleGroup: campaign.value?.people_group,
     startDate: date(campaign.value?.start_date ?? null),
     endDate: date(campaign.value?.end_date ?? null)
   })
@@ -351,15 +335,22 @@ defineExpose({ dirty, saving })
 
 <template>
   <div class="prayer-content-editor max-w-6xl mx-auto space-y-6">
-    <PtCampaignTabs
-      v-if="!props.embedded && typeof route.query.campaign === 'string'"
-      :campaign-id="route.query.campaign"
-    />
-    <PtContentTabs v-else-if="!props.embedded" />
-    <div class="flex flex-wrap items-start justify-between gap-4" :class="!props.embedded ? 'rounded-lg bg-[#202833] p-6 sm:p-8 text-white' : ''">
+    <PtContentTabs v-if="!props.embedded" />
+    <div
+      class="flex flex-wrap items-start justify-between gap-4"
+      :class="!props.embedded ? 'rounded-lg bg-[#202833] p-6 sm:p-8 text-white' : ''"
+    >
       <div>
-        <p v-if="!props.embedded" class="mb-3 text-xs font-semibold uppercase tracking-widest text-orange-300">Your campaign’s prayer guide</p>
-        <h1 v-if="!props.embedded" class="text-2xl font-semibold">
+        <p
+          v-if="!props.embedded"
+          class="mb-3 text-xs font-semibold uppercase tracking-widest text-orange-300"
+        >
+          Your campaign’s prayer guide
+        </p>
+        <h1
+          v-if="!props.embedded"
+          class="text-2xl font-semibold"
+        >
           Prayer content
         </h1>
         <p
@@ -370,17 +361,14 @@ defineExpose({ dirty, saving })
           {{ summary }}
         </p>
       </div>
-      <USelect
-        v-if="!props.embedded && (campaigns?.campaigns.length ?? 0) > 1"
-        v-model="campaignId"
-        :items="campaigns!.campaigns.map(c => ({ label: c.name, value: c.id }))"
-        class="w-64"
-        aria-label="Campaign"
+      <PtCampaignSwitcher
+        v-if="!props.embedded"
+        class="rounded-md bg-(--ui-bg) p-1 text-(--ui-text)"
       />
     </div>
 
     <UEmpty
-      v-if="campaigns && !campaigns.campaigns.length"
+      v-if="campaignsStatus !== 'pending' && !campaigns.length"
       icon="i-lucide-calendar-plus"
       title="No campaign yet"
       description="Create a campaign first. Its dates decide how many days of prayers to write."
@@ -727,7 +715,7 @@ defineExpose({ dirty, saving })
           </template>
         </UCard>
 
-        <UCard v-if="can('pt.content.write')">
+        <UCard v-if="can('pt.content.write') && libraries.length > 1">
           <template #header>
             <h2 class="font-semibold">
               Sections shown every {{ unit }}
@@ -793,6 +781,14 @@ defineExpose({ dirty, saving })
             />
           </template>
         </UCard>
+        <div v-else-if="can('pt.content.write')">
+          <UButton
+            variant="soft"
+            icon="i-lucide-plus"
+            label="Add a section"
+            @click="catalogOpen = true"
+          />
+        </div>
       </div>
     </div>
 
@@ -805,7 +801,7 @@ defineExpose({ dirty, saving })
       <template #body>
         <div class="space-y-5">
           <PtLibraryCatalog
-            :template="site?.site.template_key"
+            :template="campaign?.template_key"
             :cadence="campaign?.cadence"
             :site-languages="site?.site.languages ?? []"
             :used-ids="libraries.map(l => l.libraryId).filter(Boolean) as string[]"

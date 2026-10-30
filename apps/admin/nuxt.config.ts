@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
+import type { Nuxt } from '@nuxt/schema'
 import { LAYERS } from './layers'
 import { subdirOf, type LayerSpec } from './scripts/lib/resolve'
 
@@ -42,7 +43,21 @@ export default defineNuxtConfig({
 
   modules: [
     '@nuxt/eslint',
-    '@nuxt/ui'
+    '@nuxt/ui',
+    // Typed `$fetch` routes pull server handlers into the app's type program,
+    // so the app program also needs every layer's server declarations
+    // (database tables, Nitro hooks), which its tsconfig excludes.
+    (_options: unknown, nuxt: Nuxt) => {
+      nuxt.hook('prepare:types', ({ references }) => {
+        for (const l of nuxt.options._layers) {
+          const dir = l.config.serverDir ?? join(l.config.rootDir, 'server')
+          if (!existsSync(dir)) continue
+          for (const f of readdirSync(dir, { recursive: true, encoding: 'utf8' })) {
+            if (f.endsWith('.d.ts') && !f.includes('node_modules')) references.push({ path: join(dir, f) })
+          }
+        }
+      })
+    }
   ],
 
   hooks: { 'modules:before': stripLayerTsconfigs },
@@ -116,7 +131,7 @@ export default defineNuxtConfig({
         '@tiptap/core', '@tiptap/vue-3', '@tiptap/vue-3/menus', '@tiptap/starter-kit', '@tiptap/pm/state', '@tiptap/pm/view',
         '@tiptap/pm/model', '@tiptap/extension-code', '@tiptap/extension-horizontal-rule', '@tiptap/extension-image',
         '@tiptap/extension-mention', '@tiptap/extension-placeholder', '@tiptap/extension-drag-handle-vue-3',
-        '@tiptap/markdown', '@tiptap/suggestion'
+        '@tiptap/markdown', '@tiptap/suggestion', 'dompurify'
       ]
     },
     server: {

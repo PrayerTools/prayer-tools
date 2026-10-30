@@ -1,5 +1,6 @@
 // Display helpers shared by the campaign list and campaign pages.
-import type { TranslatableText } from '@prayertools/shared/db/schema'
+import type { CampaignLanding, TranslatableText } from '@prayertools/shared/db/schema'
+import type { SitePlaceWording } from '@prayertools/shared/place'
 import type { SetupState } from '../components/PtSetupForm.vue'
 
 export type PtCampaignSummary = Pick<SetupState, 'start_mode' | 'start_date' | 'end_mode' | 'end_date' | 'length_days' | 'goal' | 'cadence'>
@@ -23,13 +24,28 @@ export interface PtCampaign extends SetupState {
   slug: string
   name: string
   template_key: string | null
+  // 'side' runs beside the main campaign at its own address; null is a main campaign.
+  kind: 'side' | null
   timezone: string
+  place_name: string | null
+  place_wording: SitePlaceWording
+  people_group: string | null
+  latitude: number | null
+  longitude: number | null
   status: 'upcoming' | 'active' | 'ended'
+  ended_at: string | null
+  // Null while the campaign is a draft being set up.
+  published_at: string | null
   end_message: TranslatableText | null
   cta: { url?: string, label?: TranslatableText } | null
+  landing: CampaignLanding | null
   commitments: number
   progress: PtGoalProgress
 }
+
+// The steps of the campaign setup wizard (PtCampaignSetupSteps).
+export const PT_SETUP_STEPS = ['setup', 'languages', 'content', 'landing', 'publish'] as const
+export type PtSetupStep = typeof PT_SETUP_STEPS[number]
 
 export function ptCampaignDates(c: PtCampaignSummary): string {
   const start = ptFormatDate(c.start_date)

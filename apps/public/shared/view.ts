@@ -12,6 +12,8 @@ export interface CampaignView {
   name: string
   state: CampaignState
   isCurrent: boolean
+  // Runs beside the main campaign at its own address.
+  side: boolean
   goal: Goal
   goalTarget: number | null
   cadence: Cadence
@@ -26,6 +28,15 @@ export interface CampaignView {
   // 24/7 coverage campaigns: minutes in one coverage slot.
   slotMinutes: number | null
   todayEntry: number
+}
+
+// A side campaign the main landing page points to.
+export interface SideCampaignView {
+  slug: string
+  name: string
+  state: 'upcoming' | 'active'
+  startDate: string | null
+  endDate: string | null
 }
 
 export interface SiteView {
@@ -57,6 +68,8 @@ export interface SiteView {
   settings: { showPeopleCount: boolean, showPrayingNow: boolean, sharePrompts: boolean }
   donateUrl: string
   myUrl: string
+  privacyUrl: string
+  termsUrl: string
   goUrl: string
   appStoreUrl: string | null
   playStoreUrl: string | null
@@ -144,6 +157,19 @@ export interface CommitmentView {
   endsOn: string | null
 }
 
+// One campaign on the manage page with the person's prayer times in it.
+export interface ManageCampaignView {
+  id: string
+  name: string
+  state: 'upcoming' | 'active' | 'ended'
+  // Start-anytime campaigns hold one prayer time per person.
+  personal: boolean
+  durationRule: 'required' | 'optional' | 'hidden'
+  durations: number[]
+  defaultDuration: number
+  commitments: CommitmentView[]
+}
+
 export interface ManageView {
   subscriptionId: string
   name: string
@@ -153,7 +179,7 @@ export interface ManageView {
   status: SubscriptionStatus
   verified: boolean
   referralCode: string
-  commitments: CommitmentView[]
+  campaigns: ManageCampaignView[]
   consents: { key: string, label: string, granted: boolean }[]
   icsUrl: string
   prayUrl: string
@@ -180,7 +206,7 @@ export interface MyView {
 }
 
 export type PageView =
-  | { kind: 'landing', sections: string[], progress: GoalProgressView | null, why: string, today: { day: number, html: string, title: string } | null, stories: StoryView[], custom: CustomSectionView[], prayingNow: number, form: SignupFormView, placeholders: string[] }
+  | { kind: 'landing', sections: string[], progress: GoalProgressView | null, why: string, today: { day: number, html: string, title: string } | null, stories: StoryView[], custom: CustomSectionView[], prayingNow: number, form: SignupFormView, placeholders: string[], side: SideCampaignView[] }
   | { kind: 'between', stats: StatsView | null, endMessage: string, cta: { label: string, url: string } | null }
   | { kind: 'archived' }
   | { kind: 'not_started', startDate: string }
@@ -188,7 +214,7 @@ export type PageView =
   | { kind: 'signup', form: SignupFormView }
   | { kind: 'stats', stats: StatsView }
   | { kind: 'coverage', progress: GoalProgressView | null }
-  | { kind: 'contact' }
+  | { kind: 'contact', fields: SignupFieldView[] }
   | { kind: 'stories' }
   | { kind: 'manage', manage: ManageView | null }
   | { kind: 'link_expired', token: string }
@@ -212,7 +238,7 @@ export interface PlatformResponse {
   host: 'platform'
   lang: string
   donateUrl: string
-  page: { kind: 'my', my: MyView, notice: string | null } | { kind: 'home', adminUrl: string } | { kind: 'not_found' }
+  page: { kind: 'my', my: MyView, notice: string | null } | { kind: 'home', adminUrl: string } | { kind: 'legal', doc: 'privacy' | 'terms' } | { kind: 'not_found' }
   status: number
   cache: 'private'
   title: string

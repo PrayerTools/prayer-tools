@@ -4,12 +4,13 @@
 import type { H3Event } from 'h3'
 import { classifyHost } from '@prayertools/shared/site'
 import { withOrg } from '@prayertools/shared/db/scope'
+import { loadCampaigns } from '@prayertools/shared/campaigns'
 import { siteUrlFor } from '@prayertools/shared/site'
 import { useDb } from '../utils/db'
 import { NOT_FOUND_CACHE, PRIVATE_CACHE, limit, requestHost, setCache } from '../utils/request'
 import { buildSiteContext, resolveSiteCached } from '../utils/site-context'
-import { previewCookieMatches } from '../utils/cookies'
-import { checkinAnswer, exchangeManageLink, legacyFuel, legacyManage, previewLink, unsubscribePost, verifyLink } from '../utils/actions'
+import { PREVIEW_COOKIE, previewCookieMatches } from '../utils/cookies'
+import { addTimesLink, checkinAnswer, exchangeManageLink, legacyFuel, legacyManage, previewLink, unsubscribePost, verifyLink } from '../utils/actions'
 import { editorAccess, editorFrameAncestors } from '../utils/editor'
 import { exchangeMyToken } from '../utils/my-auth'
 
@@ -69,7 +70,7 @@ export default defineEventHandler(async (event) => {
   if (kind.kind === 'platform') {
     // With PT_MARKETING_URL set, the marketing site owns "/"; otherwise the landing view renders.
     if ((pathname === '/' || pathname === '') && process.env.PT_MARKETING_URL) return sendRedirect(event, marketingUrl(), 302)
-    if (pathname === '/' || pathname === '' || pathname === '/robots.txt') return
+    if (pathname === '/' || pathname === '' || pathname === '/robots.txt' || pathname === '/privacy' || pathname === '/terms') return
     const m = pathname.match(/^\/my\/login\/([^/]+)$/)
     if (m && isGet) return await exchangeMyToken(event, decodeURIComponent(m[1]!))
     if (pathname === '/my' || pathname.startsWith('/my/') || pathname.startsWith('/api/my/') || pathname === '/api/view') return
@@ -96,15 +97,20 @@ export default defineEventHandler(async (event) => {
     setResponseHeader(event, 'x-robots-tag', 'noindex')
   }
 
-  if (resolved.status === 'draft' && !ctx.editor) {
-    if (segs[0] === 'preview' && segs[1] && isGet) {
-      if (await previewLink(event, ctx, segs[1])) return
-      return notFound(event, false)
-    }
+  if (segs[0] === 'preview' && segs[1] && segs.length === 2 && isGet && !ctx.editor) {
+    if (await previewLink(event, ctx, segs[1])) return
+    return notFound(event, false)
+  }
+  // A draft site shows only with a preview cookie; a published site uses one
+  // to also show its draft campaigns.
+  if (!ctx.editor && (resolved.status === 'draft' || getCookie(event, PREVIEW_COOKIE))) {
     const hash = await withOrg(useDb(), ctx.orgId, tx => tx.selectFrom('pt_site').select('preview_token_hash').executeTakeFirst())
-    if (!previewCookieMatches(event, ctx.orgId, hash?.preview_token_hash ?? null)) return notFound(event, false)
-    ctx.preview = true
-    setResponseHeader(event, 'x-robots-tag', 'noindex')
+    const matches = previewCookieMatches(event, ctx.orgId, hash?.preview_token_hash ?? null)
+    if (!matches && resolved.status === 'draft') return notFound(event, false)
+    if (matches) {
+      ctx.preview = true
+      setResponseHeader(event, 'x-robots-tag', 'noindex')
+    }
   }
 
   const embed = segs[segs.length - 1] === 'embed' || pathname === '/embed.js'
@@ -123,12 +129,13 @@ export default defineEventHandler(async (event) => {
   if (!isGet) return
   if (first === 'm' && second && segs.length === 2) return await exchangeManageLink(event, ctx, second)
   if (first === 'verify' && second && segs.length === 2) return await verifyLink(event, ctx, second)
+  if (first === 'add' && second && segs.length === 2) return await addTimesLink(event, ctx, second)
   if (first === 'checkin' && second && third && segs.length === 3) return await checkinAnswer(event, ctx, second, third)
   if (first === 'subscriptions_app' && second === 'manage') return await legacyManage(event, ctx, third ?? '')
   if (segs.includes('fuel')) {
     const data = await withOrg(useDb(), ctx.orgId, async tx => ({
       languages: (await tx.selectFrom('pt_site').select('languages').executeTakeFirst())?.languages ?? [],
-      slugs: (await tx.selectFrom('pt_campaign').select('slug').execute()).map(r => r.slug)
+      slugs: (await loadCampaigns(tx)).map(c => c.slug)
     }))
     return await legacyFuel(event, ctx, segs, data.languages, data.slugs)
   }

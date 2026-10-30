@@ -1,7 +1,13 @@
 // Creates a campaign on the site. `relaunchOf` starts from a previous
 // campaign's answers and reuses its libraries (copies the site edited carry
-// over; followed libraries pick up their latest published version).
-import { suggestCampaignSlug } from '@prayertools/shared/setup'
+// over; followed libraries pick up their latest published version), its kind,
+// landing page, description, images, share messages, place and people group.
+// Any other campaign takes its images, share messages, place and people group
+// from the current main campaign, and a main campaign its landing page and
+// description too, so the site's root page keeps its look.
+import { isSideCampaign, pickCurrentCampaign, suggestCampaignSlug, suggestSideSlug } from '@prayertools/shared/setup'
+import { campaignById, loadCampaigns, normalizeCampaign } from '@prayertools/shared/campaigns'
+import type { CampaignRow } from '@prayertools/shared/subscriptions'
 import { jsonb } from '@prayertools/shared/db/json'
 import { parseText } from '@prayertools/shared/translatable'
 
@@ -9,43 +15,57 @@ export default definePtHandler('pt.campaigns.write', async (event, tx, ctx) => {
   const b = await ptBody(event)
   const site = await ptSite(tx)
   let base: Record<string, unknown> | undefined
-  let templateKey = typeof b.template_key === 'string' ? b.template_key : (site.template_key ?? 'generic')
-  let previous: Awaited<ReturnType<typeof loadPrev>> | undefined
-  async function loadPrev(id: string) {
-    return await tx.selectFrom('pt_campaign').selectAll().where('id', '=', id).executeTakeFirst()
-  }
+  let templateKey = typeof b.template_key === 'string' ? b.template_key : 'generic'
+  let previous: CampaignRow | null = null
   if (typeof b.relaunchOf === 'string') {
-    previous = await loadPrev(b.relaunchOf)
+    previous = await campaignById(ptTx(tx), b.relaunchOf, { drafts: true })
     if (!previous) ptNotFound('Campaign not found.')
-    const p = ptCampaignOut(previous)
     templateKey = previous.template_key ?? 'generic'
-    base = { start_mode: p.start_mode, end_mode: p.end_mode, length_days: p.length_days, goal: p.goal, cadence: p.cadence, track_time: p.track_time }
-    if (p.start_mode === 'date' && p.start_date && p.end_date && !('end_date' in b) && typeof b.start_date === 'string') {
-      const days = (Date.parse(p.end_date) - Date.parse(p.start_date)) / 86_400_000
+    base = { start_mode: previous.start_mode, end_mode: previous.end_mode, length_days: previous.length_days, goal: previous.goal, cadence: previous.cadence, track_time: previous.track_time }
+    if (previous.start_mode === 'date' && previous.start_date && previous.end_date && !('end_date' in b) && typeof b.start_date === 'string') {
+      const days = (Date.parse(previous.end_date) - Date.parse(previous.start_date)) / 86_400_000
       b.end_date = new Date(Date.parse(b.start_date) + days * 86_400_000).toISOString().slice(0, 10)
     }
   }
-  const answers = ptSetupFromBody(b, templateKey, base as never)
+  const kind = previous ? previous.kind : ptCampaignKind(b.kind)
+  const answers = ptSetupFromBody(b, templateKey, base as never, kind)
   const extras = ptCampaignExtras(b)
   const timezone = (extras.timezone as string) ?? site.timezone
-  await ptAssertNoOverlap(tx, { ...answers, timezone })
+  await ptAssertNoOverlap(tx, { ...answers, timezone }, kind)
+  const name = (extras.name as string) ?? previous?.name ?? ctx.orgName
   const taken = (await tx.selectFrom('pt_campaign').select('slug').execute()).map(r => r.slug)
-  const slug = (extras.slug as string) ?? suggestCampaignSlug(answers.start_date, taken)
+  const slug = (extras.slug as string) ?? (kind === 'side' ? suggestSideSlug(name, answers.start_date, taken) : suggestCampaignSlug(answers.start_date, taken))
   if (taken.includes(slug)) ptBadRequest('That campaign address is already used on this site.')
+  const hasMain = !!(await tx.selectFrom('pt_campaign').select('id').where('kind', 'is', null).executeTakeFirst())
+  const mains = previous ? [] : (await loadCampaigns(ptTx(tx), { drafts: true })).filter(c => !isSideCampaign(c))
+  const look = previous ?? pickCurrentCampaign(mains)?.campaign ?? mains.at(-1)
   const created = await tx.insertInto('pt_campaign').values({
     slug,
-    name: (extras.name as string) ?? previous?.name ?? ctx.orgName,
+    name,
     template_key: templateKey,
+    kind,
     ...answers,
     timezone,
+    place_name: 'place_name' in extras ? extras.place_name : (look?.place_name ?? null),
+    place_wording: 'place_wording' in extras ? extras.place_wording : jsonb(look?.place_wording ?? {}),
+    people_group: 'people_group' in extras ? extras.people_group : (look?.people_group ?? null),
+    latitude: 'latitude' in extras ? extras.latitude : (look?.latitude ?? null),
+    longitude: 'longitude' in extras ? extras.longitude : (look?.longitude ?? null),
     goal_target: (extras.goal_target as number | null | undefined) ?? previous?.goal_target ?? null,
     slot_min: 'slot_min' in extras ? extras.slot_min as number | null : (previous?.slot_min ?? null),
     end_message: b.end_message ? jsonb(parseText(b.end_message)) : (previous?.end_message ? jsonb(previous.end_message) : null),
-    cta: jsonb(b.cta ? ptCta(b.cta) : (previous?.cta ?? {}))
+    cta: jsonb(b.cta ? ptCta(b.cta) : (previous?.cta ?? {})),
+    landing: jsonb(look && (previous || kind !== 'side') ? look.landing : {}),
+    branding: jsonb(look?.branding ?? {}),
+    share: jsonb(look?.share ?? {}),
+    description: look?.description && (previous || kind !== 'side') ? jsonb(look.description) : null,
+    // A campaign starts as a draft, except a site's first main campaign while
+    // the site is being set up: it goes live with the site, whose checklist covers it.
+    published_at: site.status === 'draft' && kind !== 'side' && !hasMain ? new Date() : null
   } as never).returningAll().executeTakeFirstOrThrow()
   if (previous) {
     const libs = await tx.selectFrom('pt_campaign_library').select(['site_library_id', 'position']).where('campaign_id', '=', previous.id).execute()
     if (libs.length) await tx.insertInto('pt_campaign_library').values(libs.map(l => ({ campaign_id: created.id, site_library_id: l.site_library_id, position: l.position }))).execute()
   }
-  return { campaign: ptCampaignOut(created) }
+  return { campaign: normalizeCampaign(created) }
 })

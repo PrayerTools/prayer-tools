@@ -1,6 +1,7 @@
 // Prayer sessions, upserted from pings (web and app): the first ping counts a
-// prayer, later pings add prayer time. Sessions are partitioned by start
-// time, so a session is only continued within 6 hours of its start.
+// prayer, later pings add the time since the previous ping, capped so a gap
+// with the page closed or hidden isn't counted. Sessions are partitioned by
+// start time, so a session is only continued within 6 hours of its start.
 import { sql } from 'kysely'
 import type { Tx } from '@prayertools/shared/db/scope'
 import type { SessionSource } from '@prayertools/shared/db/schema'
@@ -12,6 +13,7 @@ import type { H3Event } from 'h3'
 import { managedSubscription } from './manage'
 
 export const MAX_SESSION_SECONDS = 2 * 3600
+const MAX_PING_GAP_SECONDS = 60
 
 export interface PingInput {
   id: string
@@ -35,7 +37,7 @@ export async function recordPing(tx: Tx, p: PingInput): Promise<PingResult> {
   const updated = await sql<{ seconds: number, old: number, subscription_id: string | null }>`
     UPDATE pt_prayer_session s
        SET last_ping_at = now(),
-           seconds = LEAST(GREATEST(extract(epoch from now() - s.started_at)::int, s.seconds), ${MAX_SESSION_SECONDS})
+           seconds = LEAST(s.seconds + LEAST(GREATEST(extract(epoch from now() - s.last_ping_at), 0), ${MAX_PING_GAP_SECONDS})::int, ${MAX_SESSION_SECONDS})
       FROM (SELECT id, started_at, seconds AS old FROM pt_prayer_session
              WHERE id = ${p.id} AND started_at > now() - interval '6 hours' FOR UPDATE) o
      WHERE s.id = o.id AND s.started_at = o.started_at AND NOT s.completed

@@ -2,14 +2,10 @@
 // else pt.site.write. Settings keep only values that differ from the code
 // defaults.
 import { isLanguage } from '@prayertools/shared/languages'
-import { parsePlaceWording } from '@prayertools/shared/place'
 import { isValidTimezone } from '@prayertools/shared/dates'
 import { containsBlockedWord } from '@prayertools/shared/moderation'
-import { parseText } from '@prayertools/shared/translatable'
 import { settingsOverrides } from '@prayertools/shared/site'
 import { jsonb, pgArray } from '@prayertools/shared/db/json'
-import { TEMPLATES } from '@prayertools/shared/setup'
-import { isTemplateWhy } from '@prayertools/shared/i18n/landing'
 
 export default definePtHandler('pt.site.write', async (event, tx, ctx) => {
   const b = await ptBody(event)
@@ -21,18 +17,6 @@ export default definePtHandler('pt.site.write', async (event, tx, ctx) => {
     if (name.length < 2 || name.length > 80) ptBadRequest('Name must be 2–80 characters.')
     if (containsBlockedWord(name)) ptBadRequest('Please choose another name.')
     await tx.updateTable('orgs').set({ name, updated_at: new Date().toISOString() }).where('id', '=', ctx.orgId).execute()
-  }
-  if ('description' in b) patch.description = b.description ? jsonb(parseText(b.description)) : null
-  for (const k of ['purpose', 'place_name', 'people_group'] as const) {
-    if (k in b) patch[k] = typeof b[k] === 'string' && (b[k] as string).trim() ? (b[k] as string).trim().slice(0, 200) : null
-  }
-  if ('place_wording' in b) patch.place_wording = jsonb(parsePlaceWording(b.place_wording))
-  for (const k of ['latitude', 'longitude'] as const) {
-    if (k in b) {
-      const v = b[k]
-      if (v !== null && (typeof v !== 'number' || Math.abs(v) > (k === 'latitude' ? 90 : 180))) ptBadRequest(`Invalid ${k}.`)
-      patch[k] = v
-    }
   }
   if ('timezone' in b) {
     if (!isValidTimezone(b.timezone)) ptBadRequest('Unknown timezone.')
@@ -46,23 +30,11 @@ export default definePtHandler('pt.site.write', async (event, tx, ctx) => {
     patch.languages = pgArray(languages)
     patch.default_language = def
   }
-  if (typeof b.template_key === 'string') {
-    if (!TEMPLATES.some(t => t.key === b.template_key)) ptBadRequest('Unknown template.')
-    patch.template_key = b.template_key
-  }
   if ('branding' in b) patch.branding = jsonb(ptBranding(b.branding))
   if ('email_identity' in b) {
     ptNeed(ctx, 'pt.site.manage')
     patch.email_identity = jsonb(ptIdentity(b.email_identity))
   }
-  if ('landing' in b) {
-    const landing = ptLanding(b.landing)
-    // The template's standard "why" text shows by default, so it is not stored.
-    const templateKey = (patch.template_key as string | undefined) ?? site.template_key
-    if (landing.why) landing.why = Object.fromEntries(Object.entries(landing.why).filter(([lang, doc]) => !isTemplateWhy(doc, templateKey, lang)))
-    patch.landing = jsonb(landing)
-  }
-  if ('share' in b) patch.share = jsonb(ptShare(b.share))
   if ('settings' in b && b.settings && typeof b.settings === 'object') {
     patch.settings = jsonb(settingsOverrides({ ...(site.settings as Record<string, unknown>), ...(b.settings as Record<string, unknown>) }))
   }

@@ -1,11 +1,8 @@
 <script setup lang="ts">
 definePageMeta({ middleware: 'auth' })
 
-const route = useRoute()
 const { data: site, can } = usePtSite()
-const { data: campaigns } = useFetch<{ campaigns: { id: string, name: string }[] }>('/api/pt/campaigns', { key: 'pt-campaigns' })
-const campaignId = ref<string | undefined>(typeof route.query.campaign === 'string' ? route.query.campaign : undefined)
-watch([campaigns, site], () => { if (!campaignId.value) campaignId.value = site.value?.currentCampaign?.id ?? campaigns.value?.campaigns[0]?.id }, { immediate: true })
+const { id: campaignId } = usePtCampaign()
 
 const { data, pending, error, refresh } = useFetch<{
   totals: Record<string, number>
@@ -64,17 +61,17 @@ const DIM_ICONS: Record<string, string> = { country: 'i-lucide-globe', source: '
 
 <template>
   <div class="stats-page max-w-6xl mx-auto space-y-8">
-    <PtCampaignTabs
-      v-if="typeof route.query.campaign === 'string'"
-      :campaign-id="route.query.campaign"
-    />
     <div class="rounded-lg bg-[#202833] p-6 sm:p-8 text-white">
       <div>
-        <p class="mb-3 text-xs font-semibold uppercase tracking-widest text-orange-300">Campaign insights</p>
+        <p class="mb-3 text-xs font-semibold uppercase tracking-widest text-orange-300">
+          Campaign insights
+        </p>
         <h1 class="text-2xl font-bold">
           Stats
         </h1>
-        <p class="mt-3 text-sm text-slate-200 leading-relaxed">See how people are joining, praying, and sharing your campaign.</p>
+        <p class="mt-3 text-sm text-slate-200 leading-relaxed">
+          See how people are joining, praying, and sharing your campaign.
+        </p>
         <p class="mt-2 text-sm text-slate-300">
           <template v-if="campaign">
             {{ campaign.name }}: {{ ptFormatDate(campaign.start_date) }} – {{ campaign.end_date ? ptFormatDate(campaign.end_date) : 'ongoing' }}
@@ -85,28 +82,20 @@ const DIM_ICONS: Record<string, string> = { country: 'i-lucide-globe', source: '
         </p>
       </div>
     </div>
-      <div class="flex flex-wrap items-end justify-between gap-4">
-        <UFormField label="Showing stats for">
-          <USelect
-            v-if="campaigns?.campaigns.length"
-            v-model="campaignId"
-            :items="campaigns.campaigns.map(c => ({ label: c.name, value: c.id }))"
-            class="w-64 max-w-full"
-            size="lg"
-            aria-label="Campaign"
-          />
-          <p v-else class="text-sm text-(--ui-text-muted)">All time</p>
-        </UFormField>
-        <UButton
-          v-if="can('pt.intercessors.export')"
-          icon="i-lucide-download"
-          variant="outline"
-          color="neutral"
-          size="lg"
-          label="Export intercessors"
-          @click="downloadIntercessors"
-        />
-      </div>
+    <div class="flex flex-wrap items-end justify-between gap-4">
+      <UFormField label="Showing stats for">
+        <PtCampaignSwitcher />
+      </UFormField>
+      <UButton
+        v-if="can('pt.intercessors.export')"
+        icon="i-lucide-download"
+        variant="outline"
+        color="neutral"
+        size="lg"
+        label="Export intercessors"
+        @click="downloadIntercessors"
+      />
+    </div>
 
     <UAlert
       v-if="site && !can('pt.stats.read')"
@@ -124,14 +113,27 @@ const DIM_ICONS: Record<string, string> = { country: 'i-lucide-globe', source: '
       :description="ptErrorMessage(error)"
       :actions="[{ label: 'Try again', onClick: () => refresh() }]"
     />
-    <div v-else-if="pending && !data" class="grid grid-cols-2 lg:grid-cols-4 gap-4" role="status" aria-label="Loading statistics">
-      <USkeleton v-for="n in 4" :key="n" class="h-36 rounded-lg" />
+    <div
+      v-else-if="pending && !data"
+      class="grid grid-cols-2 lg:grid-cols-4 gap-4"
+      role="status"
+      aria-label="Loading statistics"
+    >
+      <USkeleton
+        v-for="n in 4"
+        :key="n"
+        class="h-36 rounded-lg"
+      />
     </div>
 
     <template v-else-if="data">
       <div class="space-y-1">
-        <h2 class="text-xl font-semibold">At a glance</h2>
-        <p class="text-sm text-(--ui-text-muted)">Participation and prayer commitments for the selected campaign.</p>
+        <h2 class="text-xl font-semibold">
+          At a glance
+        </h2>
+        <p class="text-sm text-(--ui-text-muted)">
+          Participation and prayer commitments for the selected campaign.
+        </p>
       </div>
       <div
         class="grid gap-4 grid-cols-2 lg:grid-cols-4"
@@ -284,8 +286,12 @@ const DIM_ICONS: Record<string, string> = { country: 'i-lucide-globe', source: '
       </UCard>
 
       <div class="space-y-1">
-        <h2 class="text-xl font-semibold">People and reach</h2>
-        <p class="text-sm text-(--ui-text-muted)">Who has joined and how people are finding your site.</p>
+        <h2 class="text-xl font-semibold">
+          People and reach
+        </h2>
+        <p class="text-sm text-(--ui-text-muted)">
+          Who has joined and how people are finding your site.
+        </p>
       </div>
       <div class="grid gap-4 sm:grid-cols-2">
         <UCard>

@@ -101,6 +101,9 @@ export interface CampaignOpts {
   timezone?: string
   endMessage?: TranslatableText
   cta?: CampaignCta
+  kind?: 'side' | null
+  // A draft campaign when false.
+  published?: boolean
 }
 
 export async function createCampaign(env: TestEnv, orgId: string, o: CampaignOpts = {}): Promise<string> {
@@ -117,7 +120,9 @@ export async function createCampaign(env: TestEnv, orgId: string, o: CampaignOpt
     cadence: 'daily',
     timezone: o.timezone ?? 'America/New_York',
     end_message: o.endMessage ? jsonb(o.endMessage) : null,
-    cta: jsonb(o.cta ?? {})
+    cta: jsonb(o.cta ?? {}),
+    kind: o.kind ?? null,
+    published_at: o.published === false ? null : new Date()
   }).returning('id').executeTakeFirstOrThrow())
   return row.id
 }

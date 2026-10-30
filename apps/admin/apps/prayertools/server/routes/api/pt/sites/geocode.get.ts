@@ -17,11 +17,13 @@ export default defineEventHandler(async (event) => {
   const q = String(getQuery(event).q ?? '').trim()
   if (q.length < 2) return { places: [] }
   try {
-    const rows = await $fetch<NominatimPlace[]>('https://nominatim.openstreetmap.org/search', {
-      query: { 'q': q.slice(0, 200), 'format': 'jsonv2', 'limit': 6, 'accept-language': 'en' },
+    const query = new URLSearchParams({ 'q': q.slice(0, 200), 'format': 'jsonv2', 'limit': '6', 'accept-language': 'en' })
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?${query}`, {
       headers: { 'User-Agent': `PrayerTools/3 (${platformConfig().adminUrl}; support@prayer.tools)`, 'Accept': 'application/json' },
-      timeout: 8000
+      signal: AbortSignal.timeout(8000)
     })
+    if (!res.ok) throw new Error(`Nominatim ${res.status}`)
+    const rows = await res.json() as NominatimPlace[]
     return {
       places: rows.map(r => ({
         name: r.name || r.display_name.split(',')[0]!.trim(),

@@ -1,6 +1,7 @@
 // Where the visitor is in a personal-start campaign, so the shared pray page
 // can take a recognised subscriber to their entry. Null for anyone else.
 import { withOrg } from '@prayertools/shared/db/scope'
+import { campaignById } from '@prayertools/shared/campaigns'
 import { openEntry } from '@prayertools/shared/progress'
 import { useDb } from '../../utils/db'
 import { limit, readJson } from '../../utils/request'
@@ -14,7 +15,7 @@ export default defineEventHandler(async (event) => {
   const body = await readJson(event, 2048)
   if (!isUuid(body.campaign)) throw createError({ statusCode: 400 })
   const position = await withOrg(useDb(), ctx.orgId, async (tx) => {
-    const campaign = await tx.selectFrom('pt_campaign').selectAll().where('id', '=', body.campaign as string).executeTakeFirst()
+    const campaign = await campaignById(tx, body.campaign)
     if (!campaign) throw createError({ statusCode: 404 })
     const subscriptionId = await prayingSubscription(tx, event, ctx.orgId, body.p)
     return subscriptionId ? await openEntry(tx, subscriptionId, campaign, null) : null

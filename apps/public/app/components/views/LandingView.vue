@@ -2,19 +2,35 @@
 import type { PageView } from '~~/shared/view'
 
 const props = defineProps<{ page: Extract<PageView, { kind: 'landing' }> }>()
-const { site, link, st, num, date } = useSite()
+const { site, link, campaignLink, st, num, date } = useSite()
 const { t } = useI18n()
 const has = (s: string) => props.page.sections.includes(s)
 const placeholder = (s: string) => props.page.placeholders?.includes(s)
 const campaign = computed(() => site.value.campaign)
 
-useHead({ title: () => site.value.name })
+useHead({ title: () => campaign.value?.side ? `${campaign.value.name} · ${site.value.name}` : site.value.name })
 
 const signupIntro = computed(() => campaign.value?.state === 'upcoming' && campaign.value.startDate
   ? t('signup.starts_on', { date: date(campaign.value.startDate) })
   : st('landing.signup.intro', { site: site.value.name }))
 
 const imageStyle = computed(() => site.value.image ? { objectPosition: `${site.value.image.fx * 100}% ${site.value.image.fy * 100}%` } : {})
+
+const sharePrompt = ref(false)
+const joined = ref(false)
+const needsVerify = ref(false)
+const verifyPrompt = ref(false)
+const formKey = ref(0)
+const signupEmail = useState<string | null>('pt-signup-email', () => null)
+
+function onJoined(verify: boolean) {
+  joined.value = true
+  needsVerify.value = verify
+  formKey.value++
+  document.getElementById('signup')?.scrollIntoView({ behavior: 'smooth' })
+  if (verify) verifyPrompt.value = true
+  else if (site.value.settings.sharePrompts) setTimeout(() => (sharePrompt.value = true), 1200)
+}
 </script>
 
 <template>
@@ -27,8 +43,9 @@ const imageStyle = computed(() => site.value.image ? { objectPosition: `${site.v
       </template>
       <div class="relative max-w-3xl mx-auto px-4 py-16 sm:py-28 text-center">
         <div class="space-y-5">
-          <p v-if="campaign" class="text-sm uppercase tracking-wide opacity-90">{{ campaign.name }}</p>
-          <h1 id="top-title" class="text-3xl sm:text-5xl font-bold leading-tight">{{ site.name }}</h1>
+          <!-- A side campaign's page is titled with its own name; the main campaign's with the site's. -->
+          <p v-if="campaign" class="text-sm uppercase tracking-wide opacity-90">{{ campaign.side ? site.name : campaign.name }}</p>
+          <h1 id="top-title" class="text-3xl sm:text-5xl font-bold leading-tight">{{ campaign?.side ? campaign.name : site.name }}</h1>
           <p v-if="site.description" class="text-lg opacity-95">{{ site.description }}</p>
           <p v-if="campaign?.state === 'upcoming' && campaign.startDate" class="font-medium">{{ t('landing.starts_on', { date: date(campaign.startDate) }) }}</p>
           <GoalProgress v-if="page.progress" :progress="page.progress" on-brand />
@@ -41,6 +58,17 @@ const imageStyle = computed(() => site.value.image ? { objectPosition: `${site.v
       </div>
       <p v-if="site.image?.credit" class="absolute bottom-1 end-3 text-xs opacity-80">{{ site.image.credit }}</p>
     </section>
+
+    <div v-if="page.side.length" class="max-w-3xl mx-auto px-4 pt-10 space-y-3">
+      <NuxtLink v-for="c in page.side" :key="c.slug" :to="campaignLink(c.slug)" class="flex items-center gap-4 rounded-xl border-2 border-(--brand) bg-white p-5 hover:bg-stone-50">
+        <div class="min-w-0 flex-1">
+          <p class="text-sm font-semibold uppercase tracking-wide text-(--brand)">{{ c.state === 'active' ? t('landing.side.now') : t('landing.side.soon') }}</p>
+          <p class="text-xl font-bold">{{ c.name }}</p>
+          <p v-if="c.startDate && c.endDate" class="text-sm text-stone-600">{{ t('landing.side.dates', { start: date(c.startDate), end: date(c.endDate) }) }}</p>
+        </div>
+        <span class="inline-flex shrink-0 items-center gap-1 font-medium text-(--brand)">{{ t('landing.side.open') }}<UIcon name="i-lucide-arrow-right" class="size-4 rtl:rotate-180" /></span>
+      </NuxtLink>
+    </div>
 
     <div class="max-w-3xl mx-auto px-4 py-10 space-y-14">
       <EditorPlaceholder v-if="placeholder('why')" section="why" :title="st('landing.why.title')" />
@@ -88,9 +116,11 @@ const imageStyle = computed(() => site.value.image ? { objectPosition: `${site.v
             <h2 id="signup-title" class="text-2xl font-bold">{{ st('landing.signup.title') }}</h2>
             <p class="mt-2 text-stone-600">{{ signupIntro }}</p>
           </div>
-          <div class="px-5 py-6 sm:px-8">
+          <div class="px-5 py-6 sm:px-8 space-y-6">
+            <UAlert v-if="joined && needsVerify" color="warning" variant="soft" icon="i-lucide-mail" :title="t('pray.check_email_title')" :description="t('pray.check_email_body_not_started')" role="status" />
+            <UAlert v-else-if="joined" color="success" variant="soft" icon="i-lucide-check" :title="st('signup.success')" role="status" />
             <UAlert v-if="!page.form.open || !campaign" color="neutral" variant="soft" icon="i-lucide-info" :title="t('signup.closed')" />
-            <LazySignupForm v-else :form="page.form" hydrate-on-visible />
+            <LazySignupForm v-else :key="formKey" :form="page.form" hydrate-on-visible @joined="onJoined" />
           </div>
         </div>
       </div>
@@ -128,5 +158,18 @@ const imageStyle = computed(() => site.value.image ? { objectPosition: `${site.v
         <AppLinks />
       </section>
     </div>
+
+    <UModal v-model:open="verifyPrompt" :title="t('pray.verify_prompt_title')" :description="signupEmail ? t('pray.verify_prompt_body_email', { email: signupEmail }) : t('pray.verify_prompt_body')">
+      <template #body>
+        <div class="flex items-start gap-4">
+          <UIcon name="i-lucide-mail-check" class="size-10 shrink-0 text-primary" />
+          <p class="text-stone-700">{{ t('pray.verify_prompt_spam') }}</p>
+        </div>
+      </template>
+      <template #footer>
+        <UButton :label="t('pray.verify_prompt_ok')" @click="verifyPrompt = false" />
+      </template>
+    </UModal>
+    <SharePrompt v-model:open="sharePrompt" :title="t('share.prompt_title')" :description="t('share.prompt_body')" />
   </div>
 </template>

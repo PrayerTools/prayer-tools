@@ -229,7 +229,7 @@
         "tags": ["Sites"],
         "operationId": "getDayContent",
         "summary": "Prayer content for one day",
-        "description": "The content blocks (one per content library attached to the campaign) for entry number `day`, as Tiptap JSON with placeholders filled. Each block is in the requested language when available, otherwise the site's default language. Blocks with no entry for that day are omitted. Public and edge-cacheable (`Cache-Control: public, max-age=0, s-maxage=600, stale-while-revalidate=86400`).",
+        "description": "The content blocks (one per content library attached to the campaign) for entry number `day`, as Tiptap JSON with placeholders filled. Only days the campaign's prayer pages show are returned: none before a dated campaign starts and none past today's entry while it runs; personal-start campaigns show every entry; any other day is 404. Each block is in the requested language when available, otherwise the site's default language. Blocks with no entry for that day are omitted. Public and edge-cacheable (`Cache-Control: public, max-age=0, s-maxage=600, stale-while-revalidate=86400`).",
         "security": [],
         "parameters": [
           { "$ref": "#/components/parameters/Slug" },
@@ -703,11 +703,12 @@
       },
       "Campaign": {
         "type": "object",
-        "required": ["id", "slug", "name", "status", "goal", "goal_target", "cadence", "start_mode", "start_date", "end_date", "length_days", "timezone", "duration", "duration_options", "default_duration_min", "slot_minutes"],
+        "required": ["id", "slug", "name", "kind", "status", "goal", "goal_target", "cadence", "start_mode", "start_date", "end_date", "length_days", "timezone", "duration", "duration_options", "default_duration_min", "slot_minutes"],
         "properties": {
           "id": { "type": "string", "format": "uuid" },
           "slug": { "type": "string" },
           "name": { "type": "string" },
+          "kind": { "type": "string", "enum": ["main", "side"], "description": "`main`: the site's own campaigns, one at a time, shown at the site's address. `side`: runs beside the main campaign on fixed dates, at `/{slug}`; never `current_campaign`." },
           "status": { "type": "string", "enum": ["upcoming", "active", "ended"] },
           "goal": { "type": "string", "enum": ["people", "prayer_time", "coverage"] },
           "goal_target": { "type": ["integer", "null"] },
@@ -742,7 +743,7 @@
           "name": { "type": "string" },
           "status": { "type": "string", "enum": ["published", "archived"] },
           "url": { "type": "string", "format": "uri", "description": "Public web address of the site." },
-          "description": { "type": "string", "description": "In `language`; empty string when none." },
+          "description": { "type": "string", "description": "The current campaign's short description, in `language`; empty string when none." },
           "language": { "type": "string", "description": "Language the translatable text is in." },
           "default_language": { "type": "string" },
           "languages": {

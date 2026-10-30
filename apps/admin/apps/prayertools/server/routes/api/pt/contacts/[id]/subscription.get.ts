@@ -3,6 +3,7 @@
 // signup answers, consent) is shown by the CRM.
 import { campaignEntries } from '@prayertools/shared/content'
 import { toIsoDate } from '@prayertools/shared/dates'
+import { campaignById } from '@prayertools/shared/campaigns'
 
 export default definePtHandler('pt.intercessors.read', async (event, tx) => {
   const contactId = getRouterParam(event, 'id')!
@@ -15,8 +16,8 @@ export default definePtHandler('pt.intercessors.read', async (event, tx) => {
   const entries = new Map<string, number | null>()
   for (const c of commitments) {
     if (c.start_mode !== 'join' || entries.has(c.campaign_id)) continue
-    const campaign = await tx.selectFrom('pt_campaign').selectAll().where('id', '=', c.campaign_id).executeTakeFirstOrThrow()
-    entries.set(c.campaign_id, await campaignEntries(ptTx(tx), ptCampaignOut(campaign)))
+    const campaign = await campaignById(ptTx(tx), c.campaign_id, { drafts: true })
+    entries.set(c.campaign_id, campaign ? await campaignEntries(ptTx(tx), campaign) : null)
   }
   const checkins = await tx.selectFrom('pt_checkin').select(['kind', 'sent_at', 'response', 'responded_at']).where('subscription_id', '=', sub.id).orderBy('sent_at', 'desc').execute()
   const totals = await tx.selectFrom('pt_person_total as t').innerJoin('pt_campaign as k', 'k.id', 't.campaign_id')
@@ -26,8 +27,8 @@ export default definePtHandler('pt.intercessors.read', async (event, tx) => {
     subscription,
     commitments: commitments.map(c => ({
       ...c,
-      starts_on: ptCampaignOut({ start_date: c.starts_on, end_date: c.ends_on }).start_date,
-      ends_on: ptCampaignOut({ start_date: c.starts_on, end_date: c.ends_on }).end_date,
+      starts_on: toIsoDate(c.starts_on as unknown as Date | string | null),
+      ends_on: toIsoDate(c.ends_on as unknown as Date | string | null),
       advanced_on: toIsoDate(c.advanced_on as unknown as Date | string | null),
       entries: entries.get(c.campaign_id) ?? null
     })),

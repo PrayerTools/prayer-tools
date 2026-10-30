@@ -7,6 +7,7 @@ interface Story { id: string, name: string | null, body: string, language: strin
 
 const { data: site, can } = usePtSite()
 const { data: meta } = usePtMeta()
+const { campaign } = usePtCampaign()
 const toast = usePtToast()
 const { data, refresh } = useFetch<{ stories: Story[] }>('/api/pt/stories', { key: 'pt-stories' })
 
@@ -14,9 +15,10 @@ const publishableOnly = ref(false)
 const shown = computed(() => (data.value?.stories ?? []).filter(s => !publishableOnly.value || s.may_publish))
 const inboxUrl = computed(() => site.value && can('inbox.access') ? `/@${site.value.org.slug}/inbox` : null)
 const storiesSectionOff = computed(() => {
-  const l = site.value?.site.landing
-  if (!l) return false
-  const hidden: string[] = l.hidden ?? meta.value?.templates.find(t => t.key === site.value?.site.template_key)?.hiddenSections ?? []
+  const c = campaign.value
+  const l = c?.landing
+  if (!c || !l) return false
+  const hidden: string[] = l.hidden ?? meta.value?.templates.find(t => t.key === c.template_key)?.hiddenSections ?? []
   return l.stories === false || hidden.includes('stories')
 })
 
@@ -40,9 +42,17 @@ async function setPublished(s: Story, published: boolean) {
     <PtLandingTabs />
     <header class="flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h1 class="text-2xl font-semibold">
-          Stories
-        </h1>
+        <div class="flex flex-wrap items-center gap-3">
+          <h1 class="text-2xl font-semibold">
+            Stories
+          </h1>
+          <UBadge
+            color="neutral"
+            variant="outline"
+            icon="i-lucide-layers"
+            label="Shared by all campaigns"
+          />
+        </div>
         <p class="text-sm text-(--ui-text-muted) max-w-xl">
           Prayer stories sent from your site, with what each writer allowed. Read and answer them in the inbox; add the ones you may publish to your landing page.
         </p>

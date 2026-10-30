@@ -26,9 +26,10 @@ Where champions and their teams build and run sites and their campaigns. Everyth
   - after a divider: Library (the champion's personal library);
   - at the bottom: Admin, for operators only.
 - Every rail entry means "this, for the current site". Switching sites is the header switcher's job; it says "Sites" and "New site", never "Organizations". The rail starts collapsed (Nuxtinator's default).
-- **Sections with several pages use in-page tabs:** Content (prayer content, libraries); Landing page (page, stories, share); Email (emails, test emails and push); Settings (settings, domains); Library (images and blocks, templates); a campaign (overview, content, emails, stats for that campaign).
+- **Sections with several pages use in-page tabs:** Content (prayer content, libraries); Landing page (page, signup form, stories, share); Email (emails, test emails and push); Settings (settings, domains); Library (images and blocks, templates).
+- **One campaign at a time:** Content, Landing page, Share, Stats and Test emails edit the campaign chosen in a shared switcher (the campaign on the site's root address by default; the browser remembers a choice until that campaign ends). Opening a campaign from the campaign list chooses it. A site with one campaign shows its name instead of a switcher.
 - **Multi-site sends are never in the rail or top-level navigation:** "Send to several sites…" is in the overflow menu of a site's Email list and on each Library template, and only when the user can send on at least two sites.
-- **The CRM and the inbox keep their own in-page navigation.** Champions never see the CRM's schema builder or permissions matrix (to do: site owners still see them; see the README).
+- **The CRM and the inbox keep their own in-page navigation.** Champions never see the CRM's schema builder or permissions matrix: `crm.schema.manage` is withheld from the `admin` role.
 
 - One login; after login, **Your sites** lists every site the user belongs to: name, live address, role, status (draft / published / archived), the current or next campaign, and the people count. Pending invites show at the top; with no sites, the page starts onboarding. No subsites, no per-site logins.
 - Per-site roles and invites from Nuxtinator's tenancy layer:
@@ -69,7 +70,7 @@ Keeps what today's flow does behind the scenes: Turnstile and a bad-words check 
 - **Prayer content:** libraries used directly or modified per entry, the site's own content, Tiptap editor, per language, AI-assisted translation (see [libraries.md](libraries.md)).
 - **Libraries:** create their own, usable on all their sites; request sharing with everyone.
 - **Personal library:** email templates, images and reusable blocks owned by the champion and usable on any of their sites (see [architecture.md](architecture.md)).
-- **Landing page:** fill in the sections, add custom sections (heading, rich text, optional image and button), and optionally a stories section.
+- **Landing page:** per campaign: fill in the sections, choose the hero image, add custom sections (heading, rich text, optional image and button), and optionally a stories section. The site's color and logo are edited there too and shared by all campaigns. A new main campaign starts from the latest main campaign's landing page.
 - **Images:** uploaded to object storage and resized for slow connections; alt text required (AI-translatable); optional credit shown under the image; a focal point so the hero image crops well on phones. Uploads go to the champion's personal library, so an image can be reused on any of their sites.
 - **Test emails:** "Send me a test email" on every email the site sends (reminder, end-of-campaign, check-in, verification, site emails), in any site language. Test emails never contain live personal links.
 - **Translations:** per-site editable strings over code-owned defaults. Champion-written text (custom sections, custom consent options) is written in one language and translated into the site's other languages with an AI translate button; translations stay editable, and editing the original flags the other languages as out of date instead of overwriting them. No public "AI translated" label.

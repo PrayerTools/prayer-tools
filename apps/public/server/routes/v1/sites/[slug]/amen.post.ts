@@ -4,6 +4,7 @@
 // recorded as a finished prayer at `prayed_at`.
 import { sql } from 'kysely'
 import { withOrg } from '@prayertools/shared/db/scope'
+import { campaignById } from '@prayertools/shared/campaigns'
 import { openEntry } from '@prayertools/shared/progress'
 import { useDb } from '../../../../utils/db'
 import { limit, readJson } from '../../../../utils/request'
@@ -24,7 +25,7 @@ export default defineEventHandler(async (event) => {
   if (prayedAt.getTime() > Date.now() + 300_000 || prayedAt.getTime() < Date.now() - 90 * 86_400_000) throw createError({ statusCode: 400, statusMessage: 'prayed_at' })
   const seconds = Math.min(MAX_SESSION_SECONDS, Math.max(0, Math.round(Number(body.seconds) || 0)))
   const created = await withOrg(useDb(), site.orgId, async (tx) => {
-    const campaign = await tx.selectFrom('pt_campaign').selectAll().where('id', '=', body.campaign as string).executeTakeFirst()
+    const campaign = await campaignById(tx, body.campaign)
     if (!campaign) throw createError({ statusCode: 404 })
     const existing = await sql<{ completed: boolean }>`SELECT completed FROM pt_prayer_session WHERE id = ${body.id} LIMIT 1`.execute(tx)
     if (existing.rows[0]) {

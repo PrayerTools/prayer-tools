@@ -6,7 +6,6 @@ import type { Db as SharedDb, Tx as SharedTx } from '@prayertools/shared/db/scop
 import type { DB } from '@prayertools/shared/db/schema'
 import { createDb } from '@prayertools/shared/db/connect'
 import { siteSettings } from '@prayertools/shared/site'
-import { toIsoDate } from '@prayertools/shared/dates'
 
 // The admin app's Kysely schema is a superset of the shared one; shared
 // domain functions take the shared transaction type.
@@ -32,10 +31,6 @@ export async function ptSite(tx: Transaction<Database>) {
   const site = await tx.selectFrom('pt_site').selectAll().executeTakeFirst()
   if (!site) ptNotFound('This organization is not a site.')
   return { ...site, settings_merged: siteSettings(site.settings as Record<string, unknown>) }
-}
-
-export function ptCampaignOut<T extends { start_date: unknown, end_date: unknown }>(c: T) {
-  return { ...c, start_date: toIsoDate(c.start_date as Date | string | null), end_date: toIsoDate(c.end_date as Date | string | null) }
 }
 
 // BYPASSRLS connection for operator-only cross-site views (search all sites,

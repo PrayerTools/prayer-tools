@@ -3,6 +3,7 @@
 import { withOrg, type Tx } from '@prayertools/shared/db/scope'
 import { primaryEmailOf } from '@prayertools/shared/crm'
 import { suppressedAmong } from '@prayertools/shared/email/suppression'
+import { logEmails, type EmailLogEntry } from '@prayertools/shared/email/log'
 import { loadSiteMailContext, thankYouEmail, type SiteMailContext } from '@prayertools/shared/email/templates'
 import { emailT } from '@prayertools/shared/i18n/email'
 import { textIn } from '@prayertools/shared/translatable'
@@ -120,6 +121,7 @@ async function thankYou(ctx: JobContext, payload: Record<string, unknown>) {
     if (batch.subs.length === 0) break
 
     const done = new Set(p.batch_sent)
+    const sentLog: EmailLogEntry[] = []
     const results = await mapPool(batch.subs, SEND_CONCURRENCY, async (sub) => {
       if (done.has(sub.id)) return 'already'
       const to = batch.emails.get(sub.id)
@@ -127,8 +129,10 @@ async function thankYou(ctx: JobContext, payload: Record<string, unknown>) {
       const { rendered, links } = renderFor(batch.mctx, batch.site, batch.campaign, sub, batch.totals.get(sub.id), false)
       await ctx.sendMail(siteMail(batch.mctx, to, rendered, 'thank_you', links.unsubscribeUrl))
       done.add(sub.id)
+      sentLog.push({ subscriptionId: sub.id, kind: 'thank_you', subject: rendered.subject, campaignId })
       return 'sent'
     })
+    await withOrg(ctx.app, orgId, tx => logEmails(tx, sentLog))
     let failure: unknown = null
     for (const r of results) {
       if (!r.ok) failure ??= r.error
@@ -209,6 +213,7 @@ async function thankYouPerson(ctx: JobContext, payload: Record<string, unknown>)
     const { rendered, links } = renderFor(work.mctx, work.site, work.campaign, work.sub, work.totals.get(work.sub.id), true)
     await ctx.sendMail(siteMail(work.mctx, work.email, rendered, 'thank_you', links.unsubscribeUrl))
     await ctx.saveProgress({ ...done, email_done: true })
+    await withOrg(ctx.app, orgId, tx => logEmails(tx, [{ subscriptionId: work.sub.id, kind: 'thank_you', subject: rendered.subject, campaignId }]))
     sent = 1
   }
   if (work.pushIds.length && ctx.push && !done.push_done) {

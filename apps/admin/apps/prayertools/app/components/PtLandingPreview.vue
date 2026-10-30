@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // The live site in a frame beside the landing page editor. The frame renders
-// the editor's unsaved changes and reports which section was clicked.
-const props = defineProps<{ siteUrl: string, lang: string, defaultLanguage: string, draft: unknown }>()
+// the editor's unsaved changes and reports which section was clicked. With
+// `campaignSlug` it shows that side campaign's landing page.
+const props = defineProps<{ siteUrl: string, campaignSlug?: string, lang: string, defaultLanguage: string, draft: unknown }>()
 const emit = defineEmits<{ select: [section: string, id?: string], defaults: [defaults: Record<string, string>] }>()
 
 const DEVICES = { desktop: 1280, mobile: 390 } as const
@@ -9,12 +10,12 @@ const device = ref<keyof typeof DEVICES>('desktop')
 
 const { data: editor, refresh } = useFetch<{ token: string }>('/api/pt/site/editor', { key: 'pt-landing-editor' })
 const origin = computed(() => new URL(props.siteUrl).origin)
+const pagePath = computed(() => `${props.lang === props.defaultLanguage ? '' : `/${props.lang}`}${props.campaignSlug ? `/${props.campaignSlug}` : ''}`)
 const src = computed(() => {
   if (!editor.value) return null
-  const path = props.lang === props.defaultLanguage ? '/' : `/${props.lang}`
-  return `${props.siteUrl}${path}?pt_edit=${encodeURIComponent(editor.value.token)}`
+  return `${props.siteUrl}${pagePath.value || '/'}?pt_edit=${encodeURIComponent(editor.value.token)}`
 })
-const viewUrl = computed(() => `${props.siteUrl}${props.lang === props.defaultLanguage ? '' : `/${props.lang}`}`)
+const viewUrl = computed(() => `${props.siteUrl}${pagePath.value}`)
 
 const frame = ref<HTMLIFrameElement>()
 const ready = ref(false)

@@ -16,7 +16,8 @@
     "loading": "Loading…",
     "or": "or",
     "save": "Save",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "ok": "OK"
   },
   "preview": {
     "banner": "Preview — this site is not published yet. Only people with the preview link can see it."
@@ -25,7 +26,9 @@
     "my": "My prayer: all your campaigns",
     "past": "Past campaigns",
     "powered": "Powered by",
-    "give": "Give to support Prayer.Tools"
+    "give": "Give to support Prayer.Tools",
+    "privacy": "Privacy",
+    "terms": "Terms"
   },
   "feedback": {
     "intro": "Report a bug, an idea or unsafe content to the Prayer.Tools team. For questions about this campaign or typos in its content, please use the Contact page."
@@ -34,6 +37,12 @@
     "starts_on": "Starts on {date}",
     "pray_today": "Pray today",
     "continue_praying": "Keep reading and pray",
+    "side": {
+      "now": "Also happening now",
+      "soon": "Coming up",
+      "dates": "{start} – {end}",
+      "open": "Find out more"
+    },
     "why": {
       "title": "Why we pray"
     },
@@ -162,6 +171,7 @@
     "days": "Which days",
     "time": "Reminder time",
     "time_help": "We send the reminder at this time.",
+    "time_placeholder": "Choose a time",
     "duration": "How long will you pray?",
     "duration_placeholder": "Choose a duration",
     "remove": "Remove",

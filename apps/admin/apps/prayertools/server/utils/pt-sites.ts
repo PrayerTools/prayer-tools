@@ -7,9 +7,7 @@ import { isValidTimezone } from '@prayertools/shared/dates'
 import { ensureSystemUser, upsertContact } from '@prayertools/shared/crm'
 import { withOrg } from '@prayertools/shared/db/scope'
 import { jsonb, pgArray } from '@prayertools/shared/db/json'
-import { makeText } from '@prayertools/shared/translatable'
 import { forwardEvent } from '@prayertools/shared/statinator'
-import { getTemplate } from '@prayertools/shared/setup'
 import { enableSiteApps } from '@prayertools/shared/site'
 import { randomBrandColor } from '@prayertools/shared/colors'
 
@@ -18,16 +16,9 @@ export const PT_STAFF_SLUG = 'staff'
 export interface CreateSiteInput {
   name: string
   slug: string
-  description?: string
-  purpose?: string | null
-  place_name?: string | null
-  people_group?: string | null
-  latitude?: number | null
-  longitude?: number | null
   languages?: string[]
   default_language?: string
   timezone?: string
-  template_key?: string
 }
 
 export function ptValidateSiteInput(input: CreateSiteInput): Record<string, string> {
@@ -73,7 +64,6 @@ export async function ptCreateSite(userId: string, input: CreateSiteInput): Prom
   const membershipId = crypto.randomUUID()
   const now = new Date().toISOString()
   const languages = input.languages?.length ? input.languages : ['en']
-  const template = getTemplate(input.template_key)
   try {
     await db.transaction().execute(async (tx) => {
       await tx.insertInto('orgs').values({ id: orgId, slug: input.slug, name: input.name.trim(), created_at: now, updated_at: now }).execute()
@@ -82,19 +72,11 @@ export async function ptCreateSite(userId: string, input: CreateSiteInput): Prom
       await sql`select set_config('app.current_org', ${orgId}, true)`.execute(tx)
       await tx.insertInto('pt_site').values({
         org_id: orgId,
-        description: input.description ? jsonb(makeText(input.default_language ?? languages[0]!, input.description)) : null,
-        purpose: input.purpose ?? null,
-        place_name: input.place_name ?? null,
-        people_group: input.people_group ?? null,
-        latitude: input.latitude ?? null,
-        longitude: input.longitude ?? null,
         languages: pgArray(languages),
         default_language: input.default_language ?? languages[0]!,
         timezone: input.timezone ?? 'UTC',
-        template_key: template.key,
         branding: jsonb({ color: randomBrandColor() }),
-        landing: jsonb(template.hiddenSections.length ? { hidden: template.hiddenSections } : {}),
-        onboarding: jsonb({ step: 'about' })
+        onboarding: jsonb({ step: 'setup' })
       } as never).execute()
     })
   } catch (err: unknown) {
@@ -116,7 +98,7 @@ export async function ptCreateSite(userId: string, input: CreateSiteInput): Prom
   for (const a of seeded) await hook('app.enabled', { orgId, appId: a.app_id })
 
   ptAddChampionToStaffCrm(userId).catch(err => console.warn('[pt] staff CRM', err))
-  forwardEvent({ event_type: 'campaign_created', hostname: null, metadata: { site_id: orgId, site_slug: input.slug, template: template.key } }).catch(() => {})
+  forwardEvent({ event_type: 'campaign_created', hostname: null, metadata: { site_id: orgId, site_slug: input.slug } }).catch(() => {})
   return { id: orgId, slug: input.slug, name: input.name.trim() }
 }
 

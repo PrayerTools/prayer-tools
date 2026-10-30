@@ -42,7 +42,7 @@ const durationItems = computed(() => props.durations.map(d => ({ label: formatMi
       </div>
     </UFormField>
     <UFormField v-if="!timeless" :label="t('commitment.time')" :name="`${idPrefix}-time`" :help="t('commitment.time_help')" required>
-      <UInput :id="`${idPrefix}-time`" v-model="model.time" type="time" required class="w-40" />
+      <TimePicker :id="`${idPrefix}-time`" v-model="model.time" :lang="lang" required class="w-40" />
     </UFormField>
     <UFormField v-if="model.frequency === 'weekly'" :label="t('commitment.days')" :name="`${idPrefix}-days`" class="sm:col-span-2" required>
       <UCheckboxGroup v-model="days" :items="weekdays" orientation="horizontal" class="flex-wrap" />

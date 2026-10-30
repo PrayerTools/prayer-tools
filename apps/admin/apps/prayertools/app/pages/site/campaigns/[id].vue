@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// One campaign: its numbers, setup answers, address and end-of-campaign message.
-import type { SetupState } from '../../../components/PtSetupForm.vue'
+// One campaign: its numbers, setup answers, address, place and people group,
+// and end-of-campaign message. Opening it makes it the campaign the other campaign pages edit.
 import type { PtCampaign } from '../../../utils/pt-campaign-ui'
 
 definePageMeta({ middleware: 'auth' })
@@ -9,18 +9,21 @@ const route = useRoute()
 const id = computed(() => String(route.params.id))
 const { data: site, can, slug } = usePtSite()
 const toast = usePtToast()
-const { data, refresh } = useFetch<{ campaign: PtCampaign & { entries: number | null, contentEntries: number }, libraries: { siteLibraryId: string, title: string, entryCount: number }[] }>(() => `/api/pt/campaigns/${id.value}`, { key: computed(() => `pt-campaign-${id.value}`) })
+const { select } = usePtCampaign()
+watch(id, v => select(v), { immediate: true })
+const { data, refresh } = useFetch<{ campaign: PtCampaign & { entries: number | null, contentEntries: number, usesPlaceWording: boolean }, libraries: { siteLibraryId: string, title: string, entryCount: number }[] }>(() => `/api/pt/campaigns/${id.value}`, { key: computed(() => `pt-campaign-${id.value}`) })
 
-const form = reactive({ name: '', slug: '', timezone: 'UTC' })
-const setup = ref<SetupState>({ start_mode: 'date', start_date: null, end_mode: 'date', end_date: null, length_days: null, goal: 'people', cadence: 'daily', track_time: false, goal_target: null, slot_min: null })
-watch(data, (d) => {
-  const c = d?.campaign
+const { draft, fillFrom, toBody } = usePtCampaignDraft()
+const slugField = ref('')
+// The form starts from the saved campaign when it opens and after it is saved;
+// other refreshes (the thank-you message, ending it) keep unsaved edits.
+function loadForm() {
+  const c = data.value?.campaign
   if (!c) return
-  form.name = c.name
-  form.slug = c.slug
-  form.timezone = c.timezone
-  setup.value = { start_mode: c.start_mode, start_date: c.start_date, end_mode: c.end_mode, end_date: c.end_date, length_days: c.length_days, goal: c.goal, cadence: c.cadence, track_time: c.track_time, goal_target: c.goal_target, slot_min: c.slot_min ?? null }
-}, { immediate: true })
+  fillFrom(c)
+  slugField.value = c.slug
+}
+watch(() => data.value?.campaign.id, loadForm, { immediate: true })
 
 const campaignUrl = computed(() => site.value ? `${site.value.url}/${data.value?.campaign.slug}` : '')
 const serving = computed(() => !!data.value && site.value?.currentCampaign?.id === data.value.campaign.id)
@@ -32,7 +35,7 @@ const contentShort = computed(() => {
 const answersChanged = computed(() => {
   const c = data.value?.campaign
   if (!c) return false
-  return (['start_mode', 'end_mode', 'goal', 'cadence'] as const).some(k => setup.value[k] !== c[k])
+  return (['start_mode', 'end_mode', 'goal', 'cadence'] as const).some(k => draft.value.setup[k] !== c[k])
 })
 
 const saving = ref(false)
@@ -41,9 +44,10 @@ async function save() {
   try {
     await $fetch(`/api/pt/campaigns/${id.value}`, {
       method: 'PATCH',
-      body: { ...form, ...setup.value }
+      body: { ...toBody(), slug: slugField.value }
     })
     await refresh()
+    loadForm()
     toast.ok('Campaign saved')
   } catch (err) {
     toast.fail(err)
@@ -52,18 +56,7 @@ async function save() {
   }
 }
 
-const confirmClose = ref(false)
 const confirmDelete = ref(false)
-async function close() {
-  try {
-    await $fetch(`/api/pt/campaigns/${id.value}/close`, { method: 'POST' })
-    confirmClose.value = false
-    await refresh()
-    toast.ok('Campaign ended', 'Everyone in it will get the thank-you email.')
-  } catch (err) {
-    toast.fail(err)
-  }
-}
 async function remove() {
   try {
     await $fetch(`/api/pt/campaigns/${id.value}`, { method: 'DELETE' })
@@ -79,7 +72,6 @@ async function remove() {
     v-if="data && site"
     class="max-w-6xl mx-auto space-y-8"
   >
-    <PtCampaignTabs :campaign-id="id" />
     <div class="flex flex-wrap items-start justify-between gap-6 rounded-lg bg-[#202833] p-6 sm:p-8 text-white">
       <div class="min-w-0">
         <UButton
@@ -95,6 +87,13 @@ async function remove() {
             {{ data.campaign.name }}
           </h1>
           <UBadge
+            v-if="!data.campaign.published_at"
+            label="Draft"
+            color="neutral"
+            variant="subtle"
+          />
+          <UBadge
+            v-else
             :label="PT_LABELS.campaignStatus[data.campaign.status]"
             :color="ptStatusColor(data.campaign.status)"
             variant="subtle"
@@ -105,6 +104,12 @@ async function remove() {
             variant="outline"
             label="Featured on your site"
           />
+          <UBadge
+            v-if="data.campaign.kind === 'side'"
+            color="neutral"
+            variant="outline"
+            label="Side campaign"
+          />
         </div>
         <p class="mt-3 text-sm text-slate-200">
           {{ ptCampaignDates(data.campaign) }}
@@ -114,6 +119,13 @@ async function remove() {
         </p>
       </div>
       <div class="flex items-center gap-2 flex-wrap">
+        <UButton
+          :to="`/@${slug}/site/landing`"
+          variant="soft"
+          color="neutral"
+          icon="i-lucide-panels-top-left"
+          label="Landing page"
+        />
         <UButton
           :to="campaignUrl"
           target="_blank"
@@ -132,9 +144,23 @@ async function remove() {
       </div>
     </div>
 
+    <UAlert
+      v-if="!data.campaign.published_at"
+      icon="i-lucide-list-checks"
+      color="neutral"
+      variant="subtle"
+      title="This campaign is a draft"
+      description="It is not on your site yet. Add its prayer content and landing page, then publish it."
+      :actions="can('pt.campaigns.write') ? [{ label: 'Continue setup', to: `/@${slug}/site/campaigns/setup/${id}`, trailingIcon: 'i-lucide-arrow-right' }] : []"
+    />
+
     <div class="space-y-1">
-      <h2 class="text-xl font-semibold">Campaign overview</h2>
-      <p class="text-sm text-(--ui-text-muted)">Participation, goal progress, and prayer-guide readiness.</p>
+      <h2 class="text-xl font-semibold">
+        Campaign overview
+      </h2>
+      <p class="text-sm text-(--ui-text-muted)">
+        Participation, goal progress, and prayer-guide readiness.
+      </p>
     </div>
 
     <div class="grid gap-4 md:grid-cols-3">
@@ -203,6 +229,15 @@ async function remove() {
     </div>
 
     <UAlert
+      v-if="data.campaign.kind === 'side'"
+      color="neutral"
+      variant="subtle"
+      icon="i-lucide-split"
+      title="Runs alongside your main campaign"
+      :description="`It has its own address and landing page, ${campaignUrl.replace(/^https?:\/\//, '')}. While it is upcoming or running, your home page links to it.`"
+    />
+
+    <UAlert
       v-if="contentShort"
       color="warning"
       variant="subtle"
@@ -217,7 +252,9 @@ async function remove() {
         <h2 class="text-lg font-semibold">
           Campaign details
         </h2>
-        <p class="mt-1 text-sm text-(--ui-text-muted)">Update the name, dates, and prayer goals for this campaign.</p>
+        <p class="mt-1 text-sm text-(--ui-text-muted)">
+          Update the name, dates, and prayer goals for this campaign.
+        </p>
       </template>
       <div class="space-y-6">
         <UAlert
@@ -235,46 +272,27 @@ async function remove() {
           title="This affects people who already signed up"
           :description="`${data.campaign.progress.people.toLocaleString()} ${data.campaign.progress.people === 1 ? 'person has' : 'people have'} signed up. Changing how the campaign starts, ends or counts changes which prayer content they see, what their reminders ask and how progress is shown.`"
         />
-        <fieldset
+        <PtCampaignFields
+          v-model="draft"
+          :dated="data.campaign.kind === 'side'"
+          :with-place-wording="data.campaign.usesPlaceWording"
+          :languages="site.site.languages"
           :disabled="!can('pt.campaigns.write')"
-          class="space-y-6"
         >
-          <div class="grid sm:grid-cols-2 gap-4">
-            <UFormField label="Name">
-              <UInput
-                v-model="form.name"
-                size="lg"
-                class="w-full"
-              />
-            </UFormField>
+          <template #after-name>
             <UFormField
               label="Address"
-              :help="`${site.url.replace(/^https?:\/\//, '')}/${form.slug}`"
+              :help="`${site.url.replace(/^https?:\/\//, '')}/${slugField}`"
+              class="py-6"
             >
               <UInput
-                v-model="form.slug"
+                v-model="slugField"
                 size="lg"
-                class="w-full font-mono"
+                class="w-full sm:w-80 font-mono"
               />
             </UFormField>
-          </div>
-          <UFormField
-            label="Timezone"
-            help="Campaign days begin at midnight here."
-          >
-            <USelectMenu
-              v-model="form.timezone"
-              size="lg"
-              :items="ptTimezones()"
-              class="w-full sm:w-80"
-            />
-          </UFormField>
-          <PtSetupForm
-            v-model="setup"
-            :template-key="data.campaign.template_key ?? 'generic'"
-            :lock-template="false"
-          />
-        </fieldset>
+          </template>
+        </PtCampaignFields>
       </div>
       <template
         v-if="can('pt.campaigns.write')"
@@ -282,14 +300,6 @@ async function remove() {
       >
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div class="flex gap-2">
-            <UButton
-              v-if="data.campaign.status !== 'ended'"
-              color="neutral"
-              variant="outline"
-              icon="i-lucide-square"
-              label="End early"
-              @click="confirmClose = true"
-            />
             <UButton
               v-if="data.campaign.commitments === 0"
               color="error"
@@ -321,7 +331,9 @@ async function remove() {
             Thank-you message
           </h2>
         </div>
-        <p class="mt-2 text-sm text-(--ui-text-muted)">Prepare the message people receive when this campaign ends.</p>
+        <p class="mt-2 text-sm text-(--ui-text-muted)">
+          Prepare the message people receive when this campaign ends.
+        </p>
       </template>
       <PtCampaignThankYou
         :key="data.campaign.id"
@@ -333,28 +345,6 @@ async function remove() {
         @saved="refresh"
       />
     </UCard>
-
-    <UModal
-      v-model:open="confirmClose"
-      title="End this campaign early?"
-      description="Yesterday becomes its last day. The site shows the final results and invites people to be notified when it runs again. Everyone in the campaign gets the thank-you email."
-    >
-      <template #footer>
-        <div class="flex justify-end gap-2 w-full">
-          <UButton
-            label="Cancel"
-            color="neutral"
-            variant="ghost"
-            @click="confirmClose = false"
-          />
-          <UButton
-            label="End campaign"
-            color="warning"
-            @click="close"
-          />
-        </div>
-      </template>
-    </UModal>
 
     <UModal
       v-model:open="confirmDelete"

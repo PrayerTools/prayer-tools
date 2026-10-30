@@ -4,8 +4,8 @@ import { withOrg } from '@prayertools/shared/db/scope'
 import { activeRules } from '@prayertools/shared/stats'
 import { buildGrid, coverageByDay } from '@prayertools/shared/coverage'
 import { siteSettings } from '@prayertools/shared/site'
-import { normalizeCampaign, type CampaignRow } from '@prayertools/shared/subscriptions'
 import { pickCurrentCampaign, slotMinutes } from '@prayertools/shared/setup'
+import { loadCampaigns } from '@prayertools/shared/campaigns'
 import { useDb } from '../utils/db'
 import { SHORT_CACHE, setCache } from '../utils/request'
 import { siteContext } from '../utils/site-context'
@@ -15,7 +15,7 @@ export default defineEventHandler(async (event) => {
   const ctx = siteContext(event)
   const wanted = getQuery(event).campaign
   const result = await withOrg(useDb(), ctx.orgId, async (tx) => {
-    const campaigns = (await tx.selectFrom('pt_campaign').selectAll().execute()).map(normalizeCampaign) as CampaignRow[]
+    const campaigns = await loadCampaigns(tx)
     const campaign = isUuid(wanted) ? campaigns.find(c => c.id === wanted) : pickCurrentCampaign(campaigns)?.campaign
     if (!campaign || campaign.goal !== 'coverage' || !campaign.start_date || !campaign.end_date) return null
     const site = await tx.selectFrom('pt_site').select('settings').executeTakeFirstOrThrow()

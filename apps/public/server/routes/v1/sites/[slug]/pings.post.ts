@@ -1,5 +1,6 @@
 // Prayer session ping from the app (same upsert as the web, source `app`).
 import { withOrg } from '@prayertools/shared/db/scope'
+import { campaignById } from '@prayertools/shared/campaigns'
 import { prayingNow } from '@prayertools/shared/stats'
 import { openEntry } from '@prayertools/shared/progress'
 import { useDb } from '../../../../utils/db'
@@ -18,7 +19,7 @@ export default defineEventHandler(async (event) => {
   const day = Number.isInteger(body.day) && (body.day as number) > 0 ? body.day as number : null
   const language = typeof body.language === 'string' ? body.language.slice(0, 10) : null
   const result = await withOrg(useDb(), site.orgId, async (tx) => {
-    const campaign = await tx.selectFrom('pt_campaign').selectAll().where('id', '=', body.campaign as string).executeTakeFirst()
+    const campaign = await campaignById(tx, body.campaign)
     if (!campaign) throw createError({ statusCode: 404 })
     const sub = await appSubscription(tx, device.intercessorId)
     const ping = await recordPing(tx, {

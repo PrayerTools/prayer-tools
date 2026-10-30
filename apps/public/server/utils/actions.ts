@@ -4,17 +4,23 @@ import type { H3Event } from 'h3'
 import { withOrg } from '@prayertools/shared/db/scope'
 import { parseLink, personalToken } from '@prayertools/shared/links'
 import { hashToken } from '@prayertools/shared/tokens'
-import { recordActivity, setSubscriptionStatus, verifySubscription } from '@prayertools/shared/subscriptions'
-import { primaryEmailOf } from '@prayertools/shared/crm'
+import { createWebSignup, recordActivity, setSubscriptionStatus, verifySubscription } from '@prayertools/shared/subscriptions'
+import { findContactByEmail, primaryEmailOf } from '@prayertools/shared/crm'
 import { recordEvent } from '@prayertools/shared/stats'
 import { sitePath } from '@prayertools/shared/paths'
 import { campaignStatus } from '@prayertools/shared/setup'
+import { campaignSegment } from '@prayertools/shared/campaigns'
 import type { CheckinResponse } from '@prayertools/shared/db/schema'
 import { useDb } from './db'
 import type { SiteContext } from './site-context'
 import { setManageCookie, setPreviewCookie } from './cookies'
 import { forwardInBackground } from './analytics'
-import { loadSiteData } from './site-data'
+import { deliver } from './mail'
+import { background, clientIp } from './request'
+import { grantPlatformNews } from './staff'
+import { prepareWelcomeMail } from './welcome'
+import { loadSiteData, stateOf } from './site-data'
+import { takeSignupRequest } from './signup-request'
 
 // Renders another page path in place of the requested one.
 export function rewriteView(event: H3Event, path: string, status = 200): void {
@@ -31,6 +37,11 @@ export async function exchangeManageLink(event: H3Event, ctx: SiteContext, token
   return sendRedirect(event, '/manage', 302)
 }
 
+// Consent confirmed by opening a signup's email link.
+function signupCapture(event: H3Event, ctx: SiteContext, language: string) {
+  return { surface: 'web_signup', source: ctx.host, ip: clientIp(event), userAgent: getRequestHeader(event, 'user-agent') ?? null, language }
+}
+
 export async function verifyLink(event: H3Event, ctx: SiteContext, token: string) {
   const result = await withOrg(useDb(), ctx.orgId, async (tx) => {
     const before = await tx.selectFrom('pt_subscription').select(['id', 'verified_at']).where('verify_token_hash', '=', hashToken(token)).executeTakeFirst()
@@ -42,16 +53,26 @@ export async function verifyLink(event: H3Event, ctx: SiteContext, token: string
     const email = sub.contact_id ? await primaryEmailOf(tx, sub.contact_id) : null
     const firstTime = !before.verified_at
     if (firstTime) await recordEvent(tx, { campaignId: latest?.campaign_id ?? null, type: 'campaign_signup_verified', meta: { subscription_id: sub.id } })
+    const welcome = firstTime ? await prepareWelcomeMail(tx, ctx.orgId, sub) : null
     const campaign = data.campaigns.find(c => c.id === latest?.campaign_id)
-    const upcoming = campaign && campaignStatus(campaign) === 'upcoming'
-      ? { slug: data.current?.campaign.id === campaign.id ? null : campaign.slug }
+    const joined = campaign
+      ? { slug: campaignSegment(campaign, data.current?.campaign.id), upcoming: campaignStatus(campaign) === 'upcoming' }
       : null
-    return { sub, defaultLanguage: data.site.default_language, campaignId: latest?.campaign_id ?? null, email: email?.email ?? null, firstTime, upcoming }
+    // News from Prayer.Tools asked for at signup, now that the address is verified.
+    let news: { email: string, name: string | null } | null = null
+    if (sub.platform_news_requested_at && email && sub.contact_id) {
+      await tx.updateTable('pt_subscription').set({ platform_news_requested_at: null }).where('id', '=', sub.id).execute()
+      const contact = await tx.selectFrom('crm_records').select('name').where('id', '=', sub.contact_id).executeTakeFirst()
+      news = { email: email.email, name: contact?.name ?? null }
+    }
+    return { sub, defaultLanguage: data.site.default_language, campaignId: latest?.campaign_id ?? null, email: email?.email ?? null, firstTime, welcome, joined, news }
   })
   if (!result) return
   const { sub } = result
   setManageCookie(event, ctx.orgId, sub.id, sub.manage_version)
+  if (result.news) background(event, grantPlatformNews(result.news.email, result.news.name, signupCapture(event, ctx, sub.language)))
   if (result.firstTime) {
+    background(event, deliver(result.welcome))
     forwardInBackground(event, { orgId: ctx.orgId, slug: ctx.slug, host: ctx.host }, {
       event_type: 'campaign_signup_verified',
       email: result.email,
@@ -60,10 +81,42 @@ export async function verifyLink(event: H3Event, ctx: SiteContext, token: string
       metadata: { subscription_id: sub.id }
     })
   }
-  // A campaign that has not started yet has nothing to pray, so its subscribers land on its signup page.
-  const path = result.upcoming
-    ? sitePath({ lang: sub.language, defaultLang: result.defaultLanguage, campaignSlug: result.upcoming.slug, page: 'signup' })
-    : sitePath({ lang: sub.language, defaultLang: result.defaultLanguage, page: 'pray' })
+  // Subscribers land on the campaign they just joined: its prayer page, or its
+  // signup page when it has not started yet and has nothing to pray.
+  const path = sitePath({ lang: sub.language, defaultLang: result.defaultLanguage, campaignSlug: result.joined?.slug, page: result.joined?.upcoming ? 'signup' : 'pray' })
+  return sendRedirect(event, `${path}?confirmed=1`, 302)
+}
+
+// Confirm link from the email sent when the signup form asked for prayer
+// times for an address already confirmed on the site: adds them and lands on
+// the campaign, like a first confirmation.
+export async function addTimesLink(event: H3Event, ctx: SiteContext, token: string) {
+  const result = await withOrg(useDb(), ctx.orgId, async (tx) => {
+    const taken = await takeSignupRequest(tx, token)
+    if (!taken) return null
+    const data = await loadSiteData(tx)
+    const campaign = data.campaigns.find(c => c.id === taken.campaignId)
+    const state = campaign ? stateOf(data, campaign) : null
+    if (!campaign || (state !== 'active' && state !== 'upcoming') || data.site.status === 'archived') return null
+    const contact = await findContactByEmail(tx, taken.request.email)
+    const owner = contact ? await tx.selectFrom('pt_subscription').select('id').where('contact_id', '=', contact.contactId).executeTakeFirst() : null
+    if (owner?.id !== taken.subscriptionId) return null
+    const res = await createWebSignup(tx, { ...taken.request, campaign, preVerified: true })
+    return {
+      news: taken.request.consents.platformNews ? { email: taken.request.email, name: taken.request.name ?? null } : null,
+      sub: res.subscription,
+      welcome: await prepareWelcomeMail(tx, ctx.orgId, res.subscription),
+      defaultLanguage: data.site.default_language,
+      slug: campaignSegment(campaign, data.current?.campaign.id),
+      upcoming: state === 'upcoming'
+    }
+  })
+  if (!result) return sendRedirect(event, '/notice/link_invalid', 302)
+  const { sub } = result
+  setManageCookie(event, ctx.orgId, sub.id, sub.manage_version)
+  if (result.news) background(event, grantPlatformNews(result.news.email, result.news.name, signupCapture(event, ctx, sub.language)))
+  background(event, deliver(result.welcome))
+  const path = sitePath({ lang: sub.language, defaultLang: result.defaultLanguage, campaignSlug: result.slug, page: result.upcoming ? 'signup' : 'pray' })
   return sendRedirect(event, `${path}?confirmed=1`, 302)
 }
 
@@ -89,11 +142,13 @@ export async function checkinAnswer(event: H3Event, ctx: SiteContext, token: str
   return sendRedirect(event, ok ? `/notice/checkin_${answer}` : '/notice/link_invalid', 302)
 }
 
+// `?to=/<path>` opens that page of the site, such as a draft campaign's.
 export async function previewLink(event: H3Event, ctx: SiteContext, token: string) {
   const row = await withOrg(useDb(), ctx.orgId, tx => tx.selectFrom('pt_site').select('preview_token_hash').executeTakeFirst())
   if (!row?.preview_token_hash || row.preview_token_hash !== hashToken(token)) return false
   setPreviewCookie(event, ctx.orgId, row.preview_token_hash)
-  await sendRedirect(event, '/', 302)
+  const to = getQuery(event).to
+  await sendRedirect(event, typeof to === 'string' && /^\/(?!\/)[\w\-/]*$/.test(to) ? to : '/', 302)
   return true
 }
 

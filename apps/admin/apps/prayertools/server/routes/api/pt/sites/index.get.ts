@@ -8,7 +8,7 @@ import { withOrgScope } from '#tenant/server'
 import { pickCurrentCampaign } from '@prayertools/shared/setup'
 import { peopleCount } from '@prayertools/shared/stats'
 import { siteUrlFor } from '@prayertools/shared/site'
-import { normalizeCampaign } from '@prayertools/shared/subscriptions'
+import { loadCampaigns } from '@prayertools/shared/campaigns'
 
 export default defineEventHandler(async (event) => {
   const user = requireAuth(event)
@@ -26,7 +26,7 @@ export default defineEventHandler(async (event) => {
       const tx = ptTx(scoped)
       const site = await tx.selectFrom('pt_site').select(['status', 'onboarding']).executeTakeFirst()
       if (!site) return null
-      const campaigns = (await tx.selectFrom('pt_campaign').selectAll().execute()).map(normalizeCampaign)
+      const campaigns = await loadCampaigns(tx)
       const current = pickCurrentCampaign(campaigns)
       return {
         status: site.status,

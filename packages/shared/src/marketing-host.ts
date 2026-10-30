@@ -13,7 +13,9 @@ import { layout, loadSiteMailContext, type SiteMailContext } from './email/templ
 import { sendMail } from './email/transport'
 import { emailT } from './i18n/email'
 import { getLanguage } from './languages'
+import { toIsoDate } from './dates'
 import { campaignStatus, pickCurrentCampaign } from './setup'
+import { loadCampaigns } from './campaigns'
 import { PT_LIBRARY_APP } from './site'
 import { tiptapToHtml, tiptapToText } from './tiptap'
 import { textIn } from './translatable'
@@ -51,10 +53,14 @@ export const MARKETING_AUDIENCES = {
   consented: 'consented_updates'
 } as const
 
+// One campaign's people, by campaign id: `campaign:<uuid>`.
+export const CAMPAIGN_AUDIENCE_PREFIX = 'campaign:'
+
 interface SiteInfo {
   mail: SiteMailContext
   languages: string[]
   defaultLanguage: string
+  campaigns: Campaign[]
   current: Campaign | null
   ended: Campaign[]
   lastEnded: Campaign | null
@@ -74,13 +80,14 @@ function siteInfo(tx: Tx, orgId: string): Promise<SiteInfo> {
   return once(tx, `site:${orgId}`, async () => {
     const mail = await loadSiteMailContext(tx, orgId)
     const site = await tx.selectFrom('pt_site').select(['languages', 'default_language']).where('org_id', '=', orgId).executeTakeFirstOrThrow()
-    const campaigns = await tx.selectFrom('pt_campaign').selectAll().where('org_id', '=', orgId).execute()
+    const campaigns = await loadCampaigns(tx, { orgId })
     const now = new Date()
     const ended = campaigns.filter(c => campaignStatus(c, now) === 'ended')
     return {
       mail,
       languages: site.languages,
       defaultLanguage: site.default_language,
+      campaigns,
       current: pickCurrentCampaign(campaigns, now)?.campaign ?? null,
       ended,
       lastEnded: pickCurrentCampaign(ended, now)?.campaign ?? null
@@ -158,7 +165,7 @@ export const ptMarketingHost = {
       {
         key: MARKETING_AUDIENCES.current,
         label: info.current ? `People in ${info.current.name}` : 'People in the current campaign',
-        description: 'Everyone with prayer times in the site\'s current campaign.',
+        description: 'Everyone with prayer times in the site\'s current main campaign.',
         purpose: PURPOSE_SITE_UPDATES
       },
       {
@@ -174,6 +181,17 @@ export const ptMarketingHost = {
         purpose: PURPOSE_SITE_UPDATES
       }
     ]
+    // Newest first: upcoming and running campaigns lead.
+    const named = [...info.campaigns].sort((a, b) => (toIsoDate(b.start_date) ?? '').localeCompare(toIsoDate(a.start_date) ?? '') || +new Date(b.created_at) - +new Date(a.created_at))
+    for (const c of named) {
+      const status = campaignStatus({ ...c, start_date: toIsoDate(c.start_date), end_date: toIsoDate(c.end_date) })
+      audiences.push({
+        key: `${CAMPAIGN_AUDIENCE_PREFIX}${c.id}`,
+        label: `People in ${c.name}`,
+        description: `Everyone with prayer times in ${c.name} (${c.kind === 'side' ? 'side campaign, ' : ''}${status === 'ended' ? 'ended' : status === 'upcoming' ? 'upcoming' : 'running'}).`,
+        purpose: PURPOSE_SITE_UPDATES
+      })
+    }
     const options = await tx.selectFrom('pt_consent_option').select(['key', 'label']).where('org_id', '=', orgId).where('active', '=', true).orderBy('position').execute()
     for (const o of options) {
       audiences.push({
@@ -192,6 +210,10 @@ export const ptMarketingHost = {
     if (key === MARKETING_AUDIENCES.past) return await campaignMembers(tx, orgId, info.ended.map(c => c.id))
     if (key === MARKETING_AUDIENCES.consented) return await consentMembers(tx, orgId, PURPOSE_SITE_UPDATES, info.defaultLanguage)
     if (key.startsWith('custom:')) return await consentMembers(tx, orgId, key, info.defaultLanguage)
+    if (key.startsWith(CAMPAIGN_AUDIENCE_PREFIX)) {
+      const id = key.slice(CAMPAIGN_AUDIENCE_PREFIX.length)
+      return await campaignMembers(tx, orgId, info.campaigns.some(c => c.id === id) ? [id] : [])
+    }
     return []
   },
 

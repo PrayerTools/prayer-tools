@@ -65,6 +65,7 @@ const showFeedback = computed(() => !!site.value.feedback && props.page !== 'emb
         <div>
           <p>{{ t('footer.powered') }} <a href="https://prayer.tools" class="underline">Prayer.Tools</a></p>
           <p class="mt-2"><a :href="site.donateUrl" class="underline font-medium">{{ t('footer.give') }}</a></p>
+          <p class="mt-2 flex gap-4"><a :href="site.privacyUrl" class="underline">{{ t('footer.privacy') }}</a><a :href="site.termsUrl" class="underline">{{ t('footer.terms') }}</a></p>
         </div>
       </div>
     </footer>

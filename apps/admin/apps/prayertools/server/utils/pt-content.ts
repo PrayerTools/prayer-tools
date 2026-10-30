@@ -40,9 +40,9 @@ export async function ptLibraryReadable(tx: Tx, libraryId: string, userId: strin
   return lib
 }
 
-// Whether a campaign's content says {in_place} or {of_place} anywhere.
-export async function ptCampaignUsesPlacePhrases(tx: Tx, campaignId: string): Promise<boolean> {
-  const pattern = '\\{(in|of)_place\\}'
+// Whether a campaign's content says {in_place} or {of_place} anywhere; with `name`, {place} too.
+export async function ptCampaignUsesPlacePhrases(tx: Tx, campaignId: string, { name = false } = {}): Promise<boolean> {
+  const pattern = name ? '\\{((in|of)_)?place\\}' : '\\{(in|of)_place\\}'
   const libs = await tx.selectFrom('pt_campaign_library as cl').innerJoin('pt_site_library as sl', 'sl.id', 'cl.site_library_id')
     .select(['sl.id', 'sl.library_id', 'sl.frozen_version']).where('cl.campaign_id', '=', campaignId).execute()
   const followed = libs.filter(l => l.library_id && l.frozen_version === null).map(l => l.library_id!)

@@ -14,16 +14,9 @@ export default defineEventHandler(async (event) => {
   const input: CreateSiteInput = {
     name,
     slug: String(body?.slug ?? '').trim().toLowerCase() || await ptFreeSlug(name),
-    description: typeof body?.description === 'string' ? body.description.slice(0, 2000) : undefined,
-    purpose: typeof body?.purpose === 'string' ? body.purpose : null,
-    place_name: typeof body?.place_name === 'string' ? body.place_name.slice(0, 200) : null,
-    people_group: typeof body?.people_group === 'string' ? body.people_group.slice(0, 200) : null,
-    latitude: Number.isFinite(body?.latitude) ? body.latitude : null,
-    longitude: Number.isFinite(body?.longitude) ? body.longitude : null,
     languages: Array.isArray(body?.languages) ? body.languages : ['en'],
     default_language: typeof body?.default_language === 'string' ? body.default_language : undefined,
-    timezone: typeof body?.timezone === 'string' ? body.timezone : 'UTC',
-    template_key: typeof body?.template_key === 'string' ? body.template_key : 'generic'
+    timezone: typeof body?.timezone === 'string' ? body.timezone : 'UTC'
   }
   const errors = ptValidateSiteInput(input)
   if (Object.keys(errors).length) ptBadRequest('Please check the form.', { errors })

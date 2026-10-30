@@ -72,3 +72,31 @@ export async function openInboxThread(tx: Tx, input: InboundThreadInput): Promis
     .execute()
   return { conversationId: conversation.id }
 }
+
+// Notifies staff of a thread opened from the public site: the users chosen
+// in the contact form settings who are still members, else the site's admins.
+// Each gets a bell entry and the daily digest, or an immediate email when the
+// inbox's "unassigned-mail email recipients" setting names them. Rows go into
+// Nuxtinator's notifications table, which drives the bell, the inbox's rail
+// badge and the digest.
+export async function notifyInboxThread(tx: Tx, orgId: string, input: { conversationId: string, fromEmail: string, fromName: string | null, subject: string, body: string, userIds?: string[] }): Promise<void> {
+  const members = await tx.selectFrom('memberships').select(['user_id', 'roles']).where('org_id', '=', orgId).execute()
+  const chosen = members.filter(m => input.userIds?.includes(m.user_id))
+  const recipients = chosen.length ? chosen : members.filter(m => m.roles.some(r => r === 'admin' || r === 'owner'))
+  if (!recipients.length) return
+  const setting = await sql<{ value: unknown }>`
+    select value from core_settings where namespace = 'inbox' and key = 'notify_user_ids'
+  `.execute(tx)
+  const value = setting.rows[0]?.value
+  const emailNow = new Set(Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [])
+  const excerpt = input.body.replace(/\s+/g, ' ').trim().slice(0, 200)
+  const body = [input.subject, excerpt, `From: ${input.fromEmail}`].filter(Boolean).join('\n')
+  await tx.insertInto('notifications').values(recipients.map(m => ({
+    user_id: m.user_id,
+    app_id: 'inbox',
+    title: `New message from ${input.fromName || input.fromEmail}`,
+    body,
+    link: `/inbox/${input.conversationId}`,
+    email_mode: emailNow.has(m.user_id) ? 'immediate' as const : 'digest' as const
+  }))).execute()
+}

@@ -118,6 +118,17 @@ describe('end of a shared-calendar campaign', () => {
     expect(c.ended_at).toBeNull()
     expect(await jobsOf(orgId)).toHaveLength(0)
   })
+
+  it('leaves draft campaigns open', async () => {
+    const { orgId } = await createSite(env)
+    const today = todayIn(TZ)
+    const campaignId = await createCampaign(env, orgId, { startDate: addDays(today, -10), endDate: addDays(today, -2), published: false })
+    const ctx = testCtx(env)
+    await closeEndedCampaigns(ctx, ctx.log)
+    const c = await withOrg(env.admin, orgId, tx => tx.selectFrom('pt_campaign').select('ended_at').where('id', '=', campaignId).executeTakeFirstOrThrow())
+    expect(c.ended_at).toBeNull()
+    expect(await jobsOf(orgId)).toHaveLength(0)
+  })
 })
 
 describe('personal-start completion', () => {
@@ -171,5 +182,41 @@ describe('personal-start completion', () => {
     await completePersonalStart(ctx, ctx.log)
     expect(await statusOf(done.subscriptionId)).toBe('completed')
     expect(await statusOf(midway.subscriptionId)).toBe('active')
+  })
+
+  it('thanks each finished campaign once, also when the person finishes another later', async () => {
+    const { orgId } = await createSite(env)
+    const today = todayIn(TZ)
+    const first = await createCampaign(env, orgId, { startMode: 'join', endMode: 'days', lengthDays: 3 })
+    const second = await createCampaign(env, orgId, { startMode: 'join', endMode: 'days', lengthDays: 3 })
+    const person = await createSubscriber(env, orgId, first)
+    await addCommitment(env, orgId, person.subscriptionId, first, { startsOn: addDays(today, -5), entriesDone: 3 })
+    const ctx = testCtx(env)
+    await completePersonalStart(ctx, ctx.log)
+
+    await withOrg(env.admin, orgId, tx => tx.updateTable('pt_subscription').set({ status: 'active', completed_at: null }).where('id', '=', person.subscriptionId).execute())
+    const later = await addCommitment(env, orgId, person.subscriptionId, second, { startsOn: addDays(today, -2), entriesDone: 1 })
+    await completePersonalStart(ctx, ctx.log)
+    await withOrg(env.admin, orgId, tx => tx.updateTable('pt_commitment').set({ entries_done: 3 }).where('id', '=', later).execute())
+    await completePersonalStart(ctx, ctx.log)
+
+    const thanks = (await jobsOf(orgId)).filter(j => j.type === 'thank_you_person').map(j => (j.payload as { campaignId: string }).campaignId)
+    expect(thanks).toEqual([first, second])
+  })
+
+  it('thanks a finished personal-start campaign while a side campaign is still running', async () => {
+    const { orgId } = await createSite(env)
+    const today = todayIn(TZ)
+    const personal = await createCampaign(env, orgId, { startMode: 'join', endMode: 'days', lengthDays: 3 })
+    const side = await createCampaign(env, orgId, { kind: 'side', startDate: addDays(today, -3), endDate: addDays(today, 10) })
+    const person = await createSubscriber(env, orgId, personal)
+    await addCommitment(env, orgId, person.subscriptionId, personal, { startsOn: addDays(today, -5), entriesDone: 3 })
+    await addCommitment(env, orgId, person.subscriptionId, side, { startsOn: addDays(today, -3), endsOn: addDays(today, 10) })
+    const ctx = testCtx(env)
+    await completePersonalStart(ctx, ctx.log)
+
+    expect((await jobsOf(orgId)).map(j => j.type)).toEqual(['thank_you_person'])
+    const sub = await withOrg(env.admin, orgId, tx => tx.selectFrom('pt_subscription').select('status').where('id', '=', person.subscriptionId).executeTakeFirstOrThrow())
+    expect(sub.status).toBe('active')
   })
 })

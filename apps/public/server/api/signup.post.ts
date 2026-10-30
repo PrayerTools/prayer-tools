@@ -1,6 +1,8 @@
 // Web signup: creates or reuses the site's CRM contact, a subscription and
 // commitments in the campaign, grants the ticked consents and sends the
-// verification email. Google / Apple sign-in arrives already verified.
+// verification email. Google / Apple sign-in arrives already verified and gets
+// the welcome email instead. An address already confirmed on the site gets an
+// email to confirm the chosen times before they are added.
 import { withOrg } from '@prayertools/shared/db/scope'
 import { createWebSignup, validateRuleForCampaign, type RuleInput } from '@prayertools/shared/subscriptions'
 import { findContactByEmail, normalizeEmail } from '@prayertools/shared/crm'
@@ -8,8 +10,7 @@ import { isValidTimezone } from '@prayertools/shared/dates'
 import { defaultDuration } from '@prayertools/shared/setup'
 import { recordEvent } from '@prayertools/shared/stats'
 import { textIn } from '@prayertools/shared/translatable'
-import { manageUrl } from '@prayertools/shared/links'
-import { manageLinkEmail, verificationEmail } from '@prayertools/shared/email/templates'
+import { addTimesEmail, prayerTimeLines, verificationEmail } from '@prayertools/shared/email/templates'
 import type { TranslatableText, SignupFieldKind } from '@prayertools/shared/db/schema'
 import { useDb, ensureSystemUserOnce } from '../utils/db'
 import { bad, background, clientIp, limit, readJson, requireTurnstile, str } from '../utils/request'
@@ -20,6 +21,9 @@ import { verifiedEmailFromIdToken } from '../utils/id-token'
 import { deliver, prepareSiteMail, type PendingMail } from '../utils/mail'
 import { grantPlatformNews } from '../utils/staff'
 import { forwardInBackground } from '../utils/analytics'
+import { prepareWelcomeMail } from '../utils/welcome'
+import { readManageCookie } from '../utils/cookies'
+import { saveSignupRequest, type SignupRequest } from '../utils/signup-request'
 
 export default defineEventHandler(async (event) => {
   const ctx = siteContext(event)
@@ -76,32 +80,41 @@ export default defineEventHandler(async (event) => {
     const custom = options.filter(o => wantedCustom.includes(o.key))
     const consentLabels = Object.fromEntries(custom.map(o => [o.key, textIn(o.label as TranslatableText, language, data.site.default_language)]))
 
-    // An address already verified on this site never gets commitments or a
-    // reactivation from a form anyone can fill in: it gets its manage link.
-    if (!preVerified) {
-      const existing = await findContactByEmail(tx, normalized)
-      const sub = existing ? await tx.selectFrom('pt_subscription').selectAll().where('contact_id', '=', existing.contactId).executeTakeFirst() : null
-      if (sub?.verified_at) {
-        const mail = await prepareSiteMail(tx, ctx.orgId, normalized, 'manage_link', m => manageLinkEmail(m, sub.language, manageUrl(m.siteUrl, ctx.orgId, sub.id, sub.manage_version)))
-        return { known: true as const, mail }
-      }
-    }
-
-    const res = await createWebSignup(tx, {
-      campaign,
+    const request: SignupRequest = {
       email: normalized,
       name,
       language,
       timezone,
       commitments,
-      consents: { siteUpdates: consents.site_updates === true, custom: custom.map(o => o.key) },
+      consents: { siteUpdates: consents.site_updates === true, platformNews: consents.platform_news === true, custom: custom.map(o => o.key) },
       consentLabels,
       answers,
       referredBy: str(body.referral, 20) || null,
       joinedFrom: str(body.from, 100) || null,
-      preVerified,
       capture: { ...capture, language }
-    })
+    }
+
+    // An address already verified on this site never gets commitments or a
+    // reactivation from a form anyone can fill in without its owner's say:
+    // the browser holding its manage cookie adds them at once, anyone else
+    // gets them by email to confirm.
+    let ownerHere = false
+    if (!preVerified) {
+      const existing = await findContactByEmail(tx, normalized)
+      const sub = existing ? await tx.selectFrom('pt_subscription').selectAll().where('contact_id', '=', existing.contactId).executeTakeFirst() : null
+      if (sub?.verified_at) {
+        const cookie = readManageCookie(event, ctx.orgId)
+        ownerHere = cookie?.subscriptionId === sub.id && cookie.version === sub.manage_version
+        if (!ownerHere) {
+          const token = await saveSignupRequest(tx, sub.id, campaign.id, request)
+          const times = prayerTimeLines(commitments.map(c => ({ kind: c.kind ?? 'recurring', frequency: c.frequency ?? null, days_of_week: c.days_of_week ?? [], time: c.time, timezone: c.timezone ?? timezone, duration_min: c.duration_min ?? null, dates: c.dates ?? [] })), language)
+          const mail = await prepareSiteMail(tx, ctx.orgId, normalized, 'add_times', m => addTimesEmail(m, language, { campaignName: campaign.name, times, confirmUrl: `${m.siteUrl}/add/${token}` }), sub.id)
+          return { known: true as const, mail }
+        }
+      }
+    }
+
+    const res = await createWebSignup(tx, { ...request, campaign, preVerified })
     const frequency = commitments.map(c => c.kind === 'dates' ? 'dates' : c.frequency).join(',')
     if (res.newSubscription) {
       await recordEvent(tx, { campaignId: campaign.id, type: 'campaign_signup', source: res.subscription.referred_by ? 'share' : null, meta: { frequency, subscription_id: res.subscription.id } })
@@ -109,19 +122,26 @@ export default defineEventHandler(async (event) => {
     let mail: PendingMail | null = null
     if (res.verifyToken) {
       const token = res.verifyToken
-      mail = await prepareSiteMail(tx, ctx.orgId, normalized, 'verify', m => verificationEmail(m, language, `${m.siteUrl}/verify/${token}`))
+      mail = await prepareSiteMail(tx, ctx.orgId, normalized, 'verify', m => verificationEmail(m, language, `${m.siteUrl}/verify/${token}`), res.subscription.id)
+    } else if (res.verifiedNow || ownerHere) {
+      mail = await prepareWelcomeMail(tx, ctx.orgId, res.subscription)
     }
     if (preVerified && res.newSubscription) {
       await recordEvent(tx, { campaignId: campaign.id, type: 'campaign_signup_verified', meta: { subscription_id: res.subscription.id } })
     }
-    return { known: false as const, res, mail, campaign, language, frequency }
+    // News from Prayer.Tools only for a verified address; otherwise once it is verified.
+    const grantNews = request.consents.platformNews === true && !!res.subscription.verified_at
+    if (request.consents.platformNews && !grantNews) {
+      await tx.updateTable('pt_subscription').set({ platform_news_requested_at: new Date() }).where('id', '=', res.subscription.id).execute()
+    }
+    return { known: false as const, res, mail, campaign, language, frequency, grantNews }
   })
 
   background(event, deliver(result.mail))
-  if (consents.platform_news === true) {
-    background(event, grantPlatformNews(normalized, name, { ...capture, language: str(body.language, 10) || undefined }))
-  }
   if (result.known) return { ok: true, verify: true, referral_code: null }
+  if (result.grantNews) {
+    background(event, grantPlatformNews(normalized, name, { ...capture, language: result.language }))
+  }
 
   const { res, campaign } = result
   if (res.newSubscription) {

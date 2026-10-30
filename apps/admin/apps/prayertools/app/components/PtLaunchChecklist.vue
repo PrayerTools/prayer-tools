@@ -1,16 +1,20 @@
 <script setup lang="ts">
 // The site's launch checklist, with a link to fix each open item. `openOnly`
-// lists just what is still to do and hides itself when nothing is.
+// lists just what is still to do and hides itself when nothing is. With
+// `campaignId` it checks that campaign instead of the current one.
 export interface PtChecklist {
-  items: { key: string, label: string, done: boolean, required: boolean, detail?: string, to: string }[]
+  items: { key: string, label: string, done: boolean, required: boolean, important?: boolean, detail?: string, to: string }[]
   canPublish: boolean
 }
 
-const props = withDefaults(defineProps<{ openOnly?: boolean, title?: string, withinSetup?: boolean }>(), { openOnly: false, title: 'Launch checklist' })
+const props = withDefaults(defineProps<{ openOnly?: boolean, title?: string, campaignId?: string, withinSetup?: boolean }>(), { openOnly: false, title: 'Launch checklist', campaignId: undefined })
 const emit = defineEmits<{ fix: [key: string] }>()
 
 const { slug } = usePtSite()
-const { data, refresh } = useFetch<PtChecklist>('/api/pt/site/checklist', { key: computed(() => `pt-checklist-${slug.value}`) })
+const { data, refresh } = useFetch<PtChecklist>('/api/pt/site/checklist', {
+  query: computed(() => ({ campaign: props.campaignId })),
+  key: computed(() => `pt-checklist-${slug.value}-${props.campaignId ?? 'current'}`)
+})
 const items = computed(() => (data.value?.items ?? []).filter(i => !props.openOnly || !i.done))
 
 defineExpose({ refresh, data })
@@ -40,9 +44,9 @@ defineExpose({ refresh, data })
         class="flex items-start gap-3"
       >
         <UIcon
-          :name="item.done ? 'i-lucide-circle-check' : item.required ? 'i-lucide-circle-alert' : 'i-lucide-circle'"
+          :name="item.done ? 'i-lucide-circle-check' : item.required || item.important ? 'i-lucide-circle-alert' : 'i-lucide-circle'"
           class="size-5 shrink-0 mt-0.5"
-          :class="item.done ? 'text-(--ui-success)' : item.required ? 'text-(--ui-warning)' : 'text-(--ui-text-muted)'"
+          :class="item.done ? 'text-(--ui-success)' : item.important ? 'text-(--ui-error)' : item.required ? 'text-(--ui-warning)' : 'text-(--ui-text-muted)'"
         />
         <div class="flex-1 min-w-0">
           <div class="text-sm">
@@ -51,6 +55,10 @@ defineExpose({ refresh, data })
               v-if="item.required && !item.done"
               class="text-xs text-(--ui-warning)"
             >(needed to publish)</span>
+            <span
+              v-else-if="item.important && !item.done"
+              class="text-xs text-(--ui-error)"
+            >(missing)</span>
           </div>
           <div
             v-if="item.detail"
@@ -62,10 +70,10 @@ defineExpose({ refresh, data })
         <UButton
           v-if="!item.done"
           :to="withinSetup ? undefined : item.to"
-          @click="withinSetup && emit('fix', item.key)"
           size="xs"
           variant="link"
           :label="openOnly ? 'Open' : 'Fix'"
+          @click="withinSetup && emit('fix', item.key)"
         />
       </li>
     </ul>

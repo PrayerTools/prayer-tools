@@ -82,7 +82,8 @@ export async function createSite(env: TestEnv, name?: string): Promise<{ orgId: 
       goal: 'people',
       cadence: 'daily',
       timezone: 'UTC',
-      cta: jsonb({})
+      cta: jsonb({}),
+      published_at: new Date()
     }).returning('id').executeTakeFirstOrThrow()
     return c.id
   })

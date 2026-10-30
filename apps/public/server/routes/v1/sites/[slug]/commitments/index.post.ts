@@ -7,7 +7,8 @@ import { isValidTimezone } from '@prayertools/shared/dates'
 import { siteSettings } from '@prayertools/shared/site'
 import { useDb } from '../../../../../utils/db'
 import { readJson } from '../../../../../utils/request'
-import { apiSite, campaignsOf, commitmentJson, ensureAppSubscription, requireDevice } from '../../../../../utils/app-api'
+import { loadCampaigns } from '@prayertools/shared/campaigns'
+import { apiSite, commitmentJson, ensureAppSubscription, requireDevice } from '../../../../../utils/app-api'
 import { parseRuleInput } from '../../../../../lib/input'
 
 export default defineEventHandler(async (event) => {
@@ -18,7 +19,7 @@ export default defineEventHandler(async (event) => {
   if (!rule) throw createError({ statusCode: 400, statusMessage: 'commitment' })
   if (rule.timezone && !isValidTimezone(rule.timezone)) throw createError({ statusCode: 400, statusMessage: 'timezone' })
   const row = await withOrg(useDb(), site.orgId, async (tx) => {
-    const campaigns = await campaignsOf(tx)
+    const campaigns = await loadCampaigns(tx)
     const wanted = typeof body.campaign === 'string' ? body.campaign : null
     const campaign = wanted ? campaigns.find(c => c.id === wanted || c.slug === wanted) : pickCurrentCampaign(campaigns)?.campaign
     if (!campaign || campaignStatus(campaign) === 'ended') throw createError({ statusCode: 409, statusMessage: 'Campaign is not open' })

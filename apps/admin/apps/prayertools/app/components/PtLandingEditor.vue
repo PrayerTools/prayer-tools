@@ -3,13 +3,18 @@
 // writes the "why" text and custom sections, hides sections they don't need,
 // and chooses whether published stories show. Section headings and standard
 // text can be reworded per language; the preview beside the editor shows
-// unsaved changes.
-import type { TiptapDoc, TranslatableText } from '@prayertools/shared/db/schema'
+// unsaved changes. It edits one campaign's landing page, short description
+// and hero image; section headings, standard text, color and logo are the
+// site's, shared by all campaigns.
+import type { CampaignBranding, CampaignLanding, SiteBranding, TiptapDoc, TranslatableText } from '@prayertools/shared/db/schema'
+import { DEFAULT_BRAND_COLOR } from '@prayertools/shared/colors'
+import { heroImage } from '@prayertools/shared/hero-images'
 import { isEmptyDoc } from '@prayertools/shared/tiptap'
 import { isTemplateWhy, templateWhyDoc } from '@prayertools/shared/i18n/landing'
 import { videoEmbed } from '@prayertools/shared/video'
+import { campaignSegment, campaignUrl } from '@prayertools/shared/campaigns'
 
-const props = withDefaults(defineProps<{ saveLabel?: string }>(), { saveLabel: 'Save landing page' })
+const props = withDefaults(defineProps<{ saveLabel?: string, campaignId: string }>(), { saveLabel: 'Save landing page' })
 const emit = defineEmits<{ saved: [] }>()
 
 interface CustomSection {
@@ -22,11 +27,30 @@ interface CustomSection {
   button_label?: TranslatableText
   button_url?: string
 }
-interface Story { id: string, name: string | null, body: string, use_name: boolean, published: boolean }
+interface Story { id: string, name: string | null, body: string, use_name: boolean, published: boolean, campaign_id: string | null }
 
-const { data: site, refresh, can } = usePtSite()
+const { data: site, refresh: refreshSite, can } = usePtSite()
 const { data: meta } = usePtMeta()
 const toast = usePtToast()
+
+interface Campaign { id: string, slug: string, name: string, kind: 'side' | null, template_key: string | null, landing: CampaignLanding | null, branding: CampaignBranding | null, description: TranslatableText | null }
+const { data: campaignData, refresh: refreshCampaign } = useFetch<{ campaign: Campaign }>(() => `/api/pt/campaigns/${props.campaignId}`, { key: `pt-campaign-${props.campaignId}` })
+const campaign = computed(() => campaignData.value?.campaign ?? null)
+const side = computed(() => campaign.value?.kind === 'side')
+// The campaign on the site's root address is previewed there; others at their own path.
+const segment = computed(() => campaign.value ? campaignSegment(campaign.value, site.value?.currentCampaign?.id) : null)
+const source = computed(() => {
+  const s = site.value
+  const c = campaign.value
+  if (!s || !c) return null
+  return {
+    landing: c.landing ?? {},
+    description: c.description,
+    templateKey: c.template_key,
+    url: campaignUrl(s.url, c, s.currentCampaign?.id)
+  }
+})
+const refresh = () => Promise.all([refreshCampaign(), refreshSite()])
 
 const lang = ref('en')
 watch(site, (s) => {
@@ -43,15 +67,49 @@ const stories = ref(true)
 const custom = ref<CustomSection[]>([])
 const description = ref<TranslatableText | null>(null)
 const openIds = ref<string[]>([])
-watch(site, (s) => {
-  if (!s) return
-  why.value = withTemplateWhy((s.site.landing?.why ?? {}) as Record<string, TiptapDoc>, s.site.template_key, s.site.languages, s.site.default_language)
-  hidden.value = [...(s.site.landing?.hidden ?? meta.value?.templates.find(t => t.key === s.site.template_key)?.hiddenSections ?? [])]
-  stories.value = s.site.landing?.stories !== false
-  custom.value = JSON.parse(JSON.stringify(s.site.landing?.custom ?? []))
-  description.value = s.site.description
+watch(source, (src) => {
+  const s = site.value
+  if (!s || !src) return
+  why.value = withTemplateWhy((src.landing.why ?? {}) as Record<string, TiptapDoc>, src.templateKey, s.site.languages, s.site.default_language)
+  hidden.value = [...(src.landing.hidden ?? meta.value?.templates.find(t => t.key === src.templateKey)?.hiddenSections ?? [])]
+  stories.value = src.landing.stories !== false
+  custom.value = JSON.parse(JSON.stringify(src.landing.custom ?? []))
+  description.value = src.description
   openIds.value = custom.value.filter(c => !c.heading.values[s.site.default_language]).map(c => c.id)
 }, { immediate: true })
+
+// The campaign's hero image, and the site's color and logo.
+const hero = ref<CampaignBranding>({})
+watch(campaign, (c) => {
+  hero.value = { ...(c?.branding ?? {}) }
+}, { immediate: true })
+const brand = ref<SiteBranding>({})
+watch(site, (s) => {
+  if (s) brand.value = { ...(s.site.branding as SiteBranding) }
+}, { immediate: true })
+const brandColor = computed({
+  get: () => brand.value.color ?? DEFAULT_BRAND_COLOR,
+  // The default color is not stored, so choosing it clears the override.
+  set: (v: string) => { brand.value = { ...brand.value, color: v.toLowerCase() === DEFAULT_BRAND_COLOR ? undefined : v } }
+})
+const heroPicker = ref<'image' | 'logo' | null>(null)
+function clearHero() {
+  hero.value = { ...hero.value, image_url: undefined, image_asset_id: undefined, image_alt: undefined, image_credit: undefined, focal_x: undefined, focal_y: undefined }
+}
+function pickedHero(a: { url: string, credit: string | null, asset: { id: string, alt: TranslatableText | null, focal_x: number, focal_y: number } }) {
+  if (heroPicker.value === 'logo') brand.value = { ...brand.value, logo_url: a.url, logo_asset_id: a.asset.id }
+  else hero.value = { ...hero.value, image_url: a.url, image_asset_id: a.asset.id, image_alt: a.asset.alt ?? undefined, image_credit: a.credit ?? undefined, focal_x: a.asset.focal_x, focal_y: a.asset.focal_y }
+  heroPicker.value = null
+}
+function pickedLibraryHero(url: string) {
+  hero.value = { ...hero.value, image_url: url, image_asset_id: undefined, image_alt: undefined, image_credit: undefined, focal_x: undefined, focal_y: undefined }
+  heroPicker.value = null
+}
+function comparable(o: object | null | undefined) {
+  const r = (o ?? {}) as Record<string, unknown>
+  return JSON.stringify(Object.keys(r).sort().filter(k => r[k] !== undefined && r[k] !== null && r[k] !== '').map(k => [k, r[k]]))
+}
+const brandDirty = computed(() => comparable(brand.value) !== comparable(site.value?.site.branding))
 
 // Until the site writes its own "why" text in its default language, each
 // language without its own text starts from the template's standard text.
@@ -64,13 +122,13 @@ function withTemplateWhy(own: Record<string, TiptapDoc>, templateKey: string | n
   }
   return out
 }
-const whyIsStandard = computed(() => isTemplateWhy(why.value[lang.value] as TiptapDoc | null | undefined, site.value?.site.template_key, lang.value))
+const whyIsStandard = computed(() => isTemplateWhy(why.value[lang.value] as TiptapDoc | null | undefined, source.value?.templateKey, lang.value))
 
 const whyDoc = computed({
   get: () => why.value[lang.value] ?? null,
   set: (v) => { why.value = { ...why.value, [lang.value]: v } }
 })
-const whyGuidance = computed(() => ptLandingGuidance('why', site.value?.site.template_key))
+const whyGuidance = computed(() => ptLandingGuidance('why', source.value?.templateKey))
 
 // Section headings and standard text: the site's own wording per language
 // over the standard wording, which the preview reports for each language it
@@ -144,7 +202,7 @@ const { data: storyData, execute: loadStories } = useFetch<{ stories: Story[] }>
 watch(() => can('pt.intercessors.read'), (ok) => {
   if (ok) loadStories()
 }, { immediate: true })
-const landingStories = computed(() => (storyData.value?.stories ?? []).filter(s => s.published))
+const landingStories = computed(() => (storyData.value?.stories ?? []).filter(s => s.published && (!side.value || s.campaign_id === props.campaignId)))
 
 function addSection() {
   const l = site.value!.site.default_language
@@ -211,7 +269,7 @@ async function uploadVideo(e: Event) {
   }
 }
 
-const draft = computed(() => ({ landing: { why: why.value, hidden: hidden.value, stories: stories.value, custom: custom.value }, description: description.value, strings: wording.value[lang.value] ?? {} }))
+const draft = computed(() => ({ landing: { why: why.value, hidden: hidden.value, stories: stories.value, custom: custom.value }, description: description.value, branding: hero.value, brand: brand.value, strings: wording.value[lang.value] ?? {} }))
 const preview = ref<{ focus: (section: string, id?: string) => void }>()
 
 // The selected section ('why', or 'custom-<id>' for one custom section) stays
@@ -240,7 +298,9 @@ async function save() {
       toast.ok('Translation saved')
       return
     }
-    await $fetch('/api/pt/site', { method: 'PATCH', body: { description: description.value, landing: { why: why.value, hidden: hidden.value, stories: stories.value, custom: custom.value } } })
+    const landing = { why: why.value, hidden: hidden.value, stories: stories.value, custom: custom.value }
+    await $fetch(`/api/pt/campaigns/${props.campaignId}`, { method: 'PATCH', body: { landing, branding: hero.value, description: description.value } })
+    if (brandDirty.value) await $fetch('/api/pt/site', { method: 'PATCH', body: { branding: brand.value } })
     await saveWording()
     await refresh()
     toast.ok('Landing page saved')
@@ -255,7 +315,7 @@ async function save() {
 // Translators save only the current language, one field at a time.
 async function saveTranslation() {
   const l = lang.value
-  const put = (body: Record<string, unknown>) => $fetch('/api/pt/site/translation', { method: 'PUT', body: { lang: l, ...body } })
+  const put = (body: Record<string, unknown>) => $fetch('/api/pt/site/translation', { method: 'PUT', body: { lang: l, campaignId: props.campaignId, ...body } })
   if (description.value?.values[l] !== undefined) await put({ field: 'description', value: description.value.values[l] })
   if (why.value[l]) await put({ field: 'why', value: why.value[l] })
   for (const s of custom.value) {
@@ -280,7 +340,7 @@ async function translateWhy() {
 
 <template>
   <div
-    v-if="site"
+    v-if="site && source"
     class="space-y-6"
   >
     <div class="flex flex-wrap items-start justify-between gap-4">
@@ -296,7 +356,7 @@ async function translateWhy() {
           class="w-44"
         />
         <UButton
-          :href="site.url"
+          :href="source?.url ?? site.url"
           target="_blank"
           variant="soft"
           icon="i-lucide-external-link"
@@ -380,23 +440,139 @@ async function translateWhy() {
             </div>
 
             <template v-if="s.key === 'top'">
-              <div class="space-y-3">
-                <p class="text-sm text-(--ui-text-muted)">
-                  The hero image and colors are set under
-                  <ULink
-                    :to="`/@${site.org.slug}/site/settings?tab=look`"
-                    class="text-(--ui-primary)"
-                  >Settings → Look</ULink>.
-                </p>
+              <div class="space-y-4">
+                <UFormField>
+                  <template #label>
+                    Hero image <InfoTip text="Shown behind the top of this campaign's page, tinted with your color." />
+                  </template>
+                  <div class="space-y-2">
+                    <div
+                      v-if="hero.image_url"
+                      class="aspect-video rounded-md overflow-hidden border border-(--ui-border)"
+                    >
+                      <img
+                        :src="hero.image_url"
+                        alt=""
+                        class="size-full object-cover"
+                        :style="{ objectPosition: `${(hero.focal_x ?? 0.5) * 100}% ${(hero.focal_y ?? 0.5) * 100}%` }"
+                      >
+                    </div>
+                    <div
+                      v-if="canWrite"
+                      class="flex gap-2"
+                    >
+                      <UButton
+                        size="sm"
+                        variant="soft"
+                        icon="i-lucide-image"
+                        :label="hero.image_url ? 'Change image' : 'Choose an image'"
+                        @click="heroPicker = 'image'"
+                      />
+                      <UButton
+                        v-if="hero.image_url"
+                        size="sm"
+                        variant="ghost"
+                        color="neutral"
+                        icon="i-lucide-x"
+                        label="Remove"
+                        @click="clearHero"
+                      />
+                    </div>
+                  </div>
+                </UFormField>
+                <template v-if="hero.image_url">
+                  <UFormField>
+                    <template #label>
+                      Focal point <InfoTip text="Keeps the important part visible when phones crop the image." />
+                    </template>
+                    <div class="grid grid-cols-2 gap-4">
+                      <USlider
+                        :model-value="hero.focal_x ?? 0.5"
+                        :min="0"
+                        :max="1"
+                        :step="0.05"
+                        :disabled="!canWrite"
+                        aria-label="Horizontal focal point"
+                        @update:model-value="(v) => { hero = { ...hero, focal_x: v as number } }"
+                      />
+                      <USlider
+                        :model-value="hero.focal_y ?? 0.5"
+                        :min="0"
+                        :max="1"
+                        :step="0.05"
+                        :disabled="!canWrite"
+                        aria-label="Vertical focal point"
+                        @update:model-value="(v) => { hero = { ...hero, focal_y: v as number } }"
+                      />
+                    </div>
+                  </UFormField>
+                  <template v-if="!heroImage(hero.image_url)">
+                    <PtTranslatableInput
+                      v-model="hero.image_alt"
+                      :languages="site.site.languages"
+                      :default-language="site.site.default_language"
+                      label="Image description (alt text)"
+                      required
+                      :source-locked="!canWrite"
+                    />
+                    <UFormField label="Image credit (shown under the image)">
+                      <UInput
+                        v-model="hero.image_credit"
+                        class="w-full"
+                        :disabled="!canWrite"
+                      />
+                    </UFormField>
+                  </template>
+                </template>
                 <PtTranslatableInput
                   v-model="description"
                   :languages="site.site.languages"
                   :default-language="site.site.default_language"
                   label="Short description"
-                  help="Shown under the site name, and used in link previews and the Prayer.Tools directory."
+                  :help="side ? 'Shown under the site name on this campaign\'s page, and used in its link previews.' : 'Shown under the site name, and used in link previews and the Prayer.Tools directory while this campaign is on the site\'s address.'"
                   multiline
                   :source-locked="!canWrite"
                 />
+                <USeparator label="Shared by all campaigns" />
+                <fieldset
+                  :disabled="!canWrite"
+                  class="space-y-4"
+                >
+                  <PtColorField v-model="brandColor" />
+                  <UFormField>
+                    <template #label>
+                      Logo <InfoTip text="Shown at the top of your site and emails. Without one, the site name is shown." />
+                    </template>
+                    <div class="flex flex-wrap items-center gap-3">
+                      <div
+                        v-if="brand.logo_url"
+                        class="h-16 rounded-md border border-(--ui-border) bg-(--ui-bg-elevated) p-2"
+                      >
+                        <img
+                          :src="brand.logo_url"
+                          alt=""
+                          class="h-full object-contain"
+                        >
+                      </div>
+                      <UButton
+                        size="sm"
+                        variant="soft"
+                        icon="i-lucide-image"
+                        :label="brand.logo_url ? 'Change logo' : 'Choose a logo'"
+                        @click="heroPicker = 'logo'"
+                      />
+                      <UButton
+                        v-if="brand.logo_url"
+                        size="sm"
+                        variant="ghost"
+                        color="neutral"
+                        icon="i-lucide-x"
+                        label="Remove"
+                        @click="brand = { ...brand, logo_url: undefined, logo_asset_id: undefined }"
+                      />
+                    </div>
+                  </UFormField>
+                </fieldset>
               </div>
             </template>
 
@@ -421,7 +597,7 @@ async function translateWhy() {
                 v-if="whyIsStandard"
                 class="text-xs text-(--ui-text-muted)"
               >
-                This is the {{ PT_LABELS.template[site.site.template_key ?? ''] ?? 'template' }} template's standard text. Visitors see it until you change it.
+                This is the {{ PT_LABELS.template[source?.templateKey ?? ''] ?? 'template' }} template's standard text. Visitors see it until you change it.
               </p>
             </div>
 
@@ -668,6 +844,7 @@ async function translateWhy() {
       <PtLandingPreview
         ref="preview"
         :site-url="site!.url"
+        :campaign-slug="segment ?? undefined"
         :lang="lang"
         :default-language="site!.site.default_language"
         :draft="draft"
@@ -706,6 +883,15 @@ async function translateWhy() {
       class="hidden"
       @change="uploadVideo"
     >
+
+    <PtImagePicker
+      :open="!!heroPicker"
+      :language="site!.site.default_language"
+      :hero-for="heroPicker === 'image' ? source?.templateKey ?? null : undefined"
+      @update:open="(v) => { if (!v) heroPicker = null }"
+      @hero="pickedLibraryHero"
+      @select="pickedHero"
+    />
 
     <PtImagePicker
       :open="!!imagePickerFor"

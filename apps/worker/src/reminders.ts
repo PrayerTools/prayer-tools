@@ -4,13 +4,16 @@ import { sql } from 'kysely'
 import { withOrg, type Tx } from '@prayertools/shared/db/scope'
 import { daysBetween, localDateOf, toIsoDate } from '@prayertools/shared/dates'
 import { entryNumber, nextReminderUtc } from '@prayertools/shared/schedule'
-import { normalizeCampaign, ruleOf } from '@prayertools/shared/subscriptions'
+import { ruleOf } from '@prayertools/shared/subscriptions'
+import { campaignSegment, loadCampaigns, normalizeCampaign } from '@prayertools/shared/campaigns'
+import { isSideCampaign, pickCurrentCampaign } from '@prayertools/shared/setup'
 import { campaignEntries } from '@prayertools/shared/content'
 import { MISSES_BEFORE_WEEKLY, positionOf } from '@prayertools/shared/progress'
 import { primaryEmailOf } from '@prayertools/shared/crm'
 import { isSuppressed } from '@prayertools/shared/email/suppression'
 import { loadSiteMailContext, reminderEmail, type SiteMailContext } from '@prayertools/shared/email/templates'
 import type { OutgoingMail } from '@prayertools/shared/email/transport'
+import { logEmails, type EmailLogEntry } from '@prayertools/shared/email/log'
 import { prayUrl } from '@prayertools/shared/links'
 import type { WorkerContext } from './context'
 import { personLanguage, personLinks, siteMail, siteRow } from './mail'
@@ -96,6 +99,7 @@ export async function oldestDueAgeMs(ctx: WorkerContext, now: Date): Promise<num
 
 interface Prepared {
   mail: OutgoingMail
+  sent: EmailLogEntry
   localDate: string
   next: Date | null
 }
@@ -200,21 +204,24 @@ async function prepare(tx: Tx, claimed: Claimed, now: Date, mailCtx: Map<string,
   const ctx = await ctxP
   const lang = personLanguage(sub.language, site)
   const links = personLinks(ctx, sub)
+  // Side campaigns never have the site's root address, so only a main campaign needs the current one.
+  const current = isSideCampaign(campaign) ? null : pickCurrentCampaign(await loadCampaigns(tx))?.campaign.id
   const rendered = reminderEmail(ctx, lang, {
     campaignName: campaign.name,
     day,
     minutes: c.duration_min,
-    prayUrl: prayUrl(ctx.siteUrl, campaign.slug, day, lang === site.default_language ? null : lang, claimed.org_id, sub.id),
+    prayUrl: prayUrl(ctx.siteUrl, campaignSegment(campaign, current), day, lang === site.default_language ? null : lang, claimed.org_id, sub.id),
     manageUrl: links.manageUrl,
     unsubscribeUrl: links.unsubscribeUrl
   })
-  return { outcome: 'send', prepared: { mail: siteMail(ctx, email.email, rendered, 'reminder', links.unsubscribeUrl), localDate, next } }
+  const sent: EmailLogEntry = { subscriptionId: sub.id, kind: 'reminder', subject: rendered.subject, campaignId: campaign.id, day, sentAt: now }
+  return { outcome: 'send', prepared: { mail: siteMail(ctx, email.email, rendered, 'reminder', links.unsubscribeUrl), sent, localDate, next } }
 }
 
 async function handleOne(ctx: WorkerContext, claimed: Claimed, now: Date, mailCtx: Map<string, Promise<SiteMailContext>>, log: Logger): Promise<Outcome> {
   const step = await withOrg(ctx.app, claimed.org_id, tx => prepare(tx, claimed, now, mailCtx))
   if (step.outcome !== 'send') return step.outcome
-  const { mail, localDate, next } = step.prepared
+  const { mail, sent, localDate, next } = step.prepared
   try {
     await ctx.sendMail(mail)
   } catch (err) {
@@ -223,7 +230,10 @@ async function handleOne(ctx: WorkerContext, claimed: Claimed, now: Date, mailCt
     log.error('reminders.send_failed', { site: claimed.org_id, commitment: claimed.id, err })
     return 'failed'
   }
-  await withOrg(ctx.app, claimed.org_id, tx => advance(tx, claimed.id, claimed.next_reminder_utc, next))
+  await withOrg(ctx.app, claimed.org_id, async (tx) => {
+    await advance(tx, claimed.id, claimed.next_reminder_utc, next)
+    await logEmails(tx, [sent])
+  })
   return 'sent'
 }
 

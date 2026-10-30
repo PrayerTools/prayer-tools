@@ -28,14 +28,16 @@ export const PT_LABELS = {
     prayer_time: 'Aim for an amount of prayer, such as 24 hours of prayer every day.',
     coverage: 'Fill every moment of the day and night with someone praying, from the start date to the end date.'
   } as Record<string, string>,
-  purpose: { place: 'A place', people_group: 'A people group', event: 'An event', other: 'Something else' } as Record<string, string>,
-  purposeDescription: { place: 'A city, region or country', people_group: 'People sharing a language or culture', event: 'A season, crisis or gathering' } as Record<string, string>,
   license: { own: 'Our own content', permission: 'Used with permission', cc_by: 'CC BY', cc_by_sa: 'CC BY-SA', other: 'Other (described)' } as Record<string, string>,
   // The English headings the public page shows (apps/public i18n `landing.*.title`).
   landingSection: {
     top: 'Top of the page', why: 'Why we pray', custom: 'Custom sections', stories: 'Stories', how: 'How it works', signup: 'Sign up to pray',
     today: 'Today\'s prayer', share: 'Invite others to pray', contact: 'Contact us', app: 'Pray with the app'
   } as Record<string, string>,
+  emailKind: {
+    reminder: 'Prayer reminder', checkin: 'Check-in', thank_you: 'Thank-you', verify: 'Confirm email', add_times: 'Confirm new prayer times', manage_link: 'Manage link', site_email: 'Site email'
+  } as Record<string, string>,
+  sessionSource: { porch: 'on the website', manage: 'from the manage page', app: 'in the app', email: 'from an email' } as Record<string, string>,
   role: { 'admin': 'Owner', 'pt-editor': 'Editor', 'pt-translator': 'Translator', 'pt-viewer': 'Viewer', 'member': 'Member' } as Record<string, string>,
   roleDescription: {
     'admin': 'Team, domains, sending identity, deleting the site, and everything an editor can do.',

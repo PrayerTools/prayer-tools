@@ -1,15 +1,18 @@
-import { registerPermissions } from '#core/server/utils/permissions-registry'
+import { registerPermissions, withholdFromAdmin } from '#core/server/utils/permissions-registry'
 import { registerDefaultGrants } from '#core/server/utils/default-grants-registry'
 import { registerStaticRole } from '#core/server/utils/roles-registry'
 import { configureApp, registerApp } from '#core/server/utils/app-registry'
 import { registerRailItem } from '#core/server/utils/rail-registry'
 import { registerAdminSection } from '#core/server/utils/admin-section-registry'
-import { registerCrmConsentPurpose } from '#crm/server'
+import { getRegisteredRecordType, registerCrmConsentPurpose, registerCrmRecordType } from '#crm/server'
 import { registerAiFeature } from '#ai/server'
 import { PT_PERMISSIONS, PT_PERMISSION_META, PT_STATIC_ROLES } from '../../app/utils/pt-permissions'
 import { PT_LIBRARY_APP } from '@prayertools/shared/site'
+import { platformConfig } from '@prayertools/shared/config'
 
 export default defineNitroPlugin(() => {
+  // Fails at startup when required configuration is missing.
+  platformConfig()
   registerPermissions(PT_PERMISSIONS, PT_PERMISSION_META)
   registerDefaultGrants('pt', {
     member: ['pt.access', 'pt.site.read', 'pt.stats.read'],
@@ -44,6 +47,10 @@ export default defineNitroPlugin(() => {
   for (const [appId, title, path, icon, requiredPermission, order] of rail) {
     registerRailItem({ appId, id: title.toLowerCase().replace(/\s+/g, '-'), title, path, icon, requiredPermission, order })
   }
+  // The library is used from inside campaigns and content and reached from
+  // Your sites, so it stays off the rail: its only rail item needs a
+  // permission no one holds.
+  registerRailItem({ appId: PT_LIBRARY_APP, id: 'library', title: 'Library', path: '/personal', requiredPermission: 'pt.library.rail' })
 
   registerAdminSection({ appId: 'pt', title: 'Sites', path: '/admin/pt/sites', icon: 'i-lucide-church', order: 20 })
   registerAdminSection({ appId: 'pt', title: 'Directory', path: '/admin/pt/directory', icon: 'i-lucide-list-checks', order: 21 })
@@ -52,6 +59,16 @@ export default defineNitroPlugin(() => {
   registerAdminSection({ appId: 'pt', title: 'Reports', path: '/admin/pt/reports', icon: 'i-lucide-flag', order: 24 })
   registerAdminSection({ appId: 'pt', title: 'Jobs', path: '/admin/pt/jobs', icon: 'i-lucide-list-restart', order: 25 })
   registerAdminSection({ appId: 'pt', title: 'Exports', path: '/admin/pt/exports', icon: 'i-lucide-file-down', order: 26 })
+
+  // Intercessors are CRM contacts without the CRM's assignment, nickname and gender fields.
+  const contacts = getRegisteredRecordType('contacts')
+  if (contacts) {
+    const { assigned_to, nickname, gender, ...fields } = contacts.fields
+    registerCrmRecordType({ ...contacts, fields })
+  }
+
+  // Site owners hold the admin role; the CRM's schema builder and permissions matrix stay hidden from them.
+  withholdFromAdmin(['crm.schema.manage'])
 
   registerCrmConsentPurpose('site_updates', { title: 'Updates from this site', description: 'Campaign news and relaunch invitations from this site.' })
   registerCrmConsentPurpose('platform_news', { title: 'News from Prayer.Tools', description: 'Platform news, held in the staff org.' })

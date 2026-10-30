@@ -1,12 +1,13 @@
 // Public site URL shape: `/{lang?}/{campaign?}/{page}/{…}`. The language
 // segment is one of the site's languages; the campaign segment addresses a
-// past or future campaign (`/2025/stats`); with neither, the site's current
-// campaign in its default language is shown.
+// past or future campaign (`/2025/stats`) or a side campaign
+// (`/ramadan-2027`); with neither, the site's current campaign in its default
+// language is shown.
 import { isLanguage } from './languages'
 
 export const SITE_PAGES = [
   'pray', 'stats', 'signup', 'contact', 'stories', 'story', 'share', 'manage', 'calendar', 'coverage', 'embed',
-  'm', 'u', 'verify', 'checkin', 'ics', 'preview', 'joined', 'notify', 'api', '_nuxt', 'subscriptions_app', 'prayer', 'notice', 'fuel'
+  'm', 'u', 'verify', 'add', 'checkin', 'ics', 'preview', 'joined', 'notify', 'api', '_nuxt', 'subscriptions_app', 'prayer', 'notice', 'fuel'
 ] as const
 
 export function campaignSlugError(slug: string): string | null {

@@ -11,16 +11,13 @@ import { hashToken, randomToken, shortCode } from './tokens'
 import { consentHistory, consentState, markChannelVerified, primaryEmailOf, setConsent, upsertContact, type ConsentCapture } from './crm'
 import { bumpStat } from './stats'
 import { durationOptions, durationRule } from './setup'
+import { normalizeCampaign } from './campaigns'
 
 export type CampaignRow = Selectable<PtCampaignTable>
 export type SubscriptionRow = Selectable<PtSubscriptionTable>
 export type CommitmentRow = Selectable<PtCommitmentTable>
 
 export const VERIFY_TOKEN_DAYS = 7
-
-export function normalizeCampaign<T extends { start_date: unknown, end_date: unknown }>(c: T): T & { start_date: string | null, end_date: string | null } {
-  return { ...c, start_date: toIsoDate(c.start_date as Date | string | null), end_date: toIsoDate(c.end_date as Date | string | null) }
-}
 
 export function ruleOf(c: Pick<CommitmentRow, 'kind' | 'frequency' | 'days_of_week' | 'time' | 'timezone' | 'duration_min' | 'dates' | 'starts_on' | 'ends_on' | 'paused'>): CommitmentRule {
   return {
@@ -99,7 +96,7 @@ export async function insertCommitment(tx: Tx, sub: SubscriptionRow, campaign: C
     if (existing) {
       const entries = await campaignEntries(tx, normalizeCampaign(campaign))
       if (entries && existing.entries_done >= entries) {
-        await tx.updateTable('pt_commitment').set({ entries_done: 0, advanced_on: null, starts_on: todayIn(input.timezone || existing.timezone) }).where('id', '=', existing.id).execute()
+        await tx.updateTable('pt_commitment').set({ entries_done: 0, advanced_on: null, finished_at: null, starts_on: todayIn(input.timezone || existing.timezone) }).where('id', '=', existing.id).execute()
       }
       return (await updateCommitment(tx, sub, existing.id, input))!
     }
@@ -182,7 +179,8 @@ export interface SignupInput {
   language: string
   timezone: string
   commitments: RuleInput[]
-  consents: { siteUpdates?: boolean, custom?: string[] }
+  // `platformNews` is granted by the caller once the address is verified.
+  consents: { siteUpdates?: boolean, platformNews?: boolean, custom?: string[] }
   consentLabels?: Record<string, string>
   answers?: Record<string, unknown>
   referredBy?: string | null
@@ -198,6 +196,8 @@ export interface SignupResult {
   channelId: string
   verifyToken: string | null
   newSubscription: boolean
+  // The address became verified with this signup (Google / Apple sign-in, or a contact already verified on the site).
+  verifiedNow: boolean
 }
 
 export async function createWebSignup(tx: Tx, input: SignupInput): Promise<SignupResult> {
@@ -209,6 +209,7 @@ export async function createWebSignup(tx: Tx, input: SignupInput): Promise<Signu
   })
   let sub = await tx.selectFrom('pt_subscription').selectAll().where('contact_id', '=', contact.contactId).executeTakeFirst()
   const newSubscription = !sub
+  const wasVerified = !!sub?.verified_at
   let verifyToken: string | null = null
   const verified = input.preVerified || !!sub?.verified_at || contact.verified
   if (!sub) {
@@ -276,7 +277,7 @@ export async function createWebSignup(tx: Tx, input: SignupInput): Promise<Signu
     if (sub.referred_by) await bumpStat(tx, input.campaign.id, today, 'share_signups')
   }
   if (sub.verified_at && newSubscription) await bumpStat(tx, input.campaign.id, today, 'verifications')
-  return { subscription: sub, contactId: contact.contactId, channelId: contact.channelId, verifyToken, newSubscription }
+  return { subscription: sub, contactId: contact.contactId, channelId: contact.channelId, verifyToken, newSubscription, verifiedNow: !!sub.verified_at && !wasVerified }
 }
 
 // Global identity for a verified email address. `pt_intercessor` has no RLS;
@@ -411,6 +412,8 @@ export async function anonymizeSubscription(tx: Tx, subscriptionId: string, now:
   const sub = await tx.selectFrom('pt_subscription').select(['contact_id', 'anonymized_at']).where('id', '=', subscriptionId).executeTakeFirst()
   if (!sub || sub.anonymized_at) return false
   await tx.deleteFrom('pt_commitment').where('subscription_id', '=', subscriptionId).execute()
+  await tx.deleteFrom('pt_email_log').where('subscription_id', '=', subscriptionId).execute()
+  await tx.deleteFrom('pt_signup_request').where('subscription_id', '=', subscriptionId).execute()
   if (sub.contact_id) {
     const channels = await tx.selectFrom('crm_contact_channels').select('channel_id').where('record_id', '=', sub.contact_id).execute()
     await tx.deleteFrom('crm_contact_channels').where('record_id', '=', sub.contact_id).execute()

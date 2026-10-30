@@ -10,19 +10,20 @@ import { entryDate } from '@prayertools/shared/schedule'
 import { parseLink } from '@prayertools/shared/links'
 import { textIn } from '@prayertools/shared/translatable'
 import { videoEmbed } from '@prayertools/shared/video'
-import type { TranslatableText, CampaignCta, SignupFieldKind } from '@prayertools/shared/db/schema'
+import type { TranslatableText, CampaignCta, CampaignLanding, SignupFieldKind } from '@prayertools/shared/db/schema'
 import type { CampaignRow } from '@prayertools/shared/subscriptions'
 import { platformConfig } from '@prayertools/shared/config'
+import { isSideCampaign } from '@prayertools/shared/setup'
 import type { PageView, SiteResponse } from '../../shared/view'
 import { useDb } from './db'
 import type { SiteContext } from './site-context'
-import { buildSiteView, campaignView, landingOf, loadSiteData, stateOf, type SiteData } from './site-data'
-import { contentBlocks, contentVars, docHtml, formatDate, lastEntry } from './content'
+import { buildSiteView, campaignView, loadSiteData, sideCampaigns, stateOf, type SiteData } from './site-data'
+import { contentBlocks, contentVars, docHtml, formatDate, visibleEntries } from './content'
 import { progressFor, statsFor } from './site-stats'
 import { managedSubscription, manageView } from './manage'
 import { withDraftStrings, type LandingDraft } from './editor'
 
-const PRIVATE_PAGES = new Set(['manage', 'm', 'u', 'verify', 'notice', 'checkin'])
+const PRIVATE_PAGES = new Set(['manage', 'm', 'u', 'verify', 'add', 'notice', 'checkin'])
 const ARCHIVED_ALLOWED = new Set(['manage', 'm', 'u', 'verify', 'notice'])
 export const NOTICE_KEYS = new Set([
   'checkin_yes', 'checkin_sometimes', 'checkin_no', 'link_invalid', 'unsubscribed', 'verify_invalid', 'deleted', 'not_found'
@@ -36,14 +37,26 @@ export function appAvailable(): boolean {
 export async function buildSiteResponse(event: H3Event, ctx: SiteContext, fullPath: string, draft?: LandingDraft): Promise<SiteResponse> {
   const url = new URL(fullPath, 'http://x')
   return await withOrg(useDb(), ctx.orgId, async (tx) => {
-    const data = await loadSiteData(tx)
-    if (draft) data.site = { ...data.site, landing: draft.landing, description: draft.description }
+    const data = await loadSiteData(tx, { drafts: ctx.preview || ctx.editor })
     const parsed = parseSitePath(url.pathname, data.site.languages, data.campaigns.map(c => c.slug))
     const lang = parsed.lang ?? data.site.default_language
     const def = data.site.default_language
-    const campaign = parsed.campaignSlug
+    let campaign = parsed.campaignSlug
       ? data.campaigns.find(c => c.slug === parsed.campaignSlug) ?? null
       : data.current?.campaign ?? null
+    // The editor's draft is the landing page of the page it previews.
+    if (draft && campaign) {
+      const edited = {
+        ...campaign,
+        landing: draft.landing,
+        description: draft.description,
+        ...(draft.branding ? { branding: draft.branding } : {})
+      }
+      data.campaigns = data.campaigns.map(c => c.id === edited.id ? edited : c)
+      if (data.current?.campaign.id === edited.id) data.current = { ...data.current, campaign: edited }
+      campaign = edited
+    }
+    if (draft?.brand) data.site = { ...data.site, branding: { ...(data.site.branding ?? {}), ...draft.brand } }
     const site = await buildSiteView(tx, ctx, data, lang, campaign, url.pathname)
     if (draft) site.strings = withDraftStrings(site.strings, draft.strings)
     const cv = site.campaign
@@ -78,7 +91,13 @@ export async function buildSiteResponse(event: H3Event, ctx: SiteContext, fullPa
             : { kind: 'not_found' }
           break
         case 'contact':
-          page = { kind: 'contact' }
+          page = { kind: 'contact', fields: (data.site.contact_form.fields ?? []).map(f => ({
+            key: f.key,
+            kind: f.kind,
+            label: textIn(f.label, lang, def),
+            required: f.required,
+            options: f.options.map(o => ({ key: o.key, label: textIn(o.label, lang, def) }))
+          })) }
           break
         case 'stories':
         case 'story':
@@ -86,7 +105,7 @@ export async function buildSiteResponse(event: H3Event, ctx: SiteContext, fullPa
           break
         case 'manage': {
           const sub = await managedSubscription(tx, event, ctx.orgId)
-          page = { kind: 'manage', manage: sub ? await manageView(tx, ctx, sub, data.campaigns, lang, def) : null }
+          page = { kind: 'manage', manage: sub ? await manageView(tx, ctx, sub, data.campaigns, data.settings.default_duration_min, lang, def) : null }
           break
         }
         case 'm':
@@ -104,6 +123,9 @@ export async function buildSiteResponse(event: H3Event, ctx: SiteContext, fullPa
         }
         case 'verify':
           page = { kind: 'notice', key: 'verify_invalid' }
+          break
+        case 'add':
+          page = { kind: 'notice', key: 'link_invalid' }
           break
         case 'notice': {
           const key = parsed.rest[0] ?? ''
@@ -138,9 +160,11 @@ async function landingPage(tx: Parameters<typeof loadSiteData>[0], ctx: SiteCont
     const state = stateOf(data, campaign)
     if (state === 'between' || state === 'ended') return await betweenPage(tx, data, campaign, lang)
   }
-  const landing = landingOf(data.site)
+  const landing = (campaign?.landing ?? {}) as CampaignLanding
+  const templateKey = campaign?.template_key ?? null
+  const side = !!campaign && isSideCampaign(campaign)
   const vars = campaign ? contentVars(data, ctx.name, campaign, lang) : undefined
-  const whyDoc = landingWhyDoc(landing.why, data.site.template_key, lang, def)
+  const whyDoc = landingWhyDoc(landing.why, templateKey, lang, def)
   const why = whyDoc ? docHtml({ [lang]: whyDoc }, lang, def, vars) : ''
   const custom = (landing.custom ?? []).map(s => ({
     id: s.id,
@@ -152,11 +176,13 @@ async function landingPage(tx: Parameters<typeof loadSiteData>[0], ctx: SiteCont
     buttonLabel: s.button_url ? textIn(s.button_label, lang, def) || null : null,
     buttonUrl: s.button_url ?? null
   })).filter(s => s.heading || s.html || s.video)
-  const stories = await tx
+  let storyQuery = tx
     .selectFrom('pt_story')
     .select(['id', 'body', 'name', 'use_name'])
     .where('published', '=', true)
     .where('may_publish', '=', true)
+  if (side) storyQuery = storyQuery.where('campaign_id', '=', campaign!.id)
+  const stories = await storyQuery
     .orderBy('published_at', 'desc')
     .limit(6)
     .execute()
@@ -166,7 +192,7 @@ async function landingPage(tx: Parameters<typeof loadSiteData>[0], ctx: SiteCont
     const blocks = await contentBlocks(tx, data, ctx.name, campaign, cv.todayEntry, lang, 3)
     if (blocks[0]) today = { day: cv.todayEntry, html: blocks[0].html, title: blocks[0].title }
   }
-  const sections = visibleSections(landing.hidden, data.site.template_key, {
+  const sections = visibleSections(landing.hidden, templateKey, {
     hasStories: landing.stories !== false && stories.length > 0,
     hasCustom: custom.length > 0,
     hasWhy: !!why,
@@ -175,7 +201,7 @@ async function landingPage(tx: Parameters<typeof loadSiteData>[0], ctx: SiteCont
   // In the admin editor, sections that are switched on but have nothing to
   // show yet appear as placeholders.
   const placeholders = ctx.editor
-    ? visibleSections(landing.hidden, data.site.template_key, { hasStories: true, hasCustom: true, hasWhy: true, appAvailable: true }).filter(s => !sections.includes(s))
+    ? visibleSections(landing.hidden, templateKey, { hasStories: true, hasCustom: true, hasWhy: true, appAvailable: true }).filter(s => !sections.includes(s))
     : []
   return {
     kind: 'landing',
@@ -187,7 +213,8 @@ async function landingPage(tx: Parameters<typeof loadSiteData>[0], ctx: SiteCont
     custom,
     prayingNow: data.settings.show_praying_now ? await prayingNow(tx) : 0,
     form: await signupForm(tx, data, lang, !!campaign),
-    placeholders
+    placeholders,
+    side: side ? [] : sideCampaigns(data)
   }
 }
 
@@ -206,15 +233,14 @@ async function prayPage(tx: Parameters<typeof loadSiteData>[0], ctx: SiteContext
   if (!campaign || rest.length > 1) return { kind: 'not_found' }
   const cv = campaignView(data, campaign)
   if (cv.state === 'upcoming' && campaign.start_date && !ctx.preview) return { kind: 'not_started', startDate: campaign.start_date }
-  const last = await lastEntry(tx, campaign, cv.length)
+  const { last, max } = await visibleEntries(tx, campaign, cv, ctx.preview)
   let day = cv.todayEntry
   if (rest[0] !== undefined) {
     if (!/^\d{1,5}$/.test(rest[0])) return { kind: 'not_found' }
     day = Number(rest[0])
   }
-  if (day < 1 || (last > 0 && day > last)) return { kind: 'not_found' }
+  if (day < 1 || day > max) return { kind: 'not_found' }
   const blocks = await contentBlocks(tx, data, ctx.name, campaign, day, lang)
-  const maxDay = campaign.start_mode === 'date' && cv.state === 'active' ? Math.min(cv.todayEntry, last || cv.todayEntry) : last
   // Personal-start campaigns move each person forward one entry per day, so
   // their pages never link ahead.
   const personal = campaign.start_mode === 'join'
@@ -226,7 +252,7 @@ async function prayPage(tx: Parameters<typeof loadSiteData>[0], ctx: SiteContext
     dateLabel: campaign.start_mode === 'date' && campaign.start_date ? formatDate(entryDate(campaign.start_date, campaign.cadence, day), lang) : null,
     blocks,
     prev: day > 1 ? day - 1 : null,
-    next: !personal && day < maxDay ? day + 1 : null,
+    next: !personal && day < max ? day + 1 : null,
     length: last || null
   }
 }

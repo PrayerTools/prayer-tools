@@ -19,6 +19,8 @@ export type StartMode = 'date' | 'join'
 export type EndMode = 'date' | 'none' | 'days'
 export type Goal = 'people' | 'prayer_time' | 'coverage'
 export type Cadence = 'daily' | 'weekly'
+// Stored only for side campaigns; NULL is the site's main campaign.
+export type CampaignKind = 'side'
 export type SubscriptionStatus = 'active' | 'inactive' | 'completed' | 'unsubscribed'
 export type Delivery = 'email' | 'app'
 export type CommitmentKind = 'recurring' | 'dates'
@@ -238,10 +240,15 @@ export interface PtLegacyKeyTable {
 
 // ── Site-scoped tables (org_id + RLS) ──────────────────────────────────────
 
+// Site-wide look: shown on every campaign's pages and in emails.
 export interface SiteBranding {
   color?: string
   logo_asset_id?: string
   logo_url?: string
+}
+
+// A campaign's hero image and link-preview image.
+export interface CampaignBranding {
   image_asset_id?: string
   image_url?: string
   image_alt?: TranslatableText
@@ -270,14 +277,14 @@ export interface LandingCustomSection {
   button_url?: string
 }
 
-export interface SiteLanding {
+export interface CampaignLanding {
   why?: Record<string, TiptapDoc>
   hidden?: string[]
   custom?: LandingCustomSection[]
   stories?: boolean
 }
 
-export interface SiteShare {
+export interface CampaignShare {
   messages?: TranslatableText
 }
 
@@ -286,26 +293,32 @@ export interface SiteOnboarding {
   completed?: boolean
 }
 
+// The public contact form's extra questions, and who is notified of new
+// messages. Without `notify_user_ids` the site's admins are notified.
+export interface ContactFormField {
+  key: string
+  kind: SignupFieldKind
+  label: TranslatableText
+  options: { key: string, label: TranslatableText }[]
+  required: boolean
+}
+
+export interface SiteContactForm {
+  fields?: ContactFormField[]
+  notify_user_ids?: string[]
+}
+
 export interface PtSiteTable {
   org_id: string
   status: Generated<SiteStatus>
-  description: Json<TranslatableText | null> | null
-  purpose: string | null
-  place_name: string | null
-  place_wording: JsonDefault<SitePlaceWording>
-  people_group: string | null
-  latitude: number | null
-  longitude: number | null
   languages: Generated<string[]>
   default_language: Generated<string>
   timezone: Generated<string>
   branding: JsonDefault<SiteBranding>
   email_identity: JsonDefault<SiteEmailIdentity>
-  landing: JsonDefault<SiteLanding>
-  share: JsonDefault<SiteShare>
   settings: JsonDefault<Record<string, unknown>>
   onboarding: JsonDefault<SiteOnboarding>
-  template_key: string | null
+  contact_form: JsonDefault<SiteContactForm>
   preview_token_hash: string | null
   published_at: NullableTimestamp
   archived_at: NullableTimestamp
@@ -325,6 +338,7 @@ export interface PtCampaignTable {
   slug: string
   name: string
   template_key: string | null
+  kind: CampaignKind | null
   start_mode: StartMode
   start_date: NullableDateOnly
   end_mode: EndMode
@@ -336,8 +350,19 @@ export interface PtCampaignTable {
   goal_target: number | null
   slot_min: number | null
   timezone: string
+  place_name: string | null
+  place_wording: JsonDefault<SitePlaceWording>
+  people_group: string | null
+  latitude: number | null
+  longitude: number | null
   end_message: Json<TranslatableText | null> | null
   cta: JsonDefault<CampaignCta>
+  landing: JsonDefault<CampaignLanding>
+  branding: JsonDefault<CampaignBranding>
+  share: JsonDefault<CampaignShare>
+  description: Json<TranslatableText | null> | null
+  // Null while the campaign is a draft being set up.
+  published_at: NullableTimestamp
   ended_at: NullableTimestamp
   created_at: Timestamp
   updated_at: Timestamp
@@ -385,6 +410,8 @@ export interface PtSubscriptionTable {
   verified_at: NullableTimestamp
   verify_token_hash: string | null
   verify_expires_at: NullableTimestamp
+  // "News from Prayer.Tools" asked for before the address was verified.
+  platform_news_requested_at: NullableTimestamp
   manage_version: Generated<number>
   referral_code: string
   referred_by: string | null
@@ -418,6 +445,8 @@ export interface PtCommitmentTable {
   claimed_at: NullableTimestamp
   entries_done: Generated<number>
   advanced_on: NullableDateOnly
+  // Personal-start campaigns: when the person went through the last entry.
+  finished_at: NullableTimestamp
   created_at: Timestamp
   updated_at: Timestamp
 }
@@ -438,6 +467,30 @@ export interface PtCheckinTable {
   sent_at: Timestamp
   response: CheckinResponse | null
   responded_at: NullableTimestamp
+}
+
+// What the signup form asked for, kept until the address's owner confirms it
+// (see `SignupRequest` in the public server).
+export interface PtSignupRequestTable {
+  id: Generated<string>
+  org_id: Generated<string>
+  subscription_id: string
+  campaign_id: string
+  token_hash: string
+  request: Json<Record<string, unknown>>
+  expires_at: Timestamp
+  created_at: Timestamp
+}
+
+export interface PtEmailLogTable {
+  id: Generated<string>
+  org_id: Generated<string>
+  subscription_id: string
+  campaign_id: string | null
+  kind: string
+  subject: string
+  day: number | null
+  sent_at: Timestamp
 }
 
 export interface PtPrayerSessionTable {
@@ -587,6 +640,8 @@ export interface PtTables {
   pt_commitment: PtCommitmentTable
   pt_reminder_sent: PtReminderSentTable
   pt_checkin: PtCheckinTable
+  pt_signup_request: PtSignupRequestTable
+  pt_email_log: PtEmailLogTable
   pt_prayer_session: PtPrayerSessionTable
   pt_person_total: PtPersonTotalTable
   pt_stat_daily: PtStatDailyTable
@@ -747,6 +802,22 @@ export interface InboxMessagesTable {
   updated_at: Timestamp
 }
 
+export interface NotificationsTable {
+  id: Generated<string>
+  org_id: Generated<string>
+  user_id: string
+  app_id: string
+  title: string
+  body: string | null
+  icon: string | null
+  link: string
+  actor_id: string | null
+  email_mode: Generated<'immediate' | 'digest' | 'none'>
+  created_at: Generated<Date>
+  read_at: NullableTimestamp
+  emailed_at: NullableTimestamp
+}
+
 export interface LayerTables {
   users: UsersTable
   orgs: OrgsTable
@@ -759,6 +830,7 @@ export interface LayerTables {
   crm_record_activity: CrmRecordActivityTable
   inbox_conversations: InboxConversationsTable
   inbox_messages: InboxMessagesTable
+  notifications: NotificationsTable
 }
 
 export type DB = PtTables & LayerTables

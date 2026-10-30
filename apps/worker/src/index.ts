@@ -9,6 +9,7 @@ import { drainJobs, reapJobs } from './jobs/processor'
 import { SCHEDULED_JOBS, runScheduled, scheduledJob } from './daily'
 import { errorMessage } from './util'
 import { runMarketing } from './marketing'
+import { platformConfig } from '@prayertools/shared/config'
 
 const REMINDER_INTERVAL_MS = Number(process.env.REMINDER_INTERVAL_MS) || 60_000
 const JOB_INTERVAL_MS = Number(process.env.JOB_INTERVAL_MS) || 5_000
@@ -17,6 +18,9 @@ const MARKETING_INTERVAL_MS = Number(process.env.MARKETING_INTERVAL_MS) || 15_00
 const SHUTDOWN_TIMEOUT_MS = Number(process.env.SHUTDOWN_TIMEOUT_MS) || 120_000
 
 let stopping = false
+// Fails at startup when required configuration is missing.
+platformConfig()
+
 const log = createLogger({ process: 'worker' })
 const ctx = createContext({ log, stopping: () => stopping })
 const inflight = new Set<Promise<unknown>>()

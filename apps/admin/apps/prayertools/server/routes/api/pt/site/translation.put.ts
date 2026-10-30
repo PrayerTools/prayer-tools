@@ -1,13 +1,13 @@
-// Translators edit one language of the site's translatable text without
-// write access to the rest of the site: a language other than the text's
-// source language.
-import type { SiteLanding, SiteShare, TranslatableText, TiptapDoc } from '@prayertools/shared/db/schema'
+// Translators edit one language of a campaign's landing page, short
+// description and share messages, without write access to the rest of the
+// site: a language other than the text's source language.
+import type { CampaignLanding, CampaignShare, TranslatableText, TiptapDoc } from '@prayertools/shared/db/schema'
 import { setText } from '@prayertools/shared/translatable'
 import { jsonb } from '@prayertools/shared/db/json'
 import { isTemplateWhy } from '@prayertools/shared/i18n/landing'
 
 export default definePtHandler('pt.content.translate', async (event, tx, ctx) => {
-  const b = await ptBody<{ field?: string, lang?: string, value?: unknown, sectionId?: string, part?: string }>(event)
+  const b = await ptBody<{ field?: string, lang?: string, value?: unknown, sectionId?: string, part?: string, campaignId?: string }>(event)
   const site = await ptSite(tx)
   const lang = String(b.lang ?? '')
   if (!site.languages.includes(lang)) ptBadRequest('Not a site language.')
@@ -15,21 +15,32 @@ export default definePtHandler('pt.content.translate', async (event, tx, ctx) =>
   const guard = (t: TranslatableText | null | undefined) => {
     if (!canWriteSource && t && t.source === lang) throw createError({ statusCode: 403, statusMessage: 'Translators edit other languages only.' })
   }
-  const landing = site.landing as SiteLanding
+  const campaign = b.campaignId
+    ? await tx.selectFrom('pt_campaign').select(['id', 'kind', 'landing', 'share', 'description', 'template_key']).where('id', '=', String(b.campaignId)).executeTakeFirst()
+    : undefined
+  if (b.campaignId && !campaign) ptNotFound('Campaign not found.')
+  const landing = (campaign?.landing ?? {}) as CampaignLanding
+  const share = (campaign?.share ?? {}) as CampaignShare
+  const description = (campaign?.description ?? null) as TranslatableText | null
+  const templateKey = campaign?.template_key ?? null
+  const writeCampaign = async (patch: { landing?: CampaignLanding, share?: CampaignShare, description?: TranslatableText | null }) => {
+    if (!campaign) ptBadRequest('Choose a campaign.')
+    const out: Record<string, unknown> = { updated_at: new Date() }
+    for (const [k, v] of Object.entries(patch)) out[k] = jsonb(v)
+    await tx.updateTable('pt_campaign').set(out).where('id', '=', campaign!.id).execute()
+  }
   if (b.field === 'description') {
-    const t = site.description as TranslatableText | null
-    guard(t)
-    await tx.updateTable('pt_site').set({ description: jsonb(setText(t, lang, String(b.value ?? ''))) }).where('org_id', '=', ctx.orgId).execute()
+    guard(description)
+    await writeCampaign({ description: setText(description, lang, String(b.value ?? '')) })
   } else if (b.field === 'share') {
-    const share = site.share as SiteShare
     guard(share.messages)
-    await tx.updateTable('pt_site').set({ share: jsonb({ ...share, messages: setText(share.messages, lang, String(b.value ?? '')) }) }).where('org_id', '=', ctx.orgId).execute()
+    await writeCampaign({ share: { ...share, messages: setText(share.messages, lang, String(b.value ?? '')) } })
   } else if (b.field === 'why') {
     if (!canWriteSource && lang === site.default_language) throw createError({ statusCode: 403, statusMessage: 'Translators edit other languages only.' })
     const doc = ptDoc(b.value)
     const { [lang]: _previous, ...others } = landing.why ?? {}
-    const why = isTemplateWhy(doc, site.template_key, lang) ? others : { ...others, [lang]: doc ?? { type: 'doc', content: [] } }
-    await tx.updateTable('pt_site').set({ landing: jsonb({ ...landing, why }) }).where('org_id', '=', ctx.orgId).execute()
+    const why = isTemplateWhy(doc, templateKey, lang) ? others : { ...others, [lang]: doc ?? { type: 'doc', content: [] } }
+    await writeCampaign({ landing: { ...landing, why } })
   } else if (b.field === 'custom') {
     const custom = (landing.custom ?? []).map((s) => {
       if (s.id !== b.sectionId) return s
@@ -41,7 +52,7 @@ export default definePtHandler('pt.content.translate', async (event, tx, ctx) =>
       guard(s[key])
       return { ...s, [key]: setText(s[key], lang, String(b.value ?? '')) }
     })
-    await tx.updateTable('pt_site').set({ landing: jsonb({ ...landing, custom }) }).where('org_id', '=', ctx.orgId).execute()
+    await writeCampaign({ landing: { ...landing, custom } })
   } else {
     ptBadRequest('Unknown field.')
   }

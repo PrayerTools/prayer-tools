@@ -60,7 +60,7 @@
     },
     "apps/admin/_layers/core": {
       "name": "@nuxtinator/core",
-      "version": "2.7.0",
+      "version": "2.11.1",
       "dependencies": {
         "@bradenmacdonald/s3-lite-client": "^1.0.0",
         "@nuxtjs/i18n": "^10.6.0",
@@ -118,7 +118,7 @@
     },
     "apps/admin/_layers/inbox": {
       "name": "@nuxtinator/inbox",
-      "version": "0.6.0",
+      "version": "0.6.1",
       "dependencies": {
         "croner": "^10.0.1",
         "dompurify": "^3.4.13",
@@ -141,9 +141,29 @@
         "zod": "^3.23.0",
       },
     },
+    "apps/admin/_layers/social-auth": {
+      "name": "@nuxtinator/social-auth",
+      "version": "0.5.0",
+      "dependencies": {
+        "jsonwebtoken": "^9.0.2",
+      },
+      "devDependencies": {
+        "@types/jsonwebtoken": "^9.0.10",
+      },
+      "optionalDependencies": {
+        "@nuxtinator/core": "*",
+      },
+      "peerDependencies": {
+        "@nuxt/ui": "^4.0.0",
+        "h3": "^1.0.0",
+        "kysely": "^0.28.0",
+        "nuxt": "^4.0.0",
+        "vue": "^3.0.0",
+      },
+    },
     "apps/admin/_layers/tenancy": {
       "name": "@nuxtinator/tenancy",
-      "version": "3.4.0",
+      "version": "3.5.0",
       "optionalDependencies": {
         "@nuxtinator/core": "*",
       },
@@ -597,6 +617,8 @@
     "@nuxtinator/email-mailgun": ["@nuxtinator/email-mailgun@workspace:apps/admin/_layers/email-mailgun"],
 
     "@nuxtinator/inbox": ["@nuxtinator/inbox@workspace:apps/admin/_layers/inbox"],
+
+    "@nuxtinator/social-auth": ["@nuxtinator/social-auth@workspace:apps/admin/_layers/social-auth"],
 
     "@nuxtinator/tenancy": ["@nuxtinator/tenancy@workspace:apps/admin/_layers/tenancy"],
 

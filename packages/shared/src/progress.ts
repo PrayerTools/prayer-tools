@@ -6,7 +6,8 @@ import type { Tx } from './db/scope'
 import type { Cadence } from './db/schema'
 import { daysBetween, todayIn, toIsoDate } from './dates'
 import { campaignEntries } from './content'
-import { normalizeCampaign, type CampaignRow, type CommitmentRow } from './subscriptions'
+import type { CampaignRow, CommitmentRow } from './subscriptions'
+import { normalizeCampaign } from './campaigns'
 
 // After this many reminders in a row go unopened, reminders drop to weekly.
 export const MISSES_BEFORE_WEEKLY = 3

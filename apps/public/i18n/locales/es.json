@@ -16,7 +16,8 @@
     "loading": "Cargando…",
     "or": "o",
     "save": "Guardar",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "ok": "Aceptar"
   },
   "preview": {
     "banner": "Vista previa: este sitio aún no está publicado. Solo las personas con el enlace de vista previa pueden verlo."
@@ -25,7 +26,9 @@
     "my": "Mi oración: todas tus campañas",
     "past": "Campañas anteriores",
     "powered": "Con la tecnología de",
-    "give": "Ofrenda para apoyar a Prayer.Tools"
+    "give": "Ofrenda para apoyar a Prayer.Tools",
+    "privacy": "Privacidad",
+    "terms": "Términos"
   },
   "feedback": {
     "intro": "Informa al equipo de Prayer.Tools de un error, una idea o contenido inapropiado. Para preguntas sobre esta campaña o errores en su contenido, usa la página de Contacto."
@@ -34,6 +37,12 @@
     "starts_on": "Comienza el {date}",
     "pray_today": "Ora hoy",
     "continue_praying": "Sigue leyendo y ora",
+    "side": {
+      "now": "También en curso",
+      "soon": "Próximamente",
+      "dates": "{start} – {end}",
+      "open": "Más información"
+    },
     "why": {
       "title": "Por qué oramos"
     },
@@ -162,6 +171,7 @@
     "days": "Qué días",
     "time": "Hora del recordatorio",
     "time_help": "Enviamos el recordatorio a esta hora.",
+    "time_placeholder": "Elige una hora",
     "duration": "¿Cuánto tiempo vas a orar?",
     "duration_placeholder": "Elige una duración",
     "remove": "Quitar",

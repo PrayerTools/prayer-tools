@@ -54,9 +54,14 @@ async function translate(lang: string) {
 <template>
   <UFormField
     :label="label"
-    :help="help"
     :required="required"
   >
+    <template
+      v-if="label && help"
+      #label
+    >
+      {{ label }} <InfoTip :text="help" />
+    </template>
     <component
       :is="field"
       :model-value="valueOf(source)"
