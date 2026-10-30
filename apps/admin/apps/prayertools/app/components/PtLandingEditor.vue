@@ -815,17 +815,18 @@ async function translateWhy() {
               </template>
             </div>
 
-            <ULink
-              v-else-if="s.key === 'signup'"
-              :to="`/@${site.org.slug}/site/landing/signup-form`"
-              class="inline-flex items-center gap-1 text-sm text-(--ui-primary)"
-            >
-              Edit the signup form
-              <UIcon
-                name="i-lucide-arrow-right"
-                class="size-4"
-              />
-            </ULink>
+            <div v-else-if="s.key === 'signup'" class="space-y-2">
+              <ULink
+                :to="`/@${site.org.slug}/site/landing/signup-form`"
+                target="_blank"
+                rel="noopener"
+                class="inline-flex items-center gap-1 text-sm text-(--ui-primary)"
+              >
+                Edit the signup form (opens a new tab)
+                <UIcon name="i-lucide-external-link" class="size-4" />
+              </ULink>
+              <p class="text-sm text-(--ui-text-muted)">Your landing-page edits stay here. Close the form settings tab when finished, then continue setup on this page.</p>
+            </div>
           </template>
         </PtLandingBox>
 

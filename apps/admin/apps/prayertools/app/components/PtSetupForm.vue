@@ -6,6 +6,7 @@
 // template pre-fills them; answers the template fixes are shown but locked,
 // and `dated` (side campaigns) locks a start and an end date.
 import { addDays, daysBetween } from '@prayertools/shared/dates'
+import { campaignDateError } from '../utils/pt-setup-validation'
 
 export interface SetupState {
   start_mode: 'date' | 'join'
@@ -25,6 +26,7 @@ export type SetupDraft = Omit<SetupState, 'goal'> & { goal: SetupState['goal'] |
 
 const props = withDefaults(defineProps<{ templateKey?: string, lockTemplate?: boolean, withCadence?: boolean, withLength?: boolean, dated?: boolean }>(), { templateKey: 'generic', lockTemplate: true, withCadence: true, withLength: true, dated: false })
 const state = defineModel<SetupDraft>({ required: true })
+const dateError = computed(() => campaignDateError(state.value))
 const { data: meta } = usePtMeta()
 
 const template = computed(() => meta.value?.templates.find(t => t.key === props.templateKey))
@@ -100,6 +102,16 @@ const slot = computed({
   set: (v: number) => { state.value.slot_min = v === defaultSlot.value ? null : v }
 })
 
+function openDatePicker(event: MouseEvent) {
+  const target = event.currentTarget
+  if (!(target instanceof HTMLInputElement) || target.disabled) return
+  try {
+    target.showPicker?.()
+  } catch {
+    // Native keyboard entry remains available.
+  }
+}
+
 watch(datedCampaign, (dated) => {
   if (!dated && state.value.goal === 'coverage') state.value.goal = 'prayer_time'
 })
@@ -148,7 +160,9 @@ const lengthLabel = computed(() => {
             <UInput
               :model-value="state.start_date ?? undefined"
               type="date"
+              class="cursor-pointer"
               :disabled="!open('start_date')"
+              @click="openDatePicker"
               @update:model-value="(v) => { state.start_date = v ? String(v) : null }"
             />
           </UFormField>
@@ -168,14 +182,18 @@ const lengthLabel = computed(() => {
           <UFormField
             v-if="state.end_mode === 'date'"
             label="End date"
+            :error="dateError"
             :hint="campaignType === 'fixed' ? undefined : lengthLabel ?? undefined"
             required
           >
             <div class="flex items-center gap-2">
               <UInput
                 :model-value="state.end_date ?? undefined"
+                :min="state.start_date ?? undefined"
                 type="date"
+                class="cursor-pointer"
                 :disabled="!open('end_date') && !!state.end_date && !open('start_date')"
+                @click="openDatePicker"
                 @update:model-value="(v) => { state.end_date = v ? String(v) : null }"
               />
               <UButton
@@ -257,8 +275,9 @@ const lengthLabel = computed(() => {
       </UFormField>
       <UFormField
         v-if="state.goal === 'people'"
-        label="Track time committed"
-        help="Ask people how long they will pray (15 minutes by default)."
+        label="Ask people how many minutes they plan to pray"
+        description="Turn this on to add a prayer-duration question to the sign-up form, alongside their reminder time."
+        :help="state.track_time ? 'On: people choose a duration, such as 15 minutes. You can total the time they commit to; this does not measure time actually spent praying.' : 'Off: people choose a reminder time only. Your campaign counts people, without asking for a duration.'"
       >
         <USwitch
           v-model="state.track_time"

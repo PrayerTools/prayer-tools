@@ -135,8 +135,14 @@
     "prompt_body": "Know someone who would pray too? Send them the link."
   },
   "signup": {
+    "choose_days": "Choose specific days",
+    "times_shown": "Times shown in {timezone}",
+    "change_timezone": "Change",
+    "more_options": "More options",
+    "reassurance": "We'll email you a confirmation link. You can change your prayer times anytime.",
+    "reassurance_verified": "You can change your prayer times anytime.",
     "email": "Email",
-    "name": "First name",
+    "name": "Name",
     "language": "Language",
     "timezone": "Time zone",
     "timezone_help": "Reminders are sent at your local time.",
@@ -188,6 +194,14 @@
     "praying_now": "Praying now"
   },
   "coverage": {
+    "needs_prayer": "Needs prayer",
+    "selected": "Selected",
+    "load_error": "The prayer calendar could not be loaded.",
+    "retry": "Try again",
+    "overnight": "Overnight",
+    "morning": "Morning",
+    "afternoon": "Afternoon",
+    "evening": "Evening",
     "title": "Prayer calendar",
     "intro": "See which times are covered in prayer. Pick empty times to fill the gaps, then sign up for them.",
     "local_time": "Show times in my time zone ({tz})",
@@ -201,7 +215,10 @@
   },
   "picker": {
     "title": "At what time?",
-    "need_title": "Times that need someone",
+    "need_title": "Help fill a gap — suggested times",
+    "view_coverage": "View coverage and all times",
+    "hide_coverage": "Hide coverage",
+    "commitment_summary": "{frequency} at {time} · {duration} minutes · {timezone}",
     "nobody": "nobody yet",
     "mostly_open": "mostly open",
     "some_gaps": "some gaps",
@@ -348,6 +365,15 @@
     "status_unsubscribed": "Unsubscribed"
   },
   "home": {
+    "how_label": "How it works",
+    "how_title": "Bring people together. Make prayer a daily rhythm.",
+    "how_intro": "From your first invitation to ongoing prayer, Prayer.Tools helps you organize the details so your community can focus on praying.",
+    "step_setup_title": "Create your campaign",
+    "step_setup_body": "Choose the place or people you want to pray for, set your campaign dates, and add daily prayer content from a library or write your own.",
+    "step_invite_title": "Invite people to join",
+    "step_invite_body": "Share your campaign link with your church, friends, or network. Each person chooses a prayer time that fits their day, helping you build around-the-clock coverage.",
+    "step_pray_title": "Keep praying together",
+    "step_pray_body": "Participants receive reminders for their chosen times and follow your daily prayer content. You can see which times are covered and invite others to fill the gaps.",
     "title": "Prayer campaigns for the places and peoples you care about",
     "intro": "Set up a campaign, invite people to pray, and cover every hour with daily prayer content and reminders.",
     "start": "Start a prayer campaign",

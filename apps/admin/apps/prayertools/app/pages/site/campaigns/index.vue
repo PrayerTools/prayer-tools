@@ -5,7 +5,7 @@ import type { PtCampaign } from '../../../utils/pt-campaign-ui'
 
 definePageMeta({ middleware: 'auth' })
 
-const { data: site, can } = usePtSite()
+const { data: site, can, slug } = usePtSite()
 const toast = usePtToast()
 const { data, status, refresh } = usePtCampaignList()
 const canEdit = computed(() => can('pt.campaigns.write'))
@@ -46,13 +46,16 @@ async function doConfirm() {
 </script>
 
 <template>
-  <div class="max-w-4xl mx-auto space-y-6">
-    <header class="flex items-start justify-between gap-4 flex-wrap">
+  <div class="max-w-6xl mx-auto space-y-8">
+    <div class="flex items-start justify-between gap-6 flex-wrap rounded-lg bg-[#202833] p-6 sm:p-8 text-white">
       <div>
+        <p class="mb-3 text-xs font-semibold uppercase tracking-widest text-orange-300">
+          Manage your campaigns
+        </p>
         <h1 class="text-2xl font-bold">
           Campaigns
         </h1>
-        <p class="text-sm text-muted max-w-xl">
+        <p class="mt-3 text-sm leading-relaxed text-slate-200 max-w-xl">
           A campaign is one round of prayer on your site, like Ramadan 2026. Each has its own dates and setup.
           A site runs one main campaign at a time, so main campaign dates can't overlap.
           A side campaign, like Ramadan beside an ongoing campaign, runs alongside it at its own address with its own landing page.
@@ -61,12 +64,13 @@ async function doConfirm() {
       </div>
       <UButton
         v-if="canEdit"
-        :to="blocker ? undefined : '/site/campaigns/new'"
+        :to="blocker ? undefined : `/@${slug}/site/campaigns/new`"
+        size="lg"
         icon="i-lucide-plus"
         :label="data?.campaigns.length ? 'New campaign' : 'Create the first campaign'"
         @click="blockedOpen = !!blocker"
       />
-    </header>
+    </div>
 
     <div
       v-if="status === 'pending' && !data"
@@ -87,20 +91,26 @@ async function doConfirm() {
       :key="g.state"
       class="space-y-3"
     >
-      <h2 class="text-sm font-semibold text-muted uppercase tracking-wide">
+      <h2 class="text-lg font-semibold flex items-center gap-3">
         {{ PT_LABELS.campaignStatus[g.state] }}
+        <UBadge
+          color="neutral"
+          variant="soft"
+          :label="String(g.items.length)"
+        />
       </h2>
       <UCard
         v-for="c in g.items"
         :key="c.id"
+        class="rounded-lg"
       >
-        <div class="space-y-3">
+        <div class="space-y-5">
           <div class="flex items-start justify-between gap-3 flex-wrap">
             <div class="min-w-0">
               <div class="flex items-center gap-2 flex-wrap">
                 <NuxtLink
-                  :to="`/site/campaigns/${c.id}`"
-                  class="font-semibold hover:underline"
+                  :to="`/@${slug}/site/campaigns/${c.id}`"
+                  class="text-xl font-semibold hover:underline"
                 >
                   {{ c.name }}
                 </NuxtLink>
@@ -120,7 +130,7 @@ async function doConfirm() {
                   v-if="serving(c)"
                   color="primary"
                   variant="outline"
-                  label="On the site now"
+                  label="Featured on your site"
                 />
                 <UBadge
                   v-if="c.kind === 'side'"
@@ -129,17 +139,17 @@ async function doConfirm() {
                   label="Side campaign"
                 />
               </div>
-              <p class="text-sm text-muted">
-                {{ ptCampaignDates(c) }} · <span class="font-mono">/{{ c.slug }}</span>
+              <p class="mt-3 text-sm font-medium">
+                {{ ptCampaignDates(c) }}
               </p>
-              <p class="text-xs text-muted mt-1">
+              <p class="text-sm text-muted mt-2">
                 {{ ptAnswersLine(c) }}
               </p>
             </div>
-            <div class="text-sm sm:text-end space-y-1">
+            <div class="text-sm space-y-2 rounded-lg bg-(--ui-bg-muted) p-4 min-w-48">
               <div>
                 <span class="font-semibold">{{ c.progress.people.toLocaleString() }}</span>
-                {{ c.progress.people === 1 ? 'person' : 'people' }}
+                {{ c.progress.people === 1 ? 'person signed up' : 'people signed up' }}
               </div>
               <div class="text-muted">
                 {{ ptPlural(c.commitments, 'prayer time', 'prayer times') }}
@@ -158,25 +168,25 @@ async function doConfirm() {
               </div>
             </div>
           </div>
-          <div class="flex items-center gap-2 flex-wrap">
+          <div class="flex items-center gap-3 flex-wrap border-t border-default pt-4">
             <UButton
               v-if="canEdit && !c.published_at"
-              :to="`/site/campaigns/setup/${c.id}`"
-              size="sm"
+              :to="`/@${slug}/site/campaigns/setup/${c.id}`"
+              size="lg"
               icon="i-lucide-list-checks"
               label="Continue setup"
             />
             <UButton
-              :to="`/site/campaigns/${c.id}`"
-              size="sm"
-              variant="outline"
-              color="neutral"
+              :to="`/@${slug}/site/campaigns/${c.id}`"
+              size="lg"
+              :variant="canEdit && !c.published_at ? 'outline' : undefined"
+              :color="canEdit && !c.published_at ? 'neutral' : undefined"
               :icon="canEdit ? 'i-lucide-pencil' : 'i-lucide-eye'"
-              :label="canEdit ? 'Edit' : 'Open'"
+              :label="canEdit ? 'Manage campaign' : 'View campaign'"
             />
             <UButton
               v-if="canEdit && c.status === 'ended' && (!blocker || c.kind === 'side')"
-              :to="`/site/campaigns/new?relaunch=${c.id}`"
+              :to="`/@${slug}/site/campaigns/new?relaunch=${c.id}`"
               size="sm"
               variant="outline"
               color="neutral"
@@ -193,7 +203,7 @@ async function doConfirm() {
               @click="askDelete(c)"
             />
             <UButton
-              :to="{ path: '/site/landing', query: { campaign: c.id } }"
+              :to="{ path: `/@${slug}/site/landing`, query: { campaign: c.id } }"
               size="sm"
               variant="ghost"
               color="neutral"
@@ -201,7 +211,7 @@ async function doConfirm() {
               label="Landing page"
             />
             <UButton
-              :to="{ path: '/site/stats', query: { campaign: c.id } }"
+              :to="{ path: `/@${slug}/site/stats`, query: { campaign: c.id } }"
               size="sm"
               variant="ghost"
               color="neutral"
@@ -264,7 +274,7 @@ async function doConfirm() {
             label="Create a new site"
           />
           <UButton
-            :to="{ path: '/site/campaigns/new', query: { kind: 'side' } }"
+            :to="{ path: `/@${slug}/site/campaigns/new`, query: { kind: 'side' } }"
             icon="i-lucide-plus"
             label="New side campaign"
           />

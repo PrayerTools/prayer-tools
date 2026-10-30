@@ -6,7 +6,7 @@
 // and `added` after a library is added. The `after-libraries` slot follows
 // the campaign's content.
 // `save()` adds the campaign's own content when that is the choice; the
-// wizard calls it on Continue.
+// wizard calls it on Continue. `hasContent` says whether the campaign has any.
 import type { SetupState } from './PtSetupForm.vue'
 
 const props = defineProps<{
@@ -84,7 +84,7 @@ async function save(): Promise<boolean> {
     return false
   }
 }
-defineExpose({ save })
+defineExpose({ save, hasContent: computed(() => !!content.value?.libraries.length) })
 </script>
 
 <template>
@@ -182,7 +182,7 @@ defineExpose({ save })
         v-else
         class="text-sm text-(--ui-text-muted)"
       >
-        You will create the campaign content after setting up the campaign.
+        Continue to write its entries.
       </p>
     </section>
   </div>

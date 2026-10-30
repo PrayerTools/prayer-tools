@@ -135,6 +135,12 @@
     "prompt_body": "Conhece alguém que também oraria? Envie o link para essa pessoa."
   },
   "signup": {
+    "choose_days": "Escolher dias específicos",
+    "times_shown": "Horários em {timezone}",
+    "change_timezone": "Alterar",
+    "more_options": "Mais opções",
+    "reassurance": "Enviaremos um link de confirmação por e-mail. Você pode alterar seus horários de oração a qualquer momento.",
+    "reassurance_verified": "Você pode alterar seus horários de oração a qualquer momento.",
     "email": "E-mail",
     "name": "Nome",
     "language": "Idioma",
@@ -188,6 +194,14 @@
     "praying_now": "Orando agora"
   },
   "coverage": {
+    "needs_prayer": "Precisa de oração",
+    "selected": "Selecionado",
+    "load_error": "Não foi possível carregar o calendário de oração.",
+    "retry": "Tentar novamente",
+    "overnight": "Madrugada",
+    "morning": "Manhã",
+    "afternoon": "Tarde",
+    "evening": "Noite",
     "title": "Calendário de oração",
     "intro": "Veja quais horários estão cobertos em oração. Escolha horários vazios para preencher as lacunas e depois inscreva-se neles.",
     "local_time": "Mostrar horários no meu fuso horário ({tz})",
@@ -201,7 +215,10 @@
   },
   "picker": {
     "title": "A que horas?",
-    "need_title": "Horários que precisam de alguém",
+    "need_title": "Ajude a preencher uma lacuna — sugestões",
+    "view_coverage": "Ver cobertura e todos os horários",
+    "hide_coverage": "Ocultar cobertura",
+    "commitment_summary": "{frequency} às {time} · {duration} minutos · {timezone}",
     "nobody": "ninguém ainda",
     "mostly_open": "quase livre",
     "some_gaps": "algumas lacunas",
@@ -348,6 +365,15 @@
     "status_unsubscribed": "Inscrição cancelada"
   },
   "home": {
+    "how_label": "Como funciona",
+    "how_title": "Reúna as pessoas. Faça da oração um hábito diário.",
+    "how_intro": "Do primeiro convite à oração contínua, o Prayer.Tools ajuda a organizar os detalhes para que sua comunidade se concentre em orar.",
+    "step_setup_title": "Crie sua campanha",
+    "step_setup_body": "Escolha o lugar ou povo pelo qual deseja orar, defina as datas e adicione conteúdo diário de uma biblioteca ou escreva o seu.",
+    "step_invite_title": "Convide pessoas para participar",
+    "step_invite_body": "Compartilhe o link com sua igreja, amigos ou rede. Cada pessoa escolhe um horário que se encaixe no seu dia, ajudando a cobrir as 24 horas.",
+    "step_pray_title": "Continuem orando juntos",
+    "step_pray_body": "Os participantes recebem lembretes nos horários escolhidos e acompanham o conteúdo diário. Você pode ver os horários cobertos e convidar outras pessoas para preencher as lacunas.",
     "title": "Campanhas de oração pelos lugares e povos que importam para você",
     "intro": "Crie uma campanha, convide pessoas para orar e cubra cada hora com conteúdo de oração diário e lembretes.",
     "start": "Criar uma campanha de oração",

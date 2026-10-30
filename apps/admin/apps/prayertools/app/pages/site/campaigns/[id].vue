@@ -7,7 +7,7 @@ definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
 const id = computed(() => String(route.params.id))
-const { data: site, can } = usePtSite()
+const { data: site, can, slug } = usePtSite()
 const toast = usePtToast()
 const { select } = usePtCampaign()
 watch(id, v => select(v), { immediate: true })
@@ -60,7 +60,7 @@ const confirmDelete = ref(false)
 async function remove() {
   try {
     await $fetch(`/api/pt/campaigns/${id.value}`, { method: 'DELETE' })
-    await navigateTo('/site/campaigns')
+    await navigateTo(`/@${slug.value}/site/campaigns`)
   } catch (err) {
     toast.fail(err, 'Could not delete')
   }
@@ -70,17 +70,17 @@ async function remove() {
 <template>
   <div
     v-if="data && site"
-    class="max-w-4xl mx-auto space-y-6"
+    class="max-w-6xl mx-auto space-y-8"
   >
-    <header class="flex flex-wrap items-start justify-between gap-4">
+    <div class="flex flex-wrap items-start justify-between gap-6 rounded-lg bg-[#202833] p-6 sm:p-8 text-white">
       <div class="min-w-0">
         <UButton
-          to="/site/campaigns"
+          :to="`/@${slug}/site/campaigns`"
           icon="i-lucide-arrow-left"
           variant="link"
           color="neutral"
           label="Campaigns"
-          class="px-0"
+          class="px-0 text-slate-200 hover:text-white mb-3"
         />
         <div class="flex items-center gap-2 flex-wrap">
           <h1 class="text-2xl font-bold">
@@ -102,7 +102,7 @@ async function remove() {
             v-if="serving"
             color="primary"
             variant="outline"
-            label="On the site now"
+            label="Featured on your site"
           />
           <UBadge
             v-if="data.campaign.kind === 'side'"
@@ -111,17 +111,17 @@ async function remove() {
             label="Side campaign"
           />
         </div>
-        <p class="text-sm text-muted">
+        <p class="mt-3 text-sm text-slate-200">
           {{ ptCampaignDates(data.campaign) }}
         </p>
-        <p class="text-xs text-muted mt-1">
+        <p class="text-sm text-slate-300 mt-2">
           {{ ptAnswersLine(data.campaign) }}
         </p>
       </div>
       <div class="flex items-center gap-2 flex-wrap">
         <UButton
-          to="/site/landing"
-          variant="outline"
+          :to="`/@${slug}/site/landing`"
+          variant="soft"
           color="neutral"
           icon="i-lucide-panels-top-left"
           label="Landing page"
@@ -129,21 +129,20 @@ async function remove() {
         <UButton
           :to="campaignUrl"
           target="_blank"
-          variant="outline"
-          color="neutral"
+          size="lg"
           icon="i-lucide-external-link"
           label="View on the site"
         />
         <UButton
           :to="`${campaignUrl}/stats`"
           target="_blank"
-          variant="ghost"
+          variant="soft"
           color="neutral"
           icon="i-lucide-chart-line"
           label="Public results"
         />
       </div>
-    </header>
+    </div>
 
     <UAlert
       v-if="!data.campaign.published_at"
@@ -152,8 +151,17 @@ async function remove() {
       variant="subtle"
       title="This campaign is a draft"
       description="It is not on your site yet. Add its prayer content and landing page, then publish it."
-      :actions="can('pt.campaigns.write') ? [{ label: 'Continue setup', to: `/site/campaigns/setup/${id}`, trailingIcon: 'i-lucide-arrow-right' }] : []"
+      :actions="can('pt.campaigns.write') ? [{ label: 'Continue setup', to: `/@${slug}/site/campaigns/setup/${id}`, trailingIcon: 'i-lucide-arrow-right' }] : []"
     />
+
+    <div class="space-y-1">
+      <h2 class="text-xl font-semibold">
+        Campaign overview
+      </h2>
+      <p class="text-sm text-(--ui-text-muted)">
+        Participation, goal progress, and prayer-guide readiness.
+      </p>
+    </div>
 
     <div class="grid gap-4 md:grid-cols-3">
       <UCard>
@@ -209,7 +217,7 @@ async function remove() {
             {{ data.campaign.entries ? `of ${data.campaign.entries} ${data.campaign.cadence === 'weekly' ? 'weeks' : 'days'}` : 'entries' }}
           </p>
           <UButton
-            :to="{ path: '/site/content', query: { campaign: id } }"
+            :to="{ path: `/@${slug}/site/content`, query: { campaign: id } }"
             size="xs"
             variant="link"
             icon="i-lucide-book-open"
@@ -236,14 +244,17 @@ async function remove() {
       icon="i-lucide-triangle-alert"
       title="Some days have no prayer content yet"
       :description="`The campaign has ${data.campaign.entries} ${data.campaign.cadence === 'weekly' ? 'weeks' : 'days'} and ${data.campaign.contentEntries} content entries.`"
-      :actions="[{ label: 'Add content', to: { path: '/site/content', query: { campaign: id } }, trailingIcon: 'i-lucide-arrow-right' }]"
+      :actions="[{ label: 'Add content', to: { path: `/@${slug}/site/content`, query: { campaign: id } }, trailingIcon: 'i-lucide-arrow-right' }]"
     />
 
     <UCard>
       <template #header>
-        <h2 class="font-semibold">
-          Setup
+        <h2 class="text-lg font-semibold">
+          Campaign details
         </h2>
+        <p class="mt-1 text-sm text-(--ui-text-muted)">
+          Update the name, dates, and prayer goals for this campaign.
+        </p>
       </template>
       <div class="space-y-6">
         <UAlert
@@ -276,6 +287,7 @@ async function remove() {
             >
               <UInput
                 v-model="slugField"
+                size="lg"
                 class="w-full sm:w-80 font-mono"
               />
             </UFormField>
@@ -298,8 +310,9 @@ async function remove() {
             />
           </div>
           <UButton
-            icon="i-lucide-check"
-            label="Save"
+            icon="i-lucide-save"
+            label="Save changes"
+            size="lg"
             :loading="saving"
             @click="save"
           />
@@ -314,10 +327,13 @@ async function remove() {
             name="i-lucide-mail"
             class="size-5 text-primary"
           />
-          <h2 class="font-semibold">
+          <h2 class="text-lg font-semibold">
             Thank-you message
           </h2>
         </div>
+        <p class="mt-2 text-sm text-(--ui-text-muted)">
+          Prepare the message people receive when this campaign ends.
+        </p>
       </template>
       <PtCampaignThankYou
         :key="data.campaign.id"

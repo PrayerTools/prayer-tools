@@ -47,16 +47,23 @@ async function remove(t: Template) {
 </script>
 
 <template>
-  <div class="max-w-3xl mx-auto p-4 sm:p-6 space-y-6">
+  <div class="max-w-6xl mx-auto space-y-8">
     <PtLibraryTabs />
-    <div>
+    <div class="rounded-lg bg-[#202833] p-6 sm:p-8 text-white">
+      <p class="mb-3 text-xs font-semibold uppercase tracking-widest text-orange-300">Your reusable library</p>
       <h1 class="text-2xl font-semibold">
         Your email templates
       </h1>
-      <p class="text-sm text-(--ui-text-muted)">
-        Templates belong to you and work on any of your sites. Save one from any email with "Save as template"; start a new email from one with "Start from a template".
+      <p class="mt-3 max-w-2xl text-sm leading-relaxed text-slate-200">
+        Keep email layouts and messages ready for next time. Your templates work across all your sites.
       </p>
     </div>
+    <UCard>
+      <div class="grid gap-5 sm:grid-cols-2 text-sm">
+        <div><h2 class="font-semibold">Save a template</h2><p class="mt-1 text-(--ui-text-muted)">Open an email and choose “Save as template” to add it here.</p></div>
+        <div><h2 class="font-semibold">Use a saved template</h2><p class="mt-1 text-(--ui-text-muted)">When creating an email, choose “Start from a template.”</p></div>
+      </div>
+    </UCard>
     <USkeleton
       v-if="loading"
       class="h-24 w-full"
@@ -65,15 +72,16 @@ async function remove(t: Template) {
       v-else-if="!templates.length"
       icon="i-lucide-layout-template"
       title="No templates yet"
+      description="Save an email as a template and it will appear here, ready to reuse."
     />
     <ul
       v-else
-      class="divide-y divide-(--ui-border) rounded-lg border border-(--ui-border)"
+      class="divide-y divide-(--ui-border) rounded-lg border border-(--ui-border) bg-(--ui-bg-elevated)"
     >
       <li
         v-for="t in templates"
         :key="t.id"
-        class="flex flex-wrap items-center gap-3 p-4"
+        class="flex flex-wrap items-center gap-4 p-5 sm:p-6"
       >
         <div class="min-w-0 flex-1">
           <p class="font-medium truncate">

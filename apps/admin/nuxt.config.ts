@@ -111,6 +111,8 @@ export default defineNuxtConfig({
     s3PublicBaseUrl: process.env.S3_PUBLIC_BASE_URL || '',
     secretEncryptionKey: process.env.NUXT_SECRET_ENCRYPTION_KEY || '',
     public: {
+      personalApps: { library: '/personal', prayerLibraries: '/libraries' },
+      platformUrl: process.env.PT_MARKETING_URL || `${process.env.PT_SITE_SCHEME || (process.env.NODE_ENV === 'development' ? 'http' : 'https')}://${process.env.PT_PLATFORM_HOST || process.env.PT_SITE_BASE_HOST || 'prayer.tools'}`,
       appName: process.env.APP_TITLE || 'Prayer.Tools',
       nodeEnv: process.env.NODE_ENV || '',
       siteUrl: process.env.NUXT_PUBLIC_SITE_URL || ''

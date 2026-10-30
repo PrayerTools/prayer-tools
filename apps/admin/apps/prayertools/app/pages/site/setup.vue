@@ -54,15 +54,23 @@ async function publish() {
     @publish="publish"
   >
     <template #header>
-      <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-semibold">
-          Set up {{ site?.org.name }}
-        </h1>
-        <UBadge
-          :label="PT_LABELS.siteStatus[site?.site.status ?? 'draft']"
-          :color="ptStatusColor(site?.site.status ?? 'draft')"
-          variant="subtle"
-        />
+      <div class="space-y-4">
+        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-(--ui-primary)">
+          Campaign setup
+        </p>
+        <div class="flex items-center justify-between gap-4">
+          <h1 class="text-3xl font-semibold sm:text-4xl">
+            Set up {{ site?.org.name }}
+          </h1>
+          <UBadge
+            :label="PT_LABELS.siteStatus[site?.site.status ?? 'draft']"
+            :color="ptStatusColor(site?.site.status ?? 'draft')"
+            variant="subtle"
+          />
+        </div>
+        <p class="text-(--ui-text-muted)">
+          Shape your campaign one step at a time. Your site stays a draft until you publish it.
+        </p>
       </div>
     </template>
   </PtCampaignSetupSteps>

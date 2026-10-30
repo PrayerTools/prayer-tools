@@ -7,7 +7,7 @@ import type { TranslatableText } from '@prayertools/shared/db/schema'
 
 definePageMeta({ middleware: 'auth' })
 
-const { data: site, refresh, can, isOwner } = usePtSite()
+const { data: site, refresh, can, isOwner, slug } = usePtSite()
 const { data: meta } = usePtMeta()
 const toast = usePtToast()
 const route = useRoute()
@@ -331,7 +331,7 @@ watch(tab, (t) => {
                 Dates, goal, place and content <InfoTip text="Each campaign has its own start, end, goal, rhythm, place and people group." />
               </template>
               <UButton
-                to="/site/campaigns"
+                :to="`/@${slug}/site/campaigns`"
                 variant="outline"
                 color="neutral"
                 icon="i-lucide-calendar-range"

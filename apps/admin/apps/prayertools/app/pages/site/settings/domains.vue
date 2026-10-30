@@ -248,7 +248,7 @@ async function copy(text: string) {
                 type="submit"
                 label="Add domain"
                 :loading="adding"
-                :disabled="!hostname.trim()"
+                :disabled="!hostname.trim() || site.domains.length >= 3"
               />
               <UButton
                 color="neutral"

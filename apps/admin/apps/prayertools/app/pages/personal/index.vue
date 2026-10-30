@@ -50,25 +50,27 @@ async function deleteBlock(id: string) {
 </script>
 
 <template>
-  <div class="max-w-5xl mx-auto space-y-8">
+  <div class="max-w-6xl mx-auto space-y-8">
     <PtLibraryTabs />
-    <div>
+    <div class="rounded-lg bg-[#202833] p-6 sm:p-8 text-white">
+      <p class="mb-3 text-xs font-semibold uppercase tracking-widest text-orange-300">Your reusable library</p>
       <h1 class="text-2xl font-semibold">
         My images and blocks
       </h1>
-      <p class="text-sm text-(--ui-text-muted)">
+      <p class="mt-3 max-w-2xl text-sm leading-relaxed text-slate-200">
         Yours to reuse on any of your sites. Using one on a site makes a copy there.
       </p>
     </div>
 
-    <section class="space-y-3">
-      <div class="flex items-center justify-between">
-        <h2 class="font-semibold">
+    <section class="space-y-5 rounded-lg border border-(--ui-border) bg-(--ui-bg-elevated) p-5 sm:p-6">
+      <div class="flex flex-wrap gap-3 items-center justify-between">
+        <div><h2 class="text-lg font-semibold">
           Images
-        </h2>
+        </h2><p class="mt-1 text-sm text-(--ui-text-muted)">Photos and artwork ready to use across your sites.</p></div>
         <UButton
           icon="i-lucide-upload"
-          label="Upload"
+          label="Add images"
+          size="lg"
           @click="uploadOpen = true"
         />
       </div>
@@ -77,7 +79,7 @@ async function deleteBlock(id: string) {
           v-for="a in assets?.assets ?? []"
           :key="a.id"
           type="button"
-          class="aspect-square rounded-md overflow-hidden border border-(--ui-border) focus-visible:ring-2 focus-visible:ring-(--ui-primary)"
+          class="aspect-square rounded-lg overflow-hidden border border-(--ui-border) cursor-pointer hover:ring-2 hover:ring-(--ui-primary)/40 focus-visible:ring-2 focus-visible:ring-(--ui-primary)"
           :aria-label="`Edit ${a.alt?.values[a.alt.source] ?? 'image'}`"
           @click="editing = JSON.parse(JSON.stringify(a))"
         >
@@ -89,26 +91,27 @@ async function deleteBlock(id: string) {
           >
         </button>
       </div>
-      <p
+      <UEmpty
         v-if="!assets?.assets.length"
-        class="text-sm text-(--ui-text-muted)"
-      >
-        No images yet.
-      </p>
+        icon="i-lucide-image"
+        title="No images yet"
+        description="Add your first image to build a library you can reuse on any site."
+      />
     </section>
 
-    <section class="space-y-3">
-      <div class="flex items-center justify-between">
-        <h2 class="font-semibold">
+    <section class="space-y-5 rounded-lg border border-(--ui-border) bg-(--ui-bg-elevated) p-5 sm:p-6">
+      <div class="flex flex-wrap gap-3 items-center justify-between">
+        <div><h2 class="text-lg font-semibold">
           Reusable blocks
-        </h2>
+        </h2><p class="mt-1 text-sm text-(--ui-text-muted)">Save frequently used prayer text and other content for next time.</p></div>
         <UButton
           icon="i-lucide-plus"
           label="New block"
-          variant="soft"
+          size="lg"
           @click="editBlock()"
         />
       </div>
+      <UEmpty v-if="!blocks?.blocks.length" icon="i-lucide-blocks" title="No blocks yet" description="Create a block for content you want to use again across your sites." />
       <UCard
         v-for="b in blocks?.blocks ?? []"
         :key="b.id"

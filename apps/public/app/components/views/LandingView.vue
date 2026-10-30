@@ -51,7 +51,7 @@ function onJoined(verify: boolean) {
           <GoalProgress v-if="page.progress" :progress="page.progress" on-brand />
           <p v-if="page.prayingNow > 0" class="text-sm">{{ t('pray.praying_now', { n: num(page.prayingNow) }, page.prayingNow) }}</p>
           <div class="flex flex-wrap justify-center gap-3">
-            <UButton to="#signup" size="xl" color="neutral" variant="solid" class="bg-white text-stone-900 hover:bg-stone-100" :label="st('landing.signup.title')" />
+            <UButton to="#signup" size="xl" color="neutral" variant="solid" class="campaign-join bg-white text-stone-900 hover:bg-stone-100" :label="st('landing.signup.title')" />
             <UButton v-if="page.today" :to="link('pray')" size="xl" variant="outline" class="text-(--brand-text) ring-(--brand-text)/60 hover:bg-white/10" :label="t('landing.pray_today')" />
           </div>
         </div>
