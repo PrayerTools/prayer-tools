@@ -260,6 +260,7 @@
     "title": "Seus horários de oração",
     "intro": "Conectado como {email} em {site}.",
     "signed_out": "Abra o link de um dos nossos e-mails para gerenciar aqui seus horários de oração, ou use Minha oração para ver todas as suas campanhas.",
+    "signed_in_empty": "Você entrou como {email}. Você ainda não tem horários de oração em {site}.",
     "unverified": "Seu e-mail ainda não foi confirmado. Os lembretes começam assim que você clicar no link do nosso e-mail.",
     "name_on_my": "Seu nome é o mesmo em todas as campanhas com as quais você ora. Altere-o em",
     "status_unsubscribed": "Sua inscrição foi cancelada. Você não receberá lembretes.",
@@ -379,6 +380,11 @@
     "continue_title": "Entrar em {site}?",
     "continue_body": "{site} ({host}) verá seu nome e seu endereço de e-mail, {email}.",
     "continue_button": "Continuar para {site}"
+  },
+  "account": {
+    "menu": "Menu da conta",
+    "site_times": "Horários de oração neste site",
+    "my_account": "Minha conta"
   },
   "home": {
     "title": "Campanhas de oração pelos lugares e povos que importam para você",

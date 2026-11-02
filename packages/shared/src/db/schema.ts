@@ -673,6 +673,8 @@ export interface UsersTable {
   password: string | null
   is_admin: Generated<boolean>
   verified: Generated<boolean>
+  // Image URL, '' for none.
+  avatar: Generated<string>
 }
 
 // The social-auth layer's Google / Apple accounts linked to a user.

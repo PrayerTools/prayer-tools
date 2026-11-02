@@ -220,7 +220,7 @@ export interface MyManagedSiteView {
 
 export interface MyView {
   signedIn: boolean
-  account: { name: string, email: string | null } | null
+  account: { name: string, email: string | null, avatar: string | null } | null
   sites: MySiteView[]
   managing: MyManagedSiteView[]
   createUrl: string | null
@@ -237,7 +237,7 @@ export type PageView =
   | { kind: 'coverage', progress: GoalProgressView | null }
   | { kind: 'contact', fields: SignupFieldView[] }
   | { kind: 'stories' }
-  | { kind: 'manage', manage: ManageView | null }
+  | { kind: 'manage', manage: ManageView | null, signedInAs: string | null }
   | { kind: 'link_expired', token: string }
   | { kind: 'unsubscribe', token: string, valid: boolean }
   | { kind: 'notice', key: string }
