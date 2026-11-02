@@ -124,12 +124,13 @@ export default defineNuxtConfig({
   vite: {
     // Prebundle every Tiptap entry together so the editor and our extensions
     // share one ProseMirror instance ("different instances of a keyed plugin").
+    // The rest are discovered late at runtime and would otherwise force a page reload.
     optimizeDeps: {
       include: [
         '@tiptap/core', '@tiptap/vue-3', '@tiptap/vue-3/menus', '@tiptap/starter-kit', '@tiptap/pm/state', '@tiptap/pm/view',
         '@tiptap/pm/model', '@tiptap/extension-code', '@tiptap/extension-horizontal-rule', '@tiptap/extension-image',
         '@tiptap/extension-mention', '@tiptap/extension-placeholder', '@tiptap/extension-drag-handle-vue-3',
-        '@tiptap/markdown', '@tiptap/suggestion', 'dompurify'
+        '@tiptap/markdown', '@tiptap/suggestion', 'dompurify', 'date-fns-tz', 'qrcode'
       ]
     },
     server: {
