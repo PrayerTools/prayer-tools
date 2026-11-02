@@ -285,6 +285,10 @@
     "download": "Descargar mis datos",
     "unsubscribe": "Detener todos los recordatorios",
     "unsubscribed": "Cancelaste tu suscripción",
+    "leave": "Dejar de orar con {campaign}",
+    "leave_confirm_title": "¿Dejar de orar con {campaign}?",
+    "leave_confirm_body": "Tus horarios de oración en {campaign} terminan hoy y sus recordatorios se detienen. Tus otras campañas con {site} continúan.",
+    "left": "Dejaste de orar con {campaign}",
     "delete": "Eliminar mis datos",
     "delete_confirm_title": "¿Eliminar tus datos?",
     "delete_confirm_body": "Esto elimina tus horarios de oración y tus datos de {site}. No se puede deshacer.",
@@ -303,12 +307,18 @@
     "body": "¿Detener todos los recordatorios de oración de {site}?",
     "confirm": "Cancelar suscripción"
   },
+  "leave": {
+    "title": "Detener recordatorios",
+    "body": "¿Dejar de orar con {campaign} y detener sus recordatorios? Tus otras campañas con {site} continúan.",
+    "confirm": "Detener recordatorios de {campaign}"
+  },
   "notice": {
     "checkin_yes": "¡Gracias por avisarnos! Sigue orando: tus recordatorios continúan.",
     "checkin_sometimes": "¡Gracias! Tus recordatorios continúan. Ora cuando puedas.",
     "checkin_no": "Gracias por orar con nosotros. Hemos detenido tus recordatorios.",
     "link_invalid": "Este enlace no es válido o ya se usó.",
     "unsubscribed": "Cancelaste tu suscripción. No recibirás más recordatorios de {site}.",
+    "left_campaign": "Ya no recibirás recordatorios de esta campaña. Tus otros horarios de oración con {site} continúan.",
     "verify_invalid": "Este enlace de confirmación no es válido o ha caducado. Vuelve a inscribirte.",
     "deleted": "Tus datos han sido eliminados.",
     "not_found": "No pudimos encontrar lo que buscabas."

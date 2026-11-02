@@ -47,7 +47,7 @@ export async function subscriptionFeed(tx: Tx, ctx: SiteContext, sub: Subscripti
   const to = new Date(now.getTime() + FEED_DAYS * 86_400_000)
   const events: IcsEvent[] = []
   if (sub.status === 'active') {
-    const rows = await tx.selectFrom('pt_commitment').selectAll().where('subscription_id', '=', sub.id).where('paused', '=', false).execute()
+    const rows = await tx.selectFrom('pt_commitment').selectAll().where('subscription_id', '=', sub.id).where('paused', '=', false).where('left_at', 'is', null).execute()
     for (const c of rows) {
       const campaign = env.campaigns.find(x => x.id === c.campaign_id)
       if (campaign) events.push(...eventsFor(ctx, sub, c, campaign, env, now, to))
@@ -58,7 +58,7 @@ export async function subscriptionFeed(tx: Tx, ctx: SiteContext, sub: Subscripti
 }
 
 export async function commitmentIcs(tx: Tx, ctx: SiteContext, sub: SubscriptionRow, commitmentId: string): Promise<string | null> {
-  const c = await tx.selectFrom('pt_commitment').selectAll().where('id', '=', commitmentId).where('subscription_id', '=', sub.id).executeTakeFirst()
+  const c = await tx.selectFrom('pt_commitment').selectAll().where('id', '=', commitmentId).where('subscription_id', '=', sub.id).where('left_at', 'is', null).executeTakeFirst()
   if (!c) return null
   const env = await context(tx)
   const campaign = env.campaigns.find(x => x.id === c.campaign_id)

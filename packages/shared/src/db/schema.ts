@@ -454,6 +454,8 @@ export interface PtCommitmentTable {
   advanced_on: NullableDateOnly
   // Personal-start campaigns: when the person went through the last entry.
   finished_at: NullableTimestamp
+  // When the person left the campaign; the commitment ends that day.
+  left_at: NullableTimestamp
   created_at: Timestamp
   updated_at: Timestamp
 }

@@ -11,6 +11,8 @@ useHead({ title: () => `${t('manage.title')} · ${site.value.name}` })
 
 const busy = ref(false)
 const confirmDelete = ref(false)
+const leaveOpen = ref(false)
+const leaving = ref<{ id: string, name: string } | null>(null)
 const profile = reactive({ name: props.manage?.name ?? '', language: props.manage?.language ?? site.value.lang, timezone: props.manage?.timezone ?? 'UTC' })
 const tzItems = timezones()
 const languageItems = computed(() => site.value.languages.map(l => ({ label: l.native, value: l.code })))
@@ -37,6 +39,17 @@ const remove = (id: string) => call(`commitments/${id}`, 'DELETE', undefined, t(
 const saveProfile = () => call('profile', 'POST', props.manage?.accountLinked ? { language: profile.language, timezone: profile.timezone } : { ...profile })
 const setConsent = (purpose: string, grant: boolean) => call('consent', 'POST', { purpose, grant })
 const setStatus = (status: 'active' | 'unsubscribed') => call('status', 'POST', { status }, status === 'unsubscribed' ? t('manage.unsubscribed') : t('manage.resubscribed'))
+
+function askLeave(c: ManageCampaignView) {
+  leaving.value = { id: c.id, name: c.name }
+  leaveOpen.value = true
+}
+
+async function leave() {
+  if (!leaving.value) return
+  await call('leave', 'POST', { campaign: leaving.value.id }, t('manage.left', { campaign: leaving.value.name }))
+  leaveOpen.value = false
+}
 
 async function deleteData() {
   busy.value = true
@@ -92,6 +105,15 @@ async function deleteData() {
             @pause="pause"
             @remove="remove"
           />
+          <UButton
+            v-if="c.state !== 'ended' && c.commitments.length"
+            size="sm"
+            variant="link"
+            color="neutral"
+            icon="i-lucide-log-out"
+            :label="t('manage.leave', { campaign: c.name })"
+            @click="askLeave(c)"
+          />
         </section>
         <p class="text-sm">
           <UButton variant="link" icon="i-lucide-calendar-sync" :href="manage.icsUrl" external :label="t('manage.subscribe_calendar')" />
@@ -137,6 +159,13 @@ async function deleteData() {
           <UButton variant="outline" color="error" icon="i-lucide-trash-2" :label="t('manage.delete')" @click="confirmDelete = true" />
         </div>
       </section>
+
+      <UModal v-model:open="leaveOpen" :title="t('manage.leave_confirm_title', { campaign: leaving?.name ?? '' })" :description="t('manage.leave_confirm_body', { campaign: leaving?.name ?? '', site: site.name })">
+        <template #footer>
+          <UButton color="error" :loading="busy" :label="t('manage.leave', { campaign: leaving?.name ?? '' })" @click="leave" />
+          <UButton variant="ghost" color="neutral" :label="t('common.cancel')" @click="leaveOpen = false" />
+        </template>
+      </UModal>
 
       <UModal v-model:open="confirmDelete" :title="t('manage.delete_confirm_title')" :description="t('manage.delete_confirm_body', { site: site.name })">
         <template #footer>

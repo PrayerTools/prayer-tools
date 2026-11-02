@@ -104,7 +104,7 @@ async function thankYou(ctx: JobContext, payload: Record<string, unknown>) {
         .where('s.verified_at', 'is not', null)
         .where('s.status', '<>', 'unsubscribed')
         .where('s.anonymized_at', 'is', null)
-        .where(eb => eb.exists(eb.selectFrom('pt_commitment as c').select('c.id').whereRef('c.subscription_id', '=', 's.id').where('c.campaign_id', '=', campaignId)))
+        .where(eb => eb.exists(eb.selectFrom('pt_commitment as c').select('c.id').whereRef('c.subscription_id', '=', 's.id').where('c.campaign_id', '=', campaignId).where('c.left_at', 'is', null)))
         .orderBy('s.id')
         .limit(THANK_YOU_BATCH)
       if (p.cursor) q = q.where('s.id', '>', p.cursor)
@@ -166,7 +166,7 @@ async function pushCampaign(ctx: JobContext, orgId: string, campaignId: string, 
         .where('s.delivery', '=', 'app')
         .where('s.status', '<>', 'unsubscribed')
         .where('d.push_id', 'is not', null)
-        .where(eb => eb.exists(eb.selectFrom('pt_commitment as c').select('c.id').whereRef('c.subscription_id', '=', 's.id').where('c.campaign_id', '=', campaignId)))
+        .where(eb => eb.exists(eb.selectFrom('pt_commitment as c').select('c.id').whereRef('c.subscription_id', '=', 's.id').where('c.campaign_id', '=', campaignId).where('c.left_at', 'is', null)))
         .orderBy('s.id')
         .limit(500)
       if (p.push_cursor) q = q.where('s.id', '>', p.push_cursor)
@@ -198,6 +198,8 @@ async function thankYouPerson(ctx: JobContext, payload: Record<string, unknown>)
     const base = await loadCampaign(tx, campaignId)
     const sub = await tx.selectFrom('pt_subscription').selectAll().where('id', '=', subscriptionId).executeTakeFirst()
     if (!sub || sub.status === 'unsubscribed' || sub.anonymized_at) return null
+    const kept = await tx.selectFrom('pt_commitment').select('id').where('subscription_id', '=', sub.id).where('campaign_id', '=', campaignId).where('left_at', 'is', null).executeTakeFirst()
+    if (!kept) return null
     const totals = await totalsFor(tx, campaignId, [sub.id])
     const email = sub.delivery === 'email' && sub.verified_at && sub.contact_id ? await primaryEmailOf(tx, sub.contact_id) : null
     const suppressed = email ? (await suppressedAmong(tx, [email.email])).size > 0 : false

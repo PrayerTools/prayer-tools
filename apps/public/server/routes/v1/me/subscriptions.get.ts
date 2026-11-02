@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
       const sub = await tx.selectFrom('pt_subscription').selectAll().where('id', '=', s.id).executeTakeFirstOrThrow()
       const site = await tx.selectFrom('pt_site').select(['status', 'settings']).executeTakeFirstOrThrow()
       const campaigns = await loadCampaigns(tx)
-      const commitments = await tx.selectFrom('pt_commitment').selectAll().where('subscription_id', '=', sub.id).execute()
+      const commitments = await tx.selectFrom('pt_commitment').selectAll().where('subscription_id', '=', sub.id).where('left_at', 'is', null).execute()
       const defaults = siteSettings(site.settings).default_duration_min
       const used = new Set(commitments.map(c => c.campaign_id))
       return {
