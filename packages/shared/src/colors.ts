@@ -29,7 +29,7 @@ const DARK: [number, number, number] = [24, 24, 27]
 
 export interface BrandColorInfo {
   color: string
-  textColor: '#ffffff' | '#18181b'
+  textColor: '#ffffff' | '#18181b' | '#000000'
   // True when the color is too pale to be readable on a white page.
   tooPale: boolean
 }
@@ -47,6 +47,16 @@ export function brandColor(color: string | null | undefined): BrandColorInfo {
   const rgb = parseHex(color ?? '') ?? parseHex(DEFAULT_BRAND_COLOR)!
   const hex = `#${rgb.map(c => c.toString(16).padStart(2, '0')).join('')}`
   const onWhite = contrastRatio(rgb, WHITE)
-  const textColor = onWhite >= contrastRatio(rgb, DARK) ? '#ffffff' : '#18181b'
+  const textColor = onWhite >= 4.5 && onWhite >= contrastRatio(rgb, DARK) ? '#ffffff' : contrastRatio(rgb, DARK) >= 4.5 ? '#18181b' : '#000000'
   return { color: hex, textColor, tooPale: onWhite < 3 }
+}
+
+export function brandForeground(color: string, background = '#ffffff'): string {
+  let rgb = parseHex(color) ?? parseHex(DEFAULT_BRAND_COLOR)!
+  const surface = parseHex(background) ?? WHITE
+  const lighten = luminance(surface) < 0.179
+  while (contrastRatio(rgb, surface) < 4.5) {
+    rgb = rgb.map(c => lighten ? Math.min(255, Math.ceil(c + (255 - c) * 0.05)) : Math.max(0, Math.floor(c * 0.95))) as [number, number, number]
+  }
+  return `#${rgb.map(c => c.toString(16).padStart(2, '0')).join('')}`
 }
