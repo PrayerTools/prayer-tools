@@ -96,6 +96,11 @@ async function continueToSite(site: MyConfirmSiteView) {
   }
 }
 
+const accountItems = computed(() => [
+  [{ label: t('account.my_account'), icon: 'i-lucide-user', onSelect: () => document.getElementById('my-account')?.scrollIntoView({ behavior: 'smooth' }) }],
+  [{ label: t('my.sign_out'), icon: 'i-lucide-log-out', onSelect: signOut }]
+])
+
 async function signOut() {
   await $fetch('/api/my/logout', { method: 'POST' }).catch(() => null)
   await navigateTo('/my?notice=signed_out', { external: true })
@@ -121,7 +126,7 @@ function languageItems(s: MySiteView) {
     <header class="bg-[#2f6f5e] text-white">
       <div class="max-w-4xl mx-auto px-4 py-4 flex items-center gap-4">
         <a href="https://prayer.tools" class="font-bold text-lg me-auto">Prayer.Tools</a>
-        <UButton v-if="my.signedIn" variant="ghost" color="neutral" class="text-white hover:bg-white/10" icon="i-lucide-log-out" :label="t('my.sign_out')" @click="signOut" />
+        <AccountMenu v-if="my.signedIn" :account="my.account" ready :sign-in-href="null" :items="accountItems" button-class="text-white hover:bg-white/10" />
       </div>
     </header>
     <main id="main" class="flex-1 max-w-4xl w-full mx-auto px-4 py-10 space-y-8">

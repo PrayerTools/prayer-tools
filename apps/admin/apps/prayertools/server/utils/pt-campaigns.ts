@@ -131,6 +131,7 @@ export async function ptCreateCampaign(tx: Transaction<Database>, ctx: TenantCon
     branding: jsonb(look?.branding ?? {}),
     share: jsonb(look?.share ?? {}),
     description: look?.description && (previous || kind !== 'side') ? jsonb(look.description) : null,
+    relaunch_of: previous?.id ?? null,
     // A campaign starts as a draft, except a site's first main campaign while
     // the site is being set up: it goes live with the site, whose checklist covers it.
     published_at: site.status === 'draft' && kind !== 'side' && !hasMain ? new Date() : null

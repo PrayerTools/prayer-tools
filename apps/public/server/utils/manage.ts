@@ -15,23 +15,25 @@ import { useDb } from './db'
 import { sessionUserId } from './account-session'
 import type { SiteContext } from './site-context'
 
-// The subscription the manage cookie names, if its version is still current;
-// otherwise the signed-in person's email subscription on this site.
+// The signed-in person's email subscription on this site; without a
+// sign-in, the subscription the manage cookie names, if its version is
+// still current. A sign-in wins so the page never edits someone else's
+// prayer times under the signed-in name.
 export async function managedSubscription(tx: Tx, event: H3Event, orgId: string): Promise<SubscriptionRow | null> {
-  const c = readManageCookie(event, orgId)
-  if (c) {
-    const sub = await tx.selectFrom('pt_subscription').selectAll().where('id', '=', c.subscriptionId).executeTakeFirst()
-    if (sub && sub.manage_version === c.version && !sub.anonymized_at) return sub
-  }
   const userId = await sessionUserId(event)
-  if (!userId) return null
-  return await tx
-    .selectFrom('pt_subscription')
-    .selectAll()
-    .where('user_id', '=', userId)
-    .where('delivery', '=', 'email')
-    .where('anonymized_at', 'is', null)
-    .executeTakeFirst() ?? null
+  if (userId) {
+    return await tx
+      .selectFrom('pt_subscription')
+      .selectAll()
+      .where('user_id', '=', userId)
+      .where('delivery', '=', 'email')
+      .where('anonymized_at', 'is', null)
+      .executeTakeFirst() ?? null
+  }
+  const c = readManageCookie(event, orgId)
+  if (!c) return null
+  const sub = await tx.selectFrom('pt_subscription').selectAll().where('id', '=', c.subscriptionId).executeTakeFirst()
+  return sub && sub.manage_version === c.version && !sub.anonymized_at ? sub : null
 }
 
 export function commitmentView(row: CommitmentRow, campaign: CampaignRow | undefined): CommitmentView {

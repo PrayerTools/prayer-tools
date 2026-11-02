@@ -4,7 +4,7 @@ export interface Me {
   referral_code: string | null
   email: string | null
   name: string | null
-  account: { email: string, name: string | null } | null
+  account: { email: string, name: string | null, avatar: string | null } | null
   // Campaigns the visitor's active subscription here has prayer times in.
   campaigns: string[]
 }

@@ -260,6 +260,7 @@
     "title": "Vos moments de prière",
     "intro": "Connecté en tant que {email} pour {site}.",
     "signed_out": "Ouvrez le lien de l'un de nos e-mails pour gérer ici vos moments de prière, ou utilisez Ma prière pour voir toutes vos campagnes.",
+    "signed_in_empty": "Vous êtes connecté en tant que {email}. Vous n'avez pas encore de moments de prière sur {site}.",
     "unverified": "Votre adresse e-mail n'est pas encore confirmée. Les rappels commenceront dès que vous aurez cliqué sur le lien de notre e-mail.",
     "name_on_my": "Votre nom est le même dans toutes les campagnes avec lesquelles vous priez. Modifiez-le dans",
     "status_unsubscribed": "Vous êtes désabonné. Vous ne recevrez pas de rappels.",
@@ -379,6 +380,11 @@
     "continue_title": "Se connecter à {site} ?",
     "continue_body": "{site} ({host}) verra votre nom et votre adresse e-mail, {email}.",
     "continue_button": "Continuer vers {site}"
+  },
+  "account": {
+    "menu": "Menu du compte",
+    "site_times": "Moments de prière sur ce site",
+    "my_account": "Mon compte"
   },
   "home": {
     "title": "Des campagnes de prière pour les lieux et les peuples qui vous tiennent à cœur",

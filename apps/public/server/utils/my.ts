@@ -125,7 +125,7 @@ export async function buildMyView(userId: string | null): Promise<MyView> {
   }
   return {
     signedIn: true,
-    account: { name: account.display_name, email: account.email },
+    account: { name: account.display_name, email: account.email, avatar: account.avatar || null },
     sites,
     managing: await managedSites(account.id),
     createUrl: `/my/admin?to=${encodeURIComponent('/orgs/new')}`

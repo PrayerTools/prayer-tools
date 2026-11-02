@@ -22,6 +22,7 @@ import { contentBlocks, contentVars, docHtml, formatDate, visibleEntries } from 
 import { progressFor, statsFor } from './site-stats'
 import { managedSubscription, manageView } from './manage'
 import { socialProviders } from './social-sign-in'
+import { sessionAccount } from './account-session'
 import { withDraftStrings, type LandingDraft } from './editor'
 
 const PRIVATE_PAGES = new Set(['manage', 'm', 'u', 'verify', 'add', 'notice', 'checkin'])
@@ -106,7 +107,8 @@ export async function buildSiteResponse(event: H3Event, ctx: SiteContext, fullPa
           break
         case 'manage': {
           const sub = await managedSubscription(tx, event, ctx.orgId)
-          page = { kind: 'manage', manage: sub ? await manageView(tx, ctx, sub, data.campaigns, data.settings.default_duration_min, lang, def) : null }
+          const account = sub ? null : await sessionAccount(event)
+          page = { kind: 'manage', manage: sub ? await manageView(tx, ctx, sub, data.campaigns, data.settings.default_duration_min, lang, def) : null, signedInAs: account?.email ?? null }
           break
         }
         case 'm':
