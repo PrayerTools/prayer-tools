@@ -34,6 +34,7 @@ export type SessionSource = 'porch' | 'manage' | 'app' | 'email'
 export type SignupFieldKind = 'text' | 'select' | 'checkbox'
 export type LibraryVisibility = 'private' | 'published'
 export type ShareStatus = 'requested' | 'approved' | 'rejected'
+export type ShareRole = 'viewer' | 'editor'
 
 // Text a champion writes in one language and translates into the site's
 // other languages. `stale` lists languages whose value predates the latest
@@ -234,6 +235,18 @@ export interface PtPersonalBlockTable {
   content: Json<TiptapDoc>
   created_at: Timestamp
   updated_at: Timestamp
+}
+
+// A share of one personal library item (core's `createShareTable`): a user,
+// or a pending invite that becomes that user when accepted.
+export interface PtShareTable {
+  id: Generated<string>
+  resource_id: string
+  grantee_user_id: string | null
+  grantee_invite_id: string | null
+  role: ShareRole
+  granted_by: string | null
+  created_at: Generated<Date>
 }
 
 export interface PtLegacyKeyTable {
@@ -638,6 +651,9 @@ export interface PtTables {
   pt_library_entry: PtLibraryEntryTable
   pt_personal_asset: PtPersonalAssetTable
   pt_personal_block: PtPersonalBlockTable
+  pt_library_shares: PtShareTable
+  pt_personal_asset_shares: PtShareTable
+  pt_personal_block_shares: PtShareTable
   pt_legacy_key: PtLegacyKeyTable
   pt_site: PtSiteTable
   pt_campaign: PtCampaignTable

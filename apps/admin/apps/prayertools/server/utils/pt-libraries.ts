@@ -1,6 +1,6 @@
 // Libraries are global: owned by a champion's account (usable on all their
-// sites, private until shared) or by the platform (owner null, curated by
-// operators). Sites follow a library's latest published version until they
+// sites and by the people they share it with, private until shared with
+// everyone) or by the platform (owner null, curated by operators). Sites follow a library's latest published version until they
 // edit it.
 import type { H3Event } from 'h3'
 import { sql } from 'kysely'
@@ -25,13 +25,17 @@ export async function ptLibraryUsage(libraryId: string): Promise<{ following: nu
   return { following, copies: rows.length - following }
 }
 
-export async function ptEditableLibrary(event: H3Event, id: string) {
+// A library the caller may edit: their own, one shared with them as an editor
+// (unless `ownerOnly`), or for operators a platform library.
+export async function ptEditableLibrary(event: H3Event, id: string, { ownerOnly = false } = {}) {
   const user = await ptUser(event)
   const lib = await db.selectFrom('pt_library').selectAll().where('id', '=', id).executeTakeFirst()
   if (!lib) ptNotFound('Library not found.')
-  const own = lib.owner_user_id === user.userId
   const platform = lib.owner_user_id === null && user.isAdmin
-  if (!own && !platform) throw createError({ statusCode: 403, statusMessage: 'Only the library\'s owner can edit it.' })
+  const role = await ptLibraryRole(lib.id, lib.owner_user_id, user.userId)
+  if (!platform && role !== 'owner' && (ownerOnly || role !== 'editor')) {
+    throw createError({ statusCode: 403, statusMessage: ownerOnly ? 'Only the library\'s owner can do this.' : 'Only the library\'s owner and editors can edit it.' })
+  }
   return { lib, user }
 }
 

@@ -12,6 +12,13 @@ export default defineEventHandler(async (event) => {
     if (!doc) ptBadRequest('Invalid content.')
     patch.content = jsonb(doc)
   }
-  await withUserContext(event, { appId: PT_LIBRARY_APP }, tx => ptTx(tx).updateTable('pt_personal_block').set(patch as never).where('id', '=', getRouterParam(event, 'id')!).where('owner_user_id', '=', user.userId).execute())
+  const id = getRouterParam(event, 'id')!
+  // The owner, or someone it is shared with as an editor.
+  await withUserContext(event, { appId: PT_LIBRARY_APP }, tx => ptTx(tx).updateTable('pt_personal_block').set(patch as never).where('id', '=', id)
+    .where(eb => eb.or([
+      eb('owner_user_id', '=', user.userId),
+      eb.exists(eb.selectFrom('pt_personal_block_shares').select('id').where('resource_id', '=', id).where('grantee_user_id', '=', user.userId).where('role', '=', 'editor'))
+    ]))
+    .execute())
   return { ok: true }
 })

@@ -33,10 +33,17 @@ export async function ptTakeLibraryUpdate(tx: Tx, siteLibraryId: string): Promis
   await tx.updateTable('pt_site_library').set({ frozen_version: null }).where('id', '=', siteLibraryId).execute()
 }
 
+// Whether the library is shared with the user. The share table's own policies
+// need the personal-app user, so this reads it through its owner function.
+async function ptLibrarySharedWithUser(tx: Tx, libraryId: string, userId: string): Promise<boolean> {
+  const { rows } = await sql<{ shared: boolean }>`select pt_library_shares_has_member(${libraryId}::uuid, ${userId}::uuid) as shared`.execute(tx)
+  return !!rows[0]?.shared
+}
+
 export async function ptLibraryReadable(tx: Tx, libraryId: string, userId: string) {
   const lib = await tx.selectFrom('pt_library').selectAll().where('id', '=', libraryId).executeTakeFirst()
   if (!lib) ptNotFound('Library not found.')
-  if (lib.visibility !== 'published' && lib.owner_user_id !== userId) ptNotFound('Library not found.')
+  if (lib.visibility !== 'published' && lib.owner_user_id !== userId && !(await ptLibrarySharedWithUser(tx, libraryId, userId))) ptNotFound('Library not found.')
   return lib
 }
 

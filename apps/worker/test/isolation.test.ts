@@ -26,6 +26,26 @@ const CURRENT_USER = `(owner_user_id = (NULLIF(current_setting('app.current_user
 // The public server's person scope (`withPerson`) reads a person's own rows across sites.
 const PERSON_READ_TABLES = ['pt_commitment', 'pt_person_total', 'pt_subscription']
 
+// A personal item shared through its `<table>_shares` table: the owner reads
+// and writes, people it is shared with read it, editors update it, and no
+// update moves it to another owner.
+function sharedItemPolicyOk(p: { tablename: string, policyname: string, qual: string | null, with_check: string | null }): boolean {
+  const ownerOrShared = !!p.qual?.startsWith(`(${CURRENT_USER} OR (EXISTS`) && p.qual.includes(`FROM ${p.tablename}_shares s`)
+  switch (p.policyname) {
+    case 'user_read': return ownerOrShared && p.with_check === null
+    case 'user_insert': return p.qual === null && p.with_check === CURRENT_USER
+    case 'user_update': return ownerOrShared && p.qual!.includes(`'editor'`) && p.with_check === `(owner_user_id = ${p.tablename}_shares_resource_owner(id))`
+    case 'user_delete': return p.qual === CURRENT_USER && p.with_check === null
+    default: return false
+  }
+}
+
+// Core's share-table policies, which go through the table's owner function.
+function shareTablePolicyOk(p: { tablename: string, qual: string | null, with_check: string | null }): boolean {
+  const caller = `(NULLIF(current_setting('app.current_user'::text, true), ''::text))::uuid`
+  return `${p.qual ?? ''} ${p.with_check ?? ''}`.includes(`${p.tablename}_resource_owner(resource_id) = ${caller}`)
+}
+
 let env: TestEnv
 beforeAll(() => { env = testEnv() })
 afterEach(async () => { await cleanup(env) })
@@ -86,6 +106,8 @@ describe('site isolation', () => {
       if (p.policyname === 'tenant_isolation') return !(p.qual === ACTIVE_ORG && (p.with_check === null || p.with_check === ACTIVE_ORG))
       if (p.policyname === 'user_isolation') return orgTables.has(p.tablename) || p.qual !== CURRENT_USER || p.with_check !== CURRENT_USER
       if (p.policyname === 'person_read') return !PERSON_READ_TABLES.includes(p.tablename) || p.cmd !== 'SELECT' || !p.qual?.includes('current_intercessor_id()')
+      if (p.policyname.startsWith('user_')) return orgTables.has(p.tablename) || !sharedItemPolicyOk(p)
+      if (p.tablename.endsWith('_shares') && p.policyname.startsWith(`${p.tablename}_`)) return orgTables.has(p.tablename) || !shareTablePolicyOk(p)
       return true
     })
     expect(odd).toEqual([])

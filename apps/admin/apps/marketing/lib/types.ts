@@ -130,12 +130,25 @@ export interface MarketingTemplateTable {
   updated_at: Timestamp
 }
 
+// A share of one template (core's `createShareTable`): a user, or a pending
+// invite that becomes that user when accepted.
+export interface MarketingTemplateShareTable {
+  id: Generated<string>
+  resource_id: string
+  grantee_user_id: string | null
+  grantee_invite_id: string | null
+  role: 'viewer' | 'editor'
+  granted_by: string | null
+  created_at: Generated<Date>
+}
+
 export interface MarketingTables {
   marketing_email: MarketingEmailTable
   marketing_delivery: MarketingDeliveryTable
   marketing_parent: MarketingParentTable
   marketing_parent_recipient: MarketingParentRecipientTable
   marketing_template: MarketingTemplateTable
+  marketing_template_shares: MarketingTemplateShareTable
 }
 
 // The CRM and tenancy tables the layer reads directly.
@@ -163,10 +176,16 @@ interface OrgsRead {
   suspended_at: NullableTimestamp
 }
 
+interface UsersRead {
+  id: Generated<string>
+  display_name: string
+}
+
 export interface MarketingDatabase extends MarketingTables {
   crm_channel_consents: CrmChannelConsentsRead
   crm_channels: CrmChannelsRead
   orgs: OrgsRead
+  users: UsersRead
 }
 
 export type MarketingDb = Kysely<MarketingDatabase>

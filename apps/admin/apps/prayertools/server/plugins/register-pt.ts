@@ -4,11 +4,13 @@ import { registerStaticRole } from '#core/server/utils/roles-registry'
 import { configureApp, registerApp } from '#core/server/utils/app-registry'
 import { registerRailItem } from '#core/server/utils/rail-registry'
 import { registerAdminSection } from '#core/server/utils/admin-section-registry'
+import { registerShareTable } from '#core/server/utils/share-registry'
 import { getRegisteredRecordType, registerCrmConsentPurpose, registerCrmRecordType } from '#crm/server'
 import { registerAiFeature } from '#ai/server'
-import { PT_PERMISSIONS, PT_PERMISSION_META, PT_STATIC_ROLES } from '../../app/utils/pt-permissions'
+import { PT_LIBRARY_SHARE, PT_PERMISSIONS, PT_PERMISSION_META, PT_STATIC_ROLES } from '../../app/utils/pt-permissions'
 import { PT_LIBRARY_APP } from '@prayertools/shared/site'
 import { platformConfig } from '@prayertools/shared/config'
+import { PT_SHARE_TABLES } from '../utils/pt-sharing'
 
 export default defineNitroPlugin(() => {
   // Fails at startup when required configuration is missing.
@@ -30,7 +32,9 @@ export default defineNitroPlugin(() => {
   configureApp('marketing', { title: 'Email', order: 70 })
   // The champion's own library (templates, images, blocks) and multi-site
   // sends, the same from every site.
-  registerApp({ id: PT_LIBRARY_APP, title: 'Library', path: '/personal', icon: 'i-lucide-library-big', description: 'Your templates, images and blocks, usable on any of your sites.', scope: 'user', permissions: [], defaultStatus: 'default', order: 90 })
+  registerPermissions([PT_LIBRARY_SHARE], { [PT_LIBRARY_SHARE]: { title: 'Share library items', description: 'Share your libraries, templates, images and blocks with named people.' } })
+  registerApp({ id: PT_LIBRARY_APP, title: 'Library', path: '/personal', icon: 'i-lucide-library-big', description: 'Your templates, images and blocks, usable on any of your sites.', scope: 'user', permissions: [PT_LIBRARY_SHARE], defaultStatus: 'default', order: 90 })
+  for (const table of PT_SHARE_TABLES) registerShareTable({ appId: PT_LIBRARY_APP, table })
 
   // The rail is the only main navigation; every entry is "this, for the
   // current site". Sections with several pages use in-page tabs.

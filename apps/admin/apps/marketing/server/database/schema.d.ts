@@ -10,5 +10,6 @@ declare global {
     marketing_parent: MarketingTables['marketing_parent']
     marketing_parent_recipient: MarketingTables['marketing_parent_recipient']
     marketing_template: MarketingTables['marketing_template']
+    marketing_template_shares: MarketingTables['marketing_template_shares']
   }
 }
