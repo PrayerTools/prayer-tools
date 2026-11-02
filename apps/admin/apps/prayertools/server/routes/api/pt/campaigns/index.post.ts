@@ -1,6 +1,7 @@
-// Creates a campaign on the site. `relaunchOf` starts from a previous
-// campaign's answers and reuses its libraries (copies the site edited carry
-// over; followed libraries pick up their latest published version), its kind,
+// Creates a campaign on the site. `relaunchOf` records the previous campaign
+// as the one this relaunches (`relaunch_of`), starts from its answers and
+// reuses its libraries (copies the site edited carry over; followed libraries
+// pick up their latest published version), its kind,
 // landing page, description, images, share messages, place and people group.
 // Any other campaign takes its images, share messages, place and people group
 // from the current main campaign, and a main campaign its landing page and
@@ -59,6 +60,7 @@ export default definePtHandler('pt.campaigns.write', async (event, tx, ctx) => {
     branding: jsonb(look?.branding ?? {}),
     share: jsonb(look?.share ?? {}),
     description: look?.description && (previous || kind !== 'side') ? jsonb(look.description) : null,
+    relaunch_of: previous?.id ?? null,
     // A campaign starts as a draft, except a site's first main campaign while
     // the site is being set up: it goes live with the site, whose checklist covers it.
     published_at: site.status === 'draft' && kind !== 'side' && !hasMain ? new Date() : null

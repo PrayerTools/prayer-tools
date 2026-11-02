@@ -368,6 +368,8 @@ export interface PtCampaignTable {
   branding: JsonDefault<CampaignBranding>
   share: JsonDefault<CampaignShare>
   description: Json<TranslatableText | null> | null
+  // The campaign this one was relaunched from.
+  relaunch_of: string | null
   // Null while the campaign is a draft being set up.
   published_at: NullableTimestamp
   ended_at: NullableTimestamp
