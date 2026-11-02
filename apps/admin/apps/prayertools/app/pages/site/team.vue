@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// The site's team: owners, editors, translators and viewers. Invites and
+// The site's team: owners, editors, mobilizers, translators and viewers. Invites and
 // memberships use the tenancy layer's endpoints; a site always keeps an owner.
 definePageMeta({ middleware: 'auth' })
 

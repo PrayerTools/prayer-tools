@@ -50,7 +50,7 @@ Any champion who runs many sites, most often a mission agency: one per country, 
 ### Champion's team
 - **Owner:** shares full control; a site can have several.
 - **Editor:** content, email, settings and intercessor details.
-- **Mobilizer** *(not built)*: handles communication. Invites people to the campaign and communicates with intercessors before, during and after it: knows who the intercessors are, answers the inbox, emails the whole list and writes the campaign's messages (share messages, the end-of-campaign thank-you). Leaves the prayer content and site settings to others.
+- **Mobilizer:** handles communication. Invites people to the campaign and communicates with intercessors before, during and after it: knows who the intercessors are, answers the inbox, emails the whole list and writes the campaign's messages (share messages, the end-of-campaign thank-you). Leaves the prayer content and site settings to others.
 - **Translator:** translates by hand for teams that don't want AI translation.
 - **Viewer:** stats only, no personal data. For partners and board members.
 

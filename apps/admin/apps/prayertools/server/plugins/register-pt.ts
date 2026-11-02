@@ -15,7 +15,7 @@ export default defineNitroPlugin(() => {
   platformConfig()
   registerPermissions(PT_PERMISSIONS, PT_PERMISSION_META)
   registerDefaultGrants('pt', {
-    member: ['pt.access', 'pt.site.read', 'pt.stats.read'],
+    member: ['pt.access', 'pt.site.read', 'pt.setup.read', 'pt.stats.read'],
     admin: [...PT_PERMISSIONS]
   })
   for (const role of PT_STATIC_ROLES) {
@@ -37,12 +37,12 @@ export default defineNitroPlugin(() => {
   const rail: [string, string, string, string, string, number][] = [
     ['site', 'Dashboard', '/@:orgSlug/site', 'i-lucide-layout-dashboard', 'pt.access', 10],
     ['site', 'Campaigns', '/@:orgSlug/site/campaigns', 'i-lucide-calendar-range', 'pt.site.read', 20],
-    ['site', 'Content', '/@:orgSlug/site/content', 'i-lucide-book-open', 'pt.site.read', 30],
-    ['site', 'Landing page', '/@:orgSlug/site/landing', 'i-lucide-panels-top-left', 'pt.site.read', 40],
+    ['site', 'Content', '/@:orgSlug/site/content', 'i-lucide-book-open', 'pt.setup.read', 30],
+    ['site', 'Landing page', '/@:orgSlug/site/landing', 'i-lucide-panels-top-left', 'pt.setup.read', 40],
     ['crm', 'Intercessors', '/@:orgSlug/crm/contacts', 'i-lucide-users', 'crm.contacts.read', 50],
     ['site', 'Stats', '/@:orgSlug/site/stats', 'i-lucide-chart-line', 'pt.stats.read', 80],
     ['site', 'Team', '/@:orgSlug/site/team', 'i-lucide-user-cog', 'org.members.read', 90],
-    ['site', 'Settings', '/@:orgSlug/site/settings', 'i-lucide-settings', 'pt.site.read', 100]
+    ['site', 'Settings', '/@:orgSlug/site/settings', 'i-lucide-settings', 'pt.setup.read', 100]
   ]
   for (const [appId, title, path, icon, requiredPermission, order] of rail) {
     registerRailItem({ appId, id: title.toLowerCase().replace(/\s+/g, '-'), title, path, icon, requiredPermission, order })

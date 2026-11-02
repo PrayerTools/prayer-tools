@@ -7,11 +7,13 @@ import { contentLength } from '@prayertools/shared/content'
 import { isTemplateWhy } from '@prayertools/shared/i18n/landing'
 import type { CampaignBranding } from '@prayertools/shared/db/schema'
 import { TEMPLATES } from '@prayertools/shared/setup'
-import { campaignById } from '@prayertools/shared/campaigns'
+import { campaignById, campaignEditMissing } from '@prayertools/shared/campaigns'
 
-export default definePtHandler('pt.campaigns.write', async (event, tx, ctx) => {
+export default definePtHandler(null, async (event, tx, ctx) => {
   const id = getRouterParam(event, 'id')!
   const b = await ptBody(event)
+  const missing = campaignEditMissing(Object.keys(b), ctx.perms)
+  if (missing) ptNeed(ctx, missing)
   const c = await campaignById(ptTx(tx), id, { drafts: true })
   if (!c) ptNotFound('Campaign not found.')
   const patch: Record<string, unknown> = ptCampaignExtras(b)
@@ -36,7 +38,6 @@ export default definePtHandler('pt.campaigns.write', async (event, tx, ctx) => {
   }
   if ('end_message' in b) patch.end_message = b.end_message ? jsonb(parseText(b.end_message)) : null
   if ('cta' in b) patch.cta = jsonb(ptCta(b.cta))
-  if (['landing', 'description', 'branding', 'share_image_url', 'share'].some(k => k in b)) ptNeed(ctx, 'pt.site.write')
   if ('description' in b) patch.description = b.description ? jsonb(parseText(b.description)) : null
   if ('landing' in b) {
     const landing = ptLanding(b.landing)

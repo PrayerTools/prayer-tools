@@ -17,7 +17,7 @@ const toast = usePtToast()
 const message = ref<TranslatableText | null>(props.endMessage)
 const ctaLabel = ref<TranslatableText | null>(props.cta?.label ?? null)
 const ctaUrl = ref(props.cta?.url ?? '')
-const canEdit = computed(() => can('pt.campaigns.write'))
+const canEdit = computed(() => can('pt.messages.write') || can('pt.campaigns.write'))
 
 const saving = ref(false)
 async function save() {
