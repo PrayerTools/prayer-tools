@@ -33,7 +33,7 @@ Mail goes to Mailpit (localhost:1025, UI :8025) in development. `PT_SECRET` must
 
 ## MCP for AI clients
 
-The admin app is an MCP server at `<NUXT_PUBLIC_SITE_URL>/mcp`, so champions can add prayer.tools to claude.ai or ChatGPT as a custom connector and sign in through OAuth (set `OAUTH_CONSENT_COOKIE_SECRET` and `OAUTH_ALLOW_DCR=true`). The prayer.tools tools (`apps/admin/apps/prayertools/mcp/`) create sites and campaigns, edit the landing page and signup form, and stack, write and translate prayer content; the site email tools (`apps/admin/apps/marketing/mcp/`) save drafts only. Content goes in and out as a flat block list (`@prayertools/shared/content-blocks`), not Tiptap JSON. Publishing, sending, deleting and domains stay in the admin. Tools never return intercessors' personal data, except the inbox and CRM tools the Nuxtinator layers ship.
+The admin app is an MCP server at `<NUXT_PUBLIC_SITE_URL>/mcp`, so champions can add prayer.tools to claude.ai or ChatGPT as a custom connector and sign in through OAuth (set `OAUTH_CONSENT_COOKIE_SECRET` and `OAUTH_ALLOW_DCR=true`). The prayer.tools tools (`apps/admin/apps/prayertools/mcp/`) create sites and campaigns, edit the landing page and signup form, and stack, write and translate prayer content; the site email tools (`apps/admin/apps/marketing/mcp/`) save drafts only. Content goes in and out as a flat block list (`@prayertools/shared/content-blocks`), not Tiptap JSON. Publishing, sending, deleting and domains stay in the admin. Tools never return intercessors' personal data, except the inbox layer's tools; the CRM layer's MCP tools are turned off (`mcpDisabledApps`).
 
 ## Tests
 
