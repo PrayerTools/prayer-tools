@@ -6,6 +6,10 @@ prayer.tools v3 ("with orgs"): every prayer site is a Nuxtinator org. Bun monore
 
 This project is a re-implementation of https://github.com/DiscipleTools/disciple-tools-prayer-campaigns that was built on Disciple.Tools. 
 
+## Purpose
+
+The main goal of prayer.tools is **Discipleship Through Prayer**. Champions create campaigns for people groups, locations and events, usually around a cause or a goal. Prayer changes the place, and it also changes the intercessor who prays, so campaigns teach and equip intercessors through biblical, strategic prayer content. Personas and use cases are in `USE_CASES.md`.
+
 ## Commands
 
 ```bash

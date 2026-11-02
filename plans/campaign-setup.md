@@ -100,8 +100,8 @@ All templates preselect the people-mobilized goal.
 - **Calculation:** the campaign is a grid of real slot instants (15 minutes unless the campaign chooses another length) from its start to its end (a DST day in the campaign's timezone simply has 92 or 100 15-minute slots). Each recurring commitment expands to occurrences by converting date + time in its anchor timezone to UTC; picks are instants already. Each occurrence marks the slots it overlaps. Coverage = share of slots with at least one intercessor. Because everything is in real instants, the result is exact across DST.
 - **Where DST bites:** not the maths but the behaviour. A daily commitment anchored to the intercessor's local time moves by an hour in real time at their DST change, so the grid correctly shows a gap in one slot and a double in another. Anchoring to the campaign's timezone doesn't avoid it: the campaign's own change day skips or repeats an hour.
 - **Specific-date picks are unaffected** — they are absolute instants.
-- **Policy (leaning):** anchor recurring commitments to the intercessor's local time. The grid then shows where people will actually pray, so "real 24/7 coverage" is an honest claim; gaps created by a DST change show up on the calendar to be filled.
-- **Alternative still worth considering:** anchor to UTC. Simpler and the grid stays full, but the intercessor's local time shifts by an hour, and people who keep their habit leave real gaps the grid doesn't show.
+- **Policy:** anchor recurring commitments to the intercessor's local time. The grid then shows where people will actually pray, so "real 24/7 coverage" is an honest claim; gaps created by a DST change show up on the calendar to be filled.
+- **Rejected:** anchoring to UTC. Simpler and the grid stays full, but the intercessor's local time shifts by an hour, and people who keep their habit leave real gaps the grid doesn't show.
 - **Rejected:** asking intercessors to choose — they shouldn't have to think about DST.
 - **Calendar:** the same expansion gives coverage % per day (days in the campaign's timezone) and per-slot counts for the day view, as the current calendar shows.
 - **Storage:** coverage is derived from the commitments, never stored as future rows. Short campaigns expand in memory on request and are cached briefly; long campaigns keep one slot-count array per campaign, updated when a commitment changes and rebuilt nightly.
@@ -109,7 +109,4 @@ All templates preselect the people-mobilized goal.
 
 ## Open
 
-- Confirm the 24/7 DST policy (local-time anchor vs UTC).
-- Whether an app commitment needs more than a reminder to count toward the people number.
-- Whether a crisis campaign also needs dated updates everyone sees.
-- Monthly cadence (WordPress supports it).
+- Whether a crisis campaign also needs dated updates everyone sees (handled separately).
