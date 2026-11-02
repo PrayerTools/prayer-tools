@@ -1,5 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { withOrg } from '@prayertools/shared/db/scope'
+import { campaignSeries } from '@prayertools/shared/campaigns'
 import { addDays, todayIn } from '@prayertools/shared/dates'
 import { jsonb } from '@prayertools/shared/db/json'
 import { suppress } from '@prayertools/shared/email/suppression'
@@ -218,5 +219,25 @@ describe('personal-start completion', () => {
     expect((await jobsOf(orgId)).map(j => j.type)).toEqual(['thank_you_person'])
     const sub = await withOrg(env.admin, orgId, tx => tx.selectFrom('pt_subscription').select('status').where('id', '=', person.subscriptionId).executeTakeFirstOrThrow())
     expect(sub.status).toBe('active')
+  })
+})
+
+describe('campaign series', () => {
+  it('collects every run relaunched from the same first campaign, oldest first', async () => {
+    const { orgId } = await createSite(env)
+    const first = await createCampaign(env, orgId, { name: '2025' })
+    const second = await createCampaign(env, orgId, { name: '2026', relaunchOf: first })
+    const third = await createCampaign(env, orgId, { name: '2027', relaunchOf: second })
+    const sibling = await createCampaign(env, orgId, { name: '2026 again', relaunchOf: first })
+    const draft = await createCampaign(env, orgId, { name: '2028', relaunchOf: third, published: false })
+    const other = await createCampaign(env, orgId, { name: 'Other' })
+
+    const ids = (rows: { id: string }[]) => rows.map(r => r.id)
+    await withOrg(env.admin, orgId, async (tx) => {
+      expect(ids(await campaignSeries(tx, third))).toEqual([first, second, third, sibling])
+      expect(ids(await campaignSeries(tx, first, { drafts: true }))).toEqual([first, second, third, sibling, draft])
+      expect(ids(await campaignSeries(tx, other))).toEqual([other])
+      expect(await campaignSeries(tx, 'not-an-id')).toEqual([])
+    })
   })
 })
