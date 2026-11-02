@@ -27,6 +27,20 @@
     "source": "github:corsacca/nuxtinator/layers/email-mailgun",
     "tagPrefix": "@nuxtinator/email-mailgun@"
   },
+  "oauth": {
+    "pkg": "@nuxtinator/oauth",
+    "version": "master",
+    "ref": "master",
+    "source": "github:corsacca/nuxtinator/layers/oauth",
+    "tagPrefix": "@nuxtinator/oauth@"
+  },
+  "mcp": {
+    "pkg": "@nuxtinator/mcp",
+    "version": "master",
+    "ref": "master",
+    "source": "github:corsacca/nuxtinator/layers/mcp",
+    "tagPrefix": "@nuxtinator/mcp@"
+  },
   "ai": {
     "pkg": "@nuxtinator/ai",
     "version": "^0.8.0",
