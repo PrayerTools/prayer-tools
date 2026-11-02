@@ -5,7 +5,7 @@ import { sql } from 'kysely'
 import type { Tx } from './db/scope'
 import type { CampaignBranding, CampaignCta, CampaignLanding, PersonalTemplateSetup, TranslatableText } from './db/schema'
 import { jsonb, pgArray } from './db/json'
-import { daysBetween } from './dates'
+import { daysBetween, toIsoDate } from './dates'
 
 export interface PersonalTemplateContent {
   template_key: string | null
@@ -42,7 +42,7 @@ export async function templateFromCampaign(tx: Tx, campaignId: string): Promise<
     setup: {
       start_mode: c.start_mode,
       end_mode: c.end_mode,
-      length_days: dated ? daysBetween(c.start_date!, c.end_date!) + 1 : c.length_days,
+      length_days: dated ? daysBetween(toIsoDate(c.start_date)!, toIsoDate(c.end_date)!) + 1 : c.length_days,
       goal: c.goal,
       cadence: c.cadence,
       track_time: c.track_time,
