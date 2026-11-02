@@ -110,6 +110,7 @@ export default defineNuxtConfig({
     s3PublicBucketName: process.env.S3_PUBLIC_BUCKET_NAME || '',
     s3PublicBaseUrl: process.env.S3_PUBLIC_BASE_URL || '',
     secretEncryptionKey: process.env.NUXT_SECRET_ENCRYPTION_KEY || '',
+    mcpServerName: process.env.MCP_SERVER_NAME || 'Prayer.Tools',
     public: {
       appName: process.env.APP_TITLE || 'Prayer.Tools',
       nodeEnv: process.env.NODE_ENV || '',

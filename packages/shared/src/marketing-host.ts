@@ -18,6 +18,7 @@ import { campaignStatus, pickCurrentCampaign } from './setup'
 import { loadCampaigns } from './campaigns'
 import { PT_LIBRARY_APP } from './site'
 import { tiptapToHtml, tiptapToText } from './tiptap'
+import { blocksToDoc, BLOCKS_FORMAT_HELP, docToBlocks, type ContentBlock } from './content-blocks'
 import { textIn } from './translatable'
 import type { Selectable } from 'kysely'
 
@@ -226,6 +227,12 @@ export const ptMarketingHost = {
       }),
       defaultLanguage: info.defaultLanguage
     }
+  },
+
+  mcpContent: {
+    help: BLOCKS_FORMAT_HELP,
+    toDoc: (blocks: unknown[]) => blocksToDoc(blocks as ContentBlock[]),
+    fromDoc: (doc: TiptapDoc) => docToBlocks(doc)
   },
 
   variableList: [
