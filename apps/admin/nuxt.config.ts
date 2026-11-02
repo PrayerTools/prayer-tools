@@ -90,7 +90,7 @@ export default defineNuxtConfig({
 
   nitro: {
     externals: {
-      inline: ['@prayertools/shared']
+      inline: ['@prayertools/shared', 'zod']
     },
     routeRules: {
       '/api/**': { headers: { 'cache-control': 'private, no-store' } }
