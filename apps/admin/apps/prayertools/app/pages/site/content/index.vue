@@ -8,6 +8,7 @@ import { entryDate, entryNumber } from '@prayertools/shared/schedule'
 import { addDays, todayIn } from '@prayertools/shared/dates'
 import { tiptapToHtml } from '@prayertools/shared/tiptap'
 import { placeholderVars } from '@prayertools/shared/content'
+import type { TiptapDoc } from '@prayertools/shared/db/schema'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -184,6 +185,7 @@ function startEdit(l: Lib, doc?: Record<string, any> | null) {
 function stopEdit() {
   editingId.value = null
   draft.value = null
+  aiCheckOnOpen.value = false
 }
 
 const pending = ref<{ day: number, lang: string } | null>(null)
@@ -245,6 +247,43 @@ async function markCurrent(l: Lib) {
   await $fetch('/api/pt/content/entry-status', { method: 'POST', body: { siteLibraryId: l.siteLibraryId, day: day.value, lang: lang.value } })
   await refresh()
   await loadEntries()
+}
+
+// ── AI help ─────────────────────────────────────────────────────────────
+interface AiDraft { day: number, doc: TiptapDoc }
+const aiDraft = reactive({ open: false, series: false, lib: null as Lib | null })
+const aiCheckOnOpen = ref(false)
+const aiKey = ref(0)
+const aiSeries = reactive({ open: false, lib: null as Lib | null, lang: '', drafts: [] as AiDraft[], unresolved: [] as string[] })
+
+function openAiDraft(l: Lib, series: boolean) {
+  Object.assign(aiDraft, { open: true, series, lib: l })
+}
+function openDraft(l: Lib, doc: TiptapDoc) {
+  startEdit(l, doc)
+  aiCheckOnOpen.value = true
+  aiKey.value++
+}
+function onAiDraft(res: { doc: TiptapDoc }) {
+  if (aiDraft.lib) openDraft(aiDraft.lib, res.doc)
+}
+function onAiSeries(res: { drafts: AiDraft[], unresolved: string[] }) {
+  Object.assign(aiSeries, { open: true, lib: aiDraft.lib, lang: lang.value, drafts: res.drafts, unresolved: res.unresolved })
+}
+function useSeriesDraft(d: AiDraft) {
+  if (!aiSeries.lib) return
+  if (dirty.value) {
+    toast.fail(new Error('Save or cancel the entry you are editing first.'), 'Still editing')
+    return
+  }
+  applyNav({ day: d.day, lang: aiSeries.lang })
+  openDraft(aiSeries.lib, d.doc)
+  aiSeries.drafts = aiSeries.drafts.filter(x => x !== d)
+  aiSeries.open = false
+}
+function seriesDayWritten(n: number): boolean {
+  const i = libraries.value.findIndex(l => l.siteLibraryId === aiSeries.lib?.siteLibraryId)
+  return i >= 0 && !!libraries.value[i]!.entryDays[aiSeries.lang]?.includes(n)
 }
 
 // ── Sections ────────────────────────────────────────────────────────────
@@ -605,6 +644,20 @@ function sourceBadge(l: Lib): { label: string, color: 'info' | 'warning' | 'neut
                   :loading="translating === l.siteLibraryId"
                   @click="aiTranslate(l)"
                 />
+                <UDropdownMenu
+                  v-if="can('pt.content.write')"
+                  :items="[
+                    { label: `Draft ${unit} ${day} from reports`, icon: 'i-lucide-file-pen', onSelect: () => openAiDraft(l, false) },
+                    { label: 'Write a series from reports', icon: 'i-lucide-files', onSelect: () => openAiDraft(l, true) }
+                  ]"
+                >
+                  <UButton
+                    size="sm"
+                    variant="soft"
+                    icon="i-lucide-sparkles"
+                    label="AI help"
+                  />
+                </UDropdownMenu>
                 <UButton
                   v-if="entries[l.siteLibraryId]?.doc"
                   size="sm"
@@ -623,6 +676,14 @@ function sourceBadge(l: Lib): { label: string, color: 'info' | 'warning' | 'neut
             Loading…
           </p>
           <template v-else>
+            <UAlert
+              v-if="aiSeries.lib?.siteLibraryId === l.siteLibraryId && aiSeries.drafts.length"
+              color="info"
+              variant="subtle"
+              icon="i-lucide-sparkles"
+              :title="`${ptPlural(aiSeries.drafts.length, 'AI draft', 'AI drafts')} waiting for review`"
+              :actions="[{ label: 'Review drafts', variant: 'soft', onClick: () => { aiSeries.open = true } }]"
+            />
             <UAlert
               v-if="l.updateAvailable"
               color="info"
@@ -659,6 +720,14 @@ function sourceBadge(l: Lib): { label: string, color: 'info' | 'warning' | 'neut
               <p class="text-xs text-(--ui-text-muted)">
                 Placeholders like {place} are filled in on the site.
               </p>
+              <PtAiAssist
+                v-if="can('pt.content.write')"
+                :key="aiKey"
+                v-model="draft"
+                :campaign-id="campaignId"
+                :lang="lang"
+                :check-on-open="aiCheckOnOpen"
+              />
               <div class="flex justify-end gap-2">
                 <UButton
                   label="Cancel"
@@ -818,6 +887,29 @@ function sourceBadge(l: Lib): { label: string, color: 'info' | 'warning' | 'neut
         </div>
       </template>
     </USlideover>
+
+    <PtAiDraftModal
+      v-if="aiDraft.lib"
+      v-model:open="aiDraft.open"
+      :series="aiDraft.series"
+      :campaign-id="campaignId"
+      :site-library-id="aiDraft.lib.siteLibraryId"
+      :day="day"
+      :lang="lang"
+      :unit="unit"
+      @draft="onAiDraft"
+      @series="onAiSeries"
+    />
+
+    <PtAiSeries
+      v-model:open="aiSeries.open"
+      :drafts="aiSeries.drafts"
+      :unresolved="aiSeries.unresolved"
+      :unit="unit"
+      :written="seriesDayWritten"
+      @use="useSeriesDraft"
+      @discard="(n: number) => { aiSeries.drafts = aiSeries.drafts.filter(d => d.day !== n) }"
+    />
 
     <UModal
       v-model:open="pendingOpen"
