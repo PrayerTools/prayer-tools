@@ -145,7 +145,7 @@ The champion or the mobilizer:
 
 ### Close a campaign
 - Everyone who took part gets a thank-you (email, and push in the app), with the champion's message and a call to action.
-- Between campaigns the site shows the final results, the call to action and "Notify me when this campaign runs again". Those people are told when it does *(not built)*.
+- Between campaigns the site shows the final results, the call to action and "Notify me when this campaign runs again". Those people are told when it does.
 
 ### Relaunch
 - Create the next run (Ramadan 2027) on the same site. The address, team, branding and intercessors stay; the previous run stays reachable with its stats.

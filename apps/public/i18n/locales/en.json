@@ -228,7 +228,7 @@
     "notify_title": "Notify me when this campaign runs again",
     "notify_intro": "Leave your email and {site} will let you know when the next campaign starts.",
     "notify_button": "Notify me",
-    "notify_done": "Thank you! We will let you know."
+    "notify_done": "Almost done! Check your email and confirm, and we will let you know when it runs again."
   },
   "archived": {
     "body": "This campaign has ended. Thank you to everyone who prayed.",
@@ -312,7 +312,8 @@
     "unsubscribed": "You are unsubscribed. You will not receive any more reminders from {site}.",
     "verify_invalid": "This confirmation link is not valid or has expired. Please sign up again.",
     "deleted": "Your data has been deleted.",
-    "not_found": "We could not find what you were looking for."
+    "not_found": "We could not find what you were looking for.",
+    "notify_confirmed": "Thank you! We will email you once when this campaign runs again."
   },
   "notfound": {
     "title": "Page not found",

@@ -56,6 +56,9 @@ export const MARKETING_AUDIENCES = {
 // One campaign's people, by campaign id: `campaign:<uuid>`.
 export const CAMPAIGN_AUDIENCE_PREFIX = 'campaign:'
 
+// People waiting to hear that a campaign runs again: `waiting:<uuid>`.
+export const WAITING_AUDIENCE_PREFIX = 'waiting:'
+
 interface SiteInfo {
   mail: SiteMailContext
   languages: string[]
@@ -118,6 +121,28 @@ async function campaignMembers(tx: Tx, orgId: string, campaignIds: string[]): Pr
   if (!campaignIds.length) return []
   const rows = await members(tx, orgId)
     .where(eb => eb.exists(eb.selectFrom('pt_commitment as c').select('c.id').whereRef('c.subscription_id', '=', 's.id').where('c.campaign_id', 'in', campaignIds)))
+    .execute()
+  return rows.map(r => ({ contactId: r.contactId, channelId: r.channelId, address: r.address, language: r.language, joinedAt: new Date(r.joinedAt), firstName: firstNameOf(r.name, r.address) }))
+}
+
+// Confirmed "notify me" requests made on the campaign and not yet answered,
+// at each contact's primary address.
+async function waitingMembers(tx: Tx, orgId: string, campaignId: string): Promise<Member[]> {
+  const rows = await tx
+    .selectFrom('pt_notify_request as n')
+    .innerJoin('crm_records as r', 'r.id', 'n.contact_id')
+    .innerJoin('crm_contact_channels as cc', 'cc.record_id', 'r.id')
+    .innerJoin('crm_channels as ch', 'ch.id', 'cc.channel_id')
+    .distinctOn('r.id')
+    .select(['r.id as contactId', 'ch.id as channelId', 'ch.value as address', 'n.language as language', 'n.created_at as joinedAt', 'r.name as name'])
+    .where('n.org_id', '=', orgId)
+    .where('n.campaign_id', '=', campaignId)
+    .where('n.confirmed_at', 'is not', null)
+    .where('n.notified_at', 'is', null)
+    .where('ch.channel_type', '=', 'email')
+    .orderBy('r.id')
+    .orderBy('cc.is_primary', 'desc')
+    .orderBy('cc.sort_order', 'asc')
     .execute()
   return rows.map(r => ({ contactId: r.contactId, channelId: r.channelId, address: r.address, language: r.language, joinedAt: new Date(r.joinedAt), firstName: firstNameOf(r.name, r.address) }))
 }
@@ -192,6 +217,22 @@ export const ptMarketingHost = {
         purpose: PURPOSE_SITE_UPDATES
       })
     }
+    const waiting = new Set((await tx
+      .selectFrom('pt_notify_request')
+      .select('campaign_id')
+      .distinct()
+      .where('org_id', '=', orgId)
+      .where('confirmed_at', 'is not', null)
+      .where('notified_at', 'is', null)
+      .execute()).map(r => r.campaign_id))
+    for (const c of named.filter(c => waiting.has(c.id))) {
+      audiences.push({
+        key: `${WAITING_AUDIENCE_PREFIX}${c.id}`,
+        label: `Waiting for ${c.name} to run again`,
+        description: `Everyone who asked to hear when ${c.name} runs again and has not been told yet.`,
+        purpose: PURPOSE_SITE_UPDATES
+      })
+    }
     const options = await tx.selectFrom('pt_consent_option').select(['key', 'label']).where('org_id', '=', orgId).where('active', '=', true).orderBy('position').execute()
     for (const o of options) {
       audiences.push({
@@ -210,6 +251,10 @@ export const ptMarketingHost = {
     if (key === MARKETING_AUDIENCES.past) return await campaignMembers(tx, orgId, info.ended.map(c => c.id))
     if (key === MARKETING_AUDIENCES.consented) return await consentMembers(tx, orgId, PURPOSE_SITE_UPDATES, info.defaultLanguage)
     if (key.startsWith('custom:')) return await consentMembers(tx, orgId, key, info.defaultLanguage)
+    if (key.startsWith(WAITING_AUDIENCE_PREFIX)) {
+      const id = key.slice(WAITING_AUDIENCE_PREFIX.length)
+      return info.campaigns.some(c => c.id === id) ? await waitingMembers(tx, orgId, id) : []
+    }
     if (key.startsWith(CAMPAIGN_AUDIENCE_PREFIX)) {
       const id = key.slice(CAMPAIGN_AUDIENCE_PREFIX.length)
       return await campaignMembers(tx, orgId, info.campaigns.some(c => c.id === id) ? [id] : [])
