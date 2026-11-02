@@ -47,7 +47,7 @@ async function doConfirm() {
 
 <template>
   <div class="max-w-4xl mx-auto space-y-6">
-    <header class="flex items-start justify-between gap-4 flex-wrap">
+    <header class="theme-page-header rounded-lg flex items-start justify-between gap-4 flex-wrap">
       <div>
         <h1 class="text-2xl font-bold">
           Campaigns
