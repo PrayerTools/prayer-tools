@@ -9,7 +9,7 @@ import { sql } from 'kysely'
 import { createDb } from '@prayertools/shared/db/connect'
 import { withOrg } from '@prayertools/shared/db/scope'
 import { hashToken, randomToken } from '@prayertools/shared/tokens'
-import { manageToken, unsubscribeToken } from '@prayertools/shared/links'
+import { leaveToken, manageToken, unsubscribeToken } from '@prayertools/shared/links'
 
 if (!process.env.PUBLIC_URL || !process.env.ADMIN_DATABASE_URL) {
   console.error('Set PUBLIC_URL (the running public server) and ADMIN_DATABASE_URL (its database, admin role).')
@@ -234,6 +234,12 @@ check('inbox threads opened (contact_form + story)', threads.some(t => t.source 
 check('story acknowledgement email', !!(await mailTo(storyEmail, /story|God/i)))
 
 console.log('Unsubscribe and check-ins')
+const lTok = leaveToken(ramadan, sub1!.id, campaignId)
+check('/l page asks for confirmation', (await req(SITE, `/l/${lTok}`)).text.includes('Stop reminders'))
+const leaveClick = await req(SITE, `/l/${lTok}`, { method: 'POST', raw: 'List-Unsubscribe=One-Click' })
+const leftRows = await admin.selectFrom('pt_commitment').select(['left_at', 'next_reminder_utc']).where('subscription_id', '=', sub1!.id).where('campaign_id', '=', campaignId).execute()
+const statusL = await admin.selectFrom('pt_subscription').select('status').where('id', '=', sub1!.id).executeTakeFirstOrThrow()
+check('one-click on a reminder leaves only its campaign', leaveClick.status === 200 && leftRows.length > 0 && leftRows.every(r => r.left_at && !r.next_reminder_utc) && statusL.status !== 'unsubscribed')
 const uTok = unsubscribeToken(ramadan, sub1!.id)
 check('/u page asks for confirmation', (await req(SITE, `/u/${uTok}`)).text.includes('Unsubscribe'))
 const oneClick = await req(SITE, `/u/${uTok}`, { method: 'POST', raw: 'List-Unsubscribe=One-Click' })

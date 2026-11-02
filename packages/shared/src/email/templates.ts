@@ -61,6 +61,8 @@ export interface Rendered {
 export interface FooterLinks {
   manageUrl?: string | null
   hideMy?: boolean
+  // Stops one campaign's reminders; shown next to the whole-site unsubscribe.
+  leaveUrl?: string | null
   unsubscribeUrl?: string | null
   reason?: string
 }
@@ -82,6 +84,7 @@ export function layout(ctx: SiteMailContext, lang: string, bodyHtml: string, foo
   const links: string[] = []
   if (footer.manageUrl) links.push(`<a href="${escapeHtml(footer.manageUrl)}" style="color:#52525b;">${escapeHtml(emailT(lang, 'footer.manage'))}</a>`)
   if (!footer.hideMy) links.push(`<a href="${escapeHtml(`${platformOrigin()}/my`)}" style="color:#52525b;">${escapeHtml(emailT(lang, 'footer.my'))}</a>`)
+  if (footer.leaveUrl) links.push(`<a href="${escapeHtml(footer.leaveUrl)}" style="color:#52525b;">${escapeHtml(emailT(lang, 'footer.leave_campaign'))}</a>`)
   if (footer.unsubscribeUrl) links.push(`<a href="${escapeHtml(footer.unsubscribeUrl)}" style="color:#52525b;">${escapeHtml(emailT(lang, 'footer.unsubscribe'))}</a>`)
   const testBanner = opts.test
     ? `<div style="background:#fef3c7;color:#78350f;padding:10px 16px;font-size:13px;">${escapeHtml(emailT(lang, 'test.banner'))}</div>`
@@ -108,6 +111,7 @@ function footerText(ctx: SiteMailContext, lang: string, footer: FooterLinks): st
   const lines = ['', '—', footer.reason ?? emailT(lang, 'footer.why', { site: ctx.siteName })]
   if (footer.manageUrl) lines.push(`${emailT(lang, 'footer.manage')}: ${footer.manageUrl}`)
   if (!footer.hideMy) lines.push(`${emailT(lang, 'footer.my')}: ${platformOrigin()}/my`)
+  if (footer.leaveUrl) lines.push(`${emailT(lang, 'footer.leave_campaign')}: ${footer.leaveUrl}`)
   if (footer.unsubscribeUrl) lines.push(`${emailT(lang, 'footer.unsubscribe')}: ${footer.unsubscribeUrl}`)
   return lines.join('\n')
 }
@@ -240,6 +244,7 @@ export interface ReminderDetails {
   prayUrl: string
   manageUrl: string
   unsubscribeUrl: string
+  leaveUrl: string
 }
 
 // Reminders link to the day's prayer content; they never contain it.
@@ -255,8 +260,8 @@ export function reminderEmail(ctx: SiteMailContext, lang: string, d: ReminderDet
     + button(ctx, d.prayUrl, emailT(lang, 'reminder.button'))
   return {
     subject: emailT(lang, 'reminder.subject', vars),
-    html: layout(ctx, lang, body, { manageUrl: d.manageUrl, unsubscribeUrl: d.unsubscribeUrl }, opts),
-    text: `${emailT(lang, 'reminder.heading')}\n\n${emailT(lang, 'reminder.body', vars)}${meta ? `\n${meta}` : ''}\n\n${emailT(lang, 'reminder.button')}: ${d.prayUrl}${footerText(ctx, lang, { manageUrl: d.manageUrl, unsubscribeUrl: d.unsubscribeUrl })}`
+    html: layout(ctx, lang, body, { manageUrl: d.manageUrl, leaveUrl: d.leaveUrl, unsubscribeUrl: d.unsubscribeUrl }, opts),
+    text: `${emailT(lang, 'reminder.heading')}\n\n${emailT(lang, 'reminder.body', vars)}${meta ? `\n${meta}` : ''}\n\n${emailT(lang, 'reminder.button')}: ${d.prayUrl}${footerText(ctx, lang, { manageUrl: d.manageUrl, leaveUrl: d.leaveUrl, unsubscribeUrl: d.unsubscribeUrl })}`
   }
 }
 

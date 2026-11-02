@@ -24,10 +24,10 @@ import { managedSubscription, manageView } from './manage'
 import { socialProviders } from './social-sign-in'
 import { withDraftStrings, type LandingDraft } from './editor'
 
-const PRIVATE_PAGES = new Set(['manage', 'm', 'u', 'verify', 'add', 'notice', 'checkin'])
-const ARCHIVED_ALLOWED = new Set(['manage', 'm', 'u', 'verify', 'notice'])
+const PRIVATE_PAGES = new Set(['manage', 'm', 'u', 'l', 'verify', 'add', 'notice', 'checkin'])
+const ARCHIVED_ALLOWED = new Set(['manage', 'm', 'u', 'l', 'verify', 'notice'])
 export const NOTICE_KEYS = new Set([
-  'checkin_yes', 'checkin_sometimes', 'checkin_no', 'link_invalid', 'unsubscribed', 'verify_invalid', 'deleted', 'not_found'
+  'checkin_yes', 'checkin_sometimes', 'checkin_no', 'link_invalid', 'unsubscribed', 'left_campaign', 'verify_invalid', 'deleted', 'not_found'
 ])
 
 export function appAvailable(): boolean {
@@ -120,6 +120,17 @@ export async function buildSiteResponse(event: H3Event, ctx: SiteContext, fullPa
             valid = !!(await tx.selectFrom('pt_subscription').select('id').where('id', '=', link.subscriptionId).executeTakeFirst())
           }
           page = { kind: 'unsubscribe', token, valid }
+          break
+        }
+        case 'l': {
+          const token = parsed.rest[0] ?? ''
+          const link = parseLink(token, 'l')
+          let leaving: string | null = null
+          if (link?.campaignId && link.orgId === ctx.orgId) {
+            const sub = await tx.selectFrom('pt_subscription').select('id').where('id', '=', link.subscriptionId).executeTakeFirst()
+            leaving = sub ? data.campaigns.find(c => c.id === link.campaignId)?.name ?? null : null
+          }
+          page = { kind: 'leave', token, campaign: leaving }
           break
         }
         case 'verify':

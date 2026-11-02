@@ -31,7 +31,7 @@ export default definePtHandler('pt.email.send', async (event, tx, ctx) => {
       rendered = welcomeEmail(mail, lang, { campaignName, name: null, startsOn: null, times, prayUrl: dead, calendarUrl: dead, shareUrl: dead, manageUrl: dead, unsubscribeUrl: dead }, opts)
       break
     }
-    case 'reminder': rendered = reminderEmail(mail, lang, { campaignName, day: 3, minutes: site.settings_merged.default_duration_min, prayUrl: dead, manageUrl: dead, unsubscribeUrl: dead }, opts); break
+    case 'reminder': rendered = reminderEmail(mail, lang, { campaignName, day: 3, minutes: site.settings_merged.default_duration_min, prayUrl: dead, manageUrl: dead, unsubscribeUrl: dead, leaveUrl: dead }, opts); break
     case 'checkin': rendered = checkinEmail(mail, lang, { yes: dead, sometimes: dead, no: dead, manageUrl: dead, unsubscribeUrl: dead }, opts); break
     case 'thanks': {
       const cta = (campaignRow?.cta ?? {}) as CampaignCta

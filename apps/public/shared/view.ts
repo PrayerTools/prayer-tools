@@ -240,6 +240,8 @@ export type PageView =
   | { kind: 'manage', manage: ManageView | null }
   | { kind: 'link_expired', token: string }
   | { kind: 'unsubscribe', token: string, valid: boolean }
+  // `campaign` is null when the link is not valid.
+  | { kind: 'leave', token: string, campaign: string | null }
   | { kind: 'notice', key: string }
   | { kind: 'embed', progress: GoalProgressView | null }
   | { kind: 'not_found' }
