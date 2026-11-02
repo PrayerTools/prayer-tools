@@ -37,8 +37,8 @@ type Params = Record<string, unknown>
 export function socialProviders(): Record<SocialProvider, boolean> {
   const e = process.env
   return {
-    google: !!(e.GOOGLE_CLIENT_ID && e.GOOGLE_CLIENT_SECRET),
-    apple: !!(e.APPLE_SERVICES_ID && e.APPLE_TEAM_ID && e.APPLE_KEY_ID && e.APPLE_PRIVATE_KEY)
+    google: !!(e.NUXT_SOCIAL_AUTH_GOOGLE_CLIENT_ID && e.NUXT_SOCIAL_AUTH_GOOGLE_CLIENT_SECRET),
+    apple: !!(e.NUXT_SOCIAL_AUTH_APPLE_SERVICES_ID && e.NUXT_SOCIAL_AUTH_APPLE_TEAM_ID && e.NUXT_SOCIAL_AUTH_APPLE_KEY_ID && e.NUXT_SOCIAL_AUTH_APPLE_PRIVATE_KEY)
   }
 }
 
@@ -68,7 +68,7 @@ export function startSocialSignIn(event: H3Event, provider: SocialProvider) {
   setCookie(event, FLOW_COOKIE, signJson(flow, platformConfig().secret), { ...cookieOptions(event, provider), maxAge: FLOW_SECONDS })
   if (provider === 'google') {
     const q = new URLSearchParams({
-      client_id: process.env.GOOGLE_CLIENT_ID!,
+      client_id: process.env.NUXT_SOCIAL_AUTH_GOOGLE_CLIENT_ID!,
       redirect_uri: redirectUri('google'),
       response_type: 'code',
       scope: 'openid email profile',
@@ -82,7 +82,7 @@ export function startSocialSignIn(event: H3Event, provider: SocialProvider) {
   }
   // Asking for name and email makes Apple return with a form POST.
   const q = new URLSearchParams({
-    client_id: process.env.APPLE_SERVICES_ID!,
+    client_id: process.env.NUXT_SOCIAL_AUTH_APPLE_SERVICES_ID!,
     redirect_uri: redirectUri('apple'),
     response_type: 'code',
     response_mode: 'form_post',
@@ -159,12 +159,12 @@ async function tokenRequest(url: string, body: Record<string, string>): Promise<
 }
 
 async function googleProfile(code: string, flow: Flow): Promise<IdentityProfile | null> {
-  const clientId = process.env.GOOGLE_CLIENT_ID!
+  const clientId = process.env.NUXT_SOCIAL_AUTH_GOOGLE_CLIENT_ID!
   const idToken = await tokenRequest('https://oauth2.googleapis.com/token', {
     grant_type: 'authorization_code',
     code,
     client_id: clientId,
-    client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+    client_secret: process.env.NUXT_SOCIAL_AUTH_GOOGLE_CLIENT_SECRET!,
     redirect_uri: redirectUri('google'),
     code_verifier: flow.verifier
   })
@@ -175,11 +175,11 @@ async function googleProfile(code: string, flow: Flow): Promise<IdentityProfile 
 
 // Apple's client secret: a short-lived ES256 JWT signed with the team's key.
 async function appleClientSecret(): Promise<string> {
-  const key = await importPKCS8(process.env.APPLE_PRIVATE_KEY!.replace(/\\n/g, '\n'), 'ES256')
+  const key = await importPKCS8(process.env.NUXT_SOCIAL_AUTH_APPLE_PRIVATE_KEY!.replace(/\\n/g, '\n'), 'ES256')
   return await new SignJWT({})
-    .setProtectedHeader({ alg: 'ES256', kid: process.env.APPLE_KEY_ID! })
-    .setIssuer(process.env.APPLE_TEAM_ID!)
-    .setSubject(process.env.APPLE_SERVICES_ID!)
+    .setProtectedHeader({ alg: 'ES256', kid: process.env.NUXT_SOCIAL_AUTH_APPLE_KEY_ID! })
+    .setIssuer(process.env.NUXT_SOCIAL_AUTH_APPLE_TEAM_ID!)
+    .setSubject(process.env.NUXT_SOCIAL_AUTH_APPLE_SERVICES_ID!)
     .setAudience('https://appleid.apple.com')
     .setIssuedAt()
     .setExpirationTime('5m')
@@ -188,7 +188,7 @@ async function appleClientSecret(): Promise<string> {
 
 // Apple sends the person's name only on their first sign-in, in `user`.
 async function appleProfile(code: string, user: unknown, flow: Flow): Promise<IdentityProfile | null> {
-  const clientId = process.env.APPLE_SERVICES_ID!
+  const clientId = process.env.NUXT_SOCIAL_AUTH_APPLE_SERVICES_ID!
   const idToken = await tokenRequest('https://appleid.apple.com/auth/token', {
     grant_type: 'authorization_code',
     code,
