@@ -29,8 +29,8 @@
   },
   "ai": {
     "pkg": "@nuxtinator/ai",
-    "version": "^0.6.1",
-    "ref": "@nuxtinator/ai@0.6.1",
+    "version": "^0.8.0",
+    "ref": "@nuxtinator/ai@0.8.0",
     "source": "github:corsacca/nuxtinator/layers/ai",
     "tagPrefix": "@nuxtinator/ai@"
   },
