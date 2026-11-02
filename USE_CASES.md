@@ -87,12 +87,12 @@ How it works:
 - Each side campaign has fixed dates, its own address (`/ramadan-2027`), landing page and content.
 - The main landing page shows a card linking to it while it is upcoming or running.
 - Existing intercessors join with one confirmation email; their main-campaign reminders continue.
-- At the end, its intercessors are invited to join the main campaign, unless the champion sets a different call to action.
+- At the end, its intercessors are invited to join the main campaign, unless the champion sets a different call to action *(not built)*.
 
 ### 3. A yearly Ramadan site
 A site that exists for Ramadan: a fixed campaign of about 30 days, daily content, relaunched every year. This was the first use case prayer.tools was built for, and it is still common.
 
-- The Ramadan template is offered within 180 days of Ramadan ("Build your own" comes first). It suggests the start date from the expected first day of Ramadan and fills in 30 days and daily content.
+- Ramadan has a template because Prayer.Tools has years of Ramadan prayer content; other occasions don't need one. The template is offered within 180 days of Ramadan ("Build your own" comes first). It suggests the start date from the expected first day of Ramadan and fills in 30 days and daily content.
 - Ramadan libraries (2023 to 2026 so far) are suggested first, along with a set of Ramadan hero images and default landing text.
 - Ramadan campaigns started with 24/7 coverage; 24 hours of prayer every day and people mobilized are now offered too (see Choose a goal).
 
@@ -106,19 +106,19 @@ A site that exists for Ramadan: a fixed campaign of about 30 days, daily content
    - **Prayer time:** for example 24 hours of prayer every day; intercessors say how long they pray.
    - **24/7 coverage:** every slot of every day covered; intercessors pick recurring times or specific dates.
 4. Pick content from the library catalog, or write your own.
+5. Choose languages. Content and champion text are AI-translated with a button and stay editable.
+6. Fill in the landing page: text, hero image, sections in order.
+7. Preview on phone and desktop, finish the launch checklist, publish at `{slug}.prayer.tools`; add a custom domain any time.
 
 ### Choose a goal
 - **24/7 coverage** came first. It was inspired by the Moravians, who kept 24/7 prayer for over 100 years: could we cover the calendar and the clock for Ramadan? It motivates, but fewer than 5% of sites reach it, so it also discourages. It needs a network spread across time zones, which missionaries and agencies have and churches and schools rarely do. Time zone changes on different dates in different countries make it harder still.
 - **24 hours of prayer every day** is more achievable. It needs the same 96 people praying 15 minutes daily, but at any time of day. It can be misread as falling short of 24/7.
 - **People mobilized** is the most intuitive, and fits the mission: it counts people being transformed. It loses how much they pray: someone praying once is not someone praying 15 minutes every day.
 - Every goal counts commitments. How much people actually pray against what they committed can't be measured.
-5. Choose languages. Content and champion text are AI-translated with a button and stay editable.
-6. Fill in the landing page: text, hero image, sections in order.
-7. Preview on phone and desktop, finish the launch checklist, publish at `{slug}.prayer.tools`; add a custom domain any time.
 
 ### Equip intercessors through the content
 - Choose or write content that is biblical and strategic: Scripture to pray, what to pray for the people or place, and why. Churches tend to need help with the strategic side; champions close to the field may need reminding of the biblical side.
-- Turn field reports into prayer content, leaving out sensitive details.
+- Turn field reports into prayer content, leaving out sensitive details, with AI help to draft, review and remove details *(not built)*.
 - Edit a library entry to fit this people or place; the first edit freezes the site's own copy of that library.
 - Use the content to teach intercessors how to pray, not only what to pray for.
 
@@ -127,7 +127,7 @@ The champion or the mobilizer:
 - Message intercessors from previous campaigns they've mobilized, on this site or across several of their sites.
 - Share the link, QR code and per-language share messages (WhatsApp on phones).
 - Intercessors are prompted to share after signing up, after their 3rd and 7th "Amen" and at the end. The champion sees how many joined through shares, never who invited whom.
-- Embed the signup or coverage widget on another site.
+- Embed the signup or coverage widget on another site *(not built: no embed code in the admin, and the widget only links to signup)*.
 - List the site in the Prayer.Tools directory (operator approves).
 
 ### Fill 24/7 coverage
@@ -145,7 +145,7 @@ The champion or the mobilizer:
 
 ### Close a campaign
 - Everyone who took part gets a thank-you (email, and push in the app), with the champion's message and a call to action.
-- Between campaigns the site shows the final results, the call to action and "Notify me when this campaign runs again".
+- Between campaigns the site shows the final results, the call to action and "Notify me when this campaign runs again". Those people are told when it does *(not built)*.
 
 ### Relaunch
 - Create the next run (Ramadan 2027) on the same site. The address, team, branding and intercessors stay; the previous run stays reachable with its stats.
@@ -154,7 +154,7 @@ The champion or the mobilizer:
 
 ### Run many sites (mission agency or other network)
 - Switch between sites from one login; each site's intercessors stay isolated from the others.
-- Start each site from common templates and content, following the organization's prayer rhythms.
+- Start each site from common templates and content, following the organization's prayer rhythms *(not built)*.
 - Reuse email templates, images and blocks from the personal library on any site.
 - Send one email to several sites: each person gets it once, from the most recent site they joined.
 - Give partners a Viewer role for stats.
