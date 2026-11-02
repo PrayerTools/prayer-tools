@@ -237,6 +237,36 @@ export interface PtPersonalBlockTable {
   updated_at: Timestamp
 }
 
+// A champion's own campaign template: a campaign's setup answers (no dates;
+// a dated campaign keeps its length in `length_days`), landing page,
+// end-of-campaign message, call to action and the libraries it uses.
+export interface PtPersonalTemplateTable {
+  id: Generated<string>
+  owner_user_id: string
+  name: string
+  template_key: string | null
+  setup: JsonDefault<PersonalTemplateSetup>
+  landing: JsonDefault<CampaignLanding>
+  branding: JsonDefault<CampaignBranding>
+  description: Json<TranslatableText | null> | null
+  end_message: Json<TranslatableText | null> | null
+  cta: JsonDefault<CampaignCta>
+  library_ids: Generated<string[]>
+  created_at: Generated<Date>
+  updated_at: Generated<Date>
+}
+
+export interface PersonalTemplateSetup {
+  start_mode?: StartMode
+  end_mode?: EndMode
+  length_days?: number | null
+  goal?: Goal
+  cadence?: Cadence
+  track_time?: boolean
+  goal_target?: number | null
+  slot_min?: number | null
+}
+
 // A share of one personal library item (core's `createShareTable`): a user,
 // or a pending invite that becomes that user when accepted.
 export interface PtShareTable {
@@ -651,9 +681,11 @@ export interface PtTables {
   pt_library_entry: PtLibraryEntryTable
   pt_personal_asset: PtPersonalAssetTable
   pt_personal_block: PtPersonalBlockTable
+  pt_personal_template: PtPersonalTemplateTable
   pt_library_shares: PtShareTable
   pt_personal_asset_shares: PtShareTable
   pt_personal_block_shares: PtShareTable
+  pt_personal_template_shares: PtShareTable
   pt_legacy_key: PtLegacyKeyTable
   pt_site: PtSiteTable
   pt_campaign: PtCampaignTable

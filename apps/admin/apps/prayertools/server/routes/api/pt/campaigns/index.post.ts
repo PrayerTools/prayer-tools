@@ -6,7 +6,12 @@
 // Any other campaign takes its images, share messages, place and people group
 // from the current main campaign, and a main campaign its landing page and
 // description too, so the site's root page keeps its look.
-import { isSideCampaign, pickCurrentCampaign, suggestCampaignSlug, suggestSideSlug } from '@prayertools/shared/setup'
+// `personal_template_id` starts from one of the caller's own (or shared)
+// templates instead: its answers, landing page, hero image, description, end
+// message, call to action and libraries.
+import { isSideCampaign, pickCurrentCampaign, suggestCampaignSlug, suggestSideSlug, withPersonalSetup } from '@prayertools/shared/setup'
+import { addTemplateLibraries, readPersonalTemplate, type PersonalTemplate } from '@prayertools/shared/personal-templates'
+import { runAsShareUser } from '#core/server/utils/shares'
 import { campaignById, loadCampaigns, normalizeCampaign } from '@prayertools/shared/campaigns'
 import type { CampaignRow } from '@prayertools/shared/subscriptions'
 import { jsonb } from '@prayertools/shared/db/json'
@@ -28,8 +33,15 @@ export default definePtHandler('pt.campaigns.write', async (event, tx, ctx) => {
       b.end_date = new Date(Date.parse(b.start_date) + days * 86_400_000).toISOString().slice(0, 10)
     }
   }
+  let personal: PersonalTemplate | null = null
+  if (!previous && typeof b.personal_template_id === 'string') {
+    const id = b.personal_template_id
+    personal = await runAsShareUser(ctx.userId, utx => readPersonalTemplate(ptTx(utx), id))
+    if (!personal) ptNotFound('Template not found.')
+    templateKey = personal.template_key ?? 'generic'
+  }
   const kind = previous ? previous.kind : ptCampaignKind(b.kind)
-  const answers = ptSetupFromBody(b, templateKey, base as never, kind)
+  const answers = ptSetupFromBody(b, personal ? withPersonalSetup(templateKey, personal.setup) : templateKey, base as never, kind)
   const extras = ptCampaignExtras(b)
   const timezone = (extras.timezone as string) ?? site.timezone
   await ptAssertNoOverlap(tx, { ...answers, timezone }, kind)
@@ -40,6 +52,7 @@ export default definePtHandler('pt.campaigns.write', async (event, tx, ctx) => {
   const hasMain = !!(await tx.selectFrom('pt_campaign').select('id').where('kind', 'is', null).executeTakeFirst())
   const mains = previous ? [] : (await loadCampaigns(ptTx(tx), { drafts: true })).filter(c => !isSideCampaign(c))
   const look = previous ?? pickCurrentCampaign(mains)?.campaign ?? mains.at(-1)
+  const carried = previous ?? personal
   const created = await tx.insertInto('pt_campaign').values({
     slug,
     name,
@@ -52,14 +65,14 @@ export default definePtHandler('pt.campaigns.write', async (event, tx, ctx) => {
     people_group: 'people_group' in extras ? extras.people_group : (look?.people_group ?? null),
     latitude: 'latitude' in extras ? extras.latitude : (look?.latitude ?? null),
     longitude: 'longitude' in extras ? extras.longitude : (look?.longitude ?? null),
-    goal_target: (extras.goal_target as number | null | undefined) ?? previous?.goal_target ?? null,
-    slot_min: 'slot_min' in extras ? extras.slot_min as number | null : (previous?.slot_min ?? null),
-    end_message: b.end_message ? jsonb(parseText(b.end_message)) : (previous?.end_message ? jsonb(previous.end_message) : null),
-    cta: jsonb(b.cta ? ptCta(b.cta) : (previous?.cta ?? {})),
-    landing: jsonb(look && (previous || kind !== 'side') ? look.landing : {}),
-    branding: jsonb(look?.branding ?? {}),
+    goal_target: (extras.goal_target as number | null | undefined) ?? previous?.goal_target ?? personal?.setup.goal_target ?? null,
+    slot_min: 'slot_min' in extras ? extras.slot_min as number | null : (previous?.slot_min ?? personal?.setup.slot_min ?? null),
+    end_message: b.end_message ? jsonb(parseText(b.end_message)) : (carried?.end_message ? jsonb(carried.end_message) : null),
+    cta: jsonb(b.cta ? ptCta(b.cta) : (carried?.cta ?? {})),
+    landing: jsonb(personal ? personal.landing : look && (previous || kind !== 'side') ? look.landing : {}),
+    branding: jsonb(personal ? { ...look?.branding, ...personal.branding } : (look?.branding ?? {})),
     share: jsonb(look?.share ?? {}),
-    description: look?.description && (previous || kind !== 'side') ? jsonb(look.description) : null,
+    description: personal ? (personal.description ? jsonb(personal.description) : null) : look?.description && (previous || kind !== 'side') ? jsonb(look.description) : null,
     relaunch_of: previous?.id ?? null,
     // A campaign starts as a draft, except a site's first main campaign while
     // the site is being set up: it goes live with the site, whose checklist covers it.
@@ -69,5 +82,6 @@ export default definePtHandler('pt.campaigns.write', async (event, tx, ctx) => {
     const libs = await tx.selectFrom('pt_campaign_library').select(['site_library_id', 'position']).where('campaign_id', '=', previous.id).execute()
     if (libs.length) await tx.insertInto('pt_campaign_library').values(libs.map(l => ({ campaign_id: created.id, site_library_id: l.site_library_id, position: l.position }))).execute()
   }
+  if (personal) await addTemplateLibraries(ptTx(tx), created.id, personal.library_ids, ctx.userId)
   return { campaign: normalizeCampaign(created) }
 })

@@ -14,6 +14,7 @@ export const PT_SHARE_TABLES = [
   'pt_library_shares',
   'pt_personal_asset_shares',
   'pt_personal_block_shares',
+  'pt_personal_template_shares',
   'marketing_template_shares'
 ] as const
 

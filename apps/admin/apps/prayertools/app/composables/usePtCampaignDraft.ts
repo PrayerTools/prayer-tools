@@ -1,6 +1,7 @@
 import { suggestedStartDate } from '@prayertools/shared/setup'
 import { addDays, todayIn } from '@prayertools/shared/dates'
 import type { SitePlaceWording } from '@prayertools/shared/place'
+import type { PersonalTemplateSetup } from '@prayertools/shared/db/schema'
 import type { SetupDraft } from '../components/PtSetupForm.vue'
 import type { PtLocation } from '../components/PtLocationSearch.vue'
 import type { PtCampaign } from '../utils/pt-campaign-ui'
@@ -9,12 +10,21 @@ import type { PtCampaign } from '../utils/pt-campaign-ui'
 // campaign, the campaign page), edited with PtCampaignFields.
 export interface PtCampaignDraft {
   templateKey: string
+  // One of the champion's own (or shared) templates the campaign starts from.
+  personalTemplateId: string | null
   name: string
   setup: SetupDraft
   timezone: string
   location: PtLocation | null
   peopleGroup: string
   placeWording: SitePlaceWording
+}
+
+export interface PtPersonalTemplateOption {
+  id: string
+  name: string
+  template_key: string | null
+  setup: PersonalTemplateSetup
 }
 
 export interface PtCampaignDraftOptions {
@@ -28,6 +38,7 @@ export function usePtCampaignDraft(opts: PtCampaignDraftOptions = {}) {
   const { data: meta } = usePtMeta()
   const draft = ref<PtCampaignDraft>({
     templateKey: 'generic',
+    personalTemplateId: null,
     name: '',
     setup: { start_mode: 'date', start_date: null, end_mode: 'date', end_date: null, length_days: null, goal: null, cadence: 'daily', track_time: false, goal_target: null, slot_min: null },
     timezone: 'UTC',
@@ -37,11 +48,14 @@ export function usePtCampaignDraft(opts: PtCampaignDraftOptions = {}) {
   })
   // The name the chosen template suggested; a name the user typed stays when the template changes.
   const suggestedName = ref('')
+  // How many days a dated campaign from the chosen personal template runs.
+  const personalLength = ref<number | null>(null)
 
   // Starts from an existing campaign; `dates: false` (a relaunch) leaves its dates out.
   function fillFrom(c: PtCampaign, { dates = true } = {}) {
     draft.value = {
       templateKey: c.template_key ?? 'generic',
+      personalTemplateId: null,
       name: c.name,
       setup: { start_mode: c.start_mode, start_date: dates ? c.start_date : null, end_mode: c.end_mode, end_date: dates ? c.end_date : null, length_days: c.length_days, goal: c.goal, cadence: c.cadence, track_time: c.track_time, goal_target: c.goal_target, slot_min: c.slot_min ?? null },
       timezone: c.timezone,
@@ -56,6 +70,8 @@ export function usePtCampaignDraft(opts: PtCampaignDraftOptions = {}) {
   function chooseTemplate(key: string) {
     const d = draft.value
     d.templateKey = key
+    d.personalTemplateId = null
+    personalLength.value = null
     const t = meta.value?.templates.find(x => x.key === key)
     if (!t) return
     d.setup = { ...d.setup, ...(t.setup as Partial<SetupDraft>) }
@@ -69,11 +85,26 @@ export function usePtCampaignDraft(opts: PtCampaignDraftOptions = {}) {
     fillEndDate()
   }
 
+  // A personal template fills its setup answers; a dated one keeps its length.
+  function choosePersonalTemplate(t: PtPersonalTemplateOption) {
+    const d = draft.value
+    d.templateKey = t.template_key ?? 'generic'
+    d.personalTemplateId = t.id
+    const { length_days, ...answers } = t.setup
+    d.setup = { ...d.setup, ...answers }
+    const dated = d.setup.start_mode === 'date' && d.setup.end_mode === 'date'
+    d.setup.length_days = dated ? null : (length_days ?? null)
+    personalLength.value = dated ? (length_days ?? null) : null
+    if (d.setup.start_mode === 'join') d.setup.start_date = null
+    if (d.setup.end_mode !== 'date') d.setup.end_date = null
+    fillEndDate()
+  }
+
   // Templates with a fixed length end their dated campaigns that many days after the start.
   function fillEndDate() {
     const d = draft.value
-    const days = meta.value?.templates.find(x => x.key === d.templateKey)?.setup.length_days as number | undefined
-    if (opts.relaunch?.() || d.templateKey === 'generic' || !days || d.setup.start_mode !== 'date' || !d.setup.start_date) return
+    const days = d.personalTemplateId ? personalLength.value : meta.value?.templates.find(x => x.key === d.templateKey)?.setup.length_days as number | undefined
+    if (opts.relaunch?.() || (d.templateKey === 'generic' && !d.personalTemplateId) || !days || d.setup.start_mode !== 'date' || !d.setup.start_date) return
     d.setup.end_date = addDays(d.setup.start_date, days - 1)
   }
   watch(() => draft.value.setup.start_date, fillEndDate)
@@ -94,8 +125,9 @@ export function usePtCampaignDraft(opts: PtCampaignDraftOptions = {}) {
       place_wording: d.location ? d.placeWording : {}
     }
     if (opts.relaunch?.() && !d.setup.end_date) delete body.end_date
+    if (d.personalTemplateId) body.personal_template_id = d.personalTemplateId
     return body
   }
 
-  return { draft, fillFrom, chooseTemplate, toBody }
+  return { draft, fillFrom, chooseTemplate, choosePersonalTemplate, toBody }
 }

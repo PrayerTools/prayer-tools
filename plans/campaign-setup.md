@@ -82,6 +82,8 @@ A template is a preset of the setup answers, an end-of-campaign call to action a
 
 All templates preselect the people-mobilized goal.
 
+- **Your own templates:** "Save as template" on a campaign keeps its setup answers (a dated campaign keeps its length), landing page, hero image, end-of-campaign message, call to action and library references in the champion's personal library. New campaigns on any of their sites can start from one alongside the built-in templates; templates are shared with named people like other library items. Content written for the site stays on the site.
+
 - **4-day → 12-day:** two separate sites. The 4-day campaign's end-of-campaign call to action links to the 12-day one; joining is one step (the person is known, their reminder time carries over, consent boxes are asked again), and the 12-day site records that they joined from the 4-day one.
 - **Start anytime:** people sign up and start praying right away from the first entry, not the current day's. Without a set length, each person goes through every entry of the campaign's content (the longest library); adding entries lengthens it, also for people already praying.
 

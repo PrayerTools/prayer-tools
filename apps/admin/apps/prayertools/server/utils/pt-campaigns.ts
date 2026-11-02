@@ -1,6 +1,6 @@
 import type { Transaction } from 'kysely'
 import type { Database } from '#core/server/database/schema'
-import { applyTemplate, DEFAULT_SLOT_MIN, overlappingCampaign, SLOT_OPTIONS, validateSetup, type SetupAnswers } from '@prayertools/shared/setup'
+import { applyTemplate, DEFAULT_SLOT_MIN, overlappingCampaign, SLOT_OPTIONS, validateSetup, type CampaignTemplate, type SetupAnswers } from '@prayertools/shared/setup'
 import type { CampaignKind } from '@prayertools/shared/db/schema'
 import { campaignSlugError } from '@prayertools/shared/paths'
 import { isValidTimezone } from '@prayertools/shared/dates'
@@ -9,7 +9,7 @@ import { parsePlaceWording } from '@prayertools/shared/place'
 import { jsonb } from '@prayertools/shared/db/json'
 import { loadCampaigns } from '@prayertools/shared/campaigns'
 
-export function ptSetupFromBody(b: Record<string, unknown>, templateKey: string, base?: Partial<SetupAnswers>, kind: CampaignKind | null = null): SetupAnswers {
+export function ptSetupFromBody(b: Record<string, unknown>, templateKey: string | CampaignTemplate, base?: Partial<SetupAnswers>, kind: CampaignKind | null = null): SetupAnswers {
   const chosen: Partial<SetupAnswers> = { ...base }
   for (const k of ['start_mode', 'start_date', 'end_mode', 'end_date', 'length_days', 'goal', 'cadence', 'track_time'] as const) {
     if (k in b) (chosen as Record<string, unknown>)[k] = b[k]
