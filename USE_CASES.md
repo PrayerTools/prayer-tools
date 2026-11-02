@@ -175,7 +175,7 @@ The champion or the mobilizer:
 - Pray from the reminder link; say "Amen".
 - Change, pause or remove prayer times, language and time zone from the manage link in any email.
 - Unsubscribe from one campaign and keep the others *(not built)*.
-- Unsubscribe from all campaigns on every site at once *(not built)*. Today unsubscribing stops every campaign on one site.
+- Unsubscribe from all campaigns on every site at once, from My prayer or an unsubscribe link.
 - See every campaign across sites in **My prayer** (`prayer.tools/my`), with past campaigns and their prayer totals.
 - Answer "Are you still praying?" check-ins.
 - Share the campaign, submit a story, contact the champion.
