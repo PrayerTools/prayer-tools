@@ -6,7 +6,8 @@ import { acknowledgementEmail, checkinEmail, loadSiteMailContext, manageLinkEmai
 import { textIn } from '@prayertools/shared/translatable'
 import { durationRule, pickCurrentCampaign } from '@prayertools/shared/setup'
 import { campaignById, loadCampaigns } from '@prayertools/shared/campaigns'
-import type { CampaignCta, TranslatableText } from '@prayertools/shared/db/schema'
+import { nextStep, nextStepCampaign } from '@prayertools/shared/next-step'
+import type { TranslatableText } from '@prayertools/shared/db/schema'
 
 export default definePtHandler('pt.email.send', async (event, tx, ctx) => {
   const b = await ptBody<{ kind?: string, language?: string, campaignId?: string }>(event)
@@ -34,14 +35,14 @@ export default definePtHandler('pt.email.send', async (event, tx, ctx) => {
     case 'reminder': rendered = reminderEmail(mail, lang, { campaignName, day: 3, minutes: site.settings_merged.default_duration_min, prayUrl: dead, manageUrl: dead, unsubscribeUrl: dead }, opts); break
     case 'checkin': rendered = checkinEmail(mail, lang, { yes: dead, sometimes: dead, no: dead, manageUrl: dead, unsubscribeUrl: dead }, opts); break
     case 'thanks': {
-      const cta = (campaignRow?.cta ?? {}) as CampaignCta
+      const main = campaignRow ? nextStepCampaign(campaignRow, await loadCampaigns(ptTx(tx))) : null
       rendered = thankYouEmail(mail, lang, {
         campaignName,
         personal: campaignRow?.start_mode === 'join',
         prayers: 12,
         minutes: 180,
         message: textIn(campaignRow?.end_message as TranslatableText | null, lang, site.default_language) || null,
-        cta: cta.url && cta.label ? { label: textIn(cta.label, lang, site.default_language), url: cta.url } : null,
+        next: campaignRow ? nextStep(campaignRow, main, { lang, defaultLang: site.default_language, praying: false }) : null,
         manageUrl: dead,
         unsubscribeUrl: dead
       }, opts)

@@ -8,7 +8,7 @@ import { makeText } from '@prayertools/shared/translatable'
 import { closeEndedCampaigns, completePersonalStart } from '../src/daily/campaigns'
 import { drainJobs } from '../src/jobs/processor'
 import { THANK_YOU_BATCH } from '../src/jobs/thank-you'
-import { addCommitment, cleanup, closeEnv, createCampaign, createSite, createSubscriber, makeJobsDue, mailsTo, testCtx, testEnv, type TestEnv } from './helpers'
+import { addCommitment, cleanup, closeEnv, createCampaign, createSite, createSubscriber, makeJobsDue, mailsTo, testCtx, testEnv, type CampaignOpts, type TestEnv } from './helpers'
 
 let env: TestEnv
 beforeAll(() => { env = testEnv() })
@@ -128,6 +128,67 @@ describe('end of a shared-calendar campaign', () => {
     const c = await withOrg(env.admin, orgId, tx => tx.selectFrom('pt_campaign').select('ended_at').where('id', '=', campaignId).executeTakeFirstOrThrow())
     expect(c.ended_at).toBeNull()
     expect(await jobsOf(orgId)).toHaveLength(0)
+  })
+})
+
+describe('next step after a side campaign', () => {
+  async function endSide(orgId: string, cta?: CampaignOpts['cta'], main = true) {
+    const today = todayIn(TZ)
+    const mainId = main ? await createCampaign(env, orgId, { name: 'Everyday', startDate: addDays(today, -30), endMode: 'none' }) : null
+    const sideId = await createCampaign(env, orgId, { name: 'Ramadan', kind: 'side', startDate: addDays(today, -10), endDate: addDays(today, -1), cta })
+    return { today, mainId, sideId }
+  }
+
+  it('invites people to the running main campaign, and tells those already praying in it that they still are', async () => {
+    const { orgId } = await createSite(env, { languages: ['en', 'fr'] })
+    const { today, mainId, sideId } = await endSide(orgId)
+    const newcomer = await createSubscriber(env, orgId, sideId)
+    const fr = await createSubscriber(env, orgId, sideId, { language: 'fr' })
+    const praying = await createSubscriber(env, orgId, sideId)
+    const lapsed = await createSubscriber(env, orgId, sideId)
+    for (const s of [newcomer, fr, praying, lapsed]) {
+      await addCommitment(env, orgId, s.subscriptionId, sideId, { startsOn: addDays(today, -10), endsOn: addDays(today, -1) })
+    }
+    await addCommitment(env, orgId, praying.subscriptionId, mainId!, { startsOn: addDays(today, -30) })
+    await addCommitment(env, orgId, lapsed.subscriptionId, mainId!, { startsOn: addDays(today, -30), endsOn: addDays(today, -2) })
+    const ctx = testCtx(env)
+    await closeEndedCampaigns(ctx, ctx.log)
+    await drainJobs(ctx, ctx.log)
+
+    const invite = mailsTo(ctx.mails, newcomer.email)[0]!
+    expect(invite.text).toMatch(/Keep praying with Everyday: https?:\/\/\S+\/signup\n/)
+    expect(invite.html).toContain('Keep praying with Everyday')
+    expect(mailsTo(ctx.mails, fr.email)[0]!.text).toMatch(/Continuez à prier avec Everyday: https?:\/\/\S+\/fr\/signup/)
+    expect(mailsTo(ctx.mails, lapsed.email)[0]!.text).toContain('Keep praying with Everyday')
+    const still = mailsTo(ctx.mails, praying.email)[0]!
+    expect(still.text).toContain('You\'re still praying with Everyday.')
+    expect(still.text).not.toContain('Keep praying')
+  })
+
+  it('shows the champion\'s own button, or none when they turned it off or there is no main campaign to join', async () => {
+    const { orgId } = await createSite(env)
+    const own = await endSide(orgId, { label: makeText('en', 'Join the next one'), url: 'https://example.org/next' })
+    const off = await endSide(orgId, { mode: 'none' }, false)
+    const { orgId: lone } = await createSite(env)
+    const noMain = await endSide(lone, undefined, false)
+    const people = []
+    for (const [site, run] of [[orgId, own], [orgId, off], [lone, noMain]] as const) {
+      const s = await createSubscriber(env, site, run.sideId)
+      await addCommitment(env, site, s.subscriptionId, run.sideId, { startsOn: addDays(run.today, -10), endsOn: addDays(run.today, -1) })
+      people.push(s)
+    }
+    const ctx = testCtx(env)
+    await closeEndedCampaigns(ctx, ctx.log)
+    await drainJobs(ctx, ctx.log)
+
+    const [withOwn, withNone, withoutMain] = people.map(p => mailsTo(ctx.mails, p.email)[0]!)
+    expect(withOwn!.text).toContain('Join the next one: https://example.org/next')
+    expect(withOwn!.text).not.toContain('Keep praying')
+    for (const m of [withNone!, withoutMain!]) {
+      expect(m.text).toContain('Ramadan has come to an end')
+      expect(m.text).not.toContain('Keep praying')
+      expect(m.text).not.toContain('still praying')
+    }
   })
 })
 

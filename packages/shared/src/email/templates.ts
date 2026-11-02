@@ -10,6 +10,7 @@ import { languageDir } from '../languages'
 import { siteUrlFor } from '../site'
 import { siteInboxAddress } from '../inbox'
 import { escapeHtml } from '../tiptap'
+import type { NextStep } from '../next-step'
 
 export interface SiteMailContext {
   orgId: string
@@ -280,7 +281,7 @@ export interface ThanksDetails {
   prayers: number
   minutes: number
   message: string | null
-  cta: { label: string, url: string } | null
+  next: NextStep | null
   manageUrl: string | null
   unsubscribeUrl: string | null
 }
@@ -289,15 +290,20 @@ export function thankYouEmail(ctx: SiteMailContext, lang: string, d: ThanksDetai
   const vars = { site: ctx.siteName, campaign: d.campaignName }
   const bodyKey = d.personal ? 'thanks.body_personal' : 'thanks.body'
   const stats = d.prayers > 0 ? emailT(lang, 'thanks.stats', { prayers: d.prayers, minutes: d.minutes }) : null
+  const cta = d.next?.kind === 'cta' && d.next.label ? { label: d.next.label, url: d.next.url }
+    : d.next?.kind === 'join' ? { label: emailT(lang, 'thanks.keep_praying', { campaign: d.next.campaign }), url: `${ctx.siteUrl}${d.next.path}` }
+      : null
+  const note = d.next?.kind === 'praying' ? emailT(lang, 'thanks.still_praying', { campaign: d.next.campaign }) : null
   const body = heading(emailT(lang, 'thanks.heading'))
     + paragraph(emailT(lang, bodyKey, vars))
     + (stats ? paragraph(stats) : '')
     + (d.message ? `<div style="margin:0 0 16px;font-size:16px;line-height:1.6;white-space:pre-line;">${escapeHtml(d.message)}</div>` : '')
-    + (d.cta ? button(ctx, d.cta.url, d.cta.label) : '')
+    + (cta ? button(ctx, cta.url, cta.label) : '')
+    + (note ? paragraph(note) : '')
   return {
     subject: emailT(lang, 'thanks.subject', vars),
     html: layout(ctx, lang, body, { manageUrl: d.manageUrl, unsubscribeUrl: d.unsubscribeUrl }, opts),
-    text: [emailT(lang, 'thanks.heading'), '', emailT(lang, bodyKey, vars), stats ?? '', d.message ?? '', d.cta ? `${d.cta.label}: ${d.cta.url}` : ''].filter(Boolean).join('\n\n')
+    text: [emailT(lang, 'thanks.heading'), '', emailT(lang, bodyKey, vars), stats ?? '', d.message ?? '', cta ? `${cta.label}: ${cta.url}` : '', note ?? ''].filter(Boolean).join('\n\n')
       + footerText(ctx, lang, { manageUrl: d.manageUrl, unsubscribeUrl: d.unsubscribeUrl })
   }
 }

@@ -225,6 +225,8 @@
     "thanks": "شكرًا لك على الصلاة",
     "results": "النتائج النهائية",
     "cta_default": "متابعة",
+    "keep_praying": "واصل الصلاة مع {campaign}",
+    "still_praying": "ما زلت تصلّي مع {campaign}.",
     "notify_title": "أعلمني عندما تُقام هذه الحملة مجددًا",
     "notify_intro": "اترك بريدك الإلكتروني وسيُعلمك {site} عند بدء الحملة القادمة.",
     "notify_button": "أعلمني",

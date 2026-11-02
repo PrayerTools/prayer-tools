@@ -225,6 +225,8 @@
     "thanks": "Thank you for praying",
     "results": "Final results",
     "cta_default": "Continue",
+    "keep_praying": "Keep praying with {campaign}",
+    "still_praying": "You're still praying with {campaign}.",
     "notify_title": "Notify me when this campaign runs again",
     "notify_intro": "Leave your email and {site} will let you know when the next campaign starts.",
     "notify_button": "Notify me",
