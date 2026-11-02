@@ -1,6 +1,8 @@
 // Landing page sections, in their fixed order. The list and defaults live in
 // code; a site stores only its content, the sections it hid and its custom
 // sections. Sections with nothing to show hide themselves.
+import type { Tx } from './db/scope'
+import { campaignSeries } from './campaigns'
 import { getTemplate } from './setup'
 
 export const LANDING_SECTIONS = ['top', 'why', 'custom', 'stories', 'how', 'signup', 'today', 'share', 'contact', 'app'] as const
@@ -20,4 +22,20 @@ export function visibleSections(hidden: string[] | undefined, templateKey: strin
     if (s === 'app') return opts.appAvailable
     return true
   })
+}
+
+// Up to six published stories for a landing page, newest first: every story on the site,
+// or with `seriesOf`, only stories from that campaign's series.
+export async function landingStories(tx: Tx, seriesOf: string | null = null) {
+  let q = tx
+    .selectFrom('pt_story')
+    .select(['id', 'body', 'name', 'use_name'])
+    .where('published', '=', true)
+    .where('may_publish', '=', true)
+  if (seriesOf) {
+    const ids = (await campaignSeries(tx, seriesOf, { drafts: true })).map(c => c.id)
+    if (!ids.length) return []
+    q = q.where('campaign_id', 'in', ids)
+  }
+  return await q.orderBy('published_at', 'desc').limit(6).execute()
 }
