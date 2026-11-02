@@ -1,6 +1,7 @@
 // Builds the page view for SSR requests on site and platform hosts, so the
 // catch-all page renders from the request context without a second request.
 import { applyViewHeaders, buildView } from '../utils/page-view'
+import { setFrameHeaders } from '../utils/framing'
 
 const SKIP = ['/api/', '/ics/', '/v1/', '/.well-known/', '/_nuxt/', '/__nuxt']
 
@@ -19,4 +20,5 @@ export default defineEventHandler(async (event) => {
   event.context.ptView = view
   setResponseStatus(event, view.status)
   applyViewHeaders(event, view)
+  if (view.host === 'site' && view.page.kind === 'embed' && !event.context.site?.editor) setFrameHeaders(event, 'embed')
 })

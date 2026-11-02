@@ -3,7 +3,9 @@ import type { SignupFormView } from '~~/shared/view'
 import type { SlotCounts } from '@prayertools/shared/coverage'
 import { browserTimezone, newCommitment, timezones, type CommitmentInput } from '~/utils/commitment'
 
-const props = defineProps<{ form: SignupFormView }>()
+// `embedded`: inside another website's frame, where this site's cookies are not
+// sent, so sign-in is left out and a finished signup stays on the form.
+const props = defineProps<{ form: SignupFormView, embedded?: boolean }>()
 const emit = defineEmits<{ joined: [verify: boolean] }>()
 const { site, link, st } = useSite()
 const { t } = useI18n()
@@ -82,6 +84,7 @@ onMounted(async () => {
   const slots = typeof route.query.slots === 'string' ? route.query.slots.split(',') : []
   state.picks = slots.filter(s => !Number.isNaN(Date.parse(s))).slice(0, 100)
   if (state.picks.length) state.commitments = []
+  if (props.embedded) return
   restoreDraft()
   const me = await fetchMe()
   if (me?.account) {
@@ -154,8 +157,9 @@ async function submit() {
     })
     if (res.referral_code) rememberReferral(site.value.orgId, res.referral_code)
     signupEmail.value = useAccount.value && account.value ? account.value.email : state.email
-    // Before a campaign starts there is nothing to pray yet, so the signup page stays.
-    if (campaign.value.state === 'upcoming') emit('joined', res.verify)
+    // Before a campaign starts there is nothing to pray yet, and an embedded form
+    // stays in its frame, so the signup page stays.
+    if (campaign.value.state === 'upcoming' || props.embedded) emit('joined', res.verify)
     else await navigateTo(`${link('pray', [], { lang: state.language })}?joined=1${res.verify ? '&verify=1' : ''}`)
   } catch (err) {
     const msg = (err as { data?: { statusMessage?: string } }).data?.statusMessage ?? 'generic'
@@ -217,7 +221,7 @@ async function submit() {
           </template>
           <template v-else>
             <SignInButtons
-              v-if="googleUrl || appleUrl"
+              v-if="!embedded && (googleUrl || appleUrl)"
               :google-href="googleUrl"
               :google-label="t('signup.google')"
               :apple-href="appleUrl"
@@ -227,7 +231,7 @@ async function submit() {
             <UFormField :label="t('signup.email')" name="email" required>
               <UInput v-model="state.email" type="email" autocomplete="email" inputmode="email" required class="w-full" />
             </UFormField>
-            <p v-if="!account" class="text-sm text-stone-600">
+            <p v-if="!account && !embedded" class="text-sm text-stone-600">
               {{ t('signup.sign_in_prompt') }} <a :href="signInUrl" class="underline">{{ t('signup.sign_in') }}</a>
             </p>
           </template>

@@ -392,5 +392,8 @@
     "content_body": "Guided prayer for each day, ready to use or written by your team.",
     "reminders_title": "Reminders",
     "reminders_body": "Everyone praying gets an email or app reminder at the times they chose."
+  },
+  "embed": {
+    "open_site": "Open the campaign site"
   }
 }

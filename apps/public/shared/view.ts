@@ -241,7 +241,7 @@ export type PageView =
   | { kind: 'link_expired', token: string }
   | { kind: 'unsubscribe', token: string, valid: boolean }
   | { kind: 'notice', key: string }
-  | { kind: 'embed', progress: GoalProgressView | null }
+  | { kind: 'embed', progress: GoalProgressView | null, form: SignupFormView | null }
   | { kind: 'not_found' }
 
 export interface SiteResponse {

@@ -25,7 +25,7 @@ import { socialProviders } from './social-sign-in'
 import { withDraftStrings, type LandingDraft } from './editor'
 
 const PRIVATE_PAGES = new Set(['manage', 'm', 'u', 'verify', 'add', 'notice', 'checkin'])
-const ARCHIVED_ALLOWED = new Set(['manage', 'm', 'u', 'verify', 'notice'])
+const ARCHIVED_ALLOWED = new Set(['manage', 'm', 'u', 'verify', 'notice', 'embed'])
 export const NOTICE_KEYS = new Set([
   'checkin_yes', 'checkin_sometimes', 'checkin_no', 'link_invalid', 'unsubscribed', 'verify_invalid', 'deleted', 'not_found'
 ])
@@ -133,9 +133,18 @@ export async function buildSiteResponse(event: H3Event, ctx: SiteContext, fullPa
           page = NOTICE_KEYS.has(key) ? { kind: 'notice', key } : { kind: 'not_found' }
           break
         }
-        case 'embed':
-          page = { kind: 'embed', progress: campaign ? await progressFor(tx, campaign, data.settings.default_duration_min) : null }
+        case 'embed': {
+          // 24/7 campaigns sign up on the site's coverage picker; others sign up in the widget.
+          const open = !!cv && (cv.state === 'upcoming' || cv.state === 'active') && campaign!.goal !== 'coverage' && data.site.status !== 'archived'
+          page = parsed.rest.length
+            ? { kind: 'not_found' }
+            : {
+                kind: 'embed',
+                progress: campaign ? await progressFor(tx, campaign, data.settings.default_duration_min) : null,
+                form: open ? await signupForm(tx, data, lang, true) : null
+              }
           break
+        }
         default:
           page = { kind: 'not_found' }
       }

@@ -116,7 +116,15 @@ check('/pray/999 → 404 with short cache', p404.status === 404 && p404.headers.
 check('/stats renders', (await req(SITE, '/stats')).text.includes('Prayer so far'))
 check('/manage is private', (await req(SITE, '/manage')).headers.get('cache-control') === 'private, no-store')
 const embed = await req(SITE, '/embed')
-check('/embed is framable', embed.status === 200 && !embed.headers.get('x-frame-options'))
+check('/embed is framable by any site', embed.status === 200 && !embed.headers.get('x-frame-options') && embed.headers.get('content-security-policy') === 'frame-ancestors *', embed.headers.get('content-security-policy'))
+check('/embed holds the signup form', embed.text.includes('inputmode="email"'))
+check('/fr/embed in French', (await req(SITE, '/fr/embed')).text.includes('lang="fr"'))
+for (const path of ['/stats/embed', '/signup/embed', '/embed/x']) {
+  const r = await req(SITE, path)
+  check(`${path} not framable`, r.headers.get('x-frame-options') === 'SAMEORIGIN' && r.headers.get('content-security-policy') === "frame-ancestors 'self'")
+}
+const coverageEmbed = await req(COVERAGE, '/embed')
+check('24/7 embed links to the site\'s signup page', coverageEmbed.status === 200 && coverageEmbed.text.includes('/signup"') && !coverageEmbed.text.includes('inputmode="email"'))
 check('/embed.js served', (await req(SITE, '/embed.js')).text.includes('pt-embed-height'))
 check('coverage page on 24/7 site', (await req(COVERAGE, '/coverage')).status === 200)
 const cov = await req(COVERAGE, '/api/coverage.json')
