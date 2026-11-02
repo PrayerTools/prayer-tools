@@ -132,11 +132,15 @@ export interface SignupFieldView {
   options: { key: string, label: string }[]
 }
 
+export interface SignInProvidersView {
+  google: boolean
+  apple: boolean
+}
+
 export interface SignupFormView {
   consentOptions: ConsentOptionView[]
   fields: SignupFieldView[]
-  googleClientId: string | null
-  appleServicesId: string | null
+  signIn: SignInProvidersView
   open: boolean
 }
 
@@ -255,7 +259,7 @@ export interface PlatformResponse {
   host: 'platform'
   lang: string
   donateUrl: string
-  page: { kind: 'my', my: MyView, notice: string | null, continueTo: string | null, confirmSite: MyConfirmSiteView | null } | { kind: 'home', adminUrl: string } | { kind: 'legal', doc: 'privacy' | 'terms' } | { kind: 'not_found' }
+  page: { kind: 'my', my: MyView, notice: string | null, continueTo: string | null, confirmSite: MyConfirmSiteView | null, signIn: SignInProvidersView } | { kind: 'home', adminUrl: string } | { kind: 'legal', doc: 'privacy' | 'terms' } | { kind: 'not_found' }
   status: number
   cache: 'private'
   title: string

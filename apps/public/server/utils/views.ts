@@ -21,6 +21,7 @@ import { buildSiteView, campaignView, loadSiteData, sideCampaigns, stateOf, type
 import { contentBlocks, contentVars, docHtml, formatDate, visibleEntries } from './content'
 import { progressFor, statsFor } from './site-stats'
 import { managedSubscription, manageView } from './manage'
+import { socialProviders } from './social-sign-in'
 import { withDraftStrings, type LandingDraft } from './editor'
 
 const PRIVATE_PAGES = new Set(['manage', 'm', 'u', 'verify', 'add', 'notice', 'checkin'])
@@ -270,8 +271,7 @@ async function signupForm(tx: Parameters<typeof loadSiteData>[0], data: SiteData
       required: f.required,
       options: ((f.options ?? []) as { key: string, label: TranslatableText }[]).map(o => ({ key: o.key, label: textIn(o.label, lang, def) }))
     })),
-    googleClientId: process.env.GOOGLE_CLIENT_ID || null,
-    appleServicesId: process.env.APPLE_SERVICES_ID || null,
+    signIn: socialProviders(),
     open: open && data.site.status !== 'archived'
   }
 }

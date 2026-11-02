@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { MyConfirmSiteView, MyView, MySiteView } from '~~/shared/view'
+import type { MyConfirmSiteView, MyView, MySiteView, SignInProvidersView } from '~~/shared/view'
 import { timezones, type CommitmentInput } from '~/utils/commitment'
 
-const props = defineProps<{ my: MyView, notice: string | null, continueTo: string | null, confirmSite: MyConfirmSiteView | null, lang: string, donateUrl: string }>()
+const props = defineProps<{ my: MyView, notice: string | null, continueTo: string | null, confirmSite: MyConfirmSiteView | null, signIn: SignInProvidersView, lang: string, donateUrl: string }>()
 const { t } = useI18n()
 const route = useRoute()
 const toast = useToast()
@@ -13,6 +13,9 @@ const sent = ref(false)
 const busy = ref(false)
 const confirmDelete = ref(false)
 const tzItems = timezones()
+const continueQuery = computed(() => props.continueTo ? `?continue=${encodeURIComponent(props.continueTo)}` : '')
+const googleUrl = computed(() => props.signIn.google ? `/my/google${continueQuery.value}` : null)
+const appleUrl = computed(() => props.signIn.apple ? `/my/apple${continueQuery.value}` : null)
 
 async function requestLink() {
   busy.value = true
@@ -129,7 +132,8 @@ function languageItems(s: MySiteView) {
         <h2 id="my-signin" class="sr-only">{{ t('my.sign_in') }}</h2>
         <p class="text-stone-700">{{ t('my.intro') }}</p>
         <UAlert v-if="sent" color="success" variant="soft" icon="i-lucide-mail" :title="t('my.sent')" role="status" />
-        <form v-else class="space-y-4" @submit.prevent="requestLink">
+        <SignInButtons v-if="(googleUrl || appleUrl) && !sent" :google-href="googleUrl" :google-label="t('my.google')" :apple-href="appleUrl" :apple-label="t('my.apple')" />
+        <form v-if="!sent" class="space-y-4" @submit.prevent="requestLink">
           <UFormField :label="t('signup.email')" name="my-email" required>
             <UInput v-model="email" type="email" autocomplete="email" required class="w-full" />
           </UFormField>
@@ -142,7 +146,8 @@ function languageItems(s: MySiteView) {
           <h2 id="my-reauth" class="text-xl font-bold">{{ t('my.reauth_title') }}</h2>
           <p v-if="notice !== 'reauth'" class="text-stone-700">{{ t('my.reauth_email') }}</p>
           <UAlert v-if="sent" color="success" variant="soft" icon="i-lucide-mail" :title="t('my.reauth_sent', { email: my.account.email })" role="status" />
-          <UButton v-else :loading="busy" icon="i-lucide-send" :label="t('my.reauth_send')" @click="requestFreshLink" />
+          <SignInButtons v-if="(googleUrl || appleUrl) && !sent" :google-href="googleUrl" :google-label="t('my.google')" :apple-href="appleUrl" :apple-label="t('my.apple')" />
+          <UButton v-if="!sent" :loading="busy" icon="i-lucide-send" :label="t('my.reauth_send')" @click="requestFreshLink" />
         </section>
         <section v-if="confirmSite" class="rounded-2xl bg-white border border-stone-200 p-6 space-y-4" aria-labelledby="my-confirm-site">
           <h2 id="my-confirm-site" class="text-xl font-bold">{{ t('my.continue_title', { site: confirmSite.name }) }}</h2>

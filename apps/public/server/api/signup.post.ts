@@ -1,8 +1,8 @@
 // Web signup: creates or reuses the site's CRM contact, a subscription and
 // commitments in the campaign, grants the ticked consents and sends the
-// verification email. Google / Apple sign-in, or a Prayer.Tools sign-in on
-// this site with the same address, arrives already verified and gets the
-// welcome email instead. An address already confirmed on the site gets an
+// verification email. A Prayer.Tools sign-in on this site (email link,
+// Google or Apple) with the same address arrives already verified and gets
+// the welcome email instead. An address already confirmed on the site gets an
 // email to confirm the chosen times before they are added.
 import { withOrg } from '@prayertools/shared/db/scope'
 import { createWebSignup, validateRuleForCampaign, type RuleInput } from '@prayertools/shared/subscriptions'
@@ -18,7 +18,6 @@ import { bad, background, clientIp, limit, readJson, requireTurnstile, str } fro
 import { siteContext } from '../utils/site-context'
 import { loadSiteData, stateOf } from '../utils/site-data'
 import { parseAnswers, parseRuleInput } from '../lib/input'
-import { verifiedEmailFromIdToken } from '../utils/id-token'
 import { deliver, prepareSiteMail, type PendingMail } from '../utils/mail'
 import { grantPlatformNews } from '../utils/staff'
 import { forwardInBackground } from '../utils/analytics'
@@ -34,19 +33,10 @@ export default defineEventHandler(async (event) => {
   const body = await readJson(event)
   await requireTurnstile(event, body.turnstile)
 
-  let email = str(body.email, 254)
-  let preVerified = false
-  const idToken = body.id_token as { provider?: unknown, token?: unknown } | null | undefined
-  if (idToken && typeof idToken === 'object') {
-    const verified = await verifiedEmailFromIdToken(idToken.provider, idToken.token)
-    if (!verified) bad('id_token')
-    email = verified
-    preVerified = true
-  }
-  const { normalized, valid } = normalizeEmail(email)
+  const { normalized, valid } = normalizeEmail(str(body.email, 254))
   if (!valid) bad('email')
   const account = await sessionAccount(event)
-  if (account?.verified && account.email === normalized) preVerified = true
+  const preVerified = !!account?.verified && account.email === normalized
   const timezone = str(body.timezone, 64)
   if (!isValidTimezone(timezone)) bad('timezone')
   const name = str(body.name, 200) || null

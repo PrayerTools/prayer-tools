@@ -6,12 +6,13 @@ import { buildSiteResponse } from './views'
 import { buildMyView } from './my'
 import { sessionUserId } from './account-session'
 import { siteForHandoff } from './account-links'
+import { socialProviders } from './social-sign-in'
 import { safeReturnPath } from '@prayertools/shared/auth-codes'
 import { UI_LANGUAGES } from './site-data'
 import type { SiteContext } from './site-context'
 import { NOT_FOUND_CACHE, PRIVATE_CACHE, SHARED_CACHE, setCache } from './request'
 
-const NOTICES = new Set(['link_invalid', 'link_sent', 'signed_out', 'deleted', 'deleted_kept', 'email_changed', 'email_taken', 'email_kept', 'reauth'])
+const NOTICES = new Set(['link_invalid', 'link_sent', 'signed_out', 'deleted', 'deleted_kept', 'email_changed', 'email_taken', 'email_kept', 'reauth', 'social_failed'])
 
 export async function buildPlatformResponse(event: H3Event, fullPath: string): Promise<PlatformResponse> {
   const url = new URL(fullPath, 'http://x')
@@ -35,7 +36,8 @@ export async function buildPlatformResponse(event: H3Event, fullPath: string): P
       my: await buildMyView(userId),
       notice: notice && NOTICES.has(notice) ? notice : null,
       continueTo: continueTo.startsWith('/my/') ? continueTo : null,
-      confirmSite: confirm ? { host: confirm.host, name: confirm.name, returnTo: safeReturnPath(url.searchParams.get('return')) } : null
+      confirmSite: confirm ? { host: confirm.host, name: confirm.name, returnTo: safeReturnPath(url.searchParams.get('return')) } : null,
+      signIn: socialProviders()
     },
     status: 200,
     cache: 'private',

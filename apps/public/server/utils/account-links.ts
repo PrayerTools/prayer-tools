@@ -12,6 +12,7 @@ import { endAllAccountSessions, sessionSignedInAt, sessionUserId, startAccountSe
 import { accountSiteIds, personSubscriptions } from './my'
 import { resolveSiteCached } from './site-context'
 import type { SiteContext } from './site-context'
+import { isSocialProvider, socialProviders } from './social-sign-in'
 
 export const ADMIN_SIGN_IN_HOURS = 24
 export const EMAIL_CHANGE_SIGN_IN_MINUTES = 15
@@ -139,11 +140,13 @@ export async function continueToAdmin(event: H3Event) {
   return sendRedirect(event, `${new URL(platformConfig().adminUrl).origin}/api/pt/handoff?code=${encodeURIComponent(code)}&to=${encodeURIComponent(to)}`, 302)
 }
 
-// Site host `/account/sign-in?return=<path>`: signing in happens on the
-// platform host, which hands the sign-in back.
+// Site host `/account/sign-in?return=<path>[&with=google|apple]`: signing in
+// happens on the platform host, which hands the sign-in back.
 export function signInFromSite(event: H3Event, ctx: SiteContext) {
-  const back = safeReturnPath(getQuery(event).return)
-  return sendRedirect(event, `${platformOrigin()}/my/continue?host=${encodeURIComponent(ctx.host)}&return=${encodeURIComponent(back)}`, 302)
+  const q = getQuery(event)
+  const next = `/my/continue?host=${encodeURIComponent(ctx.host)}&return=${encodeURIComponent(safeReturnPath(q.return))}`
+  if (isSocialProvider(q.with) && socialProviders()[q.with]) return sendRedirect(event, `${platformOrigin()}/my/${q.with}?continue=${encodeURIComponent(next)}`, 302)
+  return sendRedirect(event, `${platformOrigin()}${next}`, 302)
 }
 
 // Site host `/account/claim/<code>`: the hand-off from the platform host.

@@ -39,8 +39,7 @@ const state = reactive({
   platformNews: false,
   custom: [] as string[],
   answers: {} as Record<string, string | boolean>,
-  turnstile: '',
-  idToken: null as null | { provider: 'google' | 'apple', token: string, email: string }
+  turnstile: ''
 })
 const sending = ref(false)
 const error = ref<string | null>(null)
@@ -51,12 +50,39 @@ const signupEmail = useState<string | null>('pt-signup-email', () => null)
 const account = ref<{ email: string, name: string | null } | null>(null)
 const useAccount = ref(false)
 const signInUrl = computed(() => `/account/sign-in?return=${encodeURIComponent(route.fullPath.split('#')[0]!)}`)
+const googleUrl = computed(() => props.form.signIn.google ? `${signInUrl.value}&with=google` : null)
+const appleUrl = computed(() => props.form.signIn.apple ? `${signInUrl.value}&with=apple` : null)
+
+// Google / Apple sign-in leaves the page; what was filled in waits in this tab.
+const draftKey = computed(() => `pt-signup-draft:${campaign.value.id}`)
+const DRAFT_FIELDS = ['email', 'name', 'language', 'timezone', 'commitments', 'picks', 'siteUpdates', 'platformNews', 'custom', 'answers'] as const
+
+function saveDraft() {
+  try {
+    sessionStorage.setItem(draftKey.value, JSON.stringify(Object.fromEntries(DRAFT_FIELDS.map(k => [k, state[k]]))))
+  } catch {
+    // storage unavailable
+  }
+}
+
+function restoreDraft() {
+  try {
+    const raw = sessionStorage.getItem(draftKey.value)
+    if (!raw) return
+    sessionStorage.removeItem(draftKey.value)
+    const draft = JSON.parse(raw) as Partial<typeof state>
+    for (const k of DRAFT_FIELDS) if (draft[k] !== undefined) Object.assign(state, { [k]: draft[k] })
+  } catch {
+    // storage unavailable
+  }
+}
 
 onMounted(async () => {
   state.timezone = browserTimezone()
   const slots = typeof route.query.slots === 'string' ? route.query.slots.split(',') : []
   state.picks = slots.filter(s => !Number.isNaN(Date.parse(s))).slice(0, 100)
   if (state.picks.length) state.commitments = []
+  restoreDraft()
   const me = await fetchMe()
   if (me?.account) {
     account.value = me.account
@@ -114,7 +140,7 @@ async function submit() {
       method: 'POST',
       body: {
         campaign: campaign.value.slug,
-        email: state.idToken?.email ?? (useAccount.value && account.value ? account.value.email : state.email),
+        email: useAccount.value && account.value ? account.value.email : state.email,
         name: state.name,
         language: state.language,
         timezone: state.timezone,
@@ -123,12 +149,11 @@ async function submit() {
         answers: state.answers,
         referral: typeof route.query.r === 'string' ? route.query.r : null,
         from: typeof route.query.from === 'string' ? route.query.from : null,
-        turnstile: state.turnstile,
-        id_token: state.idToken ? { provider: state.idToken.provider, token: state.idToken.token } : null
+        turnstile: state.turnstile
       }
     })
     if (res.referral_code) rememberReferral(site.value.orgId, res.referral_code)
-    signupEmail.value = state.idToken?.email ?? (useAccount.value && account.value ? account.value.email : state.email)
+    signupEmail.value = useAccount.value && account.value ? account.value.email : state.email
     // Before a campaign starts there is nothing to pray yet, so the signup page stays.
     if (campaign.value.state === 'upcoming') emit('joined', res.verify)
     else await navigateTo(`${link('pray', [], { lang: state.language })}?joined=1${res.verify ? '&verify=1' : ''}`)
@@ -138,15 +163,6 @@ async function submit() {
     turnstile.value?.reset()
   } finally {
     sending.value = false
-  }
-}
-
-function onIdToken(provider: 'google' | 'apple', token: string) {
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]!.replace(/-/g, '+').replace(/_/g, '/')))
-    if (payload.email) state.idToken = { provider, token, email: payload.email }
-  } catch {
-    error.value = t('errors.generic')
   }
 }
 </script>
@@ -195,22 +211,23 @@ function onIdToken(provider: 'google' | 'apple', token: string) {
       <div class="space-y-8">
         <fieldset class="space-y-4">
           <legend class="text-lg font-semibold">{{ t('signup.contact_title') }}</legend>
-          <template v-if="useAccount && account && !state.idToken">
+          <template v-if="useAccount && account">
             <UAlert color="success" variant="soft" icon="i-lucide-badge-check" :title="t('signup.account_as', { email: account.email })" />
             <UButton variant="link" color="neutral" size="sm" class="px-0" :label="t('signup.use_other_email')" @click="useOtherEmail" />
           </template>
           <template v-else>
             <SignInButtons
-              v-if="(form.googleClientId || form.appleServicesId) && !state.idToken"
-              :google-client-id="form.googleClientId"
-              :apple-services-id="form.appleServicesId"
-              @token="onIdToken"
+              v-if="googleUrl || appleUrl"
+              :google-href="googleUrl"
+              :google-label="t('signup.google')"
+              :apple-href="appleUrl"
+              :apple-label="t('signup.apple')"
+              @leave="saveDraft"
             />
-            <UFormField v-if="!state.idToken" :label="t('signup.email')" name="email" required>
+            <UFormField :label="t('signup.email')" name="email" required>
               <UInput v-model="state.email" type="email" autocomplete="email" inputmode="email" required class="w-full" />
             </UFormField>
-            <UAlert v-else color="success" variant="soft" icon="i-lucide-badge-check" :title="t('signup.signed_in_as', { email: state.idToken.email })" />
-            <p v-if="!state.idToken && !account" class="text-sm text-stone-600">
+            <p v-if="!account" class="text-sm text-stone-600">
               {{ t('signup.sign_in_prompt') }} <a :href="signInUrl" class="underline">{{ t('signup.sign_in') }}</a>
             </p>
           </template>

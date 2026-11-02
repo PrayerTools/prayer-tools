@@ -13,6 +13,7 @@ import { PREVIEW_COOKIE, previewCookieMatches } from '../utils/cookies'
 import { addTimesLink, checkinAnswer, exchangeManageLink, legacyFuel, legacyManage, previewLink, unsubscribePost, verifyLink } from '../utils/actions'
 import { editorAccess, editorFrameAncestors } from '../utils/editor'
 import { claimHandoff, confirmEmailChange, continueToAdmin, continueToSite, exchangeSignInLink, signInFromSite, undoEmailChange } from '../utils/account-links'
+import { finishSocialSignIn, startSocialSignIn } from '../utils/social-sign-in'
 
 const ASSET_PREFIXES = ['/_nuxt/', '/__nuxt', '/@', '/node_modules/', '/_fonts/', '/__vite', '/api/_nuxt_icon/', '/_i18n/']
 
@@ -100,6 +101,9 @@ export default defineEventHandler(async (event) => {
     }
     if (pathname === '/my/continue' && isGet) return await continueToSite(event)
     if (pathname === '/my/admin' && isGet) return await continueToAdmin(event)
+    const social = pathname.match(/^\/my\/(google|apple)(\/callback)?$/)
+    if (social && !social[2] && isGet) return startSocialSignIn(event, social[1] as 'google' | 'apple')
+    if (social?.[2] && (isGet || event.method === 'POST')) return await finishSocialSignIn(event, social[1] as 'google' | 'apple')
     if (pathname === '/my' || pathname.startsWith('/my/') || pathname.startsWith('/api/my/') || pathname === '/api/view') return
     return notFound(event)
   }

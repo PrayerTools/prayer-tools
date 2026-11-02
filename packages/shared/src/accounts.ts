@@ -64,6 +64,41 @@ export async function resetAdminAccess(db: Db | Tx, userId: string): Promise<voi
   await sql`DELETE FROM password_reset_requests WHERE user_id = ${userId}`.execute(db)
 }
 
+export interface IdentityProfile {
+  subject: string
+  email: string
+  name: string | null
+}
+
+// The account a Google / Apple sign-in with a provider-verified address
+// opens: the one its identity is linked to, else the account for that
+// address (now proved, so verified), else a new verified account. The
+// identity is linked unless the account already has one from that provider.
+export async function accountForIdentity(db: Db, provider: 'google' | 'apple', profile: IdentityProfile): Promise<Account> {
+  return await db.transaction().execute(async (tx) => {
+    const linked = await tx
+      .updateTable('user_identities')
+      .set({ last_used_at: new Date() })
+      .where('provider', '=', provider)
+      .where('subject', '=', profile.subject)
+      .returning('user_id')
+      .executeTakeFirst()
+    if (linked) return (await accountById(tx, linked.user_id))!
+    const { normalized } = normalizeEmail(profile.email)
+    const name = (profile.name ?? '').slice(0, 200)
+    const existing = await accountByEmail(tx, normalized)
+    if (existing) {
+      await markAccountVerified(tx, existing.id)
+      if (!existing.display_name && name) await tx.updateTable('users').set({ display_name: name, updated: new Date() }).where('id', '=', existing.id).execute()
+    } else {
+      await tx.insertInto('users').values({ email: normalized, display_name: name, verified: true }).onConflict(oc => oc.doNothing()).execute()
+    }
+    const account = (await accountByEmail(tx, normalized))!
+    await tx.insertInto('user_identities').values({ user_id: account.id, provider, subject: profile.subject, email: normalized }).onConflict(oc => oc.doNothing()).execute()
+    return account
+  })
+}
+
 // The contact shows the account's name and address. A nameless account
 // takes the contact's name instead.
 export async function syncContactFromAccount(tx: Tx, contactId: string, account: Account): Promise<void> {
