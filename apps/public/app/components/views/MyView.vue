@@ -12,6 +12,7 @@ const email = ref('')
 const sent = ref(false)
 const busy = ref(false)
 const confirmDelete = ref(false)
+const confirmStopAll = ref(false)
 const tzItems = timezones()
 const continueQuery = computed(() => props.continueTo ? `?continue=${encodeURIComponent(props.continueTo)}` : '')
 const googleUrl = computed(() => props.signIn.google ? `/my/google${continueQuery.value}` : null)
@@ -106,6 +107,18 @@ async function deleteAll() {
   try {
     const res = await $fetch<{ account_deleted: boolean }>('/api/my/delete', { method: 'POST' })
     await navigateTo(`/my?notice=${res.account_deleted ? 'deleted' : 'deleted_kept'}`, { external: true })
+  } finally {
+    busy.value = false
+  }
+}
+
+async function stopAll() {
+  busy.value = true
+  try {
+    await $fetch('/api/my/stop-all', { method: 'POST' })
+    await navigateTo('/my?notice=stopped_all', { external: true })
+  } catch {
+    toast.add({ title: t('errors.generic'), color: 'error' })
   } finally {
     busy.value = false
   }
@@ -242,6 +255,16 @@ function languageItems(s: MySiteView) {
             </ul>
           </section>
         </article>
+
+        <div v-if="my.sites.length">
+          <UButton variant="outline" color="neutral" icon="i-lucide-bell-off" :label="t('my.stop_all')" @click="confirmStopAll = true" />
+        </div>
+        <UModal v-model:open="confirmStopAll" :title="t('my.stop_all_title')" :description="t('my.stop_all_body')">
+          <template #footer>
+            <UButton color="error" :loading="busy" :label="t('my.stop_all')" @click="stopAll" />
+            <UButton variant="ghost" color="neutral" :label="t('common.cancel')" @click="confirmStopAll = false" />
+          </template>
+        </UModal>
 
         <section class="space-y-3 border-t border-stone-200 pt-6" aria-labelledby="my-data">
           <h2 id="my-data" class="text-xl font-semibold">{{ t('manage.your_data') }}</h2>

@@ -12,7 +12,7 @@ import { UI_LANGUAGES } from './site-data'
 import type { SiteContext } from './site-context'
 import { NOT_FOUND_CACHE, PRIVATE_CACHE, SHARED_CACHE, setCache } from './request'
 
-const NOTICES = new Set(['link_invalid', 'link_sent', 'signed_out', 'deleted', 'deleted_kept', 'email_changed', 'email_taken', 'email_kept', 'reauth', 'social_failed'])
+const NOTICES = new Set(['link_invalid', 'link_sent', 'signed_out', 'deleted', 'deleted_kept', 'stopped_all', 'email_changed', 'email_taken', 'email_kept', 'reauth', 'social_failed'])
 
 export async function buildPlatformResponse(event: H3Event, fullPath: string): Promise<PlatformResponse> {
   const url = new URL(fullPath, 'http://x')

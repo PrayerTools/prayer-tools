@@ -301,7 +301,8 @@
   "unsubscribe": {
     "title": "Se désabonner",
     "body": "Arrêter tous les rappels de prière de {site} ?",
-    "confirm": "Se désabonner"
+    "confirm": "Se désabonner",
+    "all": "Se désabonner de toutes les campagnes Prayer.Tools"
   },
   "notice": {
     "checkin_yes": "Merci de nous avoir répondu ! Continuez à prier — vos rappels continuent.",
@@ -309,6 +310,7 @@
     "checkin_no": "Merci d'avoir prié avec nous. Nous avons arrêté vos rappels.",
     "link_invalid": "Ce lien n'est pas valide ou a déjà été utilisé.",
     "unsubscribed": "Vous êtes désabonné. Vous ne recevrez plus de rappels de {site}.",
+    "unsubscribed_all": "Vous êtes désabonné de toutes les campagnes Prayer.Tools. Vous ne recevrez plus de rappels ni d’e-mails de leur part.",
     "verify_invalid": "Ce lien de confirmation n'est pas valide ou a expiré. Veuillez vous réinscrire.",
     "deleted": "Vos données ont été supprimées.",
     "not_found": "Nous n'avons pas trouvé ce que vous cherchiez."
@@ -346,10 +348,14 @@
     "past_line": "{name} : {prayers} prières, {minutes} minutes",
     "delete_all": "Supprimer mes données partout",
     "delete_all_body": "Cela supprime vos moments de prière et vos informations de toutes les campagnes listées ici. Cette action est irréversible.",
+    "stop_all": "Arrêter tous les rappels et e-mails de prière",
+    "stop_all_title": "Arrêter tous les rappels et e-mails de prière ?",
+    "stop_all_body": "Aucune des campagnes listées ici ne vous enverra plus de rappels ni d’e-mails, et Prayer.Tools non plus. Vos horaires de prière et votre historique sont conservés.",
     "notice_link_invalid": "Ce lien de connexion n'est pas valide ou a déjà été utilisé. Demandez-en un nouveau ci-dessous.",
     "notice_signed_out": "Vous êtes déconnecté.",
     "notice_deleted": "Vos données ont été supprimées.",
     "notice_deleted_kept": "Vos données de prière ont été supprimées. Votre compte est conservé, car vous l'utilisez encore ailleurs sur Prayer.Tools.",
+    "notice_stopped_all": "Tous vos rappels et e-mails de prière sont arrêtés.",
     "notice_link_sent": "Consultez vos e-mails pour trouver votre lien.",
     "notice_social_failed": "La connexion n'a pas fonctionné. Réessayez ou recevez un lien par e-mail.",
     "status_active": "Active",

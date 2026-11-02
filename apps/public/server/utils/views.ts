@@ -27,7 +27,7 @@ import { withDraftStrings, type LandingDraft } from './editor'
 const PRIVATE_PAGES = new Set(['manage', 'm', 'u', 'verify', 'add', 'notice', 'checkin'])
 const ARCHIVED_ALLOWED = new Set(['manage', 'm', 'u', 'verify', 'notice'])
 export const NOTICE_KEYS = new Set([
-  'checkin_yes', 'checkin_sometimes', 'checkin_no', 'link_invalid', 'unsubscribed', 'verify_invalid', 'deleted', 'not_found'
+  'checkin_yes', 'checkin_sometimes', 'checkin_no', 'link_invalid', 'unsubscribed', 'unsubscribed_all', 'verify_invalid', 'deleted', 'not_found'
 ])
 
 export function appAvailable(): boolean {
@@ -115,11 +115,10 @@ export async function buildSiteResponse(event: H3Event, ctx: SiteContext, fullPa
         case 'u': {
           const token = parsed.rest[0] ?? ''
           const link = parseLink(token, 'u')
-          let valid = false
-          if (link && link.orgId === ctx.orgId) {
-            valid = !!(await tx.selectFrom('pt_subscription').select('id').where('id', '=', link.subscriptionId).executeTakeFirst())
-          }
-          page = { kind: 'unsubscribe', token, valid }
+          const sub = link && link.orgId === ctx.orgId
+            ? await tx.selectFrom('pt_subscription').select(['id', 'user_id']).where('id', '=', link.subscriptionId).executeTakeFirst()
+            : undefined
+          page = { kind: 'unsubscribe', token, valid: !!sub, account: !!sub?.user_id }
           break
         }
         case 'verify':

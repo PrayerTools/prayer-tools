@@ -301,7 +301,8 @@
   "unsubscribe": {
     "title": "Unsubscribe",
     "body": "Stop all prayer reminders from {site}?",
-    "confirm": "Unsubscribe"
+    "confirm": "Unsubscribe",
+    "all": "Unsubscribe from all Prayer.Tools campaigns"
   },
   "notice": {
     "checkin_yes": "Thank you for letting us know! Keep praying — your reminders continue.",
@@ -309,6 +310,7 @@
     "checkin_no": "Thank you for praying with us. We have stopped your reminders.",
     "link_invalid": "This link is not valid or has already been used.",
     "unsubscribed": "You are unsubscribed. You will not receive any more reminders from {site}.",
+    "unsubscribed_all": "You are unsubscribed from all Prayer.Tools campaigns. You will not receive any more reminders or emails from them.",
     "verify_invalid": "This confirmation link is not valid or has expired. Please sign up again.",
     "deleted": "Your data has been deleted.",
     "not_found": "We could not find what you were looking for."
@@ -346,10 +348,14 @@
     "past_line": "{name}: {prayers} prayers, {minutes} minutes",
     "delete_all": "Delete my data everywhere",
     "delete_all_body": "This removes your prayer times and details from every campaign listed here. It cannot be undone.",
+    "stop_all": "Stop all prayer reminders and emails",
+    "stop_all_title": "Stop all prayer reminders and emails?",
+    "stop_all_body": "Every campaign listed here stops sending you reminders and emails, and so does Prayer.Tools. Your prayer times and history are kept.",
     "notice_link_invalid": "This sign-in link is not valid or has already been used. Request a new one below.",
     "notice_signed_out": "You are signed out.",
     "notice_deleted": "Your data has been deleted.",
     "notice_deleted_kept": "Your prayer data has been deleted. Your account stays because you still use it elsewhere on Prayer.Tools.",
+    "notice_stopped_all": "All your prayer reminders and emails have stopped.",
     "notice_link_sent": "Check your email for your link.",
     "notice_social_failed": "Signing in didn't work. Try again, or have a link emailed to you.",
     "status_active": "Active",

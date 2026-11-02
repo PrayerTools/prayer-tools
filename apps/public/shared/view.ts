@@ -239,7 +239,7 @@ export type PageView =
   | { kind: 'stories' }
   | { kind: 'manage', manage: ManageView | null }
   | { kind: 'link_expired', token: string }
-  | { kind: 'unsubscribe', token: string, valid: boolean }
+  | { kind: 'unsubscribe', token: string, valid: boolean, account: boolean }
   | { kind: 'notice', key: string }
   | { kind: 'embed', progress: GoalProgressView | null }
   | { kind: 'not_found' }

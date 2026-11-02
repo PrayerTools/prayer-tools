@@ -301,7 +301,8 @@
   "unsubscribe": {
     "title": "Cancelar suscripción",
     "body": "¿Detener todos los recordatorios de oración de {site}?",
-    "confirm": "Cancelar suscripción"
+    "confirm": "Cancelar suscripción",
+    "all": "Cancelar la suscripción a todas las campañas de Prayer.Tools"
   },
   "notice": {
     "checkin_yes": "¡Gracias por avisarnos! Sigue orando: tus recordatorios continúan.",
@@ -309,6 +310,7 @@
     "checkin_no": "Gracias por orar con nosotros. Hemos detenido tus recordatorios.",
     "link_invalid": "Este enlace no es válido o ya se usó.",
     "unsubscribed": "Cancelaste tu suscripción. No recibirás más recordatorios de {site}.",
+    "unsubscribed_all": "Cancelaste tu suscripción a todas las campañas de Prayer.Tools. No recibirás más recordatorios ni correos de ellas.",
     "verify_invalid": "Este enlace de confirmación no es válido o ha caducado. Vuelve a inscribirte.",
     "deleted": "Tus datos han sido eliminados.",
     "not_found": "No pudimos encontrar lo que buscabas."
@@ -346,10 +348,14 @@
     "past_line": "{name}: {prayers} oraciones, {minutes} minutos",
     "delete_all": "Eliminar mis datos en todas partes",
     "delete_all_body": "Esto elimina tus horarios de oración y tus datos de todas las campañas de esta lista. No se puede deshacer.",
+    "stop_all": "Detener todos los recordatorios y correos de oración",
+    "stop_all_title": "¿Detener todos los recordatorios y correos de oración?",
+    "stop_all_body": "Ninguna de las campañas de esta lista te enviará más recordatorios ni correos, y Prayer.Tools tampoco. Se conservan tus horarios de oración y tu historial.",
     "notice_link_invalid": "Este enlace de inicio de sesión no es válido o ya se usó. Solicita uno nuevo abajo.",
     "notice_signed_out": "Cerraste sesión.",
     "notice_deleted": "Tus datos han sido eliminados.",
     "notice_deleted_kept": "Tus datos de oración se han eliminado. Tu cuenta se mantiene porque todavía la usas en otra parte de Prayer.Tools.",
+    "notice_stopped_all": "Se detuvieron todos tus recordatorios y correos de oración.",
     "notice_link_sent": "Revisa tu correo para encontrar tu enlace.",
     "notice_social_failed": "No se pudo iniciar sesión. Inténtalo de nuevo o pide que te enviemos un enlace por correo.",
     "status_active": "Activa",

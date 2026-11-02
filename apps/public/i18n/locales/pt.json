@@ -301,7 +301,8 @@
   "unsubscribe": {
     "title": "Cancelar inscrição",
     "body": "Parar todos os lembretes de oração de {site}?",
-    "confirm": "Cancelar inscrição"
+    "confirm": "Cancelar inscrição",
+    "all": "Cancelar inscrição em todas as campanhas do Prayer.Tools"
   },
   "notice": {
     "checkin_yes": "Obrigado por nos contar! Continue orando — seus lembretes continuam.",
@@ -309,6 +310,7 @@
     "checkin_no": "Obrigado por orar conosco. Paramos seus lembretes.",
     "link_invalid": "Este link não é válido ou já foi usado.",
     "unsubscribed": "Sua inscrição foi cancelada. Você não receberá mais lembretes de {site}.",
+    "unsubscribed_all": "Sua inscrição em todas as campanhas do Prayer.Tools foi cancelada. Você não receberá mais lembretes nem e-mails delas.",
     "verify_invalid": "Este link de confirmação não é válido ou expirou. Inscreva-se novamente.",
     "deleted": "Seus dados foram excluídos.",
     "not_found": "Não encontramos o que você estava procurando."
@@ -346,10 +348,14 @@
     "past_line": "{name}: {prayers} orações, {minutes} minutos",
     "delete_all": "Excluir meus dados de todas as campanhas",
     "delete_all_body": "Isso remove seus horários de oração e seus dados de todas as campanhas listadas aqui. Não é possível desfazer.",
+    "stop_all": "Parar todos os lembretes e e-mails de oração",
+    "stop_all_title": "Parar todos os lembretes e e-mails de oração?",
+    "stop_all_body": "Nenhuma das campanhas listadas aqui enviará mais lembretes ou e-mails, nem o Prayer.Tools. Seus horários de oração e seu histórico são mantidos.",
     "notice_link_invalid": "Este link de acesso não é válido ou já foi usado. Solicite um novo abaixo.",
     "notice_signed_out": "Você saiu da sua conta.",
     "notice_deleted": "Seus dados foram excluídos.",
     "notice_deleted_kept": "Seus dados de oração foram excluídos. Sua conta continua porque você ainda a usa em outro lugar no Prayer.Tools.",
+    "notice_stopped_all": "Todos os seus lembretes e e-mails de oração foram interrompidos.",
     "notice_link_sent": "Confira seu e-mail para encontrar o link.",
     "notice_social_failed": "Não foi possível entrar. Tente novamente ou receba um link por e-mail.",
     "status_active": "Ativa",

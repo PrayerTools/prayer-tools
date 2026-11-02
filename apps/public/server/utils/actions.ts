@@ -10,6 +10,7 @@ import { recordEvent } from '@prayertools/shared/stats'
 import { sitePath } from '@prayertools/shared/paths'
 import { campaignStatus } from '@prayertools/shared/setup'
 import { campaignSegment } from '@prayertools/shared/campaigns'
+import { unsubscribeEverywhere } from '@prayertools/shared/unsubscribe-all'
 import type { CheckinResponse } from '@prayertools/shared/db/schema'
 import { useDb } from './db'
 import type { SiteContext } from './site-context'
@@ -17,7 +18,7 @@ import { setManageCookie, setPreviewCookie } from './cookies'
 import { forwardInBackground } from './analytics'
 import { deliver } from './mail'
 import { background, clientIp } from './request'
-import { grantPlatformNews } from './staff'
+import { grantPlatformNews, staffOrgId } from './staff'
 import { prepareWelcomeMail } from './welcome'
 import { loadSiteData, stateOf } from './site-data'
 import { takeSignupRequest } from './signup-request'
@@ -191,18 +192,27 @@ export async function legacyFuel(event: H3Event, ctx: SiteContext, segments: str
 
 // Unsubscribe: the confirm form on /u/<token> and RFC 8058 one-click
 // (`List-Unsubscribe=One-Click`) from mail clients. Handled in middleware so
-// GET /u/<token> still renders the confirm page.
+// GET /u/<token> still renders the confirm page. The form's `scope=all`
+// stops every subscription of the account the subscription is linked to.
 export async function unsubscribePost(event: H3Event, ctx: SiteContext, token: string) {
   const raw = (await readRawBody(event, 'utf8')) ?? ''
   const oneClick = raw.includes('List-Unsubscribe=One-Click')
+  const all = !oneClick && new URLSearchParams(raw).get('scope') === 'all'
   const link = parseLink(token, 'u')
-  let ok = false
-  if (link && link.orgId === ctx.orgId) {
-    ok = await withOrg(useDb(), ctx.orgId, async (tx) => {
-      const sub = await tx.selectFrom('pt_subscription').select(['id', 'status']).where('id', '=', link.subscriptionId).executeTakeFirst()
-      if (!sub) return false
+  const found = link && link.orgId === ctx.orgId
+    ? await withOrg(useDb(), ctx.orgId, async (tx) => {
+      const sub = await tx.selectFrom('pt_subscription').select(['id', 'status', 'user_id']).where('id', '=', link.subscriptionId).executeTakeFirst()
+      if (!sub) return null
       if (sub.status !== 'unsubscribed') await setSubscriptionStatus(tx, sub.id, 'unsubscribed')
-      return true
+      return { userId: sub.user_id }
+    })
+    : null
+  const ok = !!found
+  const userId = all ? found?.userId ?? null : null
+  if (userId) {
+    await unsubscribeEverywhere(useDb(), userId, {
+      newsOrgId: await staffOrgId(),
+      capture: { wording: { key: 'unsubscribe.all' }, surface: 'unsubscribe_page', source: ctx.host, ip: clientIp(event), userAgent: getRequestHeader(event, 'user-agent') ?? null }
     })
   }
   if (oneClick) {
@@ -210,5 +220,5 @@ export async function unsubscribePost(event: H3Event, ctx: SiteContext, token: s
     setResponseHeader(event, 'content-type', 'text/plain; charset=utf-8')
     return ok ? 'Unsubscribed' : 'Not found'
   }
-  return sendRedirect(event, ok ? '/notice/unsubscribed' : '/notice/link_invalid', 303)
+  return sendRedirect(event, !ok ? '/notice/link_invalid' : userId ? '/notice/unsubscribed_all' : '/notice/unsubscribed', 303)
 }

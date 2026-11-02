@@ -1,5 +1,5 @@
 <script setup lang="ts">
-defineProps<{ token: string, valid: boolean }>()
+defineProps<{ token: string, valid: boolean, account: boolean }>()
 const { site } = useSite()
 const { t } = useI18n()
 useHead({ title: () => `${t('unsubscribe.title')} · ${site.value.name}` })
@@ -10,9 +10,15 @@ useHead({ title: () => `${t('unsubscribe.title')} · ${site.value.name}` })
     <h1 class="text-3xl font-bold">{{ t('unsubscribe.title') }}</h1>
     <template v-if="valid">
       <p class="text-stone-700">{{ t('unsubscribe.body', { site: site.name }) }}</p>
-      <form method="post" :action="`/u/${token}`">
-        <UButton type="submit" color="error" :label="t('unsubscribe.confirm')" />
-      </form>
+      <div class="flex flex-wrap gap-3">
+        <form method="post" :action="`/u/${token}`">
+          <UButton type="submit" color="error" :label="t('unsubscribe.confirm')" />
+        </form>
+        <form v-if="account" method="post" :action="`/u/${token}`">
+          <input type="hidden" name="scope" value="all">
+          <UButton type="submit" color="error" variant="outline" :label="t('unsubscribe.all')" />
+        </form>
+      </div>
     </template>
     <p v-else class="text-stone-700">{{ t('notice.link_invalid') }}</p>
   </div>
