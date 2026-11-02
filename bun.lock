@@ -42,7 +42,7 @@
     },
     "apps/admin/_layers/ai": {
       "name": "@nuxtinator/ai",
-      "version": "0.6.0",
+      "version": "0.6.1",
       "dependencies": {
         "tinfoil": "^1.2.1",
       },
@@ -60,7 +60,7 @@
     },
     "apps/admin/_layers/core": {
       "name": "@nuxtinator/core",
-      "version": "2.11.1",
+      "version": "3.1.0",
       "dependencies": {
         "@bradenmacdonald/s3-lite-client": "^1.0.0",
         "@nuxtjs/i18n": "^10.6.0",
@@ -89,11 +89,12 @@
     },
     "apps/admin/_layers/crm": {
       "name": "@nuxtinator/crm",
-      "version": "0.2.2",
+      "version": "0.4.0",
       "optionalDependencies": {
         "@nuxtinator/core": "*",
       },
       "peerDependencies": {
+        "@nuxt/kit": "^4.0.0",
         "h3": "^1.0.0",
         "kysely": "^0.28.0",
         "nuxt": "^4.0.0",
@@ -118,7 +119,7 @@
     },
     "apps/admin/_layers/inbox": {
       "name": "@nuxtinator/inbox",
-      "version": "0.6.1",
+      "version": "0.7.0",
       "dependencies": {
         "croner": "^10.0.1",
         "dompurify": "^3.4.13",
@@ -134,6 +135,7 @@
         "@nuxtinator/crm": "*",
       },
       "peerDependencies": {
+        "@nuxt/kit": "^4.0.0",
         "h3": "^1.0.0",
         "kysely": "^0.28.0",
         "nuxt": "^4.0.0",
@@ -143,7 +145,7 @@
     },
     "apps/admin/_layers/social-auth": {
       "name": "@nuxtinator/social-auth",
-      "version": "0.5.0",
+      "version": "0.5.2",
       "dependencies": {
         "jsonwebtoken": "^9.0.2",
       },
@@ -163,7 +165,7 @@
     },
     "apps/admin/_layers/tenancy": {
       "name": "@nuxtinator/tenancy",
-      "version": "3.5.0",
+      "version": "3.6.0",
       "optionalDependencies": {
         "@nuxtinator/core": "*",
       },
