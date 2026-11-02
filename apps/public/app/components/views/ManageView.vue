@@ -2,8 +2,8 @@
 import type { ManageCampaignView, ManageView } from '~~/shared/view'
 import { timezones, type CommitmentInput } from '~/utils/commitment'
 
-const props = defineProps<{ manage: ManageView | null }>()
-const { site, link } = useSite()
+const props = defineProps<{ manage: ManageView | null, signedInAs: string | null }>()
+const { site, link, st } = useSite()
 const { t } = useI18n()
 const route = useRoute()
 const toast = useToast()
@@ -13,6 +13,7 @@ const busy = ref(false)
 const confirmDelete = ref(false)
 const profile = reactive({ name: props.manage?.name ?? '', language: props.manage?.language ?? site.value.lang, timezone: props.manage?.timezone ?? 'UTC' })
 const tzItems = timezones()
+const signupOpen = computed(() => site.value.status !== 'archived' && (site.value.campaign?.state === 'active' || site.value.campaign?.state === 'upcoming'))
 const languageItems = computed(() => site.value.languages.map(l => ({ label: l.native, value: l.code })))
 // A personal-start campaign holds one prayer time per person, which carries their progress.
 const canAdd = (c: ManageCampaignView) => c.state !== 'ended' && props.manage?.status !== 'unsubscribed' && !(c.personal && c.commitments.length)
@@ -56,8 +57,11 @@ async function deleteData() {
     <h1 class="text-3xl font-bold">{{ t('manage.title') }}</h1>
 
     <div v-if="!manage" class="space-y-4">
-      <p class="text-stone-700">{{ t('manage.signed_out') }}</p>
-      <UButton :href="site.myUrl" external :label="t('footer.my')" />
+      <p class="text-stone-700">{{ signedInAs ? t('manage.signed_in_empty', { email: signedInAs, site: site.name }) : t('manage.signed_out') }}</p>
+      <div class="flex flex-wrap gap-2">
+        <UButton v-if="signedInAs && signupOpen" :to="link('signup')" :label="st('landing.signup.title')" />
+        <UButton :href="site.myUrl" external :variant="signedInAs && signupOpen ? 'outline' : 'solid'" :label="t('footer.my')" />
+      </div>
     </div>
 
     <template v-else>

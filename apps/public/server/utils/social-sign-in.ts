@@ -144,6 +144,18 @@ async function verifiedProfile(provider: SocialProvider, idToken: string, flow: 
   return { subject: payload.sub, email: payload.email, claims: payload }
 }
 
+// Google profile photos are served from googleusercontent.com.
+function googlePhoto(value: unknown): string | null {
+  if (typeof value !== 'string' || value.length > 1000) return null
+  try {
+    const url = new URL(value)
+    const host = url.hostname.toLowerCase()
+    return url.protocol === 'https:' && (host === 'googleusercontent.com' || host.endsWith('.googleusercontent.com')) ? url.href : null
+  } catch {
+    return null
+  }
+}
+
 function firstName(...names: unknown[]): string | null {
   const name = names.find((n): n is string => typeof n === 'string' && !!n.trim())
   return name?.trim() ?? null
@@ -170,7 +182,7 @@ async function googleProfile(code: string, flow: Flow): Promise<IdentityProfile 
   })
   if (!idToken) return null
   const p = await verifiedProfile('google', idToken, flow, clientId, ['https://accounts.google.com', 'accounts.google.com'])
-  return p && { subject: p.subject, email: p.email, name: firstName(p.claims.given_name, p.claims.name) }
+  return p && { subject: p.subject, email: p.email, name: firstName(p.claims.given_name, p.claims.name), picture: googlePhoto(p.claims.picture) }
 }
 
 // Apple's client secret: a short-lived ES256 JWT signed with the team's key.
@@ -206,5 +218,5 @@ async function appleProfile(code: string, user: unknown, flow: Flow): Promise<Id
   } catch {
     // no name sent
   }
-  return { subject: p.subject, email: p.email, name }
+  return { subject: p.subject, email: p.email, name, picture: null }
 }

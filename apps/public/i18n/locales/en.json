@@ -260,6 +260,7 @@
     "title": "Your prayer times",
     "intro": "Signed in as {email} for {site}.",
     "signed_out": "Open the link from one of our emails to manage your prayer times here, or use My prayer to see all your campaigns.",
+    "signed_in_empty": "You're signed in as {email}. You have no prayer times on {site} yet.",
     "unverified": "Your email is not confirmed yet. Reminders start once you click the link in our email.",
     "name_on_my": "Your name is the same on every campaign you pray with. Change it on",
     "status_unsubscribed": "You are unsubscribed. You will not receive reminders.",
@@ -379,6 +380,11 @@
     "continue_title": "Sign in to {site}?",
     "continue_body": "{site} ({host}) will see your name and email address, {email}.",
     "continue_button": "Continue to {site}"
+  },
+  "account": {
+    "menu": "Account menu",
+    "site_times": "Prayer times on this site",
+    "my_account": "My account"
   },
   "home": {
     "title": "Prayer campaigns for the places and peoples you care about",

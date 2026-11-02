@@ -260,6 +260,7 @@
     "title": "Tus horarios de oración",
     "intro": "Sesión iniciada como {email} en {site}.",
     "signed_out": "Abre el enlace de uno de nuestros correos para administrar aquí tus horarios de oración, o usa Mi oración para ver todas tus campañas.",
+    "signed_in_empty": "Has iniciado sesión como {email}. Todavía no tienes horarios de oración en {site}.",
     "unverified": "Tu correo aún no está confirmado. Los recordatorios comenzarán cuando hagas clic en el enlace de nuestro correo.",
     "name_on_my": "Tu nombre es el mismo en todas las campañas con las que oras. Cámbialo en",
     "status_unsubscribed": "Cancelaste tu suscripción. No recibirás recordatorios.",
@@ -379,6 +380,11 @@
     "continue_title": "¿Iniciar sesión en {site}?",
     "continue_body": "{site} ({host}) verá tu nombre y tu correo electrónico, {email}.",
     "continue_button": "Continuar a {site}"
+  },
+  "account": {
+    "menu": "Menú de la cuenta",
+    "site_times": "Horarios de oración en este sitio",
+    "my_account": "Mi cuenta"
   },
   "home": {
     "title": "Campañas de oración por los lugares y pueblos que te importan",
