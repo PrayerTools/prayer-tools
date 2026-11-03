@@ -18,6 +18,8 @@ body {
 }
 
 .brand-bg { background: var(--brand); color: var(--brand-text); }
+/* Keeps anchor targets clear of the sticky site header. */
+html:has(.public-campaign) { scroll-padding-top: 3.75rem; }
 
 /* Prayer content rendered by the shared Tiptap renderer (web mode). */
 .pt-content { font-size: 1.125rem; line-height: 1.75; }

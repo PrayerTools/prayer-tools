@@ -48,7 +48,8 @@ function onJoined(verify: boolean) {
 
 <template>
   <div>
-    <section class="brand-bg relative overflow-hidden" aria-labelledby="top-title" data-pt-section="top">
+    <!-- pt-15 leaves room for the site header, which overlays the hero. -->
+    <section class="brand-bg relative overflow-hidden pt-15" aria-labelledby="top-title" data-pt-section="top">
       <template v-if="site.image">
         <img :src="site.image.url" :alt="site.image.alt" class="absolute inset-0 size-full object-cover" :style="imageStyle" fetchpriority="high">
         <!-- Tints the image with the brand color so text keeps its contrast. -->
