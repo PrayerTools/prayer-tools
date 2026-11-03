@@ -47,7 +47,7 @@ useHead(() => {
     <template v-if="view.host === 'platform'">
       <LazyViewsMyView v-if="view.page.kind === 'my'" :my="view.page.my" :notice="view.page.notice" :continue-to="view.page.continueTo" :confirm-site="view.page.confirmSite" :sign-in="view.page.signIn" :lang="view.lang" :donate-url="view.donateUrl" :feedback="view.page.feedback" />
       <LazyViewsHomeView v-else-if="view.page.kind === 'home'" :admin-url="view.page.adminUrl" />
-      <LazyViewsLegalView v-else-if="view.page.kind === 'legal'" :doc="view.page.doc" />
+      <LazyViewsLegalView v-else-if="view.page.kind === 'legal'" :doc="view.page.doc" :donate-url="view.donateUrl" />
       <PlainNotFound v-else />
     </template>
     <template v-else>

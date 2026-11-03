@@ -163,7 +163,7 @@ function languageItems(s: MySiteView) {
 </script>
 
 <template>
-  <div class="my-page min-h-dvh flex flex-col bg-[#fffaf5] text-[#202833] dark:text-slate-100" :style="themeStyle">
+  <div class="platform-page min-h-dvh flex flex-col bg-[#fffaf5] text-[#202833] dark:text-slate-100" :style="themeStyle">
     <PlatformHeader>
       <AccountMenu v-if="my.signedIn" :account="my.account" ready :sign-in-href="null" :items="accountItems" button-class="text-white hover:bg-white/10" />
     </PlatformHeader>
@@ -336,13 +336,7 @@ function languageItems(s: MySiteView) {
         </UModal>
       </template>
     </main>
-    <footer class="mx-6 border-t border-[#e8ded5] py-8 text-sm">
-      <nav aria-label="Footer" class="flex flex-wrap justify-center gap-x-6 gap-y-3 text-stone-700">
-        <a :href="donateUrl" class="hover:underline underline-offset-4">{{ t('footer.give') }}</a>
-        <a href="/privacy" class="hover:underline underline-offset-4">{{ t('footer.privacy') }}</a>
-        <a href="/terms" class="hover:underline underline-offset-4">{{ t('footer.terms') }}</a>
-      </nav>
-    </footer>
+    <PlatformFooter :donate-url="donateUrl" />
     <ClientOnly>
       <FeedbackWidget v-if="feedback" :feedback="feedback" :context="{ 'data-language': lang }" />
     </ClientOnly>
