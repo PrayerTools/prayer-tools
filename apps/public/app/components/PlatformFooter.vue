@@ -1,13 +1,14 @@
 <script setup lang="ts">
+defineProps<{ donateUrl: string }>()
 const { t } = useI18n()
 </script>
 
 <template>
-  <footer class="border-t border-stone-200 bg-white text-sm text-stone-600">
-    <div class="max-w-4xl mx-auto px-4 py-6 flex flex-wrap gap-x-6 gap-y-2">
-      <span class="me-auto">Prayer.Tools</span>
-      <a href="/privacy" class="underline">{{ t('footer.privacy') }}</a>
-      <a href="/terms" class="underline">{{ t('footer.terms') }}</a>
-    </div>
+  <footer class="mx-6 border-t border-[#e8ded5] py-8 text-sm">
+    <nav aria-label="Footer" class="flex flex-wrap justify-center gap-x-6 gap-y-3 text-stone-700">
+      <a :href="donateUrl" class="hover:underline underline-offset-4">{{ t('footer.give') }}</a>
+      <a href="/privacy" class="hover:underline underline-offset-4">{{ t('footer.privacy') }}</a>
+      <a href="/terms" class="hover:underline underline-offset-4">{{ t('footer.terms') }}</a>
+    </nav>
   </footer>
 </template>

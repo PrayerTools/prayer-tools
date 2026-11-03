@@ -1,7 +1,16 @@
 <script setup lang="ts">
+import { brandColor, brandForeground } from '@prayertools/shared/colors'
+import ThemeToggle from './ThemeToggle.vue'
+import type { Me } from '~/composables/useMe'
 const props = defineProps<{ page: string }>()
 const { site, link, st, campaignLink } = useSite()
 const { t } = useI18n()
+const mode = useColorMode()
+const themeStyle = computed(() => ({
+  '--brand-text': brandColor(site.value.brand.color).textColor,
+  '--brand-foreground': brandForeground(site.value.brand.color, mode.value === 'dark' ? '#202c3a' : '#ffffff'),
+  '--ui-primary': brandForeground(site.value.brand.color, mode.value === 'dark' ? '#202c3a' : '#ffffff')
+}))
 
 const nav = computed(() => {
   const items = site.value.campaign?.state === 'upcoming' ? [] : [{ label: t('nav.pray'), to: link('pray') }]
@@ -12,10 +21,41 @@ const nav = computed(() => {
 })
 
 const showFeedback = computed(() => !!site.value.feedback && props.page !== 'embed' && !site.value.editor)
+
+const route = useRoute()
+const feedbackContext = computed(() => ({
+  'data-site-id': site.value.orgId,
+  'data-site-slug': site.value.slug,
+  'data-campaign-id': site.value.campaign?.id ?? '',
+  'data-content-day': route.path.match(/\/pray\/(\d+)/)?.[1] ?? '',
+  'data-language': site.value.lang
+}))
+const me = ref<Me | null>(null)
+const meReady = ref(false)
+const showAccount = computed(() => props.page !== 'embed' && !site.value.editor)
+const signInHref = computed(() => `/account/sign-in?return=${encodeURIComponent(route.fullPath.split('#')[0]!)}`)
+const accountItems = computed(() => [
+  [
+    { label: t('account.site_times'), icon: 'i-lucide-calendar-clock', to: link('manage', [], { current: true }) },
+    { label: t('account.my_account'), icon: 'i-lucide-user', to: site.value.myUrl, external: true }
+  ],
+  [{ label: t('my.sign_out'), icon: 'i-lucide-log-out', onSelect: signOut }]
+])
+
+onMounted(async () => {
+  if (!showAccount.value) return
+  me.value = await fetchMe()
+  meReady.value = true
+})
+
+async function signOut() {
+  await $fetch('/api/account/sign-out', { method: 'POST' }).catch(() => null)
+  window.location.reload()
+}
 </script>
 
 <template>
-  <div class="min-h-dvh flex flex-col">
+  <div class="public-campaign min-h-dvh flex flex-col" :style="themeStyle">
     <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:start-2 focus:z-50 focus:bg-white focus:px-3 focus:py-2 focus:rounded">{{ t('a11y.skip') }}</a>
     <div v-if="site.preview && !site.editor" class="bg-amber-100 text-amber-900 text-sm text-center px-4 py-2" role="status">
       {{ t('preview.banner') }}
@@ -30,6 +70,8 @@ const showFeedback = computed(() => !!site.value.feedback && props.page !== 'emb
           <NuxtLink v-for="item in nav" :key="item.to" :to="item.to" class="underline-offset-4 hover:underline">{{ item.label }}</NuxtLink>
         </nav>
         <LanguageSwitcher />
+        <ThemeToggle />
+        <AccountMenu v-if="showAccount" :account="me?.account ?? null" :ready="meReady" :sign-in-href="signInHref" :items="accountItems" />
       </div>
     </header>
 
@@ -63,7 +105,7 @@ const showFeedback = computed(() => !!site.value.feedback && props.page !== 'emb
       </div>
     </footer>
     <ClientOnly>
-      <FeedbackWidget v-if="showFeedback" />
+      <FeedbackWidget v-if="showFeedback" :feedback="site.feedback!" :context="feedbackContext" />
     </ClientOnly>
   </div>
 </template>

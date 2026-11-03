@@ -12,8 +12,14 @@ export const PT_PERMISSIONS = [
   'pt.intercessors.read',
   'pt.intercessors.write',
   'pt.intercessors.export',
-  'pt.email.send'
+  'pt.email.send',
+  'pt.sites.create',
+  'pt.library.write'
 ] as const
+
+// Granted through the champion's Library personal app rather than a site
+// role, so they hold in every site and before the first one exists.
+export const PT_PERSONAL_PERMISSIONS: readonly PtPermission[] = ['pt.sites.create', 'pt.library.write']
 
 export type PtPermission = typeof PT_PERMISSIONS[number]
 
@@ -31,7 +37,9 @@ export const PT_PERMISSION_META: Record<PtPermission, { title: string, descripti
   'pt.intercessors.read': { title: 'View intercessors', description: 'See intercessors and their details.' },
   'pt.intercessors.write': { title: 'Edit intercessors', description: 'Change intercessors\' subscriptions and prayer times.' },
   'pt.intercessors.export': { title: 'Export intercessors', description: 'Download the intercessor CSV.' },
-  'pt.email.send': { title: 'Send site email', description: 'Write and send site emails and test emails.' }
+  'pt.email.send': { title: 'Send site email', description: 'Write and send site emails and test emails.' },
+  'pt.sites.create': { title: 'Create sites', description: 'Create new prayer sites.' },
+  'pt.library.write': { title: 'Edit your library', description: 'Create and edit your own prayer libraries and images.' }
 }
 
 // Site roles. The owner is the tenancy `admin` role (every permission);

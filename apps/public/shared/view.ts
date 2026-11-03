@@ -3,6 +3,7 @@
 // navigation fetches it from `/api/view`.
 import type { CheckinResponse, Goal, Cadence, StartMode, SignupFieldKind, SubscriptionStatus } from '@prayertools/shared/db/schema'
 import type { VideoEmbed } from '@prayertools/shared/video'
+import type { NextStep } from '@prayertools/shared/next-step'
 
 export type CampaignState = 'upcoming' | 'active' | 'between' | 'ended'
 
@@ -39,6 +40,12 @@ export interface SideCampaignView {
   endDate: string | null
 }
 
+export interface FeedbackView {
+  scriptUrl: string
+  projectId: string
+  apiBase: string
+}
+
 export interface SiteView {
   orgId: string
   slug: string
@@ -73,7 +80,7 @@ export interface SiteView {
   goUrl: string
   appStoreUrl: string | null
   playStoreUrl: string | null
-  feedback: { scriptUrl: string, projectId: string, apiBase: string } | null
+  feedback: FeedbackView | null
   turnstileSiteKey: string | null
 }
 
@@ -220,7 +227,9 @@ export interface MyManagedSiteView {
 
 export interface MyView {
   signedIn: boolean
-  account: { name: string, email: string | null } | null
+  account: { name: string, email: string | null, avatar: string | null } | null
+  // News from Prayer.Tools.
+  news: boolean
   sites: MySiteView[]
   managing: MyManagedSiteView[]
   createUrl: string | null
@@ -228,7 +237,7 @@ export interface MyView {
 
 export type PageView =
   | { kind: 'landing', sections: string[], progress: GoalProgressView | null, why: string, today: { day: number, html: string, title: string } | null, stories: StoryView[], custom: CustomSectionView[], prayingNow: number, form: SignupFormView, placeholders: string[], side: SideCampaignView[] }
-  | { kind: 'between', stats: StatsView | null, endMessage: string, cta: { label: string, url: string } | null }
+  | { kind: 'between', stats: StatsView | null, endMessage: string, next: NextStep | null }
   | { kind: 'archived' }
   | { kind: 'not_started', startDate: string }
   | { kind: 'pray', day: number, chosen: boolean, personal: boolean, dateLabel: string | null, blocks: ContentBlockView[], prev: number | null, next: number | null, length: number | null }
@@ -237,9 +246,11 @@ export type PageView =
   | { kind: 'coverage', progress: GoalProgressView | null }
   | { kind: 'contact', fields: SignupFieldView[] }
   | { kind: 'stories' }
-  | { kind: 'manage', manage: ManageView | null }
+  | { kind: 'manage', manage: ManageView | null, signedInAs: string | null }
   | { kind: 'link_expired', token: string }
-  | { kind: 'unsubscribe', token: string, valid: boolean }
+  | { kind: 'unsubscribe', token: string, valid: boolean, account: boolean }
+  // `campaign` is null when the link is not valid.
+  | { kind: 'leave', token: string, campaign: string | null }
   | { kind: 'notice', key: string }
   | { kind: 'embed', progress: GoalProgressView | null }
   | { kind: 'not_found' }
@@ -259,7 +270,7 @@ export interface PlatformResponse {
   host: 'platform'
   lang: string
   donateUrl: string
-  page: { kind: 'my', my: MyView, notice: string | null, continueTo: string | null, confirmSite: MyConfirmSiteView | null, signIn: SignInProvidersView } | { kind: 'home', adminUrl: string } | { kind: 'legal', doc: 'privacy' | 'terms' } | { kind: 'not_found' }
+  page: { kind: 'my', my: MyView, notice: string | null, continueTo: string | null, confirmSite: MyConfirmSiteView | null, signIn: SignInProvidersView, feedback: FeedbackView | null } | { kind: 'home', adminUrl: string } | { kind: 'legal', doc: 'privacy' | 'terms' } | { kind: 'not_found' }
   status: number
   cache: 'private'
   title: string

@@ -7,7 +7,9 @@ import { logEmails, type EmailLogEntry } from '@prayertools/shared/email/log'
 import { loadSiteMailContext, thankYouEmail, type SiteMailContext } from '@prayertools/shared/email/templates'
 import { emailT } from '@prayertools/shared/i18n/email'
 import { textIn } from '@prayertools/shared/translatable'
-import type { CampaignCta, PtCampaignTable, PtSubscriptionTable } from '@prayertools/shared/db/schema'
+import { loadCampaigns } from '@prayertools/shared/campaigns'
+import { nextStep, nextStepCampaign, prayingIn } from '@prayertools/shared/next-step'
+import type { PtCampaignTable, PtSubscriptionTable } from '@prayertools/shared/db/schema'
 import type { Selectable } from 'kysely'
 import { personLanguage, personLinks, siteMail, siteRow, type SiteRow } from '../mail'
 import { mapPool } from '../util'
@@ -32,11 +34,9 @@ async function totalsFor(tx: Tx, campaignId: string, subIds: string[]): Promise<
   return new Map(rows.map(r => [r.subscription_id, { prayers: Number(r.prayers), seconds: Number(r.seconds) }]))
 }
 
-function renderFor(mctx: SiteMailContext, site: SiteRow, campaign: Campaign, sub: Sub, totals: Totals | undefined, personal: boolean) {
+function renderFor(mctx: SiteMailContext, site: SiteRow, campaign: Campaign, main: { name: string } | null, sub: Sub, totals: Totals | undefined, personal: boolean, praying: boolean) {
   const lang = personLanguage(sub.language, site)
   const links = personLinks(mctx, sub)
-  const cta = (campaign.cta ?? {}) as CampaignCta
-  const ctaLabel = textIn(cta.label, lang, site.default_language)
   const message = textIn(campaign.end_message, lang, site.default_language) || null
   const rendered = thankYouEmail(mctx, lang, {
     campaignName: campaign.name,
@@ -44,7 +44,7 @@ function renderFor(mctx: SiteMailContext, site: SiteRow, campaign: Campaign, sub
     prayers: totals?.prayers ?? 0,
     minutes: Math.round((totals?.seconds ?? 0) / 60),
     message,
-    cta: ctaLabel && cta.url ? { label: ctaLabel, url: cta.url } : null,
+    next: nextStep(campaign, main, { lang, defaultLang: site.default_language, praying }),
     manageUrl: links.manageUrl,
     unsubscribeUrl: links.unsubscribeUrl
   })
@@ -59,12 +59,14 @@ function pushText(campaign: Campaign, site: SiteRow, lang: string, siteName: str
   }
 }
 
-async function loadCampaign(tx: Tx, campaignId: string): Promise<{ campaign: Campaign, site: SiteRow, mctx: SiteMailContext, orgId: string }> {
+// `main` is the main campaign the thank-you invites people to, if any.
+async function loadCampaign(tx: Tx, campaignId: string): Promise<{ campaign: Campaign, main: { id: string, name: string } | null, site: SiteRow, mctx: SiteMailContext, orgId: string }> {
   const campaign = await tx.selectFrom('pt_campaign').selectAll().where('id', '=', campaignId).executeTakeFirst()
   if (!campaign) throw new JobError(`Campaign ${campaignId} not found`, false)
   const site = await siteRow(tx)
   if (!site) throw new JobError('Site not found', false)
-  return { campaign, site, mctx: await loadSiteMailContext(tx, campaign.org_id), orgId: campaign.org_id }
+  const main = nextStepCampaign(campaign, await loadCampaigns(tx))
+  return { campaign, main, site, mctx: await loadSiteMailContext(tx, campaign.org_id), orgId: campaign.org_id }
 }
 
 interface Progress extends Record<string, unknown> {
@@ -104,7 +106,7 @@ async function thankYou(ctx: JobContext, payload: Record<string, unknown>) {
         .where('s.verified_at', 'is not', null)
         .where('s.status', '<>', 'unsubscribed')
         .where('s.anonymized_at', 'is', null)
-        .where(eb => eb.exists(eb.selectFrom('pt_commitment as c').select('c.id').whereRef('c.subscription_id', '=', 's.id').where('c.campaign_id', '=', campaignId)))
+        .where(eb => eb.exists(eb.selectFrom('pt_commitment as c').select('c.id').whereRef('c.subscription_id', '=', 's.id').where('c.campaign_id', '=', campaignId).where('c.left_at', 'is', null)))
         .orderBy('s.id')
         .limit(THANK_YOU_BATCH)
       if (p.cursor) q = q.where('s.id', '>', p.cursor)
@@ -116,7 +118,8 @@ async function thankYou(ctx: JobContext, payload: Record<string, unknown>) {
       }
       const suppressed = await suppressedAmong(tx, [...emails.values()])
       const totals = await totalsFor(tx, campaignId, subs.map(s => s.id))
-      return { ...base, subs, emails, suppressed, totals }
+      const praying = base.main ? await prayingIn(tx, base.main.id, subs.map(s => s.id)) : new Set<string>()
+      return { ...base, subs, emails, suppressed, totals, praying }
     })
     if (batch.subs.length === 0) break
 
@@ -126,7 +129,7 @@ async function thankYou(ctx: JobContext, payload: Record<string, unknown>) {
       if (done.has(sub.id)) return 'already'
       const to = batch.emails.get(sub.id)
       if (!to || batch.suppressed.has(to.trim().toLowerCase())) return 'skipped'
-      const { rendered, links } = renderFor(batch.mctx, batch.site, batch.campaign, sub, batch.totals.get(sub.id), false)
+      const { rendered, links } = renderFor(batch.mctx, batch.site, batch.campaign, batch.main, sub, batch.totals.get(sub.id), false, batch.praying.has(sub.id))
       await ctx.sendMail(siteMail(batch.mctx, to, rendered, 'thank_you', links.unsubscribeUrl))
       done.add(sub.id)
       sentLog.push({ subscriptionId: sub.id, kind: 'thank_you', subject: rendered.subject, campaignId })
@@ -166,7 +169,7 @@ async function pushCampaign(ctx: JobContext, orgId: string, campaignId: string, 
         .where('s.delivery', '=', 'app')
         .where('s.status', '<>', 'unsubscribed')
         .where('d.push_id', 'is not', null)
-        .where(eb => eb.exists(eb.selectFrom('pt_commitment as c').select('c.id').whereRef('c.subscription_id', '=', 's.id').where('c.campaign_id', '=', campaignId)))
+        .where(eb => eb.exists(eb.selectFrom('pt_commitment as c').select('c.id').whereRef('c.subscription_id', '=', 's.id').where('c.campaign_id', '=', campaignId).where('c.left_at', 'is', null)))
         .orderBy('s.id')
         .limit(500)
       if (p.push_cursor) q = q.where('s.id', '>', p.push_cursor)
@@ -198,19 +201,22 @@ async function thankYouPerson(ctx: JobContext, payload: Record<string, unknown>)
     const base = await loadCampaign(tx, campaignId)
     const sub = await tx.selectFrom('pt_subscription').selectAll().where('id', '=', subscriptionId).executeTakeFirst()
     if (!sub || sub.status === 'unsubscribed' || sub.anonymized_at) return null
+    const kept = await tx.selectFrom('pt_commitment').select('id').where('subscription_id', '=', sub.id).where('campaign_id', '=', campaignId).where('left_at', 'is', null).executeTakeFirst()
+    if (!kept) return null
     const totals = await totalsFor(tx, campaignId, [sub.id])
     const email = sub.delivery === 'email' && sub.verified_at && sub.contact_id ? await primaryEmailOf(tx, sub.contact_id) : null
     const suppressed = email ? (await suppressedAmong(tx, [email.email])).size > 0 : false
     const pushIds = sub.delivery === 'app' && sub.user_id
       ? (await tx.selectFrom('pt_user_device').select('push_id').where('user_id', '=', sub.user_id).where('push_id', 'is not', null).execute()).map(d => d.push_id!)
       : []
-    return { ...base, sub, totals, email: suppressed ? null : email?.email ?? null, pushIds }
+    const praying = base.main ? (await prayingIn(tx, base.main.id, [sub.id])).has(sub.id) : false
+    return { ...base, sub, totals, praying, email: suppressed ? null : email?.email ?? null, pushIds }
   })
   if (!work) return { skipped: 1 }
   let sent = 0
   let pushed = 0
   if (work.email && !done.email_done) {
-    const { rendered, links } = renderFor(work.mctx, work.site, work.campaign, work.sub, work.totals.get(work.sub.id), true)
+    const { rendered, links } = renderFor(work.mctx, work.site, work.campaign, work.main, work.sub, work.totals.get(work.sub.id), true, work.praying)
     await ctx.sendMail(siteMail(work.mctx, work.email, rendered, 'thank_you', links.unsubscribeUrl))
     await ctx.saveProgress({ ...done, email_done: true })
     await withOrg(ctx.app, orgId, tx => logEmails(tx, [{ subscriptionId: work.sub.id, kind: 'thank_you', subject: rendered.subject, campaignId }]))

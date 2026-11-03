@@ -77,7 +77,7 @@ async function remove(m: Member) {
 
 <template>
   <div class="max-w-4xl mx-auto space-y-6">
-    <header class="flex flex-wrap items-start justify-between gap-4">
+    <header class="theme-page-header rounded-lg flex flex-wrap items-start justify-between gap-4">
       <div>
         <h1 class="text-2xl font-bold">
           Team

@@ -1,5 +1,6 @@
 // Loading a site's campaigns and addressing their pages. Reads run inside the
 // site's org; `orgId` narrows them on a connection that bypasses RLS.
+import { sql } from 'kysely'
 import type { Tx } from './db/scope'
 import type { CampaignRow } from './subscriptions'
 import { toIsoDate } from './dates'
@@ -36,6 +37,29 @@ export async function campaignById(tx: Tx, id: unknown, opts: CampaignQuery = {}
   if (!opts.drafts) q = q.where('published_at', 'is not', null)
   const row = await q.executeTakeFirst()
   return row ? normalizeCampaign(row) as CampaignRow : null
+}
+
+// Every run of a campaign, oldest first: all campaigns relaunched, directly
+// or in turn, from the same first campaign, including the one asked about.
+// Relaunching one campaign twice puts both relaunches in its series.
+export async function campaignSeries(tx: Tx, campaignId: string, opts: CampaignQuery = {}): Promise<CampaignRow[]> {
+  if (!UUID_RE.test(campaignId)) return []
+  const ids = sql`
+    WITH RECURSIVE up AS (
+      SELECT id, relaunch_of FROM pt_campaign WHERE id = ${campaignId}
+      UNION ALL
+      SELECT c.id, c.relaunch_of FROM pt_campaign c JOIN up ON c.id = up.relaunch_of
+    ), down AS (
+      SELECT id FROM up WHERE relaunch_of IS NULL
+      UNION ALL
+      SELECT c.id FROM pt_campaign c JOIN down ON c.relaunch_of = down.id
+    )
+    SELECT id FROM down`
+  let q = tx.selectFrom('pt_campaign').selectAll().where(sql<boolean>`id IN (${ids})`)
+  if (opts.orgId) q = q.where('org_id', '=', opts.orgId)
+  if (!opts.drafts) q = q.where('published_at', 'is not', null)
+  const rows = await q.orderBy('created_at', 'asc').execute()
+  return rows.map(normalizeCampaign) as CampaignRow[]
 }
 
 // The path segment of a campaign's pages: none for the site's current

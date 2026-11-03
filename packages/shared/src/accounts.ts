@@ -13,9 +13,10 @@ export interface Account {
   email: string | null
   display_name: string
   verified: boolean
+  avatar: string
 }
 
-const COLUMNS = ['id', 'email', 'display_name', 'verified'] as const
+const COLUMNS = ['id', 'email', 'display_name', 'verified', 'avatar'] as const
 
 export async function accountById(db: Db | Tx, userId: string): Promise<Account | null> {
   return await db.selectFrom('users').select(COLUMNS).where('id', '=', userId).executeTakeFirst() ?? null
@@ -68,12 +69,15 @@ export interface IdentityProfile {
   subject: string
   email: string
   name: string | null
+  // A provider photo URL the caller has checked.
+  picture: string | null
 }
 
 // The account a Google / Apple sign-in with a provider-verified address
 // opens: the one its identity is linked to, else the account for that
 // address (now proved, so verified), else a new verified account. The
-// identity is linked unless the account already has one from that provider.
+// identity is linked unless the account already has one from that provider;
+// linking it fills an empty avatar with the provider's photo.
 export async function accountForIdentity(db: Db, provider: 'google' | 'apple', profile: IdentityProfile): Promise<Account> {
   return await db.transaction().execute(async (tx) => {
     const linked = await tx
@@ -94,7 +98,11 @@ export async function accountForIdentity(db: Db, provider: 'google' | 'apple', p
       await tx.insertInto('users').values({ email: normalized, display_name: name, verified: true }).onConflict(oc => oc.doNothing()).execute()
     }
     const account = (await accountByEmail(tx, normalized))!
-    await tx.insertInto('user_identities').values({ user_id: account.id, provider, subject: profile.subject, email: normalized }).onConflict(oc => oc.doNothing()).execute()
+    const linkedNow = await tx.insertInto('user_identities').values({ user_id: account.id, provider, subject: profile.subject, email: normalized }).onConflict(oc => oc.doNothing()).returning('id').executeTakeFirst()
+    if (linkedNow && profile.picture && !account.avatar) {
+      await tx.updateTable('users').set({ avatar: profile.picture, updated: new Date() }).where('id', '=', account.id).where('avatar', '=', '').execute()
+      return { ...account, avatar: profile.picture }
+    }
     return account
   })
 }

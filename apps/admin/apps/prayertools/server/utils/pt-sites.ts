@@ -1,4 +1,6 @@
-import { sql } from 'kysely'
+import { sql, type Transaction } from 'kysely'
+import type { Database } from '#core/server/database/schema'
+import type { TenantContext } from '#tenant/server'
 import { db } from '#core/server/utils/database'
 import { slugError, slugify } from '@prayertools/shared/config'
 import { containsBlockedWord } from '@prayertools/shared/moderation'
@@ -9,7 +11,8 @@ import { accountById, linkContactToAccount } from '@prayertools/shared/accounts'
 import { withOrg } from '@prayertools/shared/db/scope'
 import { jsonb, pgArray } from '@prayertools/shared/db/json'
 import { forwardEvent } from '@prayertools/shared/statinator'
-import { enableSiteApps } from '@prayertools/shared/site'
+import { enableSiteApps, settingsOverrides, subdomainUrl } from '@prayertools/shared/site'
+import { hashToken, randomToken } from '@prayertools/shared/tokens'
 import { randomBrandColor } from '@prayertools/shared/colors'
 
 export const PT_STAFF_SLUG = 'staff'
@@ -129,3 +132,53 @@ export async function ptAddChampionToStaffCrm(userId: string): Promise<void> {
 }
 
 export const PT_LANGUAGE_OPTIONS = LANGUAGES.map(l => ({ value: l.code, label: `${l.name} — ${l.native}` }))
+
+// Applies the fields present in `b` to the site. The sending identity also
+// needs pt.site.manage.
+export async function ptUpdateSite(tx: Transaction<Database>, ctx: TenantContext, b: Record<string, unknown>) {
+  const site = await ptSite(tx)
+  const patch: Record<string, unknown> = {}
+
+  if (typeof b.name === 'string') {
+    const name = b.name.trim()
+    if (name.length < 2 || name.length > 80) ptBadRequest('Name must be 2–80 characters.')
+    if (containsBlockedWord(name)) ptBadRequest('Please choose another name.')
+    await tx.updateTable('orgs').set({ name, updated_at: new Date().toISOString() }).where('id', '=', ctx.orgId).execute()
+  }
+  if ('timezone' in b) {
+    if (!isValidTimezone(b.timezone)) ptBadRequest('Unknown timezone.')
+    patch.timezone = b.timezone
+  }
+  if ('languages' in b || 'default_language' in b) {
+    const languages = Array.isArray(b.languages) ? [...new Set(b.languages as string[])] : site.languages
+    const def = typeof b.default_language === 'string' ? b.default_language : site.default_language
+    if (!languages.length || languages.some(l => !isLanguage(l))) ptBadRequest('Choose at least one language.')
+    if (!languages.includes(def)) ptBadRequest('The default language must be one of the site languages.')
+    patch.languages = pgArray(languages)
+    patch.default_language = def
+  }
+  if ('branding' in b) patch.branding = jsonb(ptBranding(b.branding))
+  if ('email_identity' in b) {
+    ptNeed(ctx, 'pt.site.manage')
+    patch.email_identity = jsonb(ptIdentity(b.email_identity))
+  }
+  if ('settings' in b && b.settings && typeof b.settings === 'object') {
+    patch.settings = jsonb(settingsOverrides({ ...(site.settings as Record<string, unknown>), ...(b.settings as Record<string, unknown>) }))
+  }
+  if ('onboarding' in b && b.onboarding && typeof b.onboarding === 'object') {
+    const o = b.onboarding as Record<string, unknown>
+    patch.onboarding = jsonb({ step: typeof o.step === 'string' ? o.step.slice(0, 40) : undefined, completed: o.completed === true })
+  }
+  if (Object.keys(patch).length) {
+    await tx.updateTable('pt_site').set({ ...patch, updated_at: new Date() } as never).where('org_id', '=', ctx.orgId).execute()
+  }
+  return { ok: true }
+}
+
+// A new preview link for the site; only its hash is stored, so the previous
+// link stops working.
+export async function ptNewPreviewLink(tx: Transaction<Database>, ctx: Pick<TenantContext, 'orgId' | 'orgSlug'>): Promise<string> {
+  const token = randomToken(24)
+  await tx.updateTable('pt_site').set({ preview_token_hash: hashToken(token) }).where('org_id', '=', ctx.orgId).execute()
+  return `${subdomainUrl(ctx.orgSlug)}/preview/${token}`
+}
