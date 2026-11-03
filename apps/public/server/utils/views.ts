@@ -29,7 +29,7 @@ import { withDraftStrings, type LandingDraft } from './editor'
 const PRIVATE_PAGES = new Set(['manage', 'm', 'u', 'l', 'verify', 'add', 'notice', 'checkin'])
 const ARCHIVED_ALLOWED = new Set(['manage', 'm', 'u', 'l', 'verify', 'notice', 'embed'])
 export const NOTICE_KEYS = new Set([
-  'checkin_yes', 'checkin_sometimes', 'checkin_no', 'link_invalid', 'unsubscribed', 'unsubscribed_all', 'unsubscribed_all_emails', 'left_campaign', 'verify_invalid', 'deleted', 'not_found'
+  'checkin_yes', 'checkin_sometimes', 'checkin_no', 'link_invalid', 'unsubscribed', 'unsubscribed_all', 'unsubscribed_all_emails', 'left_campaign', 'verify_invalid', 'deleted', 'not_found', 'notify_confirmed'
 ])
 
 export function appAvailable(): boolean {

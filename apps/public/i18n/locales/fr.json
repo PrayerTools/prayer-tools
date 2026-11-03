@@ -231,7 +231,7 @@
     "notify_title": "Me prévenir lorsque cette campagne reprendra",
     "notify_intro": "Laissez votre adresse e-mail et {site} vous préviendra au début de la prochaine campagne.",
     "notify_button": "Me prévenir",
-    "notify_done": "Merci ! Nous vous préviendrons."
+    "notify_done": "Presque terminé ! Consultez vos e-mails et confirmez : nous vous préviendrons lorsqu'elle reprendra."
   },
   "archived": {
     "body": "Cette campagne est terminée. Merci à tous ceux qui ont prié.",
@@ -330,7 +330,8 @@
     "left_campaign": "Vous ne recevrez plus de rappels pour cette campagne. Vos autres temps de prière avec {site} continuent.",
     "verify_invalid": "Ce lien de confirmation n'est pas valide ou a expiré. Veuillez vous réinscrire.",
     "deleted": "Vos données ont été supprimées.",
-    "not_found": "Nous n'avons pas trouvé ce que vous cherchiez."
+    "not_found": "Nous n'avons pas trouvé ce que vous cherchiez.",
+    "notify_confirmed": "Merci ! Nous vous écrirons une fois lorsque cette campagne reprendra."
   },
   "notfound": {
     "title": "Page introuvable",

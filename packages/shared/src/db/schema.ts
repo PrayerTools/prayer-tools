@@ -498,6 +498,23 @@ export interface PtSignupRequestTable {
   created_at: Timestamp
 }
 
+// "Notify me when this campaign runs again". `token_hash` is the emailed
+// confirm link's, cleared once confirmed.
+export interface PtNotifyRequestTable {
+  id: Generated<string>
+  org_id: Generated<string>
+  contact_id: string
+  // The campaign the request was made on.
+  campaign_id: string
+  language: string
+  token_hash: string | null
+  created_at: Timestamp
+  confirmed_at: NullableTimestamp
+  notified_at: NullableTimestamp
+  // The run the person was told about.
+  notified_campaign_id: string | null
+}
+
 export interface PtEmailLogTable {
   id: Generated<string>
   org_id: Generated<string>
@@ -656,6 +673,7 @@ export interface PtTables {
   pt_reminder_sent: PtReminderSentTable
   pt_checkin: PtCheckinTable
   pt_signup_request: PtSignupRequestTable
+  pt_notify_request: PtNotifyRequestTable
   pt_email_log: PtEmailLogTable
   pt_prayer_session: PtPrayerSessionTable
   pt_person_total: PtPersonTotalTable

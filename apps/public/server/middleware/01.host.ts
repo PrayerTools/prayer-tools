@@ -10,7 +10,7 @@ import { useDb } from '../utils/db'
 import { NOT_FOUND_CACHE, PRIVATE_CACHE, limit, requestHost, setCache } from '../utils/request'
 import { buildSiteContext, resolveSiteCached } from '../utils/site-context'
 import { PREVIEW_COOKIE, previewCookieMatches } from '../utils/cookies'
-import { addTimesLink, checkinAnswer, exchangeManageLink, leaveCampaignPost, legacyFuel, legacyManage, previewLink, unsubscribePost, verifyLink } from '../utils/actions'
+import { addTimesLink, checkinAnswer, exchangeManageLink, leaveCampaignPost, legacyFuel, legacyManage, notifyLink, previewLink, unsubscribePost, verifyLink } from '../utils/actions'
 import { editorAccess } from '../utils/editor'
 import { setFrameHeaders } from '../utils/framing'
 import { claimHandoff, confirmEmailChange, continueToAdmin, continueToSite, exchangeSignInLink, signInFromSite, undoEmailChange } from '../utils/account-links'
@@ -163,6 +163,7 @@ export default defineEventHandler(async (event) => {
   if (first === 'm' && second && segs.length === 2) return await exchangeManageLink(event, ctx, second)
   if (first === 'verify' && second && segs.length === 2) return await verifyLink(event, ctx, second)
   if (first === 'add' && second && segs.length === 2) return await addTimesLink(event, ctx, second)
+  if (first === 'notify' && second && segs.length === 2) return await notifyLink(event, ctx, second)
   if (first === 'checkin' && second && third && segs.length === 3) return await checkinAnswer(event, ctx, second, third)
   if (first === 'subscriptions_app' && second === 'manage') return await legacyManage(event, ctx, third ?? '')
   if (segs.includes('fuel')) {

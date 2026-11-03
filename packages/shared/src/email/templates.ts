@@ -346,6 +346,50 @@ export function addTimesEmail(ctx: SiteMailContext, lang: string, d: { campaignN
   }
 }
 
+// Sent from the "notify me" form: the request counts only once confirmed.
+export function notifyConfirmEmail(ctx: SiteMailContext, lang: string, d: { campaignName: string, confirmUrl: string }): Rendered {
+  const vars = { site: ctx.siteName, campaign: d.campaignName }
+  const html = heading(emailT(lang, 'notify.heading'))
+    + paragraph(emailT(lang, 'notify.body', vars))
+    + button(ctx, d.confirmUrl, emailT(lang, 'notify.button'))
+    + `<p style="margin:0;font-size:13px;color:#71717a;">${escapeHtml(emailT(lang, 'notify.ignore'))}</p>`
+  const text = [
+    emailT(lang, 'notify.heading'),
+    emailT(lang, 'notify.body', vars),
+    `${emailT(lang, 'notify.button')}: ${d.confirmUrl}`,
+    emailT(lang, 'notify.ignore')
+  ].join('\n\n')
+  return {
+    subject: emailT(lang, 'notify.subject', vars),
+    html: layout(ctx, lang, html, { hideMy: true }),
+    text: text + footerText(ctx, lang, { hideMy: true })
+  }
+}
+
+// Sent once to a confirmed "notify me" request when the next run is published.
+export function runsAgainEmail(ctx: SiteMailContext, lang: string, d: { campaignName: string, startsOn: string | null, signupUrl: string }): Rendered {
+  const vars = { site: ctx.siteName, campaign: d.campaignName }
+  const starts = d.startsOn
+    ? emailT(lang, 'welcome.starts', { date: new Intl.DateTimeFormat(lang, { dateStyle: 'long', timeZone: 'UTC' }).format(new Date(`${d.startsOn}T00:00:00Z`)) })
+    : null
+  const footer = { hideMy: true, reason: emailT(lang, 'again.why', vars) }
+  const html = heading(emailT(lang, 'again.heading', vars))
+    + paragraph(emailT(lang, 'again.body', vars))
+    + (starts ? paragraph(starts) : '')
+    + button(ctx, d.signupUrl, emailT(lang, 'again.button'))
+  const text = [
+    emailT(lang, 'again.heading', vars),
+    emailT(lang, 'again.body', vars),
+    starts ?? '',
+    `${emailT(lang, 'again.button')}: ${d.signupUrl}`
+  ].filter(Boolean).join('\n\n')
+  return {
+    subject: emailT(lang, 'again.subject', vars),
+    html: layout(ctx, lang, html, footer),
+    text: text + footerText(ctx, lang, footer)
+  }
+}
+
 export function acknowledgementEmail(ctx: SiteMailContext, lang: string, kind: 'contact' | 'story'): Rendered {
   const vars = { site: ctx.siteName }
   const body = paragraph(emailT(lang, `${kind}.body`, vars))

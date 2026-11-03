@@ -5,6 +5,7 @@ import { sql } from 'kysely'
 import { forEachOrg } from '@prayertools/shared/db/scope'
 import { anonymizeSubscription } from '@prayertools/shared/subscriptions'
 import { deleteAccountIfUnused } from '@prayertools/shared/accounts'
+import { NOTIFY_CONFIRM_DAYS } from '@prayertools/shared/notify-requests'
 import type { WorkerContext } from '../context'
 import type { Logger } from '../log'
 import { DAY, groupBy } from '../util'
@@ -185,6 +186,13 @@ export async function purgeSignupRequests(ctx: WorkerContext): Promise<number> {
   return Number(res.numDeletedRows ?? 0)
 }
 
+// "Notify me" requests nobody confirmed in time.
+export async function purgeNotifyRequests(ctx: WorkerContext): Promise<number> {
+  const cutoff = new Date(ctx.now().getTime() - NOTIFY_CONFIRM_DAYS * DAY)
+  const res = await ctx.admin.deleteFrom('pt_notify_request').where('confirmed_at', 'is', null).where('created_at', '<', cutoff).executeTakeFirst()
+  return Number(res.numDeletedRows ?? 0)
+}
+
 export async function runRetention(ctx: WorkerContext, log: Logger): Promise<Record<string, number>> {
   const unsubscribed = await anonymizeUnsubscribed(ctx, log)
   const archived = await anonymizeArchivedSites(ctx, log)
@@ -195,6 +203,7 @@ export async function runRetention(ctx: WorkerContext, log: Logger): Promise<Rec
   const emails = await purgeEmailLog(ctx)
   const codes = await purgeAuthCodes(ctx)
   const requests = await purgeSignupRequests(ctx)
+  const notifyRequests = await purgeNotifyRequests(ctx)
   return {
     anonymized_unsubscribed: unsubscribed,
     anonymized_archived: archived,
@@ -207,6 +216,7 @@ export async function runRetention(ctx: WorkerContext, log: Logger): Promise<Rec
     email_log_deleted: emails,
     auth_codes_deleted: codes.codes,
     sessions_deleted: codes.sessions,
-    signup_requests_deleted: requests
+    signup_requests_deleted: requests,
+    notify_requests_deleted: notifyRequests
   }
 }

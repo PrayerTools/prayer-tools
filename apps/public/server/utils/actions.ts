@@ -10,6 +10,7 @@ import { recordEvent } from '@prayertools/shared/stats'
 import { sitePath } from '@prayertools/shared/paths'
 import { campaignStatus } from '@prayertools/shared/setup'
 import { campaignSegment } from '@prayertools/shared/campaigns'
+import { confirmNotify } from '@prayertools/shared/notify-requests'
 import { unsubscribeEverywhere } from '@prayertools/shared/unsubscribe-all'
 import type { CheckinResponse } from '@prayertools/shared/db/schema'
 import { useDb } from './db'
@@ -119,6 +120,12 @@ export async function addTimesLink(event: H3Event, ctx: SiteContext, token: stri
   background(event, deliver(result.welcome))
   const path = sitePath({ lang: sub.language, defaultLang: result.defaultLanguage, campaignSlug: result.slug, page: result.upcoming ? 'signup' : 'pray' })
   return sendRedirect(event, `${path}?confirmed=1`, 302)
+}
+
+// Confirm link from the "notify me" email: the request starts counting.
+export async function notifyLink(event: H3Event, ctx: SiteContext, token: string) {
+  const ok = await withOrg(useDb(), ctx.orgId, async tx => !!(await confirmNotify(tx, token)))
+  return sendRedirect(event, ok ? '/notice/notify_confirmed' : '/notice/link_invalid', 302)
 }
 
 const ANSWERS: CheckinResponse[] = ['yes', 'sometimes', 'no']

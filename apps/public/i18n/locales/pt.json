@@ -231,7 +231,7 @@
     "notify_title": "Avise-me quando esta campanha acontecer de novo",
     "notify_intro": "Deixe seu e-mail e {site} avisará você quando a próxima campanha começar.",
     "notify_button": "Avise-me",
-    "notify_done": "Obrigado! Vamos avisar você."
+    "notify_done": "Quase pronto! Verifique seu e-mail e confirme, e avisaremos quando ela acontecer de novo."
   },
   "archived": {
     "body": "Esta campanha foi encerrada. Obrigado a todos que oraram.",
@@ -330,7 +330,8 @@
     "left_campaign": "Você não receberá mais lembretes desta campanha. Seus outros horários de oração com {site} continuam.",
     "verify_invalid": "Este link de confirmação não é válido ou expirou. Inscreva-se novamente.",
     "deleted": "Seus dados foram excluídos.",
-    "not_found": "Não encontramos o que você estava procurando."
+    "not_found": "Não encontramos o que você estava procurando.",
+    "notify_confirmed": "Obrigado! Escreveremos uma vez quando esta campanha acontecer de novo."
   },
   "notfound": {
     "title": "Página não encontrada",
