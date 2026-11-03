@@ -4,6 +4,7 @@
 // topic, template and text.
 import { db } from '#core/server/utils/database'
 import { sql } from 'kysely'
+import { getTemplate } from '@prayertools/shared/setup'
 
 export default defineEventHandler(async (event) => {
   const user = await ptUser(event)
@@ -34,10 +35,12 @@ export default defineEventHandler(async (event) => {
   if (typeof q.q === 'string' && q.q.trim()) query = query.where(eb => eb.or([eb('title', 'ilike', `%${q.q}%`), eb('description', 'ilike', `%${q.q}%`)]))
   const rows = await query.orderBy('title').limit(200).execute()
   const template = typeof q.template === 'string' ? q.template : null
+  // Suggested: made for the template, or on one of its topics.
+  const topics = template ? getTemplate(template).topics : []
   const owners = await ptOwnerNames(rows.filter(r => shared.has(r.id)).map(r => r.owner_user_id!))
   const libraries = rows.map(r => ({
     ...r,
-    suggested: !!template && r.template_keys.includes(template),
+    suggested: !!template && (r.template_keys.includes(template) || r.topics.some(t => topics.includes(t))),
     mine: r.owner_user_id === user.userId,
     platform: r.owner_user_id === null,
     role: r.owner_user_id === user.userId ? 'owner' as const : (shared.get(r.id) ?? null),

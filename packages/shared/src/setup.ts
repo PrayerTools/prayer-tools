@@ -48,6 +48,8 @@ export interface CampaignTemplate {
   open: (keyof SetupAnswers)[]
   // Library topics suggested first in the catalog.
   topics: string[]
+  // Tied to a time of year: its libraries fit only campaigns from this template.
+  seasonal?: boolean
   // Landing sections shown by default (the rest start hidden).
   hiddenSections: string[]
   // Default end-of-campaign call to action kind.
@@ -68,6 +70,7 @@ export const TEMPLATES: readonly CampaignTemplate[] = [
     setup: { start_mode: 'date', end_mode: 'date', length_days: 30, cadence: 'daily' },
     open: ['start_date', 'goal', 'track_time'],
     topics: ['ramadan'],
+    seasonal: true,
     hiddenSections: [],
     cta: 'none'
   },

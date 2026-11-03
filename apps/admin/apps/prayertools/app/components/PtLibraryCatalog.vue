@@ -1,9 +1,10 @@
 <script setup lang="ts">
 // Library catalog, ranked by fit with the campaign: the template's libraries,
-// the site's languages and the campaign's length. Shows the best match first,
-// the template's other libraries next and "See more" for the rest; a series
+// the site's languages and how close its length is to the campaign's. Shows
+// the best match first, the template's other libraries next, then the rest; a series
 // shows its newest edition with the earlier ones a click away. Filters by
-// topic, language, cadence and text; preview entries before choosing. Emits
+// topic, language, cadence and text. The preview opens on the library's
+// details, then its entries day by day. Emits
 // the chosen library id.
 interface Library {
   id: string
@@ -13,10 +14,13 @@ interface Library {
   cadence: 'daily' | 'weekly'
   entry_count: number
   languages: string[]
+  source_language: string
   topics: string[]
+  template_keys: string[]
   series: string | null
   edition: string | null
   license: string
+  license_note: string | null
   credit: string | null
   suggested: boolean
   mine: boolean
@@ -43,7 +47,6 @@ const cadence = ref<string | undefined>(props.cadence)
 watch(() => props.cadence, (v) => {
   cadence.value = v
 })
-const seeMore = ref(false)
 const { data, status } = useFetch<{ libraries: Library[] }>('/api/pt/libraries', {
   query: computed(() => ({ template: props.template ?? undefined, cadence: cadence.value, q: q.value || undefined })),
   key: computed(() => `pt-catalog-${props.template}-${cadence.value}-${q.value}`)
@@ -60,9 +63,23 @@ function covers(lib: Library): boolean {
   return !props.length || lib.entry_count >= props.length
 }
 
+// 1 when the library is as long as the campaign, towards 0 the further off it is.
+function lengthFit(lib: Library): number {
+  if (!props.length) return 0
+  return 1 - Math.abs(lib.entry_count - props.length) / Math.max(lib.entry_count, props.length)
+}
+
+// Made for another time of year, e.g. a Ramadan guide outside a Ramadan
+// campaign: never the best match, and listed last.
+const seasonal = computed(() => new Set((meta.value?.templates ?? []).filter(t => t.seasonal).map(t => t.key)))
+function offSeason(lib: Library): boolean {
+  return !!props.template && !lib.suggested && lib.template_keys.some(k => seasonal.value.has(k))
+}
+
 function score(lib: Library): number {
+  if (offSeason(lib)) return -1
   const langs = props.siteLanguages.length ? 1 - missing(lib).length / props.siteLanguages.length : 1
-  return (lib.suggested ? 5 : 0) + langs * 2 + (props.length && covers(lib) ? 2 : 0)
+  return (lib.suggested ? 5 : 0) + langs * 2 + lengthFit(lib) * 2
 }
 
 const editionOrder = (a: Library, b: Library) => (b.edition ?? '').localeCompare(a.edition ?? '', undefined, { numeric: true })
@@ -86,23 +103,18 @@ const cards = computed<Card[]>(() => {
   return out.sort((a, b) => b.score - a.score || a.lib.title.localeCompare(b.lib.title))
 })
 
-// The best match, the template's other libraries, then the rest behind "See
-// more" when the best match is the template's. Filtering lists everything.
-const layout = computed(() => {
+// The best match, the template's other libraries, then the rest. Filtering
+// lists everything in one list.
+const groups = computed(() => {
   const all = cards.value
-  if (!props.template || filtering.value || all.length < 2) return { hidden: 0, groups: [{ title: null, best: false, cards: all }] }
-  const [best, ...rest] = all
-  const suggested = rest.filter(c => c.lib.suggested)
-  const others = rest.filter(c => !c.lib.suggested)
-  const hidden = best!.lib.suggested && !seeMore.value ? others.length : 0
-  return {
-    hidden,
-    groups: [
-      { title: 'Best match for this campaign', best: true, cards: [best!] },
-      { title: 'Also suggested', best: false, cards: suggested },
-      { title: 'More libraries', best: false, cards: hidden ? [] : others }
-    ].filter(g => g.cards.length)
-  }
+  if (!props.template || filtering.value || all.length < 2) return [{ title: null, best: false, cards: all }]
+  const best = offSeason(all[0]!.lib) ? null : all[0]!
+  const rest = all.filter(c => c !== best)
+  return [
+    { title: 'Best match for this campaign', best: true, cards: best ? [best] : [] },
+    { title: best ? 'Also suggested' : 'Suggested', best: false, cards: rest.filter(c => c.lib.suggested) },
+    { title: 'More libraries', best: false, cards: rest.filter(c => !c.lib.suggested) }
+  ].filter(g => g.cards.length)
 })
 
 // Why the best match fits, from what the campaign asks for.
@@ -110,7 +122,7 @@ function reason(lib: Library): string {
   const parts: string[] = []
   if (lib.suggested) parts.push('Made for this kind of campaign')
   if (props.siteLanguages.length > 1 && !missing(lib).length) parts.push('in all your languages')
-  if (props.length && covers(lib)) parts.push(`covers all ${props.length} ${ptUnit(lib.cadence)}s`)
+  if (props.length && lib.entry_count === props.length) parts.push(`${props.length} ${ptUnit(lib.cadence)}s like your campaign`)
   const text = parts.join(', ')
   return text ? `${text.charAt(0).toUpperCase()}${text.slice(1)}.` : ''
 }
@@ -125,7 +137,7 @@ function toggleEditions(card: Card) {
   expanded.value = next
 }
 
-const preview = reactive({ open: false, lib: null as Library | null, day: 1, lang: 'en', doc: null as Record<string, any> | null, loading: false })
+const preview = reactive({ open: false, lib: null as Library | null, tab: 'details', day: 1, lang: 'en', doc: null as Record<string, any> | null, loading: false })
 
 async function loadPreview() {
   if (!preview.lib) return
@@ -140,13 +152,18 @@ async function loadPreview() {
 
 function openPreview(lib: Library) {
   preview.lib = lib
+  preview.tab = 'details'
   preview.day = 1
+  preview.doc = null
   preview.lang = lib.languages.find(l => props.siteLanguages.includes(l)) ?? lib.languages[0] ?? 'en'
   preview.open = true
-  loadPreview()
 }
 
 const previewUnit = computed(() => preview.lib?.cadence === 'weekly' ? 'week' : 'day')
+function showDays() {
+  preview.tab = 'days'
+  if (!preview.doc) loadPreview()
+}
 function previewDay(delta: number) {
   preview.day += delta
   loadPreview()
@@ -215,7 +232,7 @@ function coverage(lib: Library): string {
       No libraries match. You can write your own content instead.
     </div>
     <div
-      v-for="group in layout.groups"
+      v-for="group in groups"
       :key="group.title ?? 'all'"
       class="space-y-2"
     >
@@ -282,9 +299,9 @@ function coverage(lib: Library): string {
               </p>
               <p
                 v-if="!covers(lib)"
-                class="text-xs text-(--ui-warning)"
+                class="text-xs text-(--ui-text-muted)"
               >
-                Covers {{ lib.entry_count }} of your campaign's {{ length }} {{ ptUnit(lib.cadence) }}s
+                Your campaign has {{ length }} {{ ptUnit(lib.cadence) }}s
               </p>
               <p
                 v-if="missing(lib).length"
@@ -332,14 +349,6 @@ function coverage(lib: Library): string {
         </div>
       </UCard>
     </div>
-    <UButton
-      v-if="layout.hidden"
-      variant="soft"
-      color="neutral"
-      trailing-icon="i-lucide-chevron-down"
-      :label="`See more (${layout.hidden})`"
-      @click="seeMore = true"
-    />
 
     <UModal
       v-model:open="preview.open"
@@ -348,7 +357,17 @@ function coverage(lib: Library): string {
     >
       <template #body>
         <div class="space-y-3">
-          <div class="flex gap-2 items-center">
+          <UTabs
+            :model-value="preview.tab"
+            :items="[{ label: 'Details', value: 'details', icon: 'i-lucide-info' }, { label: 'Prayers', value: 'days', icon: 'i-lucide-book-open' }]"
+            :content="false"
+            variant="link"
+            @update:model-value="(v) => v === 'days' ? showDays() : preview.tab = 'details'"
+          />
+          <div
+            v-if="preview.tab === 'days'"
+            class="flex gap-2 items-center"
+          >
             <UButton
               icon="i-lucide-chevron-left"
               color="neutral"
@@ -376,7 +395,119 @@ function coverage(lib: Library): string {
             />
           </div>
           <div
-            v-if="preview.loading"
+            v-if="preview.tab === 'details' && preview.lib"
+            class="space-y-5"
+          >
+            <p
+              v-if="preview.lib.description"
+              class="whitespace-pre-line"
+            >
+              {{ preview.lib.description }}
+            </p>
+            <dl class="grid sm:grid-cols-[9rem_1fr] gap-x-4 gap-y-1 sm:gap-y-4 text-sm">
+              <dt class="font-medium text-(--ui-text-muted)">
+                Length
+              </dt>
+              <dd class="mb-3 sm:mb-0">
+                {{ preview.lib.entry_count }} {{ previewUnit }}s, a new entry every {{ previewUnit }}
+                <p
+                  v-if="!covers(preview.lib)"
+                  class="text-(--ui-text-muted)"
+                >
+                  Your campaign has {{ length }} {{ previewUnit }}s.
+                </p>
+              </dd>
+              <dt class="font-medium text-(--ui-text-muted)">
+                Languages
+              </dt>
+              <dd class="mb-3 sm:mb-0 space-y-1.5">
+                <div class="flex flex-wrap gap-1.5">
+                  <UBadge
+                    v-for="l in preview.lib.languages"
+                    :key="l"
+                    :label="l === preview.lib.source_language ? `${languageName(meta, l)} (original)` : languageName(meta, l)"
+                    :icon="siteLanguages.includes(l) ? 'i-lucide-check' : undefined"
+                    :color="siteLanguages.includes(l) ? 'success' : 'neutral'"
+                    variant="subtle"
+                  />
+                </div>
+                <p
+                  v-if="missing(preview.lib).length"
+                  class="text-(--ui-warning)"
+                >
+                  Not yet in {{ missing(preview.lib).map(l => languageName(meta, l)).join(', ') }}.
+                </p>
+              </dd>
+              <template v-if="preview.lib.series">
+                <dt class="font-medium text-(--ui-text-muted)">
+                  Series
+                </dt>
+                <dd class="mb-3 sm:mb-0">
+                  {{ preview.lib.series }}<template v-if="preview.lib.edition">
+                    · {{ preview.lib.edition }} edition
+                  </template>
+                </dd>
+              </template>
+              <template v-if="preview.lib.topics.length">
+                <dt class="font-medium text-(--ui-text-muted)">
+                  Topics
+                </dt>
+                <dd class="mb-3 sm:mb-0 flex flex-wrap gap-1.5">
+                  <UBadge
+                    v-for="t in preview.lib.topics"
+                    :key="t"
+                    :label="t"
+                    color="neutral"
+                    variant="outline"
+                  />
+                </dd>
+              </template>
+              <template v-if="preview.lib.credit">
+                <dt class="font-medium text-(--ui-text-muted)">
+                  By
+                </dt>
+                <dd class="mb-3 sm:mb-0">
+                  {{ preview.lib.credit }}
+                </dd>
+              </template>
+              <dt class="font-medium text-(--ui-text-muted)">
+                License
+              </dt>
+              <dd>
+                {{ PT_LABELS.license[preview.lib.license] ?? preview.lib.license }}
+                <p
+                  v-if="preview.lib.license_note"
+                  class="text-xs text-(--ui-text-muted) mt-1"
+                >
+                  {{ preview.lib.license_note }}
+                </p>
+              </dd>
+            </dl>
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <UButton
+                label="Read the prayers"
+                trailing-icon="i-lucide-arrow-right"
+                variant="soft"
+                @click="showDays"
+              />
+              <UButton
+                v-if="!usedIds.includes(preview.lib.id)"
+                icon="i-lucide-plus"
+                label="Use"
+                @click="emit('use', preview.lib.id); preview.open = false"
+              />
+              <UBadge
+                v-else
+                color="success"
+                variant="subtle"
+                icon="i-lucide-check"
+                label="In use"
+                size="lg"
+              />
+            </div>
+          </div>
+          <div
+            v-else-if="preview.loading"
             class="text-sm text-(--ui-text-muted)"
           >
             Loading…

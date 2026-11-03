@@ -69,9 +69,11 @@ async function saveLength(length: number | null | undefined) {
 }
 const writeUrl = computed(() => `/site/content?campaign=${props.campaign.id}`)
 const hasOwn = computed(() => (content.value?.libraries ?? []).some(l => !l.libraryId))
-const source = ref<'existing' | 'own'>('existing')
-watch(hasOwn, (own) => {
-  if (own) source.value = 'own'
+// Writing one's own comes first; a campaign that already uses a library opens on the catalog.
+const hasLibrary = computed(() => (content.value?.libraries ?? []).some(l => l.libraryId))
+const source = ref<'existing' | 'own'>('own')
+watch([hasOwn, hasLibrary], ([own, library]) => {
+  if (library && !own) source.value = 'existing'
 }, { immediate: true })
 async function save(): Promise<boolean> {
   if (source.value !== 'own' || hasOwn.value) return true
@@ -164,8 +166,8 @@ defineExpose({ save })
       <URadioGroup
         v-model="source"
         :items="[
-          { label: 'Choose from existing content', description: 'Use a prayer guide from the library.', value: 'existing' },
-          { label: 'Write my own content', description: 'Write the entries yourself.', value: 'own' }
+          { label: 'Write my own content', description: 'Write the entries yourself.', value: 'own' },
+          { label: 'Choose from existing content', description: 'Use a prayer guide from the library.', value: 'existing' }
         ]"
         orientation="horizontal"
         variant="card"
