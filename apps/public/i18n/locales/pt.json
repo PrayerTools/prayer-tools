@@ -412,7 +412,8 @@
   "account": {
     "menu": "Menu da conta",
     "site_times": "Horários de oração neste site",
-    "my_account": "Minha conta"
+    "my_account": "Minha conta",
+    "manage_campaign": "Gerenciar esta campanha"
   },
   "home": {
     "title": "Campanhas de oração pelos lugares e povos que importam para você",

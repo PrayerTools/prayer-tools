@@ -1,6 +1,7 @@
 // What this browser's sign-in and manage cookie say about the visitor on this
 // site (share link code, signup and story form prefill, and the campaigns
-// their active subscription has prayer times in). Private; never cached.
+// their active subscription has prayer times in, and whether they are on the
+// site's team). Private; never cached.
 import { withOrg } from '@prayertools/shared/db/scope'
 import { primaryEmailOf } from '@prayertools/shared/crm'
 import { useDb } from '../utils/db'
@@ -13,15 +14,16 @@ export default defineEventHandler(async (event) => {
   const ctx = siteContext(event)
   const account = await sessionAccount(event)
   const signedIn = account?.email ? { email: account.email, name: account.display_name || null, avatar: account.avatar || null } : null
-  if (!account && !readManageCookie(event, ctx.orgId)) return { referral_code: null, email: null, name: null, account: null, campaigns: [] }
+  if (!account && !readManageCookie(event, ctx.orgId)) return { referral_code: null, email: null, name: null, account: null, campaigns: [], admin: false }
+  const admin = !!account && !!(await useDb().selectFrom('memberships').select('user_id').where('user_id', '=', account.id).where('org_id', '=', ctx.orgId).executeTakeFirst())
   return await withOrg(useDb(), ctx.orgId, async (tx) => {
     const sub = await managedSubscription(tx, event, ctx.orgId)
-    if (!sub) return { referral_code: null, email: signedIn?.email ?? null, name: signedIn?.name ?? null, account: signedIn, campaigns: [] }
+    if (!sub) return { referral_code: null, email: signedIn?.email ?? null, name: signedIn?.name ?? null, account: signedIn, campaigns: [], admin }
     const email = sub.contact_id ? await primaryEmailOf(tx, sub.contact_id) : null
     const contact = sub.contact_id ? await tx.selectFrom('crm_records').select('name').where('id', '=', sub.contact_id).executeTakeFirst() : null
     const campaigns = sub.status === 'active'
       ? (await tx.selectFrom('pt_commitment').select('campaign_id').distinct().where('subscription_id', '=', sub.id).execute()).map(r => r.campaign_id)
       : []
-    return { referral_code: sub.referral_code, email: email?.email ?? null, name: contact?.name ?? null, account: signedIn, campaigns }
+    return { referral_code: sub.referral_code, email: email?.email ?? null, name: contact?.name ?? null, account: signedIn, campaigns, admin }
   })
 })

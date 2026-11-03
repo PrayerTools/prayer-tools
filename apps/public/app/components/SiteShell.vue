@@ -34,10 +34,15 @@ const me = ref<Me | null>(null)
 const meReady = ref(false)
 const showAccount = computed(() => props.page !== 'embed' && !site.value.editor)
 const signInHref = computed(() => `/account/sign-in?return=${encodeURIComponent(route.fullPath.split('#')[0]!)}`)
+const adminHref = computed(() => {
+  const path = `/@${site.value.slug}/site${site.value.campaign ? `/campaigns/${site.value.campaign.id}` : ''}`
+  return `${site.value.myUrl}/admin?to=${encodeURIComponent(path)}`
+})
 const accountItems = computed(() => [
   [
     { label: t('account.site_times'), icon: 'i-lucide-calendar-clock', to: link('manage', [], { current: true }) },
-    { label: t('account.my_account'), icon: 'i-lucide-user', to: site.value.myUrl, external: true }
+    { label: t('account.my_account'), icon: 'i-lucide-user', to: site.value.myUrl, external: true },
+    ...(me.value?.admin ? [{ label: t('account.manage_campaign'), icon: 'i-lucide-settings', to: adminHref.value, external: true }] : [])
   ],
   [{ label: t('my.sign_out'), icon: 'i-lucide-log-out', onSelect: signOut }]
 ])

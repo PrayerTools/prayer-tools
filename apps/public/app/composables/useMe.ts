@@ -7,6 +7,8 @@ export interface Me {
   account: { email: string, name: string | null, avatar: string | null } | null
   // Campaigns the visitor's active subscription here has prayer times in.
   campaigns: string[]
+  // On the site's team, so the admin app opens for it.
+  admin: boolean
 }
 
 let pending: { path: string, promise: Promise<Me | null> } | null = null

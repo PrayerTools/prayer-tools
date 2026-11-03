@@ -415,7 +415,8 @@
   "account": {
     "menu": "Account menu",
     "site_times": "Prayer times on this site",
-    "my_account": "My account"
+    "my_account": "My account",
+    "manage_campaign": "Manage this campaign"
   },
   "home": {
     "title": "Discipleship Through Prayer",

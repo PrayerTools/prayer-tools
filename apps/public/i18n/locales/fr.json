@@ -412,7 +412,8 @@
   "account": {
     "menu": "Menu du compte",
     "site_times": "Moments de prière sur ce site",
-    "my_account": "Mon compte"
+    "my_account": "Mon compte",
+    "manage_campaign": "Gérer cette campagne"
   },
   "home": {
     "title": "Des campagnes de prière pour les lieux et les peuples qui vous tiennent à cœur",
