@@ -3,7 +3,7 @@ const props = defineProps<{ noticeKey: string }>()
 const { site, link } = useSite()
 const { t } = useI18n()
 useHead({ title: () => site.value.name })
-const icon = computed(() => props.noticeKey.startsWith('checkin_') || props.noticeKey === 'unsubscribed' || props.noticeKey === 'left_campaign' || props.noticeKey === 'deleted' ? 'i-lucide-check-circle' : 'i-lucide-info')
+const icon = computed(() => props.noticeKey.startsWith('checkin_') || props.noticeKey === 'unsubscribed' || props.noticeKey.startsWith('unsubscribed_all') || props.noticeKey === 'left_campaign' || props.noticeKey === 'deleted' ? 'i-lucide-check-circle' : 'i-lucide-info')
 </script>
 
 <template>

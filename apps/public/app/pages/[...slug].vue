@@ -65,7 +65,7 @@ useHead(() => {
         <LazyViewsStoriesView v-else-if="view.page.kind === 'stories'" />
         <LazyViewsManageView v-else-if="view.page.kind === 'manage'" :manage="view.page.manage" :signed-in-as="view.page.signedInAs" />
         <LazyViewsLinkExpiredView v-else-if="view.page.kind === 'link_expired'" :token="view.page.token" />
-        <LazyViewsUnsubscribeView v-else-if="view.page.kind === 'unsubscribe'" :token="view.page.token" :valid="view.page.valid" />
+        <LazyViewsUnsubscribeView v-else-if="view.page.kind === 'unsubscribe'" :token="view.page.token" :valid="view.page.valid" :account="view.page.account" />
         <LazyViewsLeaveView v-else-if="view.page.kind === 'leave'" :token="view.page.token" :campaign="view.page.campaign" />
         <LazyViewsNoticeView v-else-if="view.page.kind === 'notice'" :notice-key="view.page.key" />
         <LazyViewsNotFoundView v-else />

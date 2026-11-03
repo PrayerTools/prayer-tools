@@ -12,6 +12,7 @@ const email = ref('')
 const sent = ref(false)
 const busy = ref(false)
 const confirmDelete = ref(false)
+const stopping = ref<'reminders' | 'all' | null>(null)
 const leaveOpen = ref(false)
 const leaving = ref<{ site: MySiteView, id: string, name: string } | null>(null)
 const tzItems = timezones()
@@ -113,6 +114,32 @@ async function deleteAll() {
   try {
     const res = await $fetch<{ account_deleted: boolean }>('/api/my/delete', { method: 'POST' })
     await navigateTo(`/my?notice=${res.account_deleted ? 'deleted' : 'deleted_kept'}`, { external: true })
+  } finally {
+    busy.value = false
+  }
+}
+
+async function setNews(grant: boolean) {
+  busy.value = true
+  try {
+    await $fetch('/api/my/news', { method: 'POST', body: { grant } })
+    toast.add({ title: t('manage.saved'), color: 'success', icon: 'i-lucide-check' })
+    await refreshNuxtData(`view:${route.path}`)
+  } catch {
+    toast.add({ title: t('errors.generic'), color: 'error' })
+  } finally {
+    busy.value = false
+  }
+}
+
+async function stopAll() {
+  busy.value = true
+  try {
+    const emails = stopping.value === 'all'
+    await $fetch('/api/my/stop-all', { method: 'POST', body: { emails } })
+    await navigateTo(`/my?notice=${emails ? 'stopped_all' : 'stopped_reminders'}`, { external: true })
+  } catch {
+    toast.add({ title: t('errors.generic'), color: 'error' })
   } finally {
     busy.value = false
   }
@@ -252,11 +279,6 @@ function languageItems(s: MySiteView) {
             </UFormField>
           </div>
 
-          <div class="space-y-2">
-            <USwitch :model-value="s.siteUpdates" :label="t('consent.site_updates', { site: s.name })" @update:model-value="v => call(s, 'consent', 'POST', { purpose: 'site_updates', grant: !!v })" />
-            <USwitch v-for="c in s.customConsents" :key="c.key" :model-value="c.granted" :label="c.label" @update:model-value="v => call(s, 'consent', 'POST', { purpose: c.key, grant: !!v })" />
-          </div>
-
           <div class="flex flex-wrap gap-2">
             <UButton v-if="s.status !== 'unsubscribed'" size="sm" variant="outline" color="neutral" icon="i-lucide-bell-off" :label="t('manage.unsubscribe')" @click="call(s, 'status', 'POST', { status: 'unsubscribed' })" />
             <UButton v-else size="sm" variant="outline" icon="i-lucide-bell" :label="t('manage.resubscribe')" @click="call(s, 'status', 'POST', { status: 'active' })" />
@@ -269,6 +291,28 @@ function languageItems(s: MySiteView) {
             </ul>
           </section>
         </article>
+
+        <section class="space-y-3" aria-labelledby="my-emails">
+          <h2 id="my-emails" class="text-xl font-bold">{{ t('my.emails_title') }}</h2>
+          <div class="rounded-2xl bg-white border border-stone-200 p-6 space-y-2">
+            <USwitch :model-value="my.news" :label="t('consent.platform_news')" @update:model-value="v => setNews(!!v)" />
+            <template v-for="s in my.sites" :key="s.subscriptionId">
+              <USwitch :model-value="s.siteUpdates" :label="t('consent.site_updates', { site: s.name })" @update:model-value="v => call(s, 'consent', 'POST', { purpose: 'site_updates', grant: !!v })" />
+              <USwitch v-for="c in s.customConsents" :key="c.key" :model-value="c.granted" :label="`${s.name}: ${c.label}`" @update:model-value="v => call(s, 'consent', 'POST', { purpose: c.key, grant: !!v })" />
+            </template>
+          </div>
+        </section>
+
+        <div v-if="my.sites.length" class="flex flex-wrap gap-2">
+          <UButton variant="outline" color="neutral" icon="i-lucide-bell-off" :label="t('my.stop_reminders')" @click="stopping = 'reminders'" />
+          <UButton variant="outline" color="neutral" icon="i-lucide-mail-x" :label="t('my.stop_all')" @click="stopping = 'all'" />
+        </div>
+        <UModal :open="!!stopping" :title="t(stopping === 'all' ? 'my.stop_all_title' : 'my.stop_reminders_title')" :description="t(stopping === 'all' ? 'my.stop_all_body' : 'my.stop_reminders_body')" @update:open="v => { if (!v) stopping = null }">
+          <template #footer>
+            <UButton color="error" :loading="busy" :label="t(stopping === 'all' ? 'my.stop_all' : 'my.stop_reminders')" @click="stopAll" />
+            <UButton variant="ghost" color="neutral" :label="t('common.cancel')" @click="stopping = null" />
+          </template>
+        </UModal>
 
         <section class="space-y-3 border-t border-stone-200 pt-6" aria-labelledby="my-data">
           <h2 id="my-data" class="text-xl font-semibold">{{ t('manage.your_data') }}</h2>

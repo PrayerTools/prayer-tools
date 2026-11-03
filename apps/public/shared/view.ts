@@ -222,6 +222,8 @@ export interface MyManagedSiteView {
 export interface MyView {
   signedIn: boolean
   account: { name: string, email: string | null, avatar: string | null } | null
+  // News from Prayer.Tools.
+  news: boolean
   sites: MySiteView[]
   managing: MyManagedSiteView[]
   createUrl: string | null
@@ -240,7 +242,7 @@ export type PageView =
   | { kind: 'stories' }
   | { kind: 'manage', manage: ManageView | null, signedInAs: string | null }
   | { kind: 'link_expired', token: string }
-  | { kind: 'unsubscribe', token: string, valid: boolean }
+  | { kind: 'unsubscribe', token: string, valid: boolean, account: boolean }
   // `campaign` is null when the link is not valid.
   | { kind: 'leave', token: string, campaign: string | null }
   | { kind: 'notice', key: string }
