@@ -32,6 +32,9 @@ export default definePtHandler('pt.content.translate', async (event, tx, ctx) =>
   if (b.field === 'description') {
     guard(description)
     await writeCampaign({ description: setText(description, lang, String(b.value ?? '')) })
+  } else if (b.field === 'subtitle') {
+    guard(landing.subtitle)
+    await writeCampaign({ landing: { ...landing, subtitle: setText(landing.subtitle, lang, String(b.value ?? '')) } })
   } else if (b.field === 'share') {
     guard(share.messages)
     await writeCampaign({ share: { ...share, messages: setText(share.messages, lang, String(b.value ?? '')) } })

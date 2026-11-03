@@ -98,7 +98,7 @@ export function ptLanding(input: unknown): CampaignLanding {
       button_url: url(raw.button_url)
     }) as LandingCustomSection)
   }
-  return clean({ why, hidden, custom, stories: typeof l.stories === 'boolean' ? l.stories : undefined, story_ids: parseStoryIds(l.story_ids) })
+  return clean({ subtitle: parseText(l.subtitle) ?? undefined, why, hidden, custom, stories: typeof l.stories === 'boolean' ? l.stories : undefined, story_ids: parseStoryIds(l.story_ids) })
 }
 
 export function ptShare(input: unknown): CampaignShare {

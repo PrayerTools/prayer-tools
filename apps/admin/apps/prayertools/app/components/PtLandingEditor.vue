@@ -67,6 +67,7 @@ const hidden = ref<string[]>([])
 const stories = ref(true)
 const storyIds = ref<string[] | undefined>()
 const custom = ref<CustomSection[]>([])
+const subtitle = ref<TranslatableText | null>(null)
 const description = ref<TranslatableText | null>(null)
 const openIds = ref<string[]>([])
 watch(source, (src) => {
@@ -77,6 +78,7 @@ watch(source, (src) => {
   stories.value = src.landing.stories !== false
   storyIds.value = src.landing.story_ids ? [...src.landing.story_ids] : undefined
   custom.value = JSON.parse(JSON.stringify(src.landing.custom ?? []))
+  subtitle.value = src.landing.subtitle ?? null
   description.value = src.description
   openIds.value = custom.value.filter(c => !c.heading.values[s.site.default_language]).map(c => c.id)
 }, { immediate: true })
@@ -283,7 +285,7 @@ async function uploadVideo(e: Event) {
   }
 }
 
-const draft = computed(() => ({ landing: { why: why.value, hidden: hidden.value, stories: stories.value, story_ids: storyIds.value, custom: custom.value }, description: description.value, branding: hero.value, brand: brand.value, strings: wording.value[lang.value] ?? {} }))
+const draft = computed(() => ({ landing: { subtitle: subtitle.value, why: why.value, hidden: hidden.value, stories: stories.value, story_ids: storyIds.value, custom: custom.value }, description: description.value, branding: hero.value, brand: brand.value, strings: wording.value[lang.value] ?? {} }))
 const preview = ref<{ focus: (section: string, id?: string) => void }>()
 
 // The selected section ('why', or 'custom-<id>' for one custom section) stays
@@ -312,7 +314,7 @@ async function save() {
       toast.ok('Translation saved')
       return
     }
-    const landing = { why: why.value, hidden: hidden.value, stories: stories.value, story_ids: storyIds.value, custom: custom.value }
+    const landing = { subtitle: subtitle.value, why: why.value, hidden: hidden.value, stories: stories.value, story_ids: storyIds.value, custom: custom.value }
     await $fetch(`/api/pt/campaigns/${props.campaignId}`, { method: 'PATCH', body: { landing, branding: hero.value, description: description.value } })
     if (brandDirty.value) await $fetch('/api/pt/site', { method: 'PATCH', body: { branding: brand.value } })
     await saveWording()
@@ -330,6 +332,7 @@ async function save() {
 async function saveTranslation() {
   const l = lang.value
   const put = (body: Record<string, unknown>) => $fetch('/api/pt/site/translation', { method: 'PUT', body: { lang: l, campaignId: props.campaignId, ...body } })
+  if (subtitle.value?.values[l] !== undefined) await put({ field: 'subtitle', value: subtitle.value.values[l] })
   if (description.value?.values[l] !== undefined) await put({ field: 'description', value: description.value.values[l] })
   if (why.value[l]) await put({ field: 'why', value: why.value[l] })
   for (const s of custom.value) {
@@ -539,11 +542,20 @@ async function translateWhy() {
                   </template>
                 </template>
                 <PtTranslatableInput
+                  v-model="subtitle"
+                  :languages="site.site.languages"
+                  :default-language="site.site.default_language"
+                  label="Subtitle"
+                  help="Optional. A sentence shown under the heading at the top of the page."
+                  multiline
+                  :source-locked="!canWrite"
+                />
+                <PtTranslatableInput
                   v-model="description"
                   :languages="site.site.languages"
                   :default-language="site.site.default_language"
-                  label="Short description"
-                  :help="side ? 'Shown under the site name on this campaign\'s page, and used in its link previews.' : 'Shown under the site name, and used in link previews and the Prayer.Tools directory while this campaign is on the site\'s address.'"
+                  label="Search and link-preview description"
+                  :help="side ? 'Not shown on the page. Search engines and shared links show it for this campaign\'s page.' : 'Not shown on the page. Search engines, shared links and the Prayer.Tools directory show it while this campaign is on the site\'s address.'"
                   multiline
                   :source-locked="!canWrite"
                 />

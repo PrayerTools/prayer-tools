@@ -90,7 +90,7 @@ async function site(seed: SiteSeed, libraryId: string) {
       place_name: seed.place, latitude: 33.5, longitude: 36.3,
       description: jsonb(makeText('en', `Join us in praying for ${seed.place}.`)),
       published_at: new Date(),
-      landing: jsonb({ why: { en: textDoc(`Why pray for ${seed.place}? Because every person matters to God.`) } })
+      landing: jsonb({ subtitle: makeText('en', `Join us in praying for ${seed.place}.`), why: { en: textDoc(`Why pray for ${seed.place}? Because every person matters to God.`) } })
     }).returning('id').executeTakeFirstOrThrow()
     const sl = await tx.insertInto('pt_site_library').values({ library_id: libraryId, title: 'Ramadan 30 days (sample)', cadence: 'daily' }).returning('id').executeTakeFirstOrThrow()
     await tx.insertInto('pt_campaign_library').values({ campaign_id: campaign.id, site_library_id: sl.id, position: 0 }).execute()

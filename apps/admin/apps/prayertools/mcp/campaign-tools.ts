@@ -145,7 +145,7 @@ const updateCampaignTool = defineMcpTool({
     language: langInput,
     ...setupFields,
     ...detailFields,
-    description: z.string().max(2000).nullable().optional().describe('Short description on the landing page.'),
+    description: z.string().max(2000).nullable().optional().describe('Description for search engines, link previews and the Prayer.Tools directory; not shown on the page.'),
     share_messages: z.string().max(4000).optional().describe('Suggested messages people share to invite others, one per paragraph.'),
     end_message: z.string().max(4000).nullable().optional().describe('Shown when the campaign has ended.'),
     cta: z.object({ url: z.string().url(), label: z.string().min(1).max(120) }).strict().nullable().optional().describe('Call to action shown after the campaign; null removes it.'),
@@ -173,7 +173,7 @@ const updateCampaignTool = defineMcpTool({
 const getLandingTool = defineMcpTool({
   name: 'get_landing_page',
   title: 'Get Landing Page',
-  description: 'A campaign\'s landing page in one language: the "why pray" text, the custom sections, which standard sections are hidden, and whether stories show.',
+  description: 'A campaign\'s landing page in one language: the subtitle under the heading, the "why pray" text, the custom sections, which standard sections are hidden, and whether stories show.',
   appId: SITE_APP,
   scope: 'pt.site.read',
   readOnly: true,
@@ -201,6 +201,7 @@ const getLandingTool = defineMcpTool({
     const inexact = (why && !why.exact) || custom.some(s => !s.exact)
     return result(`Landing page of ${c.name}${inexact ? `. ${INEXACT_NOTE}` : '.'}`, {
       language: lang,
+      subtitle: landing.subtitle ? textIn(landing.subtitle, lang) : null,
       why: why ? { blocks: why.blocks, exact: why.exact } : null,
       whyUsesTemplateText: !landing.why?.[lang],
       custom,
@@ -225,13 +226,14 @@ const sectionInput = z.object({
 const updateLandingTool = defineMcpTool({
   name: 'update_landing_page',
   title: 'Update Landing Page',
-  description: 'Change a campaign\'s landing page in one language. `why` replaces the "why pray" text (null goes back to the template\'s standard text). `custom` replaces the whole list of custom sections, in order: keep a section by passing its id, drop it by leaving it out. `hidden` lists standard sections to hide. Fields you leave out stay as they are.',
+  description: 'Change a campaign\'s landing page in one language. `subtitle` is the sentence under the heading (null removes it in every language). `why` replaces the "why pray" text (null goes back to the template\'s standard text). `custom` replaces the whole list of custom sections, in order: keep a section by passing its id, drop it by leaving it out. `hidden` lists standard sections to hide. Fields you leave out stay as they are.',
   appId: SITE_APP,
   scope: 'pt.site.write',
   input: z.object({
     org: orgInput,
     campaign: idInput('Campaign id from get_site_overview.'),
     language: langInput,
+    subtitle: z.string().max(500).nullable().optional().describe('Sentence shown under the heading at the top of the page.'),
     why: blocksInput.nullable().optional(),
     custom: z.array(sectionInput).max(12).optional(),
     hidden: z.array(z.enum(HIDEABLE_SECTIONS as unknown as [string, ...string[]])).optional(),
@@ -243,6 +245,7 @@ const updateLandingTool = defineMcpTool({
     if (!c) throw createError({ statusCode: 404, statusMessage: 'Campaign not found.' })
     const userId = ctx.auth.userId
     const landing = { ...((c.landing ?? {}) as CampaignLanding) }
+    if (input.subtitle !== undefined) landing.subtitle = input.subtitle === null ? undefined : withText(landing.subtitle, lang, input.subtitle)
     if (input.why !== undefined) {
       const why = Object.fromEntries(Object.entries(landing.why ?? {}).filter(([l]) => l !== lang))
       if (input.why !== null) why[lang] = await blocksDoc(userId, lang, input.why)
@@ -271,7 +274,7 @@ const updateLandingTool = defineMcpTool({
     if (input.hidden) landing.hidden = input.hidden
     if (input.stories !== undefined) landing.stories = input.stories
     await ptUpdateCampaign(tx, tenant, c.id, { landing })
-    await audit(ctx, tx, 'UPDATE', 'pt_campaign', c.id, { landing: Object.keys(input).filter(k => ['why', 'custom', 'hidden', 'stories'].includes(k)) })
+    await audit(ctx, tx, 'UPDATE', 'pt_campaign', c.id, { landing: Object.keys(input).filter(k => ['subtitle', 'why', 'custom', 'hidden', 'stories'].includes(k)) })
     return result('Landing page updated.', { ok: true, adminUrl: adminLink(tenant.orgSlug, '/site/landing') })
   }))
 })
