@@ -138,7 +138,7 @@ const updateCampaignTool = defineMcpTool({
   title: 'Update Campaign',
   description: 'Change a campaign\'s setup, name, place, goal target, description, share messages, end-of-campaign message, call to action or hero image. Only the fields you pass change; texts are written in `language` and mark the site\'s other languages out of date when it is the default language. Existing prayer commitments keep their times.',
   appId: SITE_APP,
-  scope: 'pt.campaigns.write',
+  scope: 'pt.messages.write',
   input: z.object({
     org: orgInput,
     campaign: idInput('Campaign id from get_site_overview.'),
@@ -152,7 +152,7 @@ const updateCampaignTool = defineMcpTool({
     hero_image: imageInput.nullable().optional().describe('The landing page\'s hero image; null removes it.'),
     share_image_url: z.string().url().nullable().optional().describe('Link-preview image.')
   }).strict(),
-  handler: (input, ctx) => run(() => inSite(ctx, input.org, 'pt.campaigns.write', async (tx, tenant) => {
+  handler: (input, ctx) => run(() => inSite(ctx, input.org, 'pt.messages.write', async (tx, tenant) => {
     const { lang } = await siteLanguage(tx, input.language)
     const c = await campaignById(ptTx(tx), input.campaign, { drafts: true })
     if (!c) throw createError({ statusCode: 404, statusMessage: 'Campaign not found.' })
