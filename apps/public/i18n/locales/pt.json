@@ -1,4 +1,5 @@
 {
+  "theme": { "light": "Mudar para o tema claro", "dark": "Mudar para o tema escuro" },
   "a11y": {
     "skip": "Pular para o conteúdo"
   },
@@ -225,10 +226,12 @@
     "thanks": "Obrigado por orar",
     "results": "Resultados finais",
     "cta_default": "Continuar",
+    "keep_praying": "Continue orando com {campaign}",
+    "still_praying": "Você continua orando com {campaign}.",
     "notify_title": "Avise-me quando esta campanha acontecer de novo",
     "notify_intro": "Deixe seu e-mail e {site} avisará você quando a próxima campanha começar.",
     "notify_button": "Avise-me",
-    "notify_done": "Obrigado! Vamos avisar você."
+    "notify_done": "Quase pronto! Verifique seu e-mail e confirme, e avisaremos quando ela acontecer de novo."
   },
   "archived": {
     "body": "Esta campanha foi encerrada. Obrigado a todos que oraram.",
@@ -286,6 +289,10 @@
     "download": "Baixar meus dados",
     "unsubscribe": "Parar todos os lembretes",
     "unsubscribed": "Sua inscrição foi cancelada",
+    "leave": "Parar de orar com {campaign}",
+    "leave_confirm_title": "Parar de orar com {campaign}?",
+    "leave_confirm_body": "Seus horários de oração em {campaign} terminam hoje e os lembretes param. Suas outras campanhas com {site} continuam.",
+    "left": "Você parou de orar com {campaign}",
     "delete": "Excluir meus dados",
     "delete_confirm_title": "Excluir seus dados?",
     "delete_confirm_body": "Isso remove seus horários de oração e seus dados de {site}. Não é possível desfazer.",
@@ -302,7 +309,15 @@
   "unsubscribe": {
     "title": "Cancelar inscrição",
     "body": "Parar todos os lembretes de oração de {site}?",
-    "confirm": "Cancelar inscrição"
+    "confirm": "Cancelar inscrição",
+    "more": "Cancelar inscrição além de {site}",
+    "all": "Todas as campanhas do Prayer.Tools",
+    "all_emails": "Todas as campanhas do Prayer.Tools e os e-mails de marketing"
+  },
+  "leave": {
+    "title": "Parar lembretes",
+    "body": "Parar de orar com {campaign} e parar os lembretes? Suas outras campanhas com {site} continuam.",
+    "confirm": "Parar lembretes de {campaign}"
   },
   "notice": {
     "checkin_yes": "Obrigado por nos contar! Continue orando — seus lembretes continuam.",
@@ -310,9 +325,13 @@
     "checkin_no": "Obrigado por orar conosco. Paramos seus lembretes.",
     "link_invalid": "Este link não é válido ou já foi usado.",
     "unsubscribed": "Sua inscrição foi cancelada. Você não receberá mais lembretes de {site}.",
+    "unsubscribed_all": "Sua inscrição em todas as campanhas do Prayer.Tools foi cancelada. Você não receberá mais lembretes de oração delas.",
+    "unsubscribed_all_emails": "Sua inscrição em todas as campanhas do Prayer.Tools e nos e-mails de marketing delas foi cancelada. Você não receberá mais lembretes nem e-mails delas.",
+    "left_campaign": "Você não receberá mais lembretes desta campanha. Seus outros horários de oração com {site} continuam.",
     "verify_invalid": "Este link de confirmação não é válido ou expirou. Inscreva-se novamente.",
     "deleted": "Seus dados foram excluídos.",
-    "not_found": "Não encontramos o que você estava procurando."
+    "not_found": "Não encontramos o que você estava procurando.",
+    "notify_confirmed": "Obrigado! Escreveremos uma vez quando esta campanha acontecer de novo."
   },
   "notfound": {
     "title": "Página não encontrada",
@@ -347,10 +366,18 @@
     "past_line": "{name}: {prayers} orações, {minutes} minutos",
     "delete_all": "Excluir meus dados de todas as campanhas",
     "delete_all_body": "Isso remove seus horários de oração e seus dados de todas as campanhas listadas aqui. Não é possível desfazer.",
+    "stop_reminders": "Parar todos os lembretes de oração",
+    "stop_reminders_title": "Parar todos os lembretes de oração?",
+    "stop_reminders_body": "Nenhuma das campanhas listadas aqui enviará mais lembretes de oração. As novidades desses sites e do Prayer.Tools continuam. Seus horários de oração e seu histórico são mantidos.",
+    "stop_all": "Parar todos os lembretes de oração e e-mails de marketing",
+    "stop_all_title": "Parar todos os lembretes de oração e e-mails de marketing?",
+    "stop_all_body": "Nenhuma das campanhas listadas aqui enviará mais lembretes ou e-mails, nem o Prayer.Tools. Seus horários de oração e seu histórico são mantidos.",
     "notice_link_invalid": "Este link de acesso não é válido ou já foi usado. Solicite um novo abaixo.",
     "notice_signed_out": "Você saiu da sua conta.",
     "notice_deleted": "Seus dados foram excluídos.",
     "notice_deleted_kept": "Seus dados de oração foram excluídos. Sua conta continua porque você ainda a usa em outro lugar no Prayer.Tools.",
+    "notice_stopped_reminders": "Todos os seus lembretes de oração foram interrompidos.",
+    "notice_stopped_all": "Todos os seus lembretes e e-mails de oração foram interrompidos.",
     "notice_link_sent": "Confira seu e-mail para encontrar o link.",
     "notice_social_failed": "Não foi possível entrar. Tente novamente ou receba um link por e-mail.",
     "status_active": "Ativa",
@@ -369,6 +396,7 @@
     "manage_site": "Gerenciar",
     "create_campaign": "Começar uma campanha de oração",
     "praying_title": "Campanhas com que você ora",
+    "emails_title": "E-mails em que você está inscrito",
     "notice_email_changed": "Seu endereço de e-mail foi alterado em todas as campanhas. Entre com o novo endereço para continuar.",
     "notice_email_taken": "Outra conta já usa esse endereço, então nada mudou.",
     "notice_email_kept": "Seu endereço de e-mail voltou a ser este. Todas as outras sessões foram encerradas e qualquer senha de administração foi removida; use \"esqueci a senha\" no aplicativo de administração para definir uma nova.",
@@ -398,5 +426,8 @@
     "content_body": "Oração guiada para cada dia, pronta para usar ou escrita pela sua equipe.",
     "reminders_title": "Lembretes",
     "reminders_body": "Cada pessoa que ora recebe um lembrete por e-mail ou no aplicativo nos horários que escolheu."
+  },
+  "embed": {
+    "open_site": "Abrir o site da campanha"
   }
 }

@@ -16,7 +16,7 @@ import { DAY } from '../src/util'
 // reminder claim stamp, and platform-wide expiry of raw analytics.
 const ADMIN_WRITABLE = new Set([
   'pt_job', 'pt_site_domain', 'users', 'pt_auth_code', 'pt_account_session', 'pt_user_device',
-  'pt_event', 'pt_stat_visitor_day', 'pt_commitment', 'pt_email_log', 'pt_signup_request'
+  'pt_event', 'pt_stat_visitor_day', 'pt_commitment', 'pt_email_log', 'pt_signup_request', 'pt_notify_request'
 ])
 
 const queries: string[] = []

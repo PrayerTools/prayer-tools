@@ -179,7 +179,7 @@ async function remove() {
                 {{ c.campaign_name }}
               </p>
               <p class="text-(--ui-text-muted)">
-                {{ describe(c) }}<span v-if="c.paused"> · paused</span>
+                {{ describe(c) }}<span v-if="c.paused"> · paused</span><span v-if="c.left_at"> · left {{ ptFormatDate(c.left_at, { dateStyle: 'medium' }) }}</span>
               </p>
               <p
                 v-if="progress(c)"
@@ -199,6 +199,7 @@ async function remove() {
               class="flex gap-1"
             >
               <UButton
+                v-if="!c.left_at"
                 size="xs"
                 variant="ghost"
                 :label="c.paused ? 'Resume' : 'Pause'"

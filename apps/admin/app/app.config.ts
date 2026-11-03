@@ -1,6 +1,10 @@
 // Host-level app config: it outranks the layers' own (core declares `rail`
 // defaults and loads before prayer.tools' layers).
 export default defineAppConfig({
+  ui: {
+    colors: { primary: 'orange' },
+    button: { compoundVariants: [{ color: 'primary', variant: 'solid', class: 'bg-[#c45100] text-white hover:bg-[#a94300] active:bg-[#a94300] disabled:bg-[#c45100] aria-disabled:bg-[#c45100]' }] }
+  },
   // The rail starts with Your sites on every page, then lists the current
   // site's sections; org settings are not offered to site owners.
   rail: {

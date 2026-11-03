@@ -4,12 +4,14 @@ import type { H3Event } from 'h3'
 import { withOrg } from '@prayertools/shared/db/scope'
 import { parseLink, personalToken } from '@prayertools/shared/links'
 import { hashToken } from '@prayertools/shared/tokens'
-import { createWebSignup, recordActivity, setSubscriptionStatus, verifySubscription } from '@prayertools/shared/subscriptions'
+import { createWebSignup, leaveCampaign, recordActivity, setSubscriptionStatus, verifySubscription } from '@prayertools/shared/subscriptions'
 import { findContactByEmail, primaryEmailOf } from '@prayertools/shared/crm'
 import { recordEvent } from '@prayertools/shared/stats'
 import { sitePath } from '@prayertools/shared/paths'
 import { campaignStatus } from '@prayertools/shared/setup'
 import { campaignSegment } from '@prayertools/shared/campaigns'
+import { confirmNotify } from '@prayertools/shared/notify-requests'
+import { unsubscribeEverywhere } from '@prayertools/shared/unsubscribe-all'
 import type { CheckinResponse } from '@prayertools/shared/db/schema'
 import { useDb } from './db'
 import type { SiteContext } from './site-context'
@@ -17,7 +19,7 @@ import { setManageCookie, setPreviewCookie } from './cookies'
 import { forwardInBackground } from './analytics'
 import { deliver } from './mail'
 import { background, clientIp } from './request'
-import { grantPlatformNews } from './staff'
+import { grantPlatformNews, staffOrgId } from './staff'
 import { prepareWelcomeMail } from './welcome'
 import { loadSiteData, stateOf } from './site-data'
 import { takeSignupRequest } from './signup-request'
@@ -120,6 +122,12 @@ export async function addTimesLink(event: H3Event, ctx: SiteContext, token: stri
   return sendRedirect(event, `${path}?confirmed=1`, 302)
 }
 
+// Confirm link from the "notify me" email: the request starts counting.
+export async function notifyLink(event: H3Event, ctx: SiteContext, token: string) {
+  const ok = await withOrg(useDb(), ctx.orgId, async tx => !!(await confirmNotify(tx, token)))
+  return sendRedirect(event, ok ? '/notice/notify_confirmed' : '/notice/link_invalid', 302)
+}
+
 const ANSWERS: CheckinResponse[] = ['yes', 'sometimes', 'no']
 
 export async function checkinAnswer(event: H3Event, ctx: SiteContext, token: string, answer: string) {
@@ -191,17 +199,53 @@ export async function legacyFuel(event: H3Event, ctx: SiteContext, segments: str
 
 // Unsubscribe: the confirm form on /u/<token> and RFC 8058 one-click
 // (`List-Unsubscribe=One-Click`) from mail clients. Handled in middleware so
-// GET /u/<token> still renders the confirm page.
+// GET /u/<token> still renders the confirm page. For a subscription linked to
+// an account, the form's `scope=all` stops that account's reminders on every
+// site, and `scope=all_emails` also withdraws its marketing emails.
 export async function unsubscribePost(event: H3Event, ctx: SiteContext, token: string) {
   const raw = (await readRawBody(event, 'utf8')) ?? ''
   const oneClick = raw.includes('List-Unsubscribe=One-Click')
+  const scope = oneClick ? null : new URLSearchParams(raw).get('scope')
+  const all = scope === 'all' || scope === 'all_emails'
   const link = parseLink(token, 'u')
-  let ok = false
-  if (link && link.orgId === ctx.orgId) {
-    ok = await withOrg(useDb(), ctx.orgId, async (tx) => {
-      const sub = await tx.selectFrom('pt_subscription').select(['id', 'status']).where('id', '=', link.subscriptionId).executeTakeFirst()
-      if (!sub) return false
+  const found = link && link.orgId === ctx.orgId
+    ? await withOrg(useDb(), ctx.orgId, async (tx) => {
+      const sub = await tx.selectFrom('pt_subscription').select(['id', 'status', 'user_id']).where('id', '=', link.subscriptionId).executeTakeFirst()
+      if (!sub) return null
       if (sub.status !== 'unsubscribed') await setSubscriptionStatus(tx, sub.id, 'unsubscribed')
+      return { userId: sub.user_id }
+    })
+    : null
+  const ok = !!found
+  const userId = all ? found?.userId ?? null : null
+  if (userId) {
+    await unsubscribeEverywhere(useDb(), userId, {
+      newsOrgId: await staffOrgId(),
+      remindersOnly: scope === 'all',
+      capture: { wording: { key: 'unsubscribe.all_emails' }, surface: 'unsubscribe_page', source: ctx.host, ip: clientIp(event), userAgent: getRequestHeader(event, 'user-agent') ?? null }
+    })
+  }
+  if (oneClick) {
+    setResponseStatus(event, ok ? 200 : 404)
+    setResponseHeader(event, 'content-type', 'text/plain; charset=utf-8')
+    return ok ? 'Unsubscribed' : 'Not found'
+  }
+  return sendRedirect(event, !ok ? '/notice/link_invalid' : !userId ? '/notice/unsubscribed' : scope === 'all' ? '/notice/unsubscribed_all' : '/notice/unsubscribed_all_emails', 303)
+}
+
+// Leaving one campaign from a reminder: the confirm form on /l/<token> and
+// one-click from mail clients, handled like unsubscribePost.
+export async function leaveCampaignPost(event: H3Event, ctx: SiteContext, token: string) {
+  const raw = (await readRawBody(event, 'utf8')) ?? ''
+  const oneClick = raw.includes('List-Unsubscribe=One-Click')
+  const link = parseLink(token, 'l')
+  let ok = false
+  if (link?.campaignId && link.orgId === ctx.orgId) {
+    const campaignId = link.campaignId
+    ok = await withOrg(useDb(), ctx.orgId, async (tx) => {
+      const sub = await tx.selectFrom('pt_subscription').select('id').where('id', '=', link.subscriptionId).executeTakeFirst()
+      if (!sub) return false
+      await leaveCampaign(tx, sub.id, campaignId)
       return true
     })
   }
@@ -210,5 +254,5 @@ export async function unsubscribePost(event: H3Event, ctx: SiteContext, token: s
     setResponseHeader(event, 'content-type', 'text/plain; charset=utf-8')
     return ok ? 'Unsubscribed' : 'Not found'
   }
-  return sendRedirect(event, ok ? '/notice/unsubscribed' : '/notice/link_invalid', 303)
+  return sendRedirect(event, ok ? '/notice/left_campaign' : '/notice/link_invalid', 303)
 }

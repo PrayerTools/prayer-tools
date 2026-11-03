@@ -3,17 +3,18 @@
 import type { H3Event } from 'h3'
 import { withOrg } from '@prayertools/shared/db/scope'
 import { parseSitePath } from '@prayertools/shared/paths'
-import { visibleSections } from '@prayertools/shared/landing'
+import { landingStories, visibleSections } from '@prayertools/shared/landing'
 import { landingWhyDoc } from '@prayertools/shared/i18n/landing'
 import { prayingNow } from '@prayertools/shared/stats'
 import { entryDate } from '@prayertools/shared/schedule'
 import { parseLink } from '@prayertools/shared/links'
 import { textIn } from '@prayertools/shared/translatable'
 import { videoEmbed } from '@prayertools/shared/video'
-import type { TranslatableText, CampaignCta, CampaignLanding, SignupFieldKind } from '@prayertools/shared/db/schema'
+import type { TranslatableText, CampaignLanding, SignupFieldKind } from '@prayertools/shared/db/schema'
 import type { CampaignRow } from '@prayertools/shared/subscriptions'
 import { platformConfig } from '@prayertools/shared/config'
 import { isSideCampaign } from '@prayertools/shared/setup'
+import { nextStep, nextStepCampaign, prayingIn } from '@prayertools/shared/next-step'
 import type { PageView, SiteResponse } from '../../shared/view'
 import { useDb } from './db'
 import type { SiteContext } from './site-context'
@@ -25,10 +26,10 @@ import { socialProviders } from './social-sign-in'
 import { sessionAccount } from './account-session'
 import { withDraftStrings, type LandingDraft } from './editor'
 
-const PRIVATE_PAGES = new Set(['manage', 'm', 'u', 'verify', 'add', 'notice', 'checkin'])
-const ARCHIVED_ALLOWED = new Set(['manage', 'm', 'u', 'verify', 'notice'])
+const PRIVATE_PAGES = new Set(['manage', 'm', 'u', 'l', 'verify', 'add', 'notice', 'checkin'])
+const ARCHIVED_ALLOWED = new Set(['manage', 'm', 'u', 'l', 'verify', 'notice', 'embed'])
 export const NOTICE_KEYS = new Set([
-  'checkin_yes', 'checkin_sometimes', 'checkin_no', 'link_invalid', 'unsubscribed', 'verify_invalid', 'deleted', 'not_found'
+  'checkin_yes', 'checkin_sometimes', 'checkin_no', 'link_invalid', 'unsubscribed', 'unsubscribed_all', 'unsubscribed_all_emails', 'left_campaign', 'verify_invalid', 'deleted', 'not_found', 'notify_confirmed'
 ])
 
 export function appAvailable(): boolean {
@@ -73,14 +74,14 @@ export async function buildSiteResponse(event: H3Event, ctx: SiteContext, fullPa
     } else {
       switch (pageName) {
         case '':
-          page = parsed.rest.length ? { kind: 'not_found' } : await landingPage(tx, ctx, data, campaign, lang)
+          page = parsed.rest.length ? { kind: 'not_found' } : await landingPage(tx, event, ctx, data, campaign, lang)
           break
         case 'pray':
           page = await prayPage(tx, ctx, data, campaign, lang, parsed.rest)
           break
         case 'signup':
           page = cv && (cv.state === 'between' || cv.state === 'ended')
-            ? await betweenPage(tx, data, campaign!, lang)
+            ? await betweenPage(tx, event, ctx, data, campaign!, lang)
             : { kind: 'signup', form: await signupForm(tx, data, lang, !!cv && (cv.state === 'upcoming' || cv.state === 'active')) }
           break
         case 'stats':
@@ -117,11 +118,21 @@ export async function buildSiteResponse(event: H3Event, ctx: SiteContext, fullPa
         case 'u': {
           const token = parsed.rest[0] ?? ''
           const link = parseLink(token, 'u')
-          let valid = false
-          if (link && link.orgId === ctx.orgId) {
-            valid = !!(await tx.selectFrom('pt_subscription').select('id').where('id', '=', link.subscriptionId).executeTakeFirst())
+          const sub = link && link.orgId === ctx.orgId
+            ? await tx.selectFrom('pt_subscription').select(['id', 'user_id']).where('id', '=', link.subscriptionId).executeTakeFirst()
+            : undefined
+          page = { kind: 'unsubscribe', token, valid: !!sub, account: !!sub?.user_id }
+          break
+        }
+        case 'l': {
+          const token = parsed.rest[0] ?? ''
+          const link = parseLink(token, 'l')
+          let leaving: string | null = null
+          if (link?.campaignId && link.orgId === ctx.orgId) {
+            const sub = await tx.selectFrom('pt_subscription').select('id').where('id', '=', link.subscriptionId).executeTakeFirst()
+            leaving = sub ? data.campaigns.find(c => c.id === link.campaignId)?.name ?? null : null
           }
-          page = { kind: 'unsubscribe', token, valid }
+          page = { kind: 'leave', token, campaign: leaving }
           break
         }
         case 'verify':
@@ -135,15 +146,24 @@ export async function buildSiteResponse(event: H3Event, ctx: SiteContext, fullPa
           page = NOTICE_KEYS.has(key) ? { kind: 'notice', key } : { kind: 'not_found' }
           break
         }
-        case 'embed':
-          page = { kind: 'embed', progress: campaign ? await progressFor(tx, campaign, data.settings.default_duration_min) : null }
+        case 'embed': {
+          // 24/7 campaigns sign up on the site's coverage picker; others sign up in the widget.
+          const open = !!cv && (cv.state === 'upcoming' || cv.state === 'active') && campaign!.goal !== 'coverage' && data.site.status !== 'archived'
+          page = parsed.rest.length
+            ? { kind: 'not_found' }
+            : {
+                kind: 'embed',
+                progress: campaign ? await progressFor(tx, campaign, data.settings.default_duration_min) : null,
+                form: open ? await signupForm(tx, data, lang, true) : null
+              }
           break
+        }
         default:
           page = { kind: 'not_found' }
       }
     }
     if (page.kind === 'not_found') status = 404
-    const personal = PRIVATE_PAGES.has(pageName) || ctx.preview || data.site.status === 'draft'
+    const personal = PRIVATE_PAGES.has(pageName) || ctx.preview || data.site.status === 'draft' || (page.kind === 'between' && page.next?.kind === 'praying')
     return {
       host: 'site',
       site,
@@ -157,11 +177,11 @@ export async function buildSiteResponse(event: H3Event, ctx: SiteContext, fullPa
   })
 }
 
-async function landingPage(tx: Parameters<typeof loadSiteData>[0], ctx: SiteContext, data: SiteData, campaign: CampaignRow | null, lang: string): Promise<PageView> {
+async function landingPage(tx: Parameters<typeof loadSiteData>[0], event: H3Event, ctx: SiteContext, data: SiteData, campaign: CampaignRow | null, lang: string): Promise<PageView> {
   const def = data.site.default_language
   if (campaign) {
     const state = stateOf(data, campaign)
-    if (state === 'between' || state === 'ended') return await betweenPage(tx, data, campaign, lang)
+    if (state === 'between' || state === 'ended') return await betweenPage(tx, event, ctx, data, campaign, lang)
   }
   const landing = (campaign?.landing ?? {}) as CampaignLanding
   const templateKey = campaign?.template_key ?? null
@@ -179,16 +199,7 @@ async function landingPage(tx: Parameters<typeof loadSiteData>[0], ctx: SiteCont
     buttonLabel: s.button_url ? textIn(s.button_label, lang, def) || null : null,
     buttonUrl: s.button_url ?? null
   })).filter(s => s.heading || s.html || s.video)
-  let storyQuery = tx
-    .selectFrom('pt_story')
-    .select(['id', 'body', 'name', 'use_name'])
-    .where('published', '=', true)
-    .where('may_publish', '=', true)
-  if (side) storyQuery = storyQuery.where('campaign_id', '=', campaign!.id)
-  const stories = await storyQuery
-    .orderBy('published_at', 'desc')
-    .limit(6)
-    .execute()
+  const stories = await landingStories(tx, side ? { campaignId: campaign!.id, storyIds: landing.story_ids } : null)
   let today: { day: number, html: string, title: string } | null = null
   if (campaign && stateOf(data, campaign) !== 'upcoming') {
     const cv = campaignView(data, campaign)
@@ -221,14 +232,18 @@ async function landingPage(tx: Parameters<typeof loadSiteData>[0], ctx: SiteCont
   }
 }
 
-async function betweenPage(tx: Parameters<typeof loadSiteData>[0], data: SiteData, campaign: CampaignRow, lang: string): Promise<PageView> {
+// The person is known only from a manage session or a sign-in; anyone else
+// gets the invitation to the main campaign.
+async function betweenPage(tx: Parameters<typeof loadSiteData>[0], event: H3Event, ctx: SiteContext, data: SiteData, campaign: CampaignRow, lang: string): Promise<PageView> {
   const def = data.site.default_language
-  const cta = (campaign.cta ?? {}) as CampaignCta
+  const main = nextStepCampaign(campaign, data.campaigns)
+  const sub = main ? await managedSubscription(tx, event, ctx.orgId) : null
+  const praying = !!sub && (await prayingIn(tx, main!.id, [sub.id])).has(sub.id)
   return {
     kind: 'between',
     stats: await statsFor(tx, campaign, data.settings.default_duration_min),
     endMessage: textIn(campaign.end_message as TranslatableText | null, lang, def),
-    cta: cta.url ? { label: textIn(cta.label, lang, def), url: cta.url } : null
+    next: nextStep(campaign, main, { lang, defaultLang: def, praying })
   }
 }
 

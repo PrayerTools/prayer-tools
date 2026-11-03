@@ -295,4 +295,14 @@ export interface MarketingHost {
   throttlePerMinute(orgId: string): number
   // Complaint rate that pauses an org's sends; defaults to COMPLAINT_PAUSE_RATE.
   complaintPauseRate?: number
+
+  // The email body format AI clients write through the MCP tools: `help`
+  // describes it, `toDoc` converts it (throwing an Error that says what is
+  // wrong) and `fromDoc` reads a body back. Without it the tools take and
+  // return Tiptap JSON.
+  mcpContent?: {
+    help: string
+    toDoc(blocks: unknown[]): TiptapDoc
+    fromDoc(doc: TiptapDoc): { blocks: unknown[], exact: boolean }
+  }
 }

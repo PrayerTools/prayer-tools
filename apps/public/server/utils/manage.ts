@@ -64,8 +64,9 @@ export async function consentList(tx: Tx, channelId: string | null, lang: string
   ]
 }
 
+// Commitments in campaigns the person left are not shown.
 export async function commitmentsOf(tx: Tx, subscriptionId: string, campaigns: CampaignRow[]): Promise<CommitmentView[]> {
-  const rows = await tx.selectFrom('pt_commitment').selectAll().where('subscription_id', '=', subscriptionId).orderBy('created_at').execute()
+  const rows = await tx.selectFrom('pt_commitment').selectAll().where('subscription_id', '=', subscriptionId).where('left_at', 'is', null).orderBy('created_at').execute()
   const byId = new Map(campaigns.map(c => [c.id, c]))
   return rows.map(r => commitmentView(r, byId.get(r.campaign_id)))
 }

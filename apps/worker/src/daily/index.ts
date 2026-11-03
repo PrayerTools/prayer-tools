@@ -13,6 +13,7 @@ import { refreshStats } from './stats'
 import { checkDomains } from './domains'
 import { runRetention } from './retention'
 import { syncLinkedContacts } from './accounts'
+import { announceRunsAgain } from './runs-again'
 
 export interface ScheduledJob {
   name: string
@@ -24,6 +25,7 @@ export const SCHEDULED_JOBS: readonly ScheduledJob[] = [
   { name: 'close_campaigns', cron: '5 * * * *', run: closeEndedCampaigns },
   { name: 'personal_completion', cron: '10 * * * *', run: completePersonalStart },
   { name: 'checkins', cron: '20 * * * *', run: runCheckins },
+  { name: 'runs_again', cron: '25 * * * *', run: announceRunsAgain },
   { name: 'unverified_cleanup', cron: '30 2 * * *', run: deleteUnverified },
   { name: 'app_inactivity', cron: '40 2 * * *', run: appInactivity },
   { name: 'stats_refresh', cron: '0 3 * * *', run: refreshStats },

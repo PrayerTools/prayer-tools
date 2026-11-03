@@ -8,7 +8,7 @@ import { db } from '#core/server/utils/database'
 import { requireAuth } from '#core/server/utils/auth'
 import { LICENSES } from '@prayertools/shared/content'
 import { isLanguage } from '@prayertools/shared/languages'
-import { pgArray } from '@prayertools/shared/db/json'
+import { jsonb, pgArray } from '@prayertools/shared/db/json'
 
 export async function ptUser(event: H3Event): Promise<{ userId: string, isAdmin: boolean }> {
   const auth = requireAuth(event)
@@ -25,10 +25,13 @@ export async function ptLibraryUsage(libraryId: string): Promise<{ following: nu
   return { following, copies: rows.length - following }
 }
 
-// A library the caller may edit: their own, one shared with them as an editor
+export async function ptEditableLibrary(event: H3Event, id: string, opts: { ownerOnly?: boolean } = {}) {
+  return await ptLibraryEditableBy(await ptUser(event), id, opts)
+}
+
+// A library `user` may edit: their own, one shared with them as an editor
 // (unless `ownerOnly`), or for operators a platform library.
-export async function ptEditableLibrary(event: H3Event, id: string, { ownerOnly = false } = {}) {
-  const user = await ptUser(event)
+export async function ptLibraryEditableBy(user: { userId: string, isAdmin: boolean }, id: string, { ownerOnly = false } = {}) {
   const lib = await db.selectFrom('pt_library').selectAll().where('id', '=', id).executeTakeFirst()
   if (!lib) ptNotFound('Library not found.')
   const platform = lib.owner_user_id === null && user.isAdmin
@@ -81,4 +84,17 @@ export async function ptPublishLibrary(libraryId: string): Promise<number> {
     }).where('id', '=', libraryId).execute()
     return version
   })
+}
+
+// Saves a library entry's draft. The caller checks that the library is editable.
+export async function ptSaveLibraryDraft(id: string, day: number, lang: string, doc: unknown) {
+  if (!Number.isInteger(day) || day < 1 || day > 3650) ptBadRequest('Invalid day.')
+  if (!isLanguage(lang)) ptBadRequest('Unknown language.')
+  const d = ptDoc(doc)
+  if (!d) ptBadRequest('Invalid content.')
+  await db.insertInto('pt_library_entry').values({ library_id: id, day, language: lang, draft: jsonb(d), updated_at: new Date() } as never)
+    .onConflict(oc => oc.columns(['library_id', 'day', 'language']).doUpdateSet({ draft: jsonb(d) as never, updated_at: new Date() }))
+    .execute()
+  await db.updateTable('pt_library').set({ updated_at: new Date() }).where('id', '=', id).execute()
+  return { ok: true }
 }

@@ -38,10 +38,11 @@ export const PT_LABELS = {
     reminder: 'Prayer reminder', checkin: 'Check-in', thank_you: 'Thank-you', verify: 'Confirm email', add_times: 'Confirm new prayer times', manage_link: 'Manage link', site_email: 'Site email'
   } as Record<string, string>,
   sessionSource: { porch: 'on the website', manage: 'from the manage page', app: 'in the app', email: 'from an email' } as Record<string, string>,
-  role: { 'admin': 'Owner', 'pt-editor': 'Editor', 'pt-translator': 'Translator', 'pt-viewer': 'Viewer', 'member': 'Member' } as Record<string, string>,
+  role: { 'admin': 'Owner', 'pt-editor': 'Editor', 'pt-mobilizer': 'Mobilizer', 'pt-translator': 'Translator', 'pt-viewer': 'Viewer', 'member': 'Member' } as Record<string, string>,
   roleDescription: {
     'admin': 'Team, domains, sending identity, deleting the site, and everything an editor can do.',
     'pt-editor': 'Content, email, settings, and intercessors including their details.',
+    'pt-mobilizer': 'Invites people and talks with intercessors: share and thank-you messages, stories, email and the inbox.',
     'pt-translator': 'Edits translations of content and custom sections.',
     'pt-viewer': 'Stats only, no personal data.'
   } as Record<string, string>,

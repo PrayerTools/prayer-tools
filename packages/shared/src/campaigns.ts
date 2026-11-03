@@ -73,3 +73,18 @@ export function campaignUrl(siteUrl: string, c: { id: string, slug: string }, cu
   const segment = campaignSegment(c, currentId)
   return segment ? `${siteUrl}/${segment}` : siteUrl
 }
+
+// Campaign fields `pt.messages.write` covers as well as `pt.campaigns.write`:
+// the share message and image, and the end-of-campaign message and call to action.
+export const CAMPAIGN_MESSAGE_FIELDS = ['share', 'share_image_url', 'end_message', 'cta']
+// Landing page fields, which also need `pt.site.write`.
+const CAMPAIGN_LANDING_FIELDS = ['landing', 'description', 'branding']
+
+// The first permission a campaign edit touching `fields` needs and `perms`
+// lacks, or null when the edit is allowed.
+export function campaignEditMissing(fields: string[], perms: ReadonlySet<string>): string | null {
+  if (!perms.has('pt.campaigns.write') && !perms.has('pt.messages.write')) return 'pt.campaigns.write'
+  if (!perms.has('pt.campaigns.write') && fields.some(f => !CAMPAIGN_MESSAGE_FIELDS.includes(f))) return 'pt.campaigns.write'
+  if (!perms.has('pt.site.write') && fields.some(f => CAMPAIGN_LANDING_FIELDS.includes(f))) return 'pt.site.write'
+  return null
+}

@@ -10,6 +10,7 @@ import { languageDir } from '../languages'
 import { siteUrlFor } from '../site'
 import { siteInboxAddress } from '../inbox'
 import { escapeHtml } from '../tiptap'
+import type { NextStep } from '../next-step'
 
 export interface SiteMailContext {
   orgId: string
@@ -61,6 +62,8 @@ export interface Rendered {
 export interface FooterLinks {
   manageUrl?: string | null
   hideMy?: boolean
+  // Stops one campaign's reminders; shown next to the whole-site unsubscribe.
+  leaveUrl?: string | null
   unsubscribeUrl?: string | null
   reason?: string
 }
@@ -82,6 +85,7 @@ export function layout(ctx: SiteMailContext, lang: string, bodyHtml: string, foo
   const links: string[] = []
   if (footer.manageUrl) links.push(`<a href="${escapeHtml(footer.manageUrl)}" style="color:#52525b;">${escapeHtml(emailT(lang, 'footer.manage'))}</a>`)
   if (!footer.hideMy) links.push(`<a href="${escapeHtml(`${platformOrigin()}/my`)}" style="color:#52525b;">${escapeHtml(emailT(lang, 'footer.my'))}</a>`)
+  if (footer.leaveUrl) links.push(`<a href="${escapeHtml(footer.leaveUrl)}" style="color:#52525b;">${escapeHtml(emailT(lang, 'footer.leave_campaign'))}</a>`)
   if (footer.unsubscribeUrl) links.push(`<a href="${escapeHtml(footer.unsubscribeUrl)}" style="color:#52525b;">${escapeHtml(emailT(lang, 'footer.unsubscribe'))}</a>`)
   const testBanner = opts.test
     ? `<div style="background:#fef3c7;color:#78350f;padding:10px 16px;font-size:13px;">${escapeHtml(emailT(lang, 'test.banner'))}</div>`
@@ -108,6 +112,7 @@ function footerText(ctx: SiteMailContext, lang: string, footer: FooterLinks): st
   const lines = ['', '—', footer.reason ?? emailT(lang, 'footer.why', { site: ctx.siteName })]
   if (footer.manageUrl) lines.push(`${emailT(lang, 'footer.manage')}: ${footer.manageUrl}`)
   if (!footer.hideMy) lines.push(`${emailT(lang, 'footer.my')}: ${platformOrigin()}/my`)
+  if (footer.leaveUrl) lines.push(`${emailT(lang, 'footer.leave_campaign')}: ${footer.leaveUrl}`)
   if (footer.unsubscribeUrl) lines.push(`${emailT(lang, 'footer.unsubscribe')}: ${footer.unsubscribeUrl}`)
   return lines.join('\n')
 }
@@ -240,6 +245,7 @@ export interface ReminderDetails {
   prayUrl: string
   manageUrl: string
   unsubscribeUrl: string
+  leaveUrl: string
 }
 
 // Reminders link to the day's prayer content; they never contain it.
@@ -255,8 +261,8 @@ export function reminderEmail(ctx: SiteMailContext, lang: string, d: ReminderDet
     + button(ctx, d.prayUrl, emailT(lang, 'reminder.button'))
   return {
     subject: emailT(lang, 'reminder.subject', vars),
-    html: layout(ctx, lang, body, { manageUrl: d.manageUrl, unsubscribeUrl: d.unsubscribeUrl }, opts),
-    text: `${emailT(lang, 'reminder.heading')}\n\n${emailT(lang, 'reminder.body', vars)}${meta ? `\n${meta}` : ''}\n\n${emailT(lang, 'reminder.button')}: ${d.prayUrl}${footerText(ctx, lang, { manageUrl: d.manageUrl, unsubscribeUrl: d.unsubscribeUrl })}`
+    html: layout(ctx, lang, body, { manageUrl: d.manageUrl, leaveUrl: d.leaveUrl, unsubscribeUrl: d.unsubscribeUrl }, opts),
+    text: `${emailT(lang, 'reminder.heading')}\n\n${emailT(lang, 'reminder.body', vars)}${meta ? `\n${meta}` : ''}\n\n${emailT(lang, 'reminder.button')}: ${d.prayUrl}${footerText(ctx, lang, { manageUrl: d.manageUrl, leaveUrl: d.leaveUrl, unsubscribeUrl: d.unsubscribeUrl })}`
   }
 }
 
@@ -280,7 +286,7 @@ export interface ThanksDetails {
   prayers: number
   minutes: number
   message: string | null
-  cta: { label: string, url: string } | null
+  next: NextStep | null
   manageUrl: string | null
   unsubscribeUrl: string | null
 }
@@ -289,15 +295,20 @@ export function thankYouEmail(ctx: SiteMailContext, lang: string, d: ThanksDetai
   const vars = { site: ctx.siteName, campaign: d.campaignName }
   const bodyKey = d.personal ? 'thanks.body_personal' : 'thanks.body'
   const stats = d.prayers > 0 ? emailT(lang, 'thanks.stats', { prayers: d.prayers, minutes: d.minutes }) : null
+  const cta = d.next?.kind === 'cta' && d.next.label ? { label: d.next.label, url: d.next.url }
+    : d.next?.kind === 'join' ? { label: emailT(lang, 'thanks.keep_praying', { campaign: d.next.campaign }), url: `${ctx.siteUrl}${d.next.path}` }
+      : null
+  const note = d.next?.kind === 'praying' ? emailT(lang, 'thanks.still_praying', { campaign: d.next.campaign }) : null
   const body = heading(emailT(lang, 'thanks.heading'))
     + paragraph(emailT(lang, bodyKey, vars))
     + (stats ? paragraph(stats) : '')
     + (d.message ? `<div style="margin:0 0 16px;font-size:16px;line-height:1.6;white-space:pre-line;">${escapeHtml(d.message)}</div>` : '')
-    + (d.cta ? button(ctx, d.cta.url, d.cta.label) : '')
+    + (cta ? button(ctx, cta.url, cta.label) : '')
+    + (note ? paragraph(note) : '')
   return {
     subject: emailT(lang, 'thanks.subject', vars),
     html: layout(ctx, lang, body, { manageUrl: d.manageUrl, unsubscribeUrl: d.unsubscribeUrl }, opts),
-    text: [emailT(lang, 'thanks.heading'), '', emailT(lang, bodyKey, vars), stats ?? '', d.message ?? '', d.cta ? `${d.cta.label}: ${d.cta.url}` : ''].filter(Boolean).join('\n\n')
+    text: [emailT(lang, 'thanks.heading'), '', emailT(lang, bodyKey, vars), stats ?? '', d.message ?? '', cta ? `${cta.label}: ${cta.url}` : '', note ?? ''].filter(Boolean).join('\n\n')
       + footerText(ctx, lang, { manageUrl: d.manageUrl, unsubscribeUrl: d.unsubscribeUrl })
   }
 }
@@ -332,6 +343,50 @@ export function addTimesEmail(ctx: SiteMailContext, lang: string, d: { campaignN
     subject: emailT(lang, 'add.subject', vars),
     html: layout(ctx, lang, html, { hideMy: true }),
     text: text + footerText(ctx, lang, { hideMy: true })
+  }
+}
+
+// Sent from the "notify me" form: the request counts only once confirmed.
+export function notifyConfirmEmail(ctx: SiteMailContext, lang: string, d: { campaignName: string, confirmUrl: string }): Rendered {
+  const vars = { site: ctx.siteName, campaign: d.campaignName }
+  const html = heading(emailT(lang, 'notify.heading'))
+    + paragraph(emailT(lang, 'notify.body', vars))
+    + button(ctx, d.confirmUrl, emailT(lang, 'notify.button'))
+    + `<p style="margin:0;font-size:13px;color:#71717a;">${escapeHtml(emailT(lang, 'notify.ignore'))}</p>`
+  const text = [
+    emailT(lang, 'notify.heading'),
+    emailT(lang, 'notify.body', vars),
+    `${emailT(lang, 'notify.button')}: ${d.confirmUrl}`,
+    emailT(lang, 'notify.ignore')
+  ].join('\n\n')
+  return {
+    subject: emailT(lang, 'notify.subject', vars),
+    html: layout(ctx, lang, html, { hideMy: true }),
+    text: text + footerText(ctx, lang, { hideMy: true })
+  }
+}
+
+// Sent once to a confirmed "notify me" request when the next run is published.
+export function runsAgainEmail(ctx: SiteMailContext, lang: string, d: { campaignName: string, startsOn: string | null, signupUrl: string }): Rendered {
+  const vars = { site: ctx.siteName, campaign: d.campaignName }
+  const starts = d.startsOn
+    ? emailT(lang, 'welcome.starts', { date: new Intl.DateTimeFormat(lang, { dateStyle: 'long', timeZone: 'UTC' }).format(new Date(`${d.startsOn}T00:00:00Z`)) })
+    : null
+  const footer = { hideMy: true, reason: emailT(lang, 'again.why', vars) }
+  const html = heading(emailT(lang, 'again.heading', vars))
+    + paragraph(emailT(lang, 'again.body', vars))
+    + (starts ? paragraph(starts) : '')
+    + button(ctx, d.signupUrl, emailT(lang, 'again.button'))
+  const text = [
+    emailT(lang, 'again.heading', vars),
+    emailT(lang, 'again.body', vars),
+    starts ?? '',
+    `${emailT(lang, 'again.button')}: ${d.signupUrl}`
+  ].filter(Boolean).join('\n\n')
+  return {
+    subject: emailT(lang, 'again.subject', vars),
+    html: layout(ctx, lang, html, footer),
+    text: text + footerText(ctx, lang, footer)
   }
 }
 

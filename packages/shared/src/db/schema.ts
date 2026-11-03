@@ -332,6 +332,8 @@ export interface CampaignLanding {
   hidden?: string[]
   custom?: LandingCustomSection[]
   stories?: boolean
+  // A side campaign's chosen stories; absent until it chooses.
+  story_ids?: string[]
 }
 
 export interface CampaignShare {
@@ -377,9 +379,12 @@ export interface PtSiteTable {
   updated_at: Timestamp
 }
 
+// The champion's own button, or `mode: 'none'` for no button at all. Empty
+// means a side campaign invites its intercessors to the main campaign.
 export interface CampaignCta {
   label?: TranslatableText
   url?: string
+  mode?: 'none'
 }
 
 export interface PtCampaignTable {
@@ -499,6 +504,8 @@ export interface PtCommitmentTable {
   advanced_on: NullableDateOnly
   // Personal-start campaigns: when the person went through the last entry.
   finished_at: NullableTimestamp
+  // When the person left the campaign; the commitment ends that day.
+  left_at: NullableTimestamp
   created_at: Timestamp
   updated_at: Timestamp
 }
@@ -532,6 +539,23 @@ export interface PtSignupRequestTable {
   request: Json<Record<string, unknown>>
   expires_at: Timestamp
   created_at: Timestamp
+}
+
+// "Notify me when this campaign runs again". `token_hash` is the emailed
+// confirm link's, cleared once confirmed.
+export interface PtNotifyRequestTable {
+  id: Generated<string>
+  org_id: Generated<string>
+  contact_id: string
+  // The campaign the request was made on.
+  campaign_id: string
+  language: string
+  token_hash: string | null
+  created_at: Timestamp
+  confirmed_at: NullableTimestamp
+  notified_at: NullableTimestamp
+  // The run the person was told about.
+  notified_campaign_id: string | null
 }
 
 export interface PtEmailLogTable {
@@ -697,6 +721,7 @@ export interface PtTables {
   pt_reminder_sent: PtReminderSentTable
   pt_checkin: PtCheckinTable
   pt_signup_request: PtSignupRequestTable
+  pt_notify_request: PtNotifyRequestTable
   pt_email_log: PtEmailLogTable
   pt_prayer_session: PtPrayerSessionTable
   pt_person_total: PtPersonTotalTable

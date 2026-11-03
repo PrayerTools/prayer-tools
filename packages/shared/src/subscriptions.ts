@@ -60,6 +60,7 @@ export async function commitmentWindow(tx: Tx, campaign: CampaignRow, subscripti
         .select(eb => eb.fn.min('starts_on').as('first'))
         .where('subscription_id', '=', subscriptionId)
         .where('campaign_id', '=', c.id)
+        .where('left_at', 'is', null)
         .executeTakeFirst()
       const f = toIsoDate(first?.first as string | null | undefined)
       if (f) anchor = f
@@ -93,7 +94,7 @@ function remindersOn(sub: Pick<SubscriptionRow, 'status' | 'delivery' | 'verifie
 // restarts the campaign when they had finished it.
 export async function insertCommitment(tx: Tx, sub: SubscriptionRow, campaign: CampaignRow, input: RuleInput): Promise<CommitmentRow> {
   if (campaign.start_mode === 'join') {
-    const existing = await tx.selectFrom('pt_commitment').select(['id', 'entries_done', 'timezone']).where('subscription_id', '=', sub.id).where('campaign_id', '=', campaign.id).executeTakeFirst()
+    const existing = await tx.selectFrom('pt_commitment').select(['id', 'entries_done', 'timezone']).where('subscription_id', '=', sub.id).where('campaign_id', '=', campaign.id).where('left_at', 'is', null).executeTakeFirst()
     if (existing) {
       const entries = await campaignEntries(tx, normalizeCampaign(campaign))
       if (entries && existing.entries_done >= entries) {
@@ -128,7 +129,7 @@ export async function insertCommitment(tx: Tx, sub: SubscriptionRow, campaign: C
 }
 
 export async function updateCommitment(tx: Tx, sub: SubscriptionRow, commitmentId: string, patch: Partial<RuleInput> & { paused?: boolean }): Promise<CommitmentRow | null> {
-  const existing = await tx.selectFrom('pt_commitment').selectAll().where('id', '=', commitmentId).where('subscription_id', '=', sub.id).executeTakeFirst()
+  const existing = await tx.selectFrom('pt_commitment').selectAll().where('id', '=', commitmentId).where('subscription_id', '=', sub.id).where('left_at', 'is', null).executeTakeFirst()
   if (!existing) return null
   const merged = {
     ...ruleOf(existing),
@@ -160,15 +161,45 @@ export async function updateCommitment(tx: Tx, sub: SubscriptionRow, commitmentI
 }
 
 // Recomputes next_reminder_utc for every commitment of a subscription, after
-// verification, a status change or a timezone change.
+// verification, a status change or a timezone change. Commitments in campaigns
+// the person left keep none.
 export async function refreshReminders(tx: Tx, subscriptionId: string): Promise<void> {
   const sub = await tx.selectFrom('pt_subscription').selectAll().where('id', '=', subscriptionId).executeTakeFirst()
   if (!sub) return
-  const commitments = await tx.selectFrom('pt_commitment').selectAll().where('subscription_id', '=', subscriptionId).execute()
+  const commitments = await tx.selectFrom('pt_commitment').selectAll().where('subscription_id', '=', subscriptionId).where('left_at', 'is', null).execute()
   for (const c of commitments) {
     const next = remindersOn(sub) ? nextReminderUtc(ruleOf(c)) : null
     await tx.updateTable('pt_commitment').set({ next_reminder_utc: next, claimed_at: null }).where('id', '=', c.id).execute()
   }
+}
+
+// Leaving a campaign ends the person's commitments in it today and stops
+// their reminders. The rows stay, so a fixed campaign keeps counting them;
+// date picks still ahead are dropped. Returns how many commitments it ended.
+export async function leaveCampaign(tx: Tx, subscriptionId: string, campaignId: string, now: Date = new Date()): Promise<number> {
+  const rows = await tx
+    .selectFrom('pt_commitment')
+    .select(['id', 'kind', 'timezone', 'dates'])
+    .where('subscription_id', '=', subscriptionId)
+    .where('campaign_id', '=', campaignId)
+    .where('left_at', 'is', null)
+    .execute()
+  for (const c of rows) {
+    const past = c.kind === 'dates' ? (c.dates ?? []).map(d => new Date(d)).filter(d => d <= now) : []
+    await tx
+      .updateTable('pt_commitment')
+      .set({
+        ends_on: todayIn(c.timezone, now),
+        ...(c.kind === 'dates' ? { dates: sql`${`{${past.map(d => `"${d.toISOString()}"`).join(',')}}`}::timestamptz[]` } : {}),
+        left_at: now,
+        next_reminder_utc: null,
+        claimed_at: null,
+        updated_at: now
+      })
+      .where('id', '=', c.id)
+      .execute()
+  }
+  return rows.length
 }
 
 // ── Signup ─────────────────────────────────────────────────────────────────

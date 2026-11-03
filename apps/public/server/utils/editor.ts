@@ -4,11 +4,11 @@
 import type { H3Event } from 'h3'
 import type { CampaignBranding, CampaignLanding, LandingCustomSection, SiteBranding, TiptapDoc, TranslatableText } from '@prayertools/shared/db/schema'
 import { editorTokenOrg } from '@prayertools/shared/links'
-import { platformConfig } from '@prayertools/shared/config'
 import { parseText } from '@prayertools/shared/translatable'
 import { parseHex } from '@prayertools/shared/colors'
 import { videoEmbed } from '@prayertools/shared/video'
 import { EDITABLE_SITE_STRINGS } from '@prayertools/shared/site-strings'
+import { parseStoryIds } from '@prayertools/shared/landing'
 import ar from '../../i18n/locales/ar.json'
 import en from '../../i18n/locales/en.json'
 import es from '../../i18n/locales/es.json'
@@ -31,10 +31,6 @@ export interface LandingDraft {
 export function editorAccess(event: H3Event, orgId: string): boolean {
   const token = getQuery(event).pt_edit
   return typeof token === 'string' && editorTokenOrg(token) === orgId
-}
-
-export function editorFrameAncestors(): string {
-  return `frame-ancestors ${new URL(platformConfig().adminUrl).origin}`
 }
 
 // The standard wording of each editable string in a UI language, shown as the
@@ -122,7 +118,8 @@ export function parseLandingDraft(input: unknown): LandingDraft {
       why: docs(l.why),
       hidden: Array.isArray(l.hidden) ? (l.hidden as unknown[]).filter((s): s is string => typeof s === 'string') : undefined,
       custom,
-      stories: typeof l.stories === 'boolean' ? l.stories : undefined
+      stories: typeof l.stories === 'boolean' ? l.stories : undefined,
+      story_ids: parseStoryIds(l.story_ids)
     },
     description: parseText(b.description),
     branding: parseHero(b.branding),

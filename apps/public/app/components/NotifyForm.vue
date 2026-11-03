@@ -1,5 +1,6 @@
 <script setup lang="ts">
-// "Notify me when this campaign runs again": grants the site-updates consent.
+// "Notify me when this campaign runs again": grants the site-updates consent
+// and emails a link to confirm the request for the campaign shown.
 const { site } = useSite()
 const { t } = useI18n()
 const email = ref('')
@@ -13,7 +14,7 @@ async function submit() {
   sending.value = true
   error.value = null
   try {
-    await $fetch('/api/notify', { method: 'POST', body: { email: email.value, name: name.value, language: site.value.lang, turnstile: token.value } })
+    await $fetch('/api/notify', { method: 'POST', body: { email: email.value, name: name.value, campaign: site.value.campaign?.id, language: site.value.lang, turnstile: token.value } })
     done.value = true
   } catch {
     error.value = t('errors.generic')
