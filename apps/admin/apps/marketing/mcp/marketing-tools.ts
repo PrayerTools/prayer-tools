@@ -34,7 +34,7 @@ const versionInput = z.object({
   language: languageCode,
   subject: z.string().min(1).max(200),
   preheader: z.string().max(200).optional().describe('Preview text shown after the subject in inboxes.'),
-  content: z.array(z.record(z.unknown())).max(300).describe('The email body; see the tool description for the format.')
+  content: z.array(z.record(z.string(), z.unknown())).max(300).describe('The email body; see the tool description for the format.')
 }).strict()
 
 const draftFields = {
