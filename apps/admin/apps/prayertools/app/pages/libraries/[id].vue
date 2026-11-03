@@ -8,6 +8,8 @@ const route = useRoute()
 const id = computed(() => String(route.params.id))
 const { data: meta } = usePtMeta()
 const toast = usePtToast()
+// The back link returns operators to the admin library list when they came from it.
+const fromAdmin = String(useRouter().options.history.state.back ?? '').startsWith('/admin/pt/libraries')
 const { data, refresh } = useFetch<{ library: Record<string, any>, entries: { day: number, language: string, unpublished: boolean }[], canEdit: boolean, role: 'owner' | 'editor' | 'viewer' | null, usage: { following: number, copies: number } | null }>(() => `/api/pt/libraries/${id.value}`, { key: computed(() => `pt-library-${id.value}`) })
 
 const lib = computed(() => data.value?.library)
@@ -113,11 +115,11 @@ async function deleteLibrary() {
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div>
         <UButton
-          to="/libraries"
+          :to="fromAdmin ? '/admin/pt/libraries' : '/libraries'"
           icon="i-lucide-arrow-left"
           variant="link"
           color="neutral"
-          label="Libraries"
+          :label="fromAdmin ? 'Platform libraries' : 'Libraries'"
           class="px-0"
         />
         <h1 class="text-2xl font-semibold">
@@ -127,10 +129,16 @@ async function deleteLibrary() {
           By {{ lib.owner_name }} · version {{ lib.published_version }}<span v-if="lib.published_at">, published {{ ptFormatDate(lib.published_at) }}</span>
         </p>
       </div>
-      <div
-        v-if="data.canEdit || data.role"
-        class="flex gap-2"
-      >
+      <div class="flex gap-2">
+        <UButton
+          :to="`/api/pt/libraries/${id}/export`"
+          external
+          download
+          variant="outline"
+          color="neutral"
+          icon="i-lucide-download"
+          label="Export"
+        />
         <UButton
           v-if="data.role"
           variant="outline"

@@ -171,7 +171,7 @@ async function importPack() {
             :to="`/libraries/${l.id}`"
             class="hover:underline"
           >{{ l.title }}</NuxtLink>
-          <span class="text-(--ui-text-muted)">{{ l.entry_count }} entries · v{{ l.published_version }}</span>
+          <span class="text-(--ui-text-muted)">{{ l.languages.map((c: string) => languageName(meta, c)).join(', ') || 'Unpublished' }} · {{ l.entry_count }} entries · v{{ l.published_version }}</span>
         </li>
       </ul>
     </UCard>
