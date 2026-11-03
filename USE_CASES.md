@@ -127,7 +127,7 @@ The champion or the mobilizer:
 - Message intercessors from previous campaigns they've mobilized, on this site or across several of their sites.
 - Share the link, QR code and per-language share messages (WhatsApp on phones).
 - Intercessors are prompted to share after signing up, after their 3rd and 7th "Amen" and at the end. The champion sees how many joined through shares, never who invited whom.
-- Embed the signup or coverage widget on another site *(not built: no embed code in the admin, and the widget only links to signup)*.
+- Embed the signup widget on another site; on 24/7 campaigns it links to the coverage picker on the site.
 - List the site in the Prayer.Tools directory (operator approves).
 
 ### Fill 24/7 coverage

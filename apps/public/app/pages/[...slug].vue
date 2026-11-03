@@ -51,7 +51,7 @@ useHead(() => {
       <PlainNotFound v-else />
     </template>
     <template v-else>
-      <LazyViewsEmbedView v-if="view.page.kind === 'embed'" :progress="view.page.progress" />
+      <LazyViewsEmbedView v-if="view.page.kind === 'embed'" :progress="view.page.progress" :form="view.page.form" />
       <SiteShell v-else :page="view.page.kind">
         <LazyViewsLandingView v-if="view.page.kind === 'landing'" :page="view.page" />
         <LazyViewsBetweenView v-else-if="view.page.kind === 'between'" :page="view.page" />

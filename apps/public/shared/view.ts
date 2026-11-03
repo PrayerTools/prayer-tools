@@ -252,7 +252,7 @@ export type PageView =
   // `campaign` is null when the link is not valid.
   | { kind: 'leave', token: string, campaign: string | null }
   | { kind: 'notice', key: string }
-  | { kind: 'embed', progress: GoalProgressView | null }
+  | { kind: 'embed', progress: GoalProgressView | null, form: SignupFormView | null }
   | { kind: 'not_found' }
 
 export interface SiteResponse {

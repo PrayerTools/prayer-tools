@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // Share, for the campaign chosen in the switcher: its live link, QR code (PNG
 // and SVG), share messages per language with a WhatsApp preview, the share
-// image for link previews, and the Give line.
+// image for link previews, and the Give line. The Embed tab gives the code for
+// the signup widget on other websites.
 import type { TranslatableText } from '@prayertools/shared/db/schema'
 
 definePageMeta({ middleware: 'auth' })
@@ -10,8 +11,18 @@ const { data: site, can } = usePtSite()
 const canEditMessages = computed(() => can('pt.messages.write') || can('pt.campaigns.write'))
 const { data: meta } = usePtMeta()
 const toast = usePtToast()
-const { id: campaignId } = usePtCampaign()
-const { data, refresh } = useFetch<{ url: string, qrPng: string, qrSvg: string, share: { messages?: TranslatableText }, shareImageUrl: string | null, languages: string[], defaultLanguage: string, donateUrl: string }>('/api/pt/share', {
+const { id: campaignId, campaign } = usePtCampaign()
+const route = useRoute()
+const router = useRouter()
+const tabs = [
+  { label: 'Link and message', value: 'link', icon: 'i-lucide-link' },
+  { label: 'Embed', value: 'embed', icon: 'i-lucide-code' }
+]
+const tab = computed({
+  get: () => route.query.tab === 'embed' ? 'embed' : 'link',
+  set: v => router.replace({ query: { ...route.query, tab: v } })
+})
+const { data, refresh } = useFetch<{ url: string, siteUrl: string, campaignSegment: string | null, qrPng: string, qrSvg: string, share: { messages?: TranslatableText }, shareImageUrl: string | null, languages: string[], defaultLanguage: string, donateUrl: string }>('/api/pt/share', {
   query: computed(() => ({ campaign: campaignId.value })),
   key: computed(() => `pt-share-${campaignId.value}`),
   immediate: false,
@@ -98,6 +109,12 @@ async function setShareImage(url: string | undefined) {
         </h1>
         <PtCampaignSwitcher />
       </header>
+      <UTabs
+        v-model="tab"
+        :items="tabs"
+        :content="false"
+        class="w-full"
+      />
 
       <UAlert
         v-if="site.site.status !== 'published'"
@@ -108,7 +125,19 @@ async function setShareImage(url: string | undefined) {
         :description="site.site.status === 'draft' ? 'The link works once you publish. You can prepare your share message and image now.' : 'The link shows a short “this campaign has ended” page.'"
       />
 
-      <div class="grid gap-4 md:grid-cols-2">
+      <PtShareEmbed
+        v-if="tab === 'embed'"
+        :site-url="data.siteUrl"
+        :campaign-segment="data.campaignSegment"
+        :languages="data.languages"
+        :default-language="data.defaultLanguage"
+        :live="site.site.status === 'published' && !!campaign?.published_at"
+      />
+
+      <div
+        v-if="tab === 'link'"
+        class="grid gap-4 md:grid-cols-2"
+      >
         <UCard>
           <template #header>
             <h2 class="font-semibold">
@@ -183,7 +212,7 @@ async function setShareImage(url: string | undefined) {
         </UCard>
       </div>
 
-      <UCard>
+      <UCard v-if="tab === 'link'">
         <template #header>
           <h2 class="font-semibold">
             Share message
@@ -261,7 +290,7 @@ async function setShareImage(url: string | undefined) {
         </div>
       </UCard>
 
-      <UCard v-if="canEditMessages">
+      <UCard v-if="tab === 'link' && canEditMessages">
         <template #header>
           <h2 class="font-semibold">
             Share image
@@ -302,7 +331,10 @@ async function setShareImage(url: string | undefined) {
         </div>
       </UCard>
 
-      <p class="text-sm text-muted flex items-center gap-2">
+      <p
+        v-if="tab === 'link'"
+        class="text-sm text-muted flex items-center gap-2"
+      >
         <UIcon
           name="i-lucide-hand-heart"
           class="text-primary"
