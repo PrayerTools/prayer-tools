@@ -1,4 +1,5 @@
 {
+  "theme": { "light": "Passer au thème clair", "dark": "Passer au thème sombre" },
   "a11y": {
     "skip": "Aller au contenu"
   },

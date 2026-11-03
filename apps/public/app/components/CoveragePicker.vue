@@ -9,6 +9,7 @@ const time = defineModel<string>({ required: true })
 const props = defineProps<{ counts: SlotCounts, tz: string, weekdays: number[], duration: number, lang: string, idPrefix: string }>()
 const { t } = useI18n()
 const { num } = useSite()
+const mode = useColorMode()
 
 const NEED_SHOWN = 3
 const now = ref(Date.now())
@@ -85,6 +86,7 @@ function needLabel(h: Hour): string {
 }
 
 function shade(s: number): Record<string, string> {
+  if (mode.value === 'dark') return { background: s === 0 ? '#202c3a' : s < 1 ? '#304155' : '#405269' }
   return { background: `color-mix(in oklab, var(--brand) ${Math.round(s * 55)}%, white)` }
 }
 
