@@ -7,6 +7,7 @@ import type { TranslatableText } from '@prayertools/shared/db/schema'
 definePageMeta({ middleware: 'auth' })
 
 const { data: site, can } = usePtSite()
+const canEditMessages = computed(() => can('pt.messages.write') || can('pt.campaigns.write'))
 const { data: meta } = usePtMeta()
 const toast = usePtToast()
 const { id: campaignId } = usePtCampaign()
@@ -197,10 +198,10 @@ async function setShareImage(url: string | undefined) {
               label="Message"
               help="Pre-filled when people share your site from their phone, in their language. The link is added after it."
               multiline
-              :source-locked="!can('pt.site.write')"
+              :source-locked="!canEditMessages"
             />
             <div
-              v-if="can('pt.site.write')"
+              v-if="canEditMessages"
               class="flex justify-end"
             >
               <UButton
@@ -260,7 +261,7 @@ async function setShareImage(url: string | undefined) {
         </div>
       </UCard>
 
-      <UCard v-if="can('pt.site.write')">
+      <UCard v-if="canEditMessages">
         <template #header>
           <h2 class="font-semibold">
             Share image

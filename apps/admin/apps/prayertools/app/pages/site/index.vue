@@ -83,9 +83,9 @@ async function copyLink() {
 }
 
 const quickLinks = computed(() => [
-  { label: 'Prayer content', icon: 'i-lucide-book-open', to: '/site/content', perm: 'pt.site.read' },
-  { label: 'Landing page', icon: 'i-lucide-panels-top-left', to: '/site/landing', perm: 'pt.site.read' },
-  { label: 'Settings', icon: 'i-lucide-settings', to: '/site/settings', perm: 'pt.site.read' },
+  { label: 'Prayer content', icon: 'i-lucide-book-open', to: '/site/content', perm: 'pt.setup.read' },
+  { label: 'Landing page', icon: 'i-lucide-panels-top-left', to: '/site/landing', perm: 'pt.setup.read' },
+  { label: 'Settings', icon: 'i-lucide-settings', to: '/site/settings', perm: 'pt.setup.read' },
   { label: 'Intercessors', icon: 'i-lucide-users', to: '/crm/contacts', perm: 'crm.contacts.read' },
   { label: 'Stats', icon: 'i-lucide-chart-line', to: '/site/stats', perm: 'pt.stats.read' },
   { label: 'Campaigns', icon: 'i-lucide-calendar-range', to: '/site/campaigns', perm: 'pt.site.read' },

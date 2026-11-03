@@ -29,7 +29,7 @@ The public server and worker are not Nuxt layers. Logic they share with the admi
 
 - **Org = site.** The org slug is the site slug (`{slug}.prayer.tools`); reserved names (`app`, `api`, `go`, `www`, …) are refused. Custom domains live in `site_domain`, keyed by org.
 - **Staff org** for the prayer.tools team: the platform CRM (champions, "news from Prayer.Tools" consent), platform inbox, platform email.
-- **Roles:** owner, editor, translator, viewer as fixed tenancy roles (see [admin-app.md](admin-app.md)). Tenancy's custom roles and per-org role overrides are hidden.
+- **Roles:** owner, editor, mobilizer, translator, viewer as fixed tenancy roles (see [admin-app.md](admin-app.md)). Tenancy's custom roles and per-org role overrides are hidden.
 - **Apps:** every layer is on for every site: the apps are host-controlled and turned on when a site is created; site owners can't switch them.
 - **Invites and team screens** come from tenancy.
 - **Operators** (prayer.tools staff) reach any site through Nuxtinator's operator path.

@@ -19,7 +19,7 @@ const toast = usePtToast()
 const message = ref<TranslatableText | null>(props.endMessage)
 const ctaLabel = ref<TranslatableText | null>(props.cta?.label ?? null)
 const ctaUrl = ref(props.cta?.url ?? '')
-const canEdit = computed(() => can('pt.campaigns.write'))
+const canEdit = computed(() => can('pt.messages.write') || can('pt.campaigns.write'))
 
 // A side campaign without its own button invites people to the main campaign;
 // that invitation lives in code and is never saved.

@@ -1,6 +1,6 @@
 // Adds a story to (or removes it from) the landing page's stories section.
 // Only stories whose writer allowed the site to publish them.
-export default definePtHandler('pt.site.write', async (event, tx) => {
+export default definePtHandler('pt.messages.write', async (event, tx) => {
   const id = getRouterParam(event, 'id')!
   const { published } = await ptBody<{ published?: boolean }>(event)
   const story = await tx.selectFrom('pt_story').select(['may_publish']).where('id', '=', id).executeTakeFirst()

@@ -133,7 +133,7 @@ async function setPublished(s: Story, published: boolean) {
             />
           </div>
           <div class="flex flex-wrap items-center gap-2">
-            <template v-if="s.may_publish && can('pt.site.write')">
+            <template v-if="s.may_publish && can('pt.messages.write')">
               <UButton
                 v-if="!s.published"
                 size="sm"

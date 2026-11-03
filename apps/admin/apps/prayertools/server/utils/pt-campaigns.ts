@@ -9,7 +9,7 @@ import { isValidTimezone } from '@prayertools/shared/dates'
 import { parseText } from '@prayertools/shared/translatable'
 import { parsePlaceWording } from '@prayertools/shared/place'
 import { jsonb } from '@prayertools/shared/db/json'
-import { campaignById, campaignSeries, loadCampaigns, normalizeCampaign } from '@prayertools/shared/campaigns'
+import { campaignById, campaignEditMissing, campaignSeries, loadCampaigns, normalizeCampaign } from '@prayertools/shared/campaigns'
 import { goalProgress } from '@prayertools/shared/stats'
 import { campaignEntries, campaignLibraries, contentLength } from '@prayertools/shared/content'
 import { isTemplateWhy } from '@prayertools/shared/i18n/landing'
@@ -169,9 +169,11 @@ export async function ptCampaignDetail(tx: Transaction<Database>, id: string) {
   }
 }
 
-// Applies the fields present in `b` to a campaign. Landing page, description,
-// images and share messages also need pt.site.write.
+// Applies the fields present in `b` to a campaign, after checking `ctx` holds
+// the permissions those fields need (campaignEditMissing).
 export async function ptUpdateCampaign(tx: Transaction<Database>, ctx: TenantContext, id: string, b: Record<string, unknown>) {
+  const missing = campaignEditMissing(Object.keys(b), ctx.perms)
+  if (missing) ptNeed(ctx, missing)
   const c = await campaignById(ptTx(tx), id, { drafts: true })
   if (!c) ptNotFound('Campaign not found.')
   const patch: Record<string, unknown> = ptCampaignExtras(b)
@@ -196,7 +198,6 @@ export async function ptUpdateCampaign(tx: Transaction<Database>, ctx: TenantCon
   }
   if ('end_message' in b) patch.end_message = b.end_message ? jsonb(parseText(b.end_message)) : null
   if ('cta' in b) patch.cta = jsonb(ptCta(b.cta))
-  if (['landing', 'description', 'branding', 'share_image_url', 'share'].some(k => k in b)) ptNeed(ctx, 'pt.site.write')
   if ('description' in b) patch.description = b.description ? jsonb(parseText(b.description)) : null
   if ('landing' in b) {
     const landing = ptLanding(b.landing)
