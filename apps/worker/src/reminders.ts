@@ -14,7 +14,7 @@ import { isSuppressed } from '@prayertools/shared/email/suppression'
 import { loadSiteMailContext, reminderEmail, type SiteMailContext } from '@prayertools/shared/email/templates'
 import type { OutgoingMail } from '@prayertools/shared/email/transport'
 import { logEmails, type EmailLogEntry } from '@prayertools/shared/email/log'
-import { prayUrl } from '@prayertools/shared/links'
+import { leaveUrl, prayUrl } from '@prayertools/shared/links'
 import type { WorkerContext } from './context'
 import { personLanguage, personLinks, siteMail, siteRow } from './mail'
 import { groupBy, mapPool, MINUTE, HOUR } from './util'
@@ -204,6 +204,7 @@ async function prepare(tx: Tx, claimed: Claimed, now: Date, mailCtx: Map<string,
   const ctx = await ctxP
   const lang = personLanguage(sub.language, site)
   const links = personLinks(ctx, sub)
+  const leave = leaveUrl(ctx.siteUrl, claimed.org_id, sub.id, campaign.id)
   // Side campaigns never have the site's root address, so only a main campaign needs the current one.
   const current = isSideCampaign(campaign) ? null : pickCurrentCampaign(await loadCampaigns(tx))?.campaign.id
   const rendered = reminderEmail(ctx, lang, {
@@ -212,10 +213,12 @@ async function prepare(tx: Tx, claimed: Claimed, now: Date, mailCtx: Map<string,
     minutes: c.duration_min,
     prayUrl: prayUrl(ctx.siteUrl, campaignSegment(campaign, current), day, lang === site.default_language ? null : lang, claimed.org_id, sub.id),
     manageUrl: links.manageUrl,
-    unsubscribeUrl: links.unsubscribeUrl
+    unsubscribeUrl: links.unsubscribeUrl,
+    leaveUrl: leave
   })
   const sent: EmailLogEntry = { subscriptionId: sub.id, kind: 'reminder', subject: rendered.subject, campaignId: campaign.id, day, sentAt: now }
-  return { outcome: 'send', prepared: { mail: siteMail(ctx, email.email, rendered, 'reminder', links.unsubscribeUrl), sent, localDate, next } }
+  // A mail client's one-click unsubscribe on a reminder leaves only its campaign.
+  return { outcome: 'send', prepared: { mail: siteMail(ctx, email.email, rendered, 'reminder', leave), sent, localDate, next } }
 }
 
 async function handleOne(ctx: WorkerContext, claimed: Claimed, now: Date, mailCtx: Map<string, Promise<SiteMailContext>>, log: Logger): Promise<Outcome> {

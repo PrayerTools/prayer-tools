@@ -289,6 +289,8 @@ export interface CampaignLanding {
   hidden?: string[]
   custom?: LandingCustomSection[]
   stories?: boolean
+  // A side campaign's chosen stories; absent until it chooses.
+  story_ids?: string[]
 }
 
 export interface CampaignShare {
@@ -334,9 +336,12 @@ export interface PtSiteTable {
   updated_at: Timestamp
 }
 
+// The champion's own button, or `mode: 'none'` for no button at all. Empty
+// means a side campaign invites its intercessors to the main campaign.
 export interface CampaignCta {
   label?: TranslatableText
   url?: string
+  mode?: 'none'
 }
 
 export interface PtCampaignTable {
@@ -456,6 +461,8 @@ export interface PtCommitmentTable {
   advanced_on: NullableDateOnly
   // Personal-start campaigns: when the person went through the last entry.
   finished_at: NullableTimestamp
+  // When the person left the campaign; the commitment ends that day.
+  left_at: NullableTimestamp
   created_at: Timestamp
   updated_at: Timestamp
 }

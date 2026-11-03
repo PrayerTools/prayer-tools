@@ -1,7 +1,7 @@
 import type { TranslatableText, LandingCustomSection, CampaignBranding, CampaignLanding, CampaignShare, SiteBranding, SiteEmailIdentity, TiptapDoc } from '@prayertools/shared/db/schema'
 import { parseText } from '@prayertools/shared/translatable'
 import { parseHex } from '@prayertools/shared/colors'
-import { HIDEABLE_SECTIONS } from '@prayertools/shared/landing'
+import { HIDEABLE_SECTIONS, parseStoryIds } from '@prayertools/shared/landing'
 import { videoEmbed } from '@prayertools/shared/video'
 
 const MAX_DOC_BYTES = 200_000
@@ -98,7 +98,7 @@ export function ptLanding(input: unknown): CampaignLanding {
       button_url: url(raw.button_url)
     }) as LandingCustomSection)
   }
-  return clean({ why, hidden, custom, stories: typeof l.stories === 'boolean' ? l.stories : undefined })
+  return clean({ why, hidden, custom, stories: typeof l.stories === 'boolean' ? l.stories : undefined, story_ids: parseStoryIds(l.story_ids) })
 }
 
 export function ptShare(input: unknown): CampaignShare {

@@ -10,7 +10,7 @@ export default definePtHandler('pt.intercessors.read', async (event, tx) => {
   const sub = await tx.selectFrom('pt_subscription').selectAll().where('contact_id', '=', contactId).executeTakeFirst()
   if (!sub) return { subscription: null }
   const commitments = await tx.selectFrom('pt_commitment as c').innerJoin('pt_campaign as k', 'k.id', 'c.campaign_id')
-    .select(['c.id', 'c.campaign_id', 'k.name as campaign_name', 'k.start_mode', 'c.kind', 'c.frequency', 'c.days_of_week', 'c.time', 'c.timezone', 'c.duration_min', 'c.dates', 'c.starts_on', 'c.ends_on', 'c.paused', 'c.next_reminder_utc', 'c.entries_done', 'c.advanced_on'])
+    .select(['c.id', 'c.campaign_id', 'k.name as campaign_name', 'k.start_mode', 'c.kind', 'c.frequency', 'c.days_of_week', 'c.time', 'c.timezone', 'c.duration_min', 'c.dates', 'c.starts_on', 'c.ends_on', 'c.paused', 'c.next_reminder_utc', 'c.entries_done', 'c.advanced_on', 'c.left_at'])
     .where('c.subscription_id', '=', sub.id).orderBy('c.created_at').execute()
   // Personal-start campaigns: how far through the content each person is.
   const entries = new Map<string, number | null>()

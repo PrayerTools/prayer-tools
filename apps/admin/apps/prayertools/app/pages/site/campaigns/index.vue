@@ -47,7 +47,7 @@ async function doConfirm() {
 
 <template>
   <div class="max-w-4xl mx-auto space-y-6">
-    <header class="flex items-start justify-between gap-4 flex-wrap">
+    <header class="theme-page-header rounded-lg flex items-start justify-between gap-4 flex-wrap">
       <div>
         <h1 class="text-2xl font-bold">
           Campaigns
@@ -234,6 +234,7 @@ async function doConfirm() {
               :campaign-id="c.id"
               :end-message="c.end_message"
               :cta="c.cta"
+              :side="c.kind === 'side'"
               :languages="site.site.languages"
               :default-language="site.site.default_language"
               @saved="refresh"

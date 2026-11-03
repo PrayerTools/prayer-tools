@@ -41,7 +41,7 @@ export async function closeEndedCampaigns(ctx: WorkerContext, log: Logger): Prom
 // the campaign's entries: it is marked and thanked then, whatever else they
 // pray in. A subscription is completed when nothing is left open: every
 // personal-start commitment finished, and every other one past its last day
-// or in an ended campaign.
+// or in an ended campaign. Commitments in campaigns the person left don't count.
 export async function completePersonalStart(ctx: WorkerContext, log: Logger): Promise<Record<string, number>> {
   const now = ctx.now()
   const finished = await sql<{ id: string, org_id: string, subscription_id: string, campaign_id: string }>`
@@ -49,7 +49,7 @@ export async function completePersonalStart(ctx: WorkerContext, log: Logger): Pr
     FROM pt_commitment c
     JOIN pt_campaign k ON k.id = c.campaign_id
     JOIN pt_subscription s ON s.id = c.subscription_id
-    WHERE s.status = 'active' AND k.start_mode = 'join' AND k.end_mode = 'days' AND c.finished_at IS NULL
+    WHERE s.status = 'active' AND k.start_mode = 'join' AND k.end_mode = 'days' AND c.finished_at IS NULL AND c.left_at IS NULL
       AND c.entries_done >= coalesce(k.length_days, nullif(${contentLengthSql(sql.ref('k.id'))}, 0))
   `.execute(ctx.admin)
   let queued = 0
@@ -68,12 +68,12 @@ export async function completePersonalStart(ctx: WorkerContext, log: Logger): Pr
     WHERE s.status = 'active'
       AND EXISTS (
         SELECT 1 FROM pt_commitment c JOIN pt_campaign k ON k.id = c.campaign_id
-        WHERE c.subscription_id = s.id AND k.start_mode = 'join'
+        WHERE c.subscription_id = s.id AND k.start_mode = 'join' AND c.left_at IS NULL
       )
       AND NOT EXISTS (
         SELECT 1 FROM pt_commitment c
         JOIN pt_campaign k ON k.id = c.campaign_id
-        WHERE c.subscription_id = s.id
+        WHERE c.subscription_id = s.id AND c.left_at IS NULL
           AND CASE WHEN k.start_mode = 'join'
             THEN c.finished_at IS NULL
             ELSE k.ended_at IS NULL AND (c.ends_on IS NULL OR c.ends_on >= (${now}::timestamptz AT TIME ZONE c.timezone)::date) END

@@ -84,6 +84,7 @@ export async function peopleCount(tx: Tx, c: CampaignForCount, now: Date = new D
     q = q
       .where('s.status', '=', 'active')
       .where('cm.paused', '=', false)
+      .where('cm.left_at', 'is', null)
       .where(eb => eb.or([eb('cm.ends_on', 'is', null), eb('cm.ends_on', '>=', today)]))
   }
   const row = await q.executeTakeFirst()

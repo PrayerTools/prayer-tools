@@ -28,7 +28,7 @@ export function visitorId(): string {
   return memoryVid
 }
 
-const TOKEN_PAGES = new Set(['m', 'u', 'verify', 'checkin', 'preview', 'ics'])
+const TOKEN_PAGES = new Set(['m', 'u', 'l', 'verify', 'checkin', 'preview', 'ics'])
 
 // The page URL without personal tokens.
 export function safeUrl(): string {

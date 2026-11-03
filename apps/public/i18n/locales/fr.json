@@ -1,4 +1,5 @@
 {
+  "theme": { "light": "Passer au thème clair", "dark": "Passer au thème sombre" },
   "a11y": {
     "skip": "Aller au contenu"
   },
@@ -225,6 +226,8 @@
     "thanks": "Merci d'avoir prié",
     "results": "Résultats finaux",
     "cta_default": "Continuer",
+    "keep_praying": "Continuez à prier avec {campaign}",
+    "still_praying": "Vous priez toujours avec {campaign}.",
     "notify_title": "Me prévenir lorsque cette campagne reprendra",
     "notify_intro": "Laissez votre adresse e-mail et {site} vous préviendra au début de la prochaine campagne.",
     "notify_button": "Me prévenir",
@@ -286,6 +289,10 @@
     "download": "Télécharger mes données",
     "unsubscribe": "Arrêter tous les rappels",
     "unsubscribed": "Vous êtes désabonné",
+    "leave": "Ne plus prier avec {campaign}",
+    "leave_confirm_title": "Ne plus prier avec {campaign} ?",
+    "leave_confirm_body": "Vos temps de prière dans {campaign} s'arrêtent aujourd'hui, ainsi que ses rappels. Vos autres campagnes avec {site} continuent.",
+    "left": "Vous ne priez plus avec {campaign}",
     "delete": "Supprimer mes données",
     "delete_confirm_title": "Supprimer vos données ?",
     "delete_confirm_body": "Cela supprime vos moments de prière et vos informations de {site}. Cette action est irréversible.",
@@ -302,7 +309,15 @@
   "unsubscribe": {
     "title": "Se désabonner",
     "body": "Arrêter tous les rappels de prière de {site} ?",
-    "confirm": "Se désabonner"
+    "confirm": "Se désabonner",
+    "more": "Se désabonner au-delà de {site}",
+    "all": "Toutes les campagnes Prayer.Tools",
+    "all_emails": "Toutes les campagnes Prayer.Tools et les e-mails marketing"
+  },
+  "leave": {
+    "title": "Arrêter les rappels",
+    "body": "Ne plus prier avec {campaign} et arrêter ses rappels ? Vos autres campagnes avec {site} continuent.",
+    "confirm": "Arrêter les rappels pour {campaign}"
   },
   "notice": {
     "checkin_yes": "Merci de nous avoir répondu ! Continuez à prier — vos rappels continuent.",
@@ -310,6 +325,9 @@
     "checkin_no": "Merci d'avoir prié avec nous. Nous avons arrêté vos rappels.",
     "link_invalid": "Ce lien n'est pas valide ou a déjà été utilisé.",
     "unsubscribed": "Vous êtes désabonné. Vous ne recevrez plus de rappels de {site}.",
+    "unsubscribed_all": "Vous êtes désabonné de toutes les campagnes Prayer.Tools. Vous ne recevrez plus de rappels de prière de leur part.",
+    "unsubscribed_all_emails": "Vous êtes désabonné de toutes les campagnes Prayer.Tools et de leurs e-mails marketing. Vous ne recevrez plus de rappels ni d’e-mails de leur part.",
+    "left_campaign": "Vous ne recevrez plus de rappels pour cette campagne. Vos autres temps de prière avec {site} continuent.",
     "verify_invalid": "Ce lien de confirmation n'est pas valide ou a expiré. Veuillez vous réinscrire.",
     "deleted": "Vos données ont été supprimées.",
     "not_found": "Nous n'avons pas trouvé ce que vous cherchiez.",
@@ -348,10 +366,18 @@
     "past_line": "{name} : {prayers} prières, {minutes} minutes",
     "delete_all": "Supprimer mes données partout",
     "delete_all_body": "Cela supprime vos moments de prière et vos informations de toutes les campagnes listées ici. Cette action est irréversible.",
+    "stop_reminders": "Arrêter tous les rappels de prière",
+    "stop_reminders_title": "Arrêter tous les rappels de prière ?",
+    "stop_reminders_body": "Aucune des campagnes listées ici ne vous enverra plus de rappels de prière. Les nouvelles de ces sites et de Prayer.Tools continuent. Vos horaires de prière et votre historique sont conservés.",
+    "stop_all": "Arrêter tous les rappels de prière et e-mails marketing",
+    "stop_all_title": "Arrêter tous les rappels de prière et e-mails marketing ?",
+    "stop_all_body": "Aucune des campagnes listées ici ne vous enverra plus de rappels ni d’e-mails, et Prayer.Tools non plus. Vos horaires de prière et votre historique sont conservés.",
     "notice_link_invalid": "Ce lien de connexion n'est pas valide ou a déjà été utilisé. Demandez-en un nouveau ci-dessous.",
     "notice_signed_out": "Vous êtes déconnecté.",
     "notice_deleted": "Vos données ont été supprimées.",
     "notice_deleted_kept": "Vos données de prière ont été supprimées. Votre compte est conservé, car vous l'utilisez encore ailleurs sur Prayer.Tools.",
+    "notice_stopped_reminders": "Tous vos rappels de prière sont arrêtés.",
+    "notice_stopped_all": "Tous vos rappels et e-mails de prière sont arrêtés.",
     "notice_link_sent": "Consultez vos e-mails pour trouver votre lien.",
     "notice_social_failed": "La connexion n'a pas fonctionné. Réessayez ou recevez un lien par e-mail.",
     "status_active": "Active",
@@ -370,6 +396,7 @@
     "manage_site": "Gérer",
     "create_campaign": "Lancer une campagne de prière",
     "praying_title": "Campagnes avec lesquelles vous priez",
+    "emails_title": "E-mails auxquels vous êtes inscrit",
     "notice_email_changed": "Votre adresse e-mail a été modifiée dans toutes les campagnes. Connectez-vous avec la nouvelle adresse pour continuer.",
     "notice_email_taken": "Un autre compte utilise déjà cette adresse ; rien n’a changé.",
     "notice_email_kept": "Votre adresse e-mail est de nouveau celle-ci. Toutes les autres connexions ont été fermées et tout mot de passe d'administration a été supprimé ; utilisez « mot de passe oublié » dans l'application d'administration pour en définir un nouveau.",
@@ -399,5 +426,8 @@
     "content_body": "Une prière guidée pour chaque jour, prête à l’emploi ou rédigée par votre équipe.",
     "reminders_title": "Rappels",
     "reminders_body": "Chaque personne qui prie reçoit un rappel par e-mail ou dans l’application aux heures choisies."
+  },
+  "embed": {
+    "open_site": "Ouvrir le site de la campagne"
   }
 }

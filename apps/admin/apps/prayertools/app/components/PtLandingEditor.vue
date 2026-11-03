@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // The landing page editor: fixed sections in a fixed order. The champion
 // writes the "why" text and custom sections, hides sections they don't need,
-// and chooses whether published stories show. Section headings and standard
+// and chooses whether stories show and, on a side campaign, which ones. Section headings and standard
 // text can be reworded per language; the preview beside the editor shows
 // unsaved changes. It edits one campaign's landing page, short description
 // and hero image; section headings, standard text, color and logo are the
@@ -11,6 +11,7 @@ import { DEFAULT_BRAND_COLOR } from '@prayertools/shared/colors'
 import { heroImage } from '@prayertools/shared/hero-images'
 import { isEmptyDoc } from '@prayertools/shared/tiptap'
 import { isTemplateWhy, templateWhyDoc } from '@prayertools/shared/i18n/landing'
+import { LANDING_STORY_LIMIT } from '@prayertools/shared/landing'
 import { videoEmbed } from '@prayertools/shared/video'
 import { campaignSegment, campaignUrl } from '@prayertools/shared/campaigns'
 
@@ -27,13 +28,13 @@ interface CustomSection {
   button_label?: TranslatableText
   button_url?: string
 }
-interface Story { id: string, name: string | null, body: string, use_name: boolean, published: boolean, campaign_id: string | null }
+interface Story { id: string, name: string | null, body: string, use_name: boolean, published: boolean, may_publish: boolean, campaign_id: string | null, campaign_name: string | null }
 
 const { data: site, refresh: refreshSite, can } = usePtSite()
 const { data: meta } = usePtMeta()
 const toast = usePtToast()
 
-interface Campaign { id: string, slug: string, name: string, kind: 'side' | null, template_key: string | null, landing: CampaignLanding | null, branding: CampaignBranding | null, description: TranslatableText | null }
+interface Campaign { id: string, slug: string, name: string, kind: 'side' | null, template_key: string | null, landing: CampaignLanding | null, branding: CampaignBranding | null, description: TranslatableText | null, series: string[] }
 const { data: campaignData, refresh: refreshCampaign } = useFetch<{ campaign: Campaign }>(() => `/api/pt/campaigns/${props.campaignId}`, { key: `pt-campaign-${props.campaignId}` })
 const campaign = computed(() => campaignData.value?.campaign ?? null)
 const side = computed(() => campaign.value?.kind === 'side')
@@ -64,6 +65,7 @@ const dir = computed(() => meta.value?.languages.find(l => l.code === lang.value
 const why = ref<Record<string, Record<string, any> | null>>({})
 const hidden = ref<string[]>([])
 const stories = ref(true)
+const storyIds = ref<string[] | undefined>()
 const custom = ref<CustomSection[]>([])
 const description = ref<TranslatableText | null>(null)
 const openIds = ref<string[]>([])
@@ -73,6 +75,7 @@ watch(source, (src) => {
   why.value = withTemplateWhy((src.landing.why ?? {}) as Record<string, TiptapDoc>, src.templateKey, s.site.languages, s.site.default_language)
   hidden.value = [...(src.landing.hidden ?? meta.value?.templates.find(t => t.key === src.templateKey)?.hiddenSections ?? [])]
   stories.value = src.landing.stories !== false
+  storyIds.value = src.landing.story_ids ? [...src.landing.story_ids] : undefined
   custom.value = JSON.parse(JSON.stringify(src.landing.custom ?? []))
   description.value = src.description
   openIds.value = custom.value.filter(c => !c.heading.values[s.site.default_language]).map(c => c.id)
@@ -186,6 +189,7 @@ async function saveWording() {
 const sections = computed(() => (meta.value?.landing.sections ?? []).map(key => ({
   key,
   ...ptLandingSectionInfo(key),
+  ...(key === 'stories' && side.value ? { description: 'Stories from people who prayed, ones you choose for this campaign.' } : {}),
   title: sectionTitle(key),
   required: !(meta.value?.landing.hideable ?? []).includes(key)
 })))
@@ -202,7 +206,17 @@ const { data: storyData, execute: loadStories } = useFetch<{ stories: Story[] }>
 watch(() => can('pt.intercessors.read'), (ok) => {
   if (ok) loadStories()
 }, { immediate: true })
-const landingStories = computed(() => (storyData.value?.stories ?? []).filter(s => s.published && (!side.value || s.campaign_id === props.campaignId)))
+// A side campaign shows the stories it chose, or until it chooses, the published ones from its series.
+const pickableStories = computed(() => (storyData.value?.stories ?? []).filter(s => s.may_publish))
+const chosenStoryIds = computed(() => storyIds.value
+  ?? pickableStories.value.filter(s => s.published && s.campaign_id && campaign.value?.series.includes(s.campaign_id)).slice(0, LANDING_STORY_LIMIT).map(s => s.id))
+const landingStories = computed(() => side.value
+  ? pickableStories.value.filter(s => chosenStoryIds.value.includes(s.id))
+  : (storyData.value?.stories ?? []).filter(s => s.published))
+function chooseStory(id: string, on: boolean) {
+  const ids = chosenStoryIds.value.filter(x => x !== id)
+  storyIds.value = on ? [...ids, id] : ids
+}
 
 function addSection() {
   const l = site.value!.site.default_language
@@ -269,7 +283,7 @@ async function uploadVideo(e: Event) {
   }
 }
 
-const draft = computed(() => ({ landing: { why: why.value, hidden: hidden.value, stories: stories.value, custom: custom.value }, description: description.value, branding: hero.value, brand: brand.value, strings: wording.value[lang.value] ?? {} }))
+const draft = computed(() => ({ landing: { why: why.value, hidden: hidden.value, stories: stories.value, story_ids: storyIds.value, custom: custom.value }, description: description.value, branding: hero.value, brand: brand.value, strings: wording.value[lang.value] ?? {} }))
 const preview = ref<{ focus: (section: string, id?: string) => void }>()
 
 // The selected section ('why', or 'custom-<id>' for one custom section) stays
@@ -298,7 +312,7 @@ async function save() {
       toast.ok('Translation saved')
       return
     }
-    const landing = { why: why.value, hidden: hidden.value, stories: stories.value, custom: custom.value }
+    const landing = { why: why.value, hidden: hidden.value, stories: stories.value, story_ids: storyIds.value, custom: custom.value }
     await $fetch(`/api/pt/campaigns/${props.campaignId}`, { method: 'PATCH', body: { landing, branding: hero.value, description: description.value } })
     if (brandDirty.value) await $fetch('/api/pt/site', { method: 'PATCH', body: { branding: brand.value } })
     await saveWording()
@@ -783,10 +797,54 @@ async function translateWhy() {
               v-else-if="s.key === 'stories'"
               class="space-y-2"
             >
-              <p class="text-sm text-(--ui-text-muted)">
+              <template v-if="side && can('pt.intercessors.read')">
+                <p class="text-sm text-(--ui-text-muted)">
+                  Choose up to {{ LANDING_STORY_LIMIT }} stories from any campaign on your site. Names show only when the writer allowed it.
+                </p>
+                <p
+                  v-if="!pickableStories.length"
+                  class="text-sm text-(--ui-text-muted)"
+                >
+                  No stories you may publish yet. The page shows the section once you choose one.
+                </p>
+                <div
+                  v-else
+                  class="max-h-96 space-y-2 overflow-y-auto"
+                >
+                  <div
+                    v-for="st in pickableStories"
+                    :key="st.id"
+                    class="rounded-md bg-(--ui-bg-elevated) p-3 text-sm"
+                  >
+                    <UCheckbox
+                      :model-value="chosenStoryIds.includes(st.id)"
+                      :disabled="!canWrite || (!chosenStoryIds.includes(st.id) && chosenStoryIds.length >= LANDING_STORY_LIMIT)"
+                      @update:model-value="(v) => chooseStory(st.id, !!v)"
+                    >
+                      <template #label>
+                        <span class="line-clamp-3 whitespace-pre-line font-normal">{{ st.body }}</span>
+                      </template>
+                      <template #description>
+                        {{ st.use_name && st.name ? st.name : 'Anonymous' }}<span v-if="st.campaign_name"> · {{ st.campaign_name }}</span>
+                      </template>
+                    </UCheckbox>
+                  </div>
+                </div>
+                <UButton
+                  :to="`/@${site.org.slug}/site/landing/stories`"
+                  variant="link"
+                  icon="i-lucide-heart-handshake"
+                  label="Stories"
+                  class="px-0"
+                />
+              </template>
+              <p
+                v-if="!side"
+                class="text-sm text-(--ui-text-muted)"
+              >
                 Only stories you publish show, and names only when the writer allowed it.
               </p>
-              <template v-if="can('pt.intercessors.read')">
+              <template v-if="!side && can('pt.intercessors.read')">
                 <p
                   v-if="!landingStories.length"
                   class="text-sm text-(--ui-text-muted)"

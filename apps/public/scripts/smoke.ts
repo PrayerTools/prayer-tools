@@ -9,7 +9,7 @@ import { sql } from 'kysely'
 import { createDb } from '@prayertools/shared/db/connect'
 import { withOrg } from '@prayertools/shared/db/scope'
 import { hashToken, randomToken } from '@prayertools/shared/tokens'
-import { manageToken, unsubscribeToken } from '@prayertools/shared/links'
+import { leaveToken, manageToken, unsubscribeToken } from '@prayertools/shared/links'
 
 if (!process.env.PUBLIC_URL || !process.env.ADMIN_DATABASE_URL) {
   console.error('Set PUBLIC_URL (the running public server) and ADMIN_DATABASE_URL (its database, admin role).')
@@ -116,7 +116,15 @@ check('/pray/999 → 404 with short cache', p404.status === 404 && p404.headers.
 check('/stats renders', (await req(SITE, '/stats')).text.includes('Prayer so far'))
 check('/manage is private', (await req(SITE, '/manage')).headers.get('cache-control') === 'private, no-store')
 const embed = await req(SITE, '/embed')
-check('/embed is framable', embed.status === 200 && !embed.headers.get('x-frame-options'))
+check('/embed is framable by any site', embed.status === 200 && !embed.headers.get('x-frame-options') && embed.headers.get('content-security-policy') === 'frame-ancestors *', embed.headers.get('content-security-policy'))
+check('/embed holds the signup form', embed.text.includes('inputmode="email"'))
+check('/fr/embed in French', (await req(SITE, '/fr/embed')).text.includes('lang="fr"'))
+for (const path of ['/stats/embed', '/signup/embed', '/embed/x']) {
+  const r = await req(SITE, path)
+  check(`${path} not framable`, r.headers.get('x-frame-options') === 'SAMEORIGIN' && r.headers.get('content-security-policy') === "frame-ancestors 'self'")
+}
+const coverageEmbed = await req(COVERAGE, '/embed')
+check('24/7 embed links to the site\'s signup page', coverageEmbed.status === 200 && coverageEmbed.text.includes('/signup"') && !coverageEmbed.text.includes('inputmode="email"'))
 check('/embed.js served', (await req(SITE, '/embed.js')).text.includes('pt-embed-height'))
 check('coverage page on 24/7 site', (await req(COVERAGE, '/coverage')).status === 200)
 const cov = await req(COVERAGE, '/api/coverage.json')
@@ -234,6 +242,12 @@ check('inbox threads opened (contact_form + story)', threads.some(t => t.source 
 check('story acknowledgement email', !!(await mailTo(storyEmail, /story|God/i)))
 
 console.log('Unsubscribe and check-ins')
+const lTok = leaveToken(ramadan, sub1!.id, campaignId)
+check('/l page asks for confirmation', (await req(SITE, `/l/${lTok}`)).text.includes('Stop reminders'))
+const leaveClick = await req(SITE, `/l/${lTok}`, { method: 'POST', raw: 'List-Unsubscribe=One-Click' })
+const leftRows = await admin.selectFrom('pt_commitment').select(['left_at', 'next_reminder_utc']).where('subscription_id', '=', sub1!.id).where('campaign_id', '=', campaignId).execute()
+const statusL = await admin.selectFrom('pt_subscription').select('status').where('id', '=', sub1!.id).executeTakeFirstOrThrow()
+check('one-click on a reminder leaves only its campaign', leaveClick.status === 200 && leftRows.length > 0 && leftRows.every(r => r.left_at && !r.next_reminder_utc) && statusL.status !== 'unsubscribed')
 const uTok = unsubscribeToken(ramadan, sub1!.id)
 check('/u page asks for confirmation', (await req(SITE, `/u/${uTok}`)).text.includes('Unsubscribe'))
 const oneClick = await req(SITE, `/u/${uTok}`, { method: 'POST', raw: 'List-Unsubscribe=One-Click' })

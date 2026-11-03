@@ -38,7 +38,7 @@ export function positionOf(c: Pick<CommitmentRow, 'entries_done' | 'advanced_on'
 
 export async function personalCommitment(tx: Tx, subscriptionId: string, campaignId: string): Promise<CommitmentRow | undefined> {
   return await tx.selectFrom('pt_commitment').selectAll()
-    .where('subscription_id', '=', subscriptionId).where('campaign_id', '=', campaignId)
+    .where('subscription_id', '=', subscriptionId).where('campaign_id', '=', campaignId).where('left_at', 'is', null)
     .orderBy('created_at').executeTakeFirst()
 }
 

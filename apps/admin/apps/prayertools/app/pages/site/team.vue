@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// The site's team: owners, editors, translators and viewers. Invites and
+// The site's team: owners, editors, mobilizers, translators and viewers. Invites and
 // memberships use the tenancy layer's endpoints; a site always keeps an owner.
 definePageMeta({ middleware: 'auth' })
 
@@ -77,7 +77,7 @@ async function remove(m: Member) {
 
 <template>
   <div class="max-w-4xl mx-auto space-y-6">
-    <header class="flex flex-wrap items-start justify-between gap-4">
+    <header class="theme-page-header rounded-lg flex flex-wrap items-start justify-between gap-4">
       <div>
         <h1 class="text-2xl font-bold">
           Team

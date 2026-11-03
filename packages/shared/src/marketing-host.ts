@@ -18,6 +18,7 @@ import { campaignStatus, pickCurrentCampaign } from './setup'
 import { loadCampaigns } from './campaigns'
 import { PT_LIBRARY_APP } from './site'
 import { tiptapToHtml, tiptapToText } from './tiptap'
+import { blocksToDoc, BLOCKS_FORMAT_HELP, docToBlocks, type ContentBlock } from './content-blocks'
 import { textIn } from './translatable'
 import type { Selectable } from 'kysely'
 
@@ -120,7 +121,7 @@ function members(tx: Tx, orgId: string) {
 async function campaignMembers(tx: Tx, orgId: string, campaignIds: string[]): Promise<Member[]> {
   if (!campaignIds.length) return []
   const rows = await members(tx, orgId)
-    .where(eb => eb.exists(eb.selectFrom('pt_commitment as c').select('c.id').whereRef('c.subscription_id', '=', 's.id').where('c.campaign_id', 'in', campaignIds)))
+    .where(eb => eb.exists(eb.selectFrom('pt_commitment as c').select('c.id').whereRef('c.subscription_id', '=', 's.id').where('c.campaign_id', 'in', campaignIds).where('c.left_at', 'is', null)))
     .execute()
   return rows.map(r => ({ contactId: r.contactId, channelId: r.channelId, address: r.address, language: r.language, joinedAt: new Date(r.joinedAt), firstName: firstNameOf(r.name, r.address) }))
 }
@@ -271,6 +272,12 @@ export const ptMarketingHost = {
       }),
       defaultLanguage: info.defaultLanguage
     }
+  },
+
+  mcpContent: {
+    help: BLOCKS_FORMAT_HELP,
+    toDoc: (blocks: unknown[]) => blocksToDoc(blocks as ContentBlock[]),
+    fromDoc: (doc: TiptapDoc) => docToBlocks(doc)
   },
 
   variableList: [
