@@ -83,7 +83,7 @@ async function create() {
 
 <template>
   <div class="max-w-3xl mx-auto space-y-6">
-    <header>
+    <header class="theme-page-header rounded-lg">
       <UButton
         to="/site/campaigns"
         icon="i-lucide-arrow-left"

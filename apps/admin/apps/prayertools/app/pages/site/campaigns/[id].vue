@@ -95,7 +95,7 @@ async function remove() {
     v-if="data && site"
     class="max-w-4xl mx-auto space-y-6"
   >
-    <header class="flex flex-wrap items-start justify-between gap-4">
+    <header class="theme-page-header rounded-lg flex flex-wrap items-start justify-between gap-4">
       <div class="min-w-0">
         <UButton
           to="/site/campaigns"
