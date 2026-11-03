@@ -88,6 +88,10 @@
   "progress": {
     "people": "شخص واحد يصلي | عدد المصلين: {n}",
     "people_target": "{n} من أصل {target} مصلٍّ",
+    "people_upcoming": "شخص واحد مسجّل | عدد المسجّلين: {n}",
+    "people_target_upcoming": "{n} من أصل {target} مسجّل",
+    "people_ended": "صلّى شخص واحد | عدد الذين صلّوا: {n}",
+    "people_target_ended": "صلّى {n} من أصل {target}",
     "prayer_time": "{minutes} من أصل {target} من الصلاة يوميًا",
     "coverage": "{percent}% من الوقت مغطى بالصلاة"
   },

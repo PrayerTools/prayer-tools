@@ -88,6 +88,10 @@
   "progress": {
     "people": "{n} personne en prière | {n} personnes en prière",
     "people_target": "{n} sur {target} personnes en prière",
+    "people_upcoming": "{n} personne inscrite | {n} personnes inscrites",
+    "people_target_upcoming": "{n} sur {target} personnes inscrites",
+    "people_ended": "{n} personne a prié | {n} personnes ont prié",
+    "people_target_ended": "{n} sur {target} personnes ont prié",
     "prayer_time": "{minutes} sur {target} de prière chaque jour",
     "coverage": "{percent} % du temps couvert par la prière"
   },

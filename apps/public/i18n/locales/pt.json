@@ -88,6 +88,10 @@
   "progress": {
     "people": "{n} pessoa orando | {n} pessoas orando",
     "people_target": "{n} de {target} pessoas orando",
+    "people_upcoming": "{n} pessoa inscrita | {n} pessoas inscritas",
+    "people_target_upcoming": "{n} de {target} pessoas inscritas",
+    "people_ended": "{n} pessoa orou | {n} pessoas oraram",
+    "people_target_ended": "{n} de {target} pessoas oraram",
     "prayer_time": "{minutes} de {target} de oração por dia",
     "coverage": "{percent}% do tempo coberto em oração"
   },

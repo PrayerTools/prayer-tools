@@ -91,6 +91,10 @@
   "progress": {
     "people": "{n} person praying | {n} people praying",
     "people_target": "{n} of {target} people praying",
+    "people_upcoming": "{n} person signed up | {n} people signed up",
+    "people_target_upcoming": "{n} of {target} people signed up",
+    "people_ended": "{n} person prayed | {n} people prayed",
+    "people_target_ended": "{n} of {target} people prayed",
     "prayer_time": "{minutes} of {target} of prayer each day",
     "coverage": "{percent}% of the time covered in prayer"
   },
