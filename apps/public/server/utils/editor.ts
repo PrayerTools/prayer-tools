@@ -115,6 +115,7 @@ export function parseLandingDraft(input: unknown): LandingDraft {
   }
   return {
     landing: {
+      subtitle: parseText(l.subtitle) ?? undefined,
       why: docs(l.why),
       hidden: Array.isArray(l.hidden) ? (l.hidden as unknown[]).filter((s): s is string => typeof s === 'string') : undefined,
       custom,

@@ -13,13 +13,14 @@ const themeStyle = computed(() => ({
 }))
 
 const nav = computed(() => {
-  const items = site.value.campaign?.state === 'upcoming' ? [] : [{ label: t('nav.pray'), to: link('pray') }]
-  items.push({ label: t('nav.stats'), to: link('stats') })
-  if (site.value.campaign?.goal === 'coverage') items.push({ label: t('nav.coverage'), to: link('coverage') })
-  items.push({ label: t('nav.contact'), to: link('contact') })
+  const items = site.value.campaign?.state === 'upcoming' ? [] : [{ label: t('nav.pray'), icon: 'i-lucide-book-open', to: link('pray') }]
+  items.push({ label: t('nav.stats'), icon: 'i-lucide-chart-column', to: link('stats') })
+  if (site.value.campaign?.goal === 'coverage') items.push({ label: t('nav.coverage'), icon: 'i-lucide-calendar-days', to: link('coverage') })
+  items.push({ label: t('nav.contact'), icon: 'i-lucide-mail', to: link('contact') })
   return site.value.status === 'archived' ? [] : items
 })
 
+const showShare = computed(() => site.value.status !== 'archived' && props.page !== 'embed' && !site.value.editor)
 const showFeedback = computed(() => !!site.value.feedback && props.page !== 'embed' && !site.value.editor)
 
 const route = useRoute()
@@ -66,17 +67,20 @@ async function signOut() {
       {{ t('preview.banner') }}
     </div>
     <header class="brand-bg">
-      <div class="max-w-5xl mx-auto px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-2">
-        <NuxtLink :to="link('', [], { current: true })" class="flex items-center gap-3 font-bold text-lg me-auto">
+      <div class="max-w-5xl mx-auto px-4 py-3 flex items-center gap-1">
+        <NuxtLink :to="link('', [], { current: true })" class="flex items-center gap-3 font-bold text-lg me-auto min-w-0">
           <img v-if="site.logoUrl" :src="site.logoUrl" alt="" class="h-9 w-auto">
-          <span>{{ site.name }}</span>
+          <span class="truncate">{{ site.name }}</span>
         </NuxtLink>
-        <nav :aria-label="t('nav.label')" class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-          <NuxtLink v-for="item in nav" :key="item.to" :to="item.to" class="underline-offset-4 hover:underline">{{ item.label }}</NuxtLink>
-        </nav>
+        <ShareButton v-if="showShare" icon-only />
         <LanguageSwitcher />
         <ThemeToggle />
         <AccountMenu v-if="showAccount" :account="me?.account ?? null" :ready="meReady" :sign-in-href="signInHref" :items="accountItems" />
+        <nav v-if="nav.length" :aria-label="t('nav.label')">
+          <UDropdownMenu :items="nav" :content="{ align: 'end' }">
+            <UButton color="neutral" variant="ghost" icon="i-lucide-menu" :aria-label="t('nav.menu')" :title="t('nav.menu')" class="text-(--brand-text) hover:bg-white/10" />
+          </UDropdownMenu>
+        </nav>
       </div>
     </header>
 

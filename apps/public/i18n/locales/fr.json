@@ -9,7 +9,8 @@
     "stats": "Statistiques",
     "coverage": "Calendrier de prière",
     "contact": "Contact",
-    "language": "Langue"
+    "language": "Langue",
+    "menu": "Menu"
   },
   "common": {
     "optional": "Facultatif",
@@ -37,6 +38,7 @@
   "landing": {
     "starts_on": "Commence le {date}",
     "pray_today": "Prier aujourd'hui",
+    "photo_credit": "Crédit photo",
     "signed_up": "Vous priez déjà avec {site}. Vous pouvez y ajouter, modifier ou arrêter vos moments de prière.",
     "manage_times": "Gérer vos moments de prière",
     "continue_praying": "Continuer la lecture et prier",

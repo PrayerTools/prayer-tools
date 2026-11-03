@@ -236,7 +236,7 @@ export interface MyView {
 }
 
 export type PageView =
-  | { kind: 'landing', sections: string[], progress: GoalProgressView | null, why: string, today: { day: number, html: string, title: string } | null, stories: StoryView[], custom: CustomSectionView[], prayingNow: number, form: SignupFormView, placeholders: string[], side: SideCampaignView[] }
+  | { kind: 'landing', sections: string[], progress: GoalProgressView | null, subtitle: string, why: string, today: { day: number, html: string, title: string } | null, stories: StoryView[], custom: CustomSectionView[], prayingNow: number, form: SignupFormView, placeholders: string[], side: SideCampaignView[] }
   | { kind: 'between', stats: StatsView | null, endMessage: string, next: NextStep | null }
   | { kind: 'archived' }
   | { kind: 'not_started', startDate: string }

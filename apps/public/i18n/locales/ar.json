@@ -9,7 +9,8 @@
     "stats": "الإحصائيات",
     "coverage": "تقويم الصلاة",
     "contact": "اتصل بنا",
-    "language": "اللغة"
+    "language": "اللغة",
+    "menu": "القائمة"
   },
   "common": {
     "optional": "اختياري",
@@ -37,6 +38,7 @@
   "landing": {
     "starts_on": "تبدأ في {date}",
     "pray_today": "صلِّ اليوم",
+    "photo_credit": "حقوق الصورة",
     "signed_up": "أنت تصلي بالفعل مع {site}. يمكنك هناك إضافة أوقات صلاتك أو تغييرها أو إيقافها.",
     "manage_times": "إدارة أوقات صلاتك",
     "continue_praying": "تابع القراءة وصلِّ",
