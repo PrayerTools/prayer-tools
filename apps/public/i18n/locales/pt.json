@@ -425,5 +425,8 @@
     "content_body": "Oração guiada para cada dia, pronta para usar ou escrita pela sua equipe.",
     "reminders_title": "Lembretes",
     "reminders_body": "Cada pessoa que ora recebe um lembrete por e-mail ou no aplicativo nos horários que escolheu."
+  },
+  "embed": {
+    "open_site": "Abrir o site da campanha"
   }
 }

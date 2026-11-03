@@ -437,5 +437,8 @@
     "step_invite_body": "Share your campaign link with your church, friends, or network. Each person chooses a prayer time that fits their day, helping you build around-the-clock coverage.",
     "step_pray_title": "Keep praying together",
     "step_pray_body": "Participants receive reminders for their chosen times and follow your daily prayer content. You can see which times are covered and invite others to fill the gaps."
+  },
+  "embed": {
+    "open_site": "Open the campaign site"
   }
 }

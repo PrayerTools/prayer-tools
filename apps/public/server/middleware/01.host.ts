@@ -11,7 +11,8 @@ import { NOT_FOUND_CACHE, PRIVATE_CACHE, limit, requestHost, setCache } from '..
 import { buildSiteContext, resolveSiteCached } from '../utils/site-context'
 import { PREVIEW_COOKIE, previewCookieMatches } from '../utils/cookies'
 import { addTimesLink, checkinAnswer, exchangeManageLink, leaveCampaignPost, legacyFuel, legacyManage, previewLink, unsubscribePost, verifyLink } from '../utils/actions'
-import { editorAccess, editorFrameAncestors } from '../utils/editor'
+import { editorAccess } from '../utils/editor'
+import { setFrameHeaders } from '../utils/framing'
 import { claimHandoff, confirmEmailChange, continueToAdmin, continueToSite, exchangeSignInLink, signInFromSite, undoEmailChange } from '../utils/account-links'
 import { finishSocialSignIn, startSocialSignIn } from '../utils/social-sign-in'
 
@@ -144,13 +145,8 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const embed = segs[segs.length - 1] === 'embed' || pathname === '/embed.js'
-  if (ctx.editor) {
-    setResponseHeader(event, 'content-security-policy', editorFrameAncestors())
-  } else if (!embed) {
-    setResponseHeader(event, 'x-frame-options', 'SAMEORIGIN')
-    setResponseHeader(event, 'content-security-policy', "frame-ancestors 'self'")
-  }
+  // The embed widget's page lifts this once its view is built (02.view).
+  setFrameHeaders(event, ctx.editor ? 'editor' : 'page')
 
   const [first, second, third] = segs
   if (event.method === 'POST' && first === 'u' && second && segs.length === 2) {

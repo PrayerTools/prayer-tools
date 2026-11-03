@@ -425,5 +425,8 @@
     "content_body": "Une prière guidée pour chaque jour, prête à l’emploi ou rédigée par votre équipe.",
     "reminders_title": "Rappels",
     "reminders_body": "Chaque personne qui prie reçoit un rappel par e-mail ou dans l’application aux heures choisies."
+  },
+  "embed": {
+    "open_site": "Ouvrir le site de la campagne"
   }
 }

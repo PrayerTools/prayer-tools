@@ -425,5 +425,8 @@
     "content_body": "Oración guiada para cada día, lista para usar o escrita por tu equipo.",
     "reminders_title": "Recordatorios",
     "reminders_body": "Cada persona que ora recibe un recordatorio por correo o en la app en los horarios que eligió."
+  },
+  "embed": {
+    "open_site": "Abrir el sitio de la campaña"
   }
 }
