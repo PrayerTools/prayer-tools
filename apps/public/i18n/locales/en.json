@@ -292,6 +292,10 @@
     "download": "Download my data",
     "unsubscribe": "Stop all reminders",
     "unsubscribed": "You are unsubscribed",
+    "leave": "Stop praying with {campaign}",
+    "leave_confirm_title": "Stop praying with {campaign}?",
+    "leave_confirm_body": "Your prayer times in {campaign} end today and its reminders stop. Your other campaigns with {site} continue.",
+    "left": "You stopped praying with {campaign}",
     "delete": "Delete my data",
     "delete_confirm_title": "Delete your data?",
     "delete_confirm_body": "This removes your prayer times and details from {site}. It cannot be undone.",
@@ -310,12 +314,18 @@
     "body": "Stop all prayer reminders from {site}?",
     "confirm": "Unsubscribe"
   },
+  "leave": {
+    "title": "Stop reminders",
+    "body": "Stop praying with {campaign} and stop its reminders? Your other campaigns with {site} continue.",
+    "confirm": "Stop reminders for {campaign}"
+  },
   "notice": {
     "checkin_yes": "Thank you for letting us know! Keep praying — your reminders continue.",
     "checkin_sometimes": "Thank you! Your reminders continue. Pray whenever you can.",
     "checkin_no": "Thank you for praying with us. We have stopped your reminders.",
     "link_invalid": "This link is not valid or has already been used.",
     "unsubscribed": "You are unsubscribed. You will not receive any more reminders from {site}.",
+    "left_campaign": "You will no longer get reminders for this campaign. Your other prayer times with {site} continue.",
     "verify_invalid": "This confirmation link is not valid or has expired. Please sign up again.",
     "deleted": "Your data has been deleted.",
     "not_found": "We could not find what you were looking for."

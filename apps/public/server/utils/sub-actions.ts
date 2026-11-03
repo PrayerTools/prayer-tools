@@ -1,7 +1,7 @@
 // Changes a person makes to their own subscription, from the manage page or
 // My prayer. Every function runs inside the subscription's org.
 import type { Tx } from '@prayertools/shared/db/scope'
-import { insertCommitment, refreshReminders, setSubscriptionStatus, updateCommitment, validateRuleForCampaign, type CampaignRow, type SubscriptionRow } from '@prayertools/shared/subscriptions'
+import { insertCommitment, leaveCampaign, refreshReminders, setSubscriptionStatus, updateCommitment, validateRuleForCampaign, type CampaignRow, type SubscriptionRow } from '@prayertools/shared/subscriptions'
 import { campaignStatus, defaultDuration, pickCurrentCampaign } from '@prayertools/shared/setup'
 import { campaignById, loadCampaigns } from '@prayertools/shared/campaigns'
 import { customPurpose, primaryEmailOf, PURPOSE_SITE_UPDATES, setConsent, type ConsentCapture } from '@prayertools/shared/crm'
@@ -32,7 +32,7 @@ export async function addCommitment(tx: Tx, sub: SubscriptionRow, campaignId: st
 }
 
 export async function patchCommitment(tx: Tx, sub: SubscriptionRow, id: string, raw: Record<string, unknown>): Promise<void> {
-  const existing = await tx.selectFrom('pt_commitment').selectAll().where('id', '=', id).where('subscription_id', '=', sub.id).executeTakeFirst()
+  const existing = await tx.selectFrom('pt_commitment').selectAll().where('id', '=', id).where('subscription_id', '=', sub.id).where('left_at', 'is', null).executeTakeFirst()
   if (!existing) throw createError({ statusCode: 404, statusMessage: 'Not found' })
   if (typeof raw.paused === 'boolean' && Object.keys(raw).length === 1) {
     await updateCommitment(tx, sub, id, { paused: raw.paused })
@@ -52,8 +52,14 @@ export async function patchCommitment(tx: Tx, sub: SubscriptionRow, id: string, 
 }
 
 export async function removeCommitment(tx: Tx, sub: SubscriptionRow, id: string): Promise<void> {
-  const res = await tx.deleteFrom('pt_commitment').where('id', '=', id).where('subscription_id', '=', sub.id).executeTakeFirst()
+  const res = await tx.deleteFrom('pt_commitment').where('id', '=', id).where('subscription_id', '=', sub.id).where('left_at', 'is', null).executeTakeFirst()
   if (!Number(res.numDeletedRows)) throw createError({ statusCode: 404, statusMessage: 'Not found' })
+}
+
+export async function leaveOwnCampaign(tx: Tx, sub: SubscriptionRow, campaignId: unknown): Promise<void> {
+  if (typeof campaignId !== 'string') bad('campaign')
+  const campaign = await campaignOf(tx, campaignId)
+  await leaveCampaign(tx, sub.id, campaign.id)
 }
 
 // The name of a subscription linked to an account belongs to the account and
@@ -71,7 +77,7 @@ export async function updateProfile(tx: Tx, sub: SubscriptionRow, input: { name?
   await tx.updateTable('pt_subscription').set(patch).where('id', '=', sub.id).execute()
   if (patch.timezone) {
     // Reminders stay at the same local time in the new zone.
-    await tx.updateTable('pt_commitment').set({ timezone: patch.timezone, updated_at: new Date() }).where('subscription_id', '=', sub.id).where('kind', '=', 'recurring').execute()
+    await tx.updateTable('pt_commitment').set({ timezone: patch.timezone, updated_at: new Date() }).where('subscription_id', '=', sub.id).where('kind', '=', 'recurring').where('left_at', 'is', null).execute()
     await refreshReminders(tx, sub.id)
   }
   if (sub.contact_id) {

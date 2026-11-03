@@ -289,6 +289,10 @@
     "download": "Télécharger mes données",
     "unsubscribe": "Arrêter tous les rappels",
     "unsubscribed": "Vous êtes désabonné",
+    "leave": "Ne plus prier avec {campaign}",
+    "leave_confirm_title": "Ne plus prier avec {campaign} ?",
+    "leave_confirm_body": "Vos temps de prière dans {campaign} s'arrêtent aujourd'hui, ainsi que ses rappels. Vos autres campagnes avec {site} continuent.",
+    "left": "Vous ne priez plus avec {campaign}",
     "delete": "Supprimer mes données",
     "delete_confirm_title": "Supprimer vos données ?",
     "delete_confirm_body": "Cela supprime vos moments de prière et vos informations de {site}. Cette action est irréversible.",
@@ -307,12 +311,18 @@
     "body": "Arrêter tous les rappels de prière de {site} ?",
     "confirm": "Se désabonner"
   },
+  "leave": {
+    "title": "Arrêter les rappels",
+    "body": "Ne plus prier avec {campaign} et arrêter ses rappels ? Vos autres campagnes avec {site} continuent.",
+    "confirm": "Arrêter les rappels pour {campaign}"
+  },
   "notice": {
     "checkin_yes": "Merci de nous avoir répondu ! Continuez à prier — vos rappels continuent.",
     "checkin_sometimes": "Merci ! Vos rappels continuent. Priez quand vous le pouvez.",
     "checkin_no": "Merci d'avoir prié avec nous. Nous avons arrêté vos rappels.",
     "link_invalid": "Ce lien n'est pas valide ou a déjà été utilisé.",
     "unsubscribed": "Vous êtes désabonné. Vous ne recevrez plus de rappels de {site}.",
+    "left_campaign": "Vous ne recevrez plus de rappels pour cette campagne. Vos autres temps de prière avec {site} continuent.",
     "verify_invalid": "Ce lien de confirmation n'est pas valide ou a expiré. Veuillez vous réinscrire.",
     "deleted": "Vos données ont été supprimées.",
     "not_found": "Nous n'avons pas trouvé ce que vous cherchiez."

@@ -41,7 +41,7 @@ export async function findCheckinWork(ctx: WorkerContext, now: Date): Promise<Ch
                  ELSE ${SITE_SETTING_DEFAULTS.checkins_enabled}::boolean END
         AND EXISTS (
           SELECT 1 FROM pt_commitment c JOIN pt_campaign k ON k.id = c.campaign_id
-          WHERE c.subscription_id = s.id AND NOT c.paused
+          WHERE c.subscription_id = s.id AND NOT c.paused AND c.left_at IS NULL
             AND (c.ends_on IS NULL OR c.ends_on >= (${now}::timestamptz AT TIME ZONE c.timezone)::date)
             AND k.ended_at IS NULL
             AND (k.start_date IS NULL OR k.start_date <= (${now}::timestamptz AT TIME ZONE k.timezone)::date)

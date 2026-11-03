@@ -12,6 +12,8 @@ const email = ref('')
 const sent = ref(false)
 const busy = ref(false)
 const confirmDelete = ref(false)
+const leaveOpen = ref(false)
+const leaving = ref<{ site: MySiteView, id: string, name: string } | null>(null)
 const tzItems = timezones()
 const continueQuery = computed(() => props.continueTo ? `?continue=${encodeURIComponent(props.continueTo)}` : '')
 const googleUrl = computed(() => props.signIn.google ? `/my/google${continueQuery.value}` : null)
@@ -28,11 +30,11 @@ async function requestLink() {
   busy.value = false
 }
 
-async function call(s: MySiteView, path: string, method: 'POST' | 'PATCH' | 'DELETE', body?: Record<string, unknown>) {
+async function call(s: MySiteView, path: string, method: 'POST' | 'PATCH' | 'DELETE', body?: Record<string, unknown>, message = t('manage.saved')) {
   busy.value = true
   try {
     await $fetch(`/api/my/${s.orgId}/${s.subscriptionId}/${path}`, { method: method as 'POST', body })
-    toast.add({ title: t('manage.saved'), color: 'success', icon: 'i-lucide-check' })
+    toast.add({ title: message, color: 'success', icon: 'i-lucide-check' })
     await refreshNuxtData(`view:${route.path}`)
   } catch {
     toast.add({ title: t('errors.generic'), color: 'error' })
@@ -114,6 +116,17 @@ async function deleteAll() {
   } finally {
     busy.value = false
   }
+}
+
+function askLeave(s: MySiteView, campaign: { id: string, name: string }) {
+  leaving.value = { site: s, id: campaign.id, name: campaign.name }
+  leaveOpen.value = true
+}
+
+async function leave() {
+  if (!leaving.value) return
+  await call(leaving.value.site, 'leave', 'POST', { campaign: leaving.value.id }, t('manage.left', { campaign: leaving.value.name }))
+  leaveOpen.value = false
 }
 
 function languageItems(s: MySiteView) {
@@ -219,6 +232,15 @@ function languageItems(s: MySiteView) {
               @pause="(id: string, p: boolean) => call(s, `commitments/${id}`, 'PATCH', { paused: p })"
               @remove="(id: string) => call(s, `commitments/${id}`, 'DELETE')"
             />
+            <UButton
+              v-if="cur.commitments.length"
+              size="sm"
+              variant="link"
+              color="neutral"
+              icon="i-lucide-log-out"
+              :label="t('manage.leave', { campaign: cur.campaign.name })"
+              @click="askLeave(s, cur.campaign)"
+            />
           </section>
 
           <div class="grid gap-4 sm:grid-cols-2">
@@ -255,6 +277,12 @@ function languageItems(s: MySiteView) {
             <UButton variant="outline" color="error" icon="i-lucide-trash-2" :label="t('my.delete_all')" @click="confirmDelete = true" />
           </div>
         </section>
+        <UModal v-model:open="leaveOpen" :title="t('manage.leave_confirm_title', { campaign: leaving?.name ?? '' })" :description="t('manage.leave_confirm_body', { campaign: leaving?.name ?? '', site: leaving?.site.name ?? '' })">
+          <template #footer>
+            <UButton color="error" :loading="busy" :label="t('manage.leave', { campaign: leaving?.name ?? '' })" @click="leave" />
+            <UButton variant="ghost" color="neutral" :label="t('common.cancel')" @click="leaveOpen = false" />
+          </template>
+        </UModal>
         <UModal v-model:open="confirmDelete" :title="t('manage.delete_confirm_title')" :description="t('my.delete_all_body')">
           <template #footer>
             <UButton color="error" :loading="busy" :label="t('manage.delete_confirm')" @click="deleteAll" />

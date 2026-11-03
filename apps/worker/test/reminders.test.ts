@@ -43,7 +43,11 @@ describe('reminder sweep', () => {
     expect(m1[0]!.text).toContain('/pray/7')
     expect(m1[0]!.text).toContain('Day 7')
     expect(m1[0]!.text).toContain('15 minutes')
-    const unsub = m1[0]!.unsubscribeUrl!.split('/u/')[1]
+    // One-click unsubscribe leaves this campaign; the footer also offers the whole-site unsubscribe.
+    const leave = m1[0]!.unsubscribeUrl!.split('/l/')[1]
+    expect(parseLink(leave, 'l')).toMatchObject({ subscriptionId, orgId, campaignId })
+    expect(m1[0]!.text).toContain(`Stop reminders for this campaign: ${m1[0]!.unsubscribeUrl}`)
+    const unsub = m1[0]!.text.match(/Unsubscribe: \S+\/u\/(\S+)/)![1]
     expect(parseLink(unsub, 'u')).toMatchObject({ subscriptionId, orgId })
     // EST 07:00 (UTC-5) → EDT 07:00 (UTC-4) the next morning.
     let c = await commitmentRow(orgId, id)

@@ -289,6 +289,10 @@
     "download": "Baixar meus dados",
     "unsubscribe": "Parar todos os lembretes",
     "unsubscribed": "Sua inscrição foi cancelada",
+    "leave": "Parar de orar com {campaign}",
+    "leave_confirm_title": "Parar de orar com {campaign}?",
+    "leave_confirm_body": "Seus horários de oração em {campaign} terminam hoje e os lembretes param. Suas outras campanhas com {site} continuam.",
+    "left": "Você parou de orar com {campaign}",
     "delete": "Excluir meus dados",
     "delete_confirm_title": "Excluir seus dados?",
     "delete_confirm_body": "Isso remove seus horários de oração e seus dados de {site}. Não é possível desfazer.",
@@ -307,12 +311,18 @@
     "body": "Parar todos os lembretes de oração de {site}?",
     "confirm": "Cancelar inscrição"
   },
+  "leave": {
+    "title": "Parar lembretes",
+    "body": "Parar de orar com {campaign} e parar os lembretes? Suas outras campanhas com {site} continuam.",
+    "confirm": "Parar lembretes de {campaign}"
+  },
   "notice": {
     "checkin_yes": "Obrigado por nos contar! Continue orando — seus lembretes continuam.",
     "checkin_sometimes": "Obrigado! Seus lembretes continuam. Ore sempre que puder.",
     "checkin_no": "Obrigado por orar conosco. Paramos seus lembretes.",
     "link_invalid": "Este link não é válido ou já foi usado.",
     "unsubscribed": "Sua inscrição foi cancelada. Você não receberá mais lembretes de {site}.",
+    "left_campaign": "Você não receberá mais lembretes desta campanha. Seus outros horários de oração com {site} continuam.",
     "verify_invalid": "Este link de confirmação não é válido ou expirou. Inscreva-se novamente.",
     "deleted": "Seus dados foram excluídos.",
     "not_found": "Não encontramos o que você estava procurando."
