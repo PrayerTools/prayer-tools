@@ -30,6 +30,6 @@ const initial = computed(() => label.value.trim().charAt(0).toUpperCase())
         </div>
       </template>
     </UDropdownMenu>
-    <UButton v-else-if="signInHref" :to="signInHref" external color="neutral" variant="ghost" icon="i-lucide-log-in" :class="buttonClass" :label="t('signup.sign_in')" />
+    <UButton v-else-if="signInHref" :to="signInHref" external color="neutral" variant="ghost" icon="i-lucide-log-in" :class="buttonClass" :label="t('signup.sign_in')" :aria-label="t('signup.sign_in')" :ui="{ label: 'hidden sm:inline' }" />
   </template>
 </template>

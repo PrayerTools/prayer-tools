@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // Web Share API with a WhatsApp fallback. The link carries the sharer's
 // referral code when this browser knows it.
-const props = withDefaults(defineProps<{ label?: string, size?: 'sm' | 'md' | 'lg' | 'xl', variant?: 'solid' | 'outline' | 'soft' }>(), { size: 'lg', variant: 'solid' })
+// `iconOnly` is the compact header form: the share icon alone, without copy.
+const props = withDefaults(defineProps<{ label?: string, size?: 'sm' | 'md' | 'lg' | 'xl', variant?: 'solid' | 'outline' | 'soft', iconOnly?: boolean }>(), { size: 'lg', variant: 'solid' })
 const { site, shareUrl, shareText } = useSite()
 const { t } = useI18n()
 const copied = ref(false)
@@ -38,7 +39,8 @@ async function copy() {
 </script>
 
 <template>
-  <div class="flex flex-wrap items-center gap-2">
+  <UButton v-if="props.iconOnly" color="neutral" variant="ghost" icon="i-lucide-share-2" :aria-label="props.label ?? t('share.button')" :title="props.label ?? t('share.button')" class="text-(--brand-text) hover:bg-white/10" @click="share" />
+  <div v-else class="flex flex-wrap items-center gap-2">
     <UButton :size="props.size" :variant="props.variant" icon="i-lucide-share-2" :label="props.label ?? t('share.button')" @click="share" />
     <UButton :size="props.size" variant="ghost" color="neutral" :icon="copied ? 'i-lucide-check' : 'i-lucide-link'" :label="copied ? t('share.copied') : t('share.copy')" @click="copy" />
   </div>
