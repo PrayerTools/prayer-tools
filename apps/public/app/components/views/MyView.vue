@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import type { MyConfirmSiteView, MyView, MySiteView, SignInProvidersView } from '~~/shared/view'
+import type { FeedbackView, MyConfirmSiteView, MyView, MySiteView, SignInProvidersView } from '~~/shared/view'
 import { timezones, type CommitmentInput } from '~/utils/commitment'
 
-const props = defineProps<{ my: MyView, notice: string | null, continueTo: string | null, confirmSite: MyConfirmSiteView | null, signIn: SignInProvidersView, lang: string, donateUrl: string }>()
+const props = defineProps<{ my: MyView, notice: string | null, continueTo: string | null, confirmSite: MyConfirmSiteView | null, signIn: SignInProvidersView, lang: string, donateUrl: string, feedback: FeedbackView | null }>()
 const { t } = useI18n()
+const themeStyle = usePlatformTheme()
 const route = useRoute()
 const toast = useToast()
 useHead({ title: () => `${t('my.title')} · Prayer.Tools` })
@@ -162,15 +163,15 @@ function languageItems(s: MySiteView) {
 </script>
 
 <template>
-  <div class="min-h-dvh flex flex-col">
-    <header class="bg-[#2f6f5e] text-white">
-      <div class="max-w-4xl mx-auto px-4 py-4 flex items-center gap-4">
-        <a href="https://prayer.tools" class="font-bold text-lg me-auto">Prayer.Tools</a>
-        <AccountMenu v-if="my.signedIn" :account="my.account" ready :sign-in-href="null" :items="accountItems" button-class="text-white hover:bg-white/10" />
+  <div class="my-page min-h-dvh flex flex-col bg-[#fffaf5] text-[#202833] dark:text-slate-100" :style="themeStyle">
+    <PlatformHeader>
+      <AccountMenu v-if="my.signedIn" :account="my.account" ready :sign-in-href="null" :items="accountItems" button-class="text-white hover:bg-white/10" />
+    </PlatformHeader>
+    <main id="main" class="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-12 sm:py-16 space-y-8">
+      <div class="space-y-4">
+        <div class="h-1 w-12 rounded-full bg-[#f58220]" aria-hidden="true" />
+        <h1 class="text-3xl sm:text-4xl font-semibold tracking-tight">{{ t('my.title') }}</h1>
       </div>
-    </header>
-    <main id="main" class="flex-1 max-w-4xl w-full mx-auto px-4 py-10 space-y-8">
-      <h1 class="text-3xl font-bold">{{ t('my.title') }}</h1>
       <UAlert v-if="notice" color="neutral" variant="soft" icon="i-lucide-info" :title="t(`my.notice_${notice}`)" role="status" />
 
       <section v-if="!my.signedIn" class="max-w-lg space-y-4" aria-labelledby="my-signin">
@@ -187,23 +188,23 @@ function languageItems(s: MySiteView) {
       </section>
 
       <template v-else>
-        <section v-if="(notice === 'reauth' || reauthNeeded) && my.account?.email" class="rounded-2xl bg-white border border-stone-200 p-6 space-y-4" aria-labelledby="my-reauth">
-          <h2 id="my-reauth" class="text-xl font-bold">{{ t('my.reauth_title') }}</h2>
+        <section v-if="(notice === 'reauth' || reauthNeeded) && my.account?.email" class="my-card rounded-lg bg-white p-6 space-y-4" aria-labelledby="my-reauth">
+          <h2 id="my-reauth" class="text-xl font-semibold tracking-tight">{{ t('my.reauth_title') }}</h2>
           <p v-if="notice !== 'reauth'" class="text-stone-700">{{ t('my.reauth_email') }}</p>
           <UAlert v-if="sent" color="success" variant="soft" icon="i-lucide-mail" :title="t('my.reauth_sent', { email: my.account.email })" role="status" />
           <SignInButtons v-if="(googleUrl || appleUrl) && !sent" :google-href="googleUrl" :google-label="t('my.google')" :apple-href="appleUrl" :apple-label="t('my.apple')" />
           <UButton v-if="!sent" :loading="busy" icon="i-lucide-send" :label="t('my.reauth_send')" @click="requestFreshLink" />
         </section>
-        <section v-if="confirmSite" class="rounded-2xl bg-white border border-stone-200 p-6 space-y-4" aria-labelledby="my-confirm-site">
-          <h2 id="my-confirm-site" class="text-xl font-bold">{{ t('my.continue_title', { site: confirmSite.name }) }}</h2>
+        <section v-if="confirmSite" class="my-card rounded-lg bg-white p-6 space-y-4" aria-labelledby="my-confirm-site">
+          <h2 id="my-confirm-site" class="text-xl font-semibold tracking-tight">{{ t('my.continue_title', { site: confirmSite.name }) }}</h2>
           <p class="text-stone-700">{{ t('my.continue_body', { site: confirmSite.name, host: confirmSite.host, email: my.account?.email ?? '' }) }}</p>
           <div class="flex flex-wrap gap-2">
             <UButton :loading="busy" :label="t('my.continue_button', { site: confirmSite.name })" @click="continueToSite(confirmSite)" />
             <UButton variant="outline" color="neutral" to="/my" :label="t('common.cancel')" />
           </div>
         </section>
-        <section v-if="my.account" class="rounded-2xl bg-white border border-stone-200 p-6 space-y-4" aria-labelledby="my-account">
-          <h2 id="my-account" class="text-xl font-bold">{{ t('my.account_title') }}</h2>
+        <section v-if="my.account" class="my-card rounded-lg bg-white p-6 space-y-4" aria-labelledby="my-account">
+          <h2 id="my-account" class="text-xl font-semibold tracking-tight">{{ t('my.account_title') }}</h2>
           <p class="text-sm text-stone-600">{{ t('my.account_help') }}</p>
           <form class="flex flex-wrap items-end gap-2" @submit.prevent="saveName">
             <UFormField :label="t('my.name')" name="my-name" class="grow sm:grow-0 sm:w-72">
@@ -224,9 +225,9 @@ function languageItems(s: MySiteView) {
         </section>
 
         <section class="space-y-3" aria-labelledby="my-managing">
-          <h2 id="my-managing" class="text-xl font-bold">{{ t('my.managing_title') }}</h2>
+          <h2 id="my-managing" class="text-xl font-semibold tracking-tight">{{ t('my.managing_title') }}</h2>
           <ul v-if="my.managing.length" class="space-y-2">
-            <li v-for="m in my.managing" :key="m.adminUrl" class="flex flex-wrap items-center gap-3 rounded-xl bg-white border border-stone-200 px-4 py-3">
+            <li v-for="m in my.managing" :key="m.adminUrl" class="my-card flex flex-wrap items-center gap-3 rounded-lg bg-white px-4 py-3">
               <span class="font-medium me-auto">{{ m.name }}</span>
               <UButton :to="m.adminUrl" external variant="ghost" trailing-icon="i-lucide-external-link" :label="t('my.manage_site')" />
             </li>
@@ -235,11 +236,11 @@ function languageItems(s: MySiteView) {
           <UButton v-if="my.createUrl" :to="my.createUrl" external icon="i-lucide-plus" :label="t('my.create_campaign')" />
         </section>
 
-        <h2 class="text-xl font-bold">{{ t('my.praying_title') }}</h2>
+        <h2 class="text-xl font-semibold tracking-tight">{{ t('my.praying_title') }}</h2>
         <p v-if="!my.sites.length" class="text-stone-700">{{ t('my.empty') }}</p>
-        <article v-for="s in my.sites" :key="s.subscriptionId" class="rounded-2xl bg-white border border-stone-200 p-6 space-y-6" :aria-labelledby="`site-${s.subscriptionId}`">
+        <article v-for="s in my.sites" :key="s.subscriptionId" class="my-card rounded-lg bg-white p-6 space-y-6" :aria-labelledby="`site-${s.subscriptionId}`">
           <header class="flex flex-wrap items-center gap-3">
-            <h3 :id="`site-${s.subscriptionId}`" class="text-xl font-bold me-auto">{{ s.name }}</h3>
+            <h3 :id="`site-${s.subscriptionId}`" class="text-xl font-semibold tracking-tight me-auto">{{ s.name }}</h3>
             <UBadge v-if="s.status !== 'active'" color="neutral" variant="soft" :label="t(`my.status_${s.status}`)" />
             <UButton :to="s.url" external variant="ghost" trailing-icon="i-lucide-external-link" :label="t('my.open_site')" />
           </header>
@@ -293,8 +294,8 @@ function languageItems(s: MySiteView) {
         </article>
 
         <section class="space-y-3" aria-labelledby="my-emails">
-          <h2 id="my-emails" class="text-xl font-bold">{{ t('my.emails_title') }}</h2>
-          <div class="rounded-2xl bg-white border border-stone-200 p-6 space-y-2">
+          <h2 id="my-emails" class="text-xl font-semibold tracking-tight">{{ t('my.emails_title') }}</h2>
+          <div class="my-card rounded-lg bg-white p-6 space-y-2">
             <USwitch :model-value="my.news" :label="t('consent.platform_news')" @update:model-value="v => setNews(!!v)" />
             <template v-for="s in my.sites" :key="s.subscriptionId">
               <USwitch :model-value="s.siteUpdates" :label="t('consent.site_updates', { site: s.name })" @update:model-value="v => call(s, 'consent', 'POST', { purpose: 'site_updates', grant: !!v })" />
@@ -315,7 +316,7 @@ function languageItems(s: MySiteView) {
         </UModal>
 
         <section class="space-y-3 border-t border-stone-200 pt-6" aria-labelledby="my-data">
-          <h2 id="my-data" class="text-xl font-semibold">{{ t('manage.your_data') }}</h2>
+          <h2 id="my-data" class="text-xl font-semibold tracking-tight">{{ t('manage.your_data') }}</h2>
           <div class="flex flex-wrap gap-2">
             <UButton variant="outline" icon="i-lucide-download" href="/api/my/export" external :label="t('manage.download')" />
             <UButton variant="outline" color="error" icon="i-lucide-trash-2" :label="t('my.delete_all')" @click="confirmDelete = true" />
@@ -335,12 +336,19 @@ function languageItems(s: MySiteView) {
         </UModal>
       </template>
     </main>
-    <footer class="border-t border-stone-200 bg-white text-sm text-stone-600">
-      <div class="max-w-4xl mx-auto px-4 py-6 flex flex-wrap gap-x-6 gap-y-2">
-        <a :href="donateUrl" class="underline me-auto">{{ t('footer.give') }}</a>
-        <a href="/privacy" class="underline">{{ t('footer.privacy') }}</a>
-        <a href="/terms" class="underline">{{ t('footer.terms') }}</a>
-      </div>
+    <footer class="mx-6 border-t border-[#e8ded5] py-8 text-sm">
+      <nav aria-label="Footer" class="flex flex-wrap justify-center gap-x-6 gap-y-3 text-stone-700">
+        <a :href="donateUrl" class="hover:underline underline-offset-4">{{ t('footer.give') }}</a>
+        <a href="/privacy" class="hover:underline underline-offset-4">{{ t('footer.privacy') }}</a>
+        <a href="/terms" class="hover:underline underline-offset-4">{{ t('footer.terms') }}</a>
+      </nav>
     </footer>
+    <ClientOnly>
+      <FeedbackWidget v-if="feedback" :feedback="feedback" :context="{ 'data-language': lang }" />
+    </ClientOnly>
   </div>
 </template>
+
+<style scoped>
+.my-card { border: 1px solid #eee5dc; box-shadow: 0 8px 30px #50321a05; }
+</style>

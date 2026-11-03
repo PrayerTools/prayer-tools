@@ -1,15 +1,8 @@
 <script setup lang="ts">
 import heroPhotos from '../../utils/hero-photos.json'
-import ThemeToggle from '../ThemeToggle.vue'
-import { brandColor, brandForeground } from '@prayertools/shared/colors'
 defineProps<{ adminUrl: string }>()
 const { t } = useI18n()
-const mode = useColorMode()
-const homeColor = '#c45100'
-const themeStyle = computed(() => ({
-  '--ui-text-inverted': brandColor(homeColor).textColor,
-  '--ui-primary': brandForeground(homeColor, mode.value === 'dark' ? '#202c3a' : '#ffffff')
-}))
+const themeStyle = usePlatformTheme()
 useHead({ title: () => `Prayer.Tools · ${t('home.title')}` })
 
 const steps = [
@@ -27,17 +20,10 @@ onMounted(() => {
 
 <template>
   <div class="home-page min-h-dvh flex flex-col bg-[#fffaf5] text-[#202833] dark:text-slate-100" :style="themeStyle">
-    <header class="home-header bg-[#202833] text-white">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex items-center gap-3 sm:gap-6">
-        <a href="/" class="relative block h-[38px] w-[120px] shrink-0 me-auto" aria-label="Prayer.Tools home">
-          <img src="/prayer-tools-logo.png" alt="" width="120" height="38" class="absolute inset-0 h-full w-full [clip-path:inset(0_69%_0_0)]" />
-          <img src="/prayer-tools-logo.png" alt="" width="120" height="38" class="absolute inset-0 h-full w-full [clip-path:inset(0_0_0_31%)] brightness-0 invert" />
-        </a>
-        <ThemeToggle />
-        <a href="/my" class="rounded-lg px-3 py-2 text-sm font-medium text-white/80 no-underline transition-colors hover:bg-white/10 hover:text-white">{{ t('my.title') }}</a>
-        <UButton :to="adminUrl" external variant="ghost" color="neutral" class="rounded-full border border-white/30 px-5 py-2 text-sm font-medium text-white no-underline transition-colors hover:no-underline hover:bg-white/10" icon="i-lucide-log-in" :label="t('home.sign_in')" />
-      </div>
-    </header>
+    <PlatformHeader>
+      <a href="/my" class="rounded-lg px-3 py-2 text-sm font-medium text-white/80 no-underline transition-colors hover:bg-white/10 hover:text-white">{{ t('my.title') }}</a>
+      <UButton :to="adminUrl" external variant="ghost" color="neutral" class="rounded-full border border-white/30 px-5 py-2 text-sm font-medium text-white no-underline transition-colors hover:no-underline hover:bg-white/10" icon="i-lucide-log-in" :label="t('home.sign_in')" />
+    </PlatformHeader>
     <main id="main" class="flex-1">
       <section class="hero-shell text-white" aria-labelledby="home-title">
         <img :src="currentPhoto.src" :alt="currentPhoto.alt" width="1200" height="800" fetchpriority="high" class="hero-image" />

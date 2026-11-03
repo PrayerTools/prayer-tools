@@ -35,3 +35,6 @@
 .dark .public-campaign.campaign-theme #signup > div > div { border-color: #405269; }
 .dark .public-campaign .theme-toggle { color: var(--brand-text); }
 .home-header .theme-toggle { color: #ffffff; }
+.dark .my-page { background: #141c26; color: #e2e8f0; }
+.dark .my-page .my-card { border-color: #405269; }
+.dark .my-page footer { border-color: #405269; }

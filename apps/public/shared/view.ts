@@ -40,6 +40,12 @@ export interface SideCampaignView {
   endDate: string | null
 }
 
+export interface FeedbackView {
+  scriptUrl: string
+  projectId: string
+  apiBase: string
+}
+
 export interface SiteView {
   orgId: string
   slug: string
@@ -74,7 +80,7 @@ export interface SiteView {
   goUrl: string
   appStoreUrl: string | null
   playStoreUrl: string | null
-  feedback: { scriptUrl: string, projectId: string, apiBase: string } | null
+  feedback: FeedbackView | null
   turnstileSiteKey: string | null
 }
 
@@ -264,7 +270,7 @@ export interface PlatformResponse {
   host: 'platform'
   lang: string
   donateUrl: string
-  page: { kind: 'my', my: MyView, notice: string | null, continueTo: string | null, confirmSite: MyConfirmSiteView | null, signIn: SignInProvidersView } | { kind: 'home', adminUrl: string } | { kind: 'legal', doc: 'privacy' | 'terms' } | { kind: 'not_found' }
+  page: { kind: 'my', my: MyView, notice: string | null, continueTo: string | null, confirmSite: MyConfirmSiteView | null, signIn: SignInProvidersView, feedback: FeedbackView | null } | { kind: 'home', adminUrl: string } | { kind: 'legal', doc: 'privacy' | 'terms' } | { kind: 'not_found' }
   status: number
   cache: 'private'
   title: string

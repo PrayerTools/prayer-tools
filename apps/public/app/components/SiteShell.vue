@@ -23,6 +23,13 @@ const nav = computed(() => {
 const showFeedback = computed(() => !!site.value.feedback && props.page !== 'embed' && !site.value.editor)
 
 const route = useRoute()
+const feedbackContext = computed(() => ({
+  'data-site-id': site.value.orgId,
+  'data-site-slug': site.value.slug,
+  'data-campaign-id': site.value.campaign?.id ?? '',
+  'data-content-day': route.path.match(/\/pray\/(\d+)/)?.[1] ?? '',
+  'data-language': site.value.lang
+}))
 const me = ref<Me | null>(null)
 const meReady = ref(false)
 const showAccount = computed(() => props.page !== 'embed' && !site.value.editor)
@@ -98,7 +105,7 @@ async function signOut() {
       </div>
     </footer>
     <ClientOnly>
-      <FeedbackWidget v-if="showFeedback" />
+      <FeedbackWidget v-if="showFeedback" :feedback="site.feedback!" :context="feedbackContext" />
     </ClientOnly>
   </div>
 </template>
