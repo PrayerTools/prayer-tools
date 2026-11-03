@@ -26,8 +26,8 @@ const items = computed(() => site.value.languages.map(l => ({
       color="neutral"
       variant="ghost"
       icon="i-lucide-languages"
-      :label="site.languages.find(l => l.code === site.lang)?.native"
       :aria-label="t('nav.language')"
+      :title="site.languages.find(l => l.code === site.lang)?.native"
       class="text-(--brand-text) hover:bg-white/10"
     />
   </UDropdownMenu>

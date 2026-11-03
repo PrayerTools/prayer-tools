@@ -12,7 +12,8 @@
     "stats": "Stats",
     "coverage": "Prayer calendar",
     "contact": "Contact",
-    "language": "Language"
+    "language": "Language",
+    "menu": "Menu"
   },
   "common": {
     "optional": "Optional",
