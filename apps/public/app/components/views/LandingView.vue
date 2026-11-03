@@ -53,7 +53,7 @@ function onJoined(verify: boolean) {
           <!-- A side campaign's page is titled with its own name; the main campaign's with the site's. -->
           <p v-if="campaign" class="text-sm uppercase tracking-wide opacity-90">{{ campaign.side ? site.name : campaign.name }}</p>
           <h1 id="top-title" class="text-3xl sm:text-5xl font-bold leading-tight">{{ campaign?.side ? campaign.name : site.name }}</h1>
-          <p v-if="site.description" class="text-lg opacity-95">{{ site.description }}</p>
+          <p v-if="page.subtitle" class="text-lg opacity-95">{{ page.subtitle }}</p>
           <p v-if="campaign?.state === 'upcoming' && campaign.startDate" class="font-medium">{{ t('landing.starts_on', { date: date(campaign.startDate) }) }}</p>
           <GoalProgress v-if="page.progress" :progress="page.progress" on-brand />
           <p v-if="page.prayingNow > 0" class="text-sm">{{ t('pray.praying_now', { n: num(page.prayingNow) }, page.prayingNow) }}</p>

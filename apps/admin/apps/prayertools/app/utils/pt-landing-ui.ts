@@ -2,7 +2,7 @@
 // guidance a campaign template gives for the champion's own "why" text.
 
 const SECTION_INFO: Record<string, { description: string, icon: string }> = {
-  top: { description: 'Site name, hero image, people count or goal progress, and the signup button.', icon: 'i-lucide-panel-top' },
+  top: { description: 'Heading, subtitle, hero image, people count or goal progress, and the signup button.', icon: 'i-lucide-panel-top' },
   why: { description: 'Your own words about why people should pray.', icon: 'i-lucide-message-square-quote' },
   custom: { description: 'Extra sections you add, each with a heading, text, image or video, and button.', icon: 'i-lucide-layout-list' },
   stories: { description: 'Stories from people who prayed, ones you publish from the Stories page.', icon: 'i-lucide-heart-handshake' },

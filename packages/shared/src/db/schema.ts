@@ -331,6 +331,8 @@ export interface LandingCustomSection {
 }
 
 export interface CampaignLanding {
+  // Shown under the hero heading; the campaign's description is for search and link previews.
+  subtitle?: TranslatableText
   why?: Record<string, TiptapDoc>
   hidden?: string[]
   custom?: LandingCustomSection[]

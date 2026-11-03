@@ -221,6 +221,7 @@ async function landingPage(tx: Parameters<typeof loadSiteData>[0], event: H3Even
     kind: 'landing',
     sections,
     progress: campaign ? await progressFor(tx, campaign, data.settings.default_duration_min) : null,
+    subtitle: textIn(landing.subtitle, lang, def),
     why,
     today,
     stories: stories.map(s => ({ id: s.id, body: s.body, name: s.use_name ? s.name : null })),
