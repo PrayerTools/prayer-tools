@@ -192,12 +192,14 @@ export async function legacyFuel(event: H3Event, ctx: SiteContext, segments: str
 
 // Unsubscribe: the confirm form on /u/<token> and RFC 8058 one-click
 // (`List-Unsubscribe=One-Click`) from mail clients. Handled in middleware so
-// GET /u/<token> still renders the confirm page. The form's `scope=all`
-// stops every subscription of the account the subscription is linked to.
+// GET /u/<token> still renders the confirm page. For a subscription linked to
+// an account, the form's `scope=all` stops that account's reminders on every
+// site, and `scope=all_emails` also withdraws its marketing emails.
 export async function unsubscribePost(event: H3Event, ctx: SiteContext, token: string) {
   const raw = (await readRawBody(event, 'utf8')) ?? ''
   const oneClick = raw.includes('List-Unsubscribe=One-Click')
-  const all = !oneClick && new URLSearchParams(raw).get('scope') === 'all'
+  const scope = oneClick ? null : new URLSearchParams(raw).get('scope')
+  const all = scope === 'all' || scope === 'all_emails'
   const link = parseLink(token, 'u')
   const found = link && link.orgId === ctx.orgId
     ? await withOrg(useDb(), ctx.orgId, async (tx) => {
@@ -212,7 +214,8 @@ export async function unsubscribePost(event: H3Event, ctx: SiteContext, token: s
   if (userId) {
     await unsubscribeEverywhere(useDb(), userId, {
       newsOrgId: await staffOrgId(),
-      capture: { wording: { key: 'unsubscribe.all' }, surface: 'unsubscribe_page', source: ctx.host, ip: clientIp(event), userAgent: getRequestHeader(event, 'user-agent') ?? null }
+      remindersOnly: scope === 'all',
+      capture: { wording: { key: 'unsubscribe.all_emails' }, surface: 'unsubscribe_page', source: ctx.host, ip: clientIp(event), userAgent: getRequestHeader(event, 'user-agent') ?? null }
     })
   }
   if (oneClick) {
@@ -220,7 +223,7 @@ export async function unsubscribePost(event: H3Event, ctx: SiteContext, token: s
     setResponseHeader(event, 'content-type', 'text/plain; charset=utf-8')
     return ok ? 'Unsubscribed' : 'Not found'
   }
-  return sendRedirect(event, !ok ? '/notice/link_invalid' : userId ? '/notice/unsubscribed_all' : '/notice/unsubscribed', 303)
+  return sendRedirect(event, !ok ? '/notice/link_invalid' : !userId ? '/notice/unsubscribed' : scope === 'all' ? '/notice/unsubscribed_all' : '/notice/unsubscribed_all_emails', 303)
 }
 
 // Leaving one campaign from a reminder: the confirm form on /l/<token> and

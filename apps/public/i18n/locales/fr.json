@@ -310,7 +310,9 @@
     "title": "Se désabonner",
     "body": "Arrêter tous les rappels de prière de {site} ?",
     "confirm": "Se désabonner",
-    "all": "Se désabonner de toutes les campagnes Prayer.Tools"
+    "more": "Se désabonner au-delà de {site}",
+    "all": "Toutes les campagnes Prayer.Tools",
+    "all_emails": "Toutes les campagnes Prayer.Tools et les e-mails marketing"
   },
   "leave": {
     "title": "Arrêter les rappels",
@@ -323,7 +325,8 @@
     "checkin_no": "Merci d'avoir prié avec nous. Nous avons arrêté vos rappels.",
     "link_invalid": "Ce lien n'est pas valide ou a déjà été utilisé.",
     "unsubscribed": "Vous êtes désabonné. Vous ne recevrez plus de rappels de {site}.",
-    "unsubscribed_all": "Vous êtes désabonné de toutes les campagnes Prayer.Tools. Vous ne recevrez plus de rappels ni d’e-mails de leur part.",
+    "unsubscribed_all": "Vous êtes désabonné de toutes les campagnes Prayer.Tools. Vous ne recevrez plus de rappels de prière de leur part.",
+    "unsubscribed_all_emails": "Vous êtes désabonné de toutes les campagnes Prayer.Tools et de leurs e-mails marketing. Vous ne recevrez plus de rappels ni d’e-mails de leur part.",
     "left_campaign": "Vous ne recevrez plus de rappels pour cette campagne. Vos autres temps de prière avec {site} continuent.",
     "verify_invalid": "Ce lien de confirmation n'est pas valide ou a expiré. Veuillez vous réinscrire.",
     "deleted": "Vos données ont été supprimées.",

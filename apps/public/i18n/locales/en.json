@@ -313,7 +313,9 @@
     "title": "Unsubscribe",
     "body": "Stop all prayer reminders from {site}?",
     "confirm": "Unsubscribe",
-    "all": "Unsubscribe from all Prayer.Tools campaigns"
+    "more": "Unsubscribe from more than {site}",
+    "all": "All Prayer.Tools campaigns",
+    "all_emails": "All Prayer.Tools campaigns and marketing emails"
   },
   "leave": {
     "title": "Stop reminders",
@@ -326,7 +328,8 @@
     "checkin_no": "Thank you for praying with us. We have stopped your reminders.",
     "link_invalid": "This link is not valid or has already been used.",
     "unsubscribed": "You are unsubscribed. You will not receive any more reminders from {site}.",
-    "unsubscribed_all": "You are unsubscribed from all Prayer.Tools campaigns. You will not receive any more reminders or emails from them.",
+    "unsubscribed_all": "You are unsubscribed from all Prayer.Tools campaigns. You will not receive any more prayer reminders from them.",
+    "unsubscribed_all_emails": "You are unsubscribed from all Prayer.Tools campaigns and their marketing emails. You will not receive any more reminders or emails from them.",
     "left_campaign": "You will no longer get reminders for this campaign. Your other prayer times with {site} continue.",
     "verify_invalid": "This confirmation link is not valid or has expired. Please sign up again.",
     "deleted": "Your data has been deleted.",

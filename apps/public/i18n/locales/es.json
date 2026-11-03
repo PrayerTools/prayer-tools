@@ -310,7 +310,9 @@
     "title": "Cancelar suscripción",
     "body": "¿Detener todos los recordatorios de oración de {site}?",
     "confirm": "Cancelar suscripción",
-    "all": "Cancelar la suscripción a todas las campañas de Prayer.Tools"
+    "more": "Cancelar la suscripción más allá de {site}",
+    "all": "Todas las campañas de Prayer.Tools",
+    "all_emails": "Todas las campañas de Prayer.Tools y los correos de marketing"
   },
   "leave": {
     "title": "Detener recordatorios",
@@ -323,7 +325,8 @@
     "checkin_no": "Gracias por orar con nosotros. Hemos detenido tus recordatorios.",
     "link_invalid": "Este enlace no es válido o ya se usó.",
     "unsubscribed": "Cancelaste tu suscripción. No recibirás más recordatorios de {site}.",
-    "unsubscribed_all": "Cancelaste tu suscripción a todas las campañas de Prayer.Tools. No recibirás más recordatorios ni correos de ellas.",
+    "unsubscribed_all": "Cancelaste tu suscripción a todas las campañas de Prayer.Tools. No recibirás más recordatorios de oración de ellas.",
+    "unsubscribed_all_emails": "Cancelaste tu suscripción a todas las campañas de Prayer.Tools y a sus correos de marketing. No recibirás más recordatorios ni correos de ellas.",
     "left_campaign": "Ya no recibirás recordatorios de esta campaña. Tus otros horarios de oración con {site} continúan.",
     "verify_invalid": "Este enlace de confirmación no es válido o ha caducado. Vuelve a inscribirte.",
     "deleted": "Tus datos han sido eliminados.",

@@ -310,7 +310,9 @@
     "title": "Cancelar inscrição",
     "body": "Parar todos os lembretes de oração de {site}?",
     "confirm": "Cancelar inscrição",
-    "all": "Cancelar inscrição em todas as campanhas do Prayer.Tools"
+    "more": "Cancelar inscrição além de {site}",
+    "all": "Todas as campanhas do Prayer.Tools",
+    "all_emails": "Todas as campanhas do Prayer.Tools e os e-mails de marketing"
   },
   "leave": {
     "title": "Parar lembretes",
@@ -323,7 +325,8 @@
     "checkin_no": "Obrigado por orar conosco. Paramos seus lembretes.",
     "link_invalid": "Este link não é válido ou já foi usado.",
     "unsubscribed": "Sua inscrição foi cancelada. Você não receberá mais lembretes de {site}.",
-    "unsubscribed_all": "Sua inscrição em todas as campanhas do Prayer.Tools foi cancelada. Você não receberá mais lembretes nem e-mails delas.",
+    "unsubscribed_all": "Sua inscrição em todas as campanhas do Prayer.Tools foi cancelada. Você não receberá mais lembretes de oração delas.",
+    "unsubscribed_all_emails": "Sua inscrição em todas as campanhas do Prayer.Tools e nos e-mails de marketing delas foi cancelada. Você não receberá mais lembretes nem e-mails delas.",
     "left_campaign": "Você não receberá mais lembretes desta campanha. Seus outros horários de oração com {site} continuam.",
     "verify_invalid": "Este link de confirmação não é válido ou expirou. Inscreva-se novamente.",
     "deleted": "Seus dados foram excluídos.",
