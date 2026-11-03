@@ -1,6 +1,6 @@
 # prayer.tools v3 — with orgs
 
-Implementation of the plans in [plans/](plans/): each site is a Nuxtinator org; the admin app is Nuxtinator (core, tenancy, email-mailgun, ai, crm, inbox) plus a prayer.tools layer and a marketing layer; the public server and the worker are separate processes on the same Postgres. The mobile app is not part of this repo.
+Implementation of the plans in [plans/](plans/): each site is a Nuxtinator org; the admin app is Nuxtinator (core, tenancy, email-mailgun, oauth, mcp, ai, crm, inbox) plus a prayer.tools layer and a marketing layer; the public server and the worker are separate processes on the same Postgres. The mobile app is not part of this repo.
 
 ## Layout
 
@@ -30,6 +30,10 @@ bun run dev:worker
 To work against a local Nuxtinator checkout instead of the tagged releases, set `NUXTINATOR_SOURCE_DIR=/path/to/nuxtinator` in `apps/admin/.env` and the repo-root `.env`: every layer in `layers.ts` then loads from that repo (`<dir>/<subdir>`), edits there show up live, and `sync-layers` fetches nothing.
 
 Mail goes to Mailpit (localhost:1025, UI :8025) in development. `PT_SECRET` must be the same for the admin app, public server and worker.
+
+## MCP for AI clients
+
+The admin app is an MCP server at `<NUXT_PUBLIC_SITE_URL>/mcp`, so champions can add prayer.tools to claude.ai or ChatGPT as a custom connector and sign in through OAuth (set `OAUTH_CONSENT_COOKIE_SECRET` and `OAUTH_ALLOW_DCR=true`). The prayer.tools tools (`apps/admin/apps/prayertools/mcp/`) create sites and campaigns, edit the landing page and signup form, and stack, write and translate prayer content; the site email tools (`apps/admin/apps/marketing/mcp/`) save drafts only. Content goes in and out as a flat block list (`@prayertools/shared/content-blocks`), not Tiptap JSON. Publishing, sending, deleting and domains stay in the admin. Tools never return intercessors' personal data, except the inbox layer's tools; the CRM layer's MCP tools are turned off (`mcpDisabledApps`).
 
 ## Tests
 
