@@ -188,6 +188,9 @@ export interface PtLibraryTable {
   source_language: string
   topics: Generated<string[]>
   template_keys: Generated<string[]>
+  // Yearly libraries share a series; the catalog shows its newest edition.
+  series: string | null
+  edition: string | null
   license: string
   license_note: string | null
   credit: string | null

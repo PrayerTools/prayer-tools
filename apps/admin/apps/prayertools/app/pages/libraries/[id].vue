@@ -14,7 +14,7 @@ const { data, refresh } = useFetch<{ library: Record<string, any>, entries: { da
 
 const lib = computed(() => data.value?.library)
 const form = ref<Record<string, any>>({})
-watch(lib, l => { if (l) form.value = { title: l.title, description: l.description, cadence: l.cadence, source_language: l.source_language, license: l.license, license_note: l.license_note, credit: l.credit, topics: l.topics, template_keys: l.template_keys } }, { immediate: true })
+watch(lib, l => { if (l) form.value = { title: l.title, description: l.description, cadence: l.cadence, source_language: l.source_language, license: l.license, license_note: l.license_note, credit: l.credit, topics: l.topics, template_keys: l.template_keys, series: l.series, edition: l.edition } }, { immediate: true })
 
 const languages = computed(() => {
   const set = new Set([lib.value?.source_language, ...(data.value?.entries ?? []).map(e => e.language)].filter(Boolean) as string[])
@@ -233,6 +233,25 @@ async function deleteLibrary() {
             :items="Object.entries(PT_LABELS.template).map(([value, label]) => ({ value, label }))"
             value-key="value"
             multiple
+            class="w-full"
+          />
+        </UFormField>
+        <UFormField
+          label="Series"
+          help="Yearly editions share a series, e.g. Ramadan. The catalog shows the newest edition."
+        >
+          <UInput
+            v-model="form.series"
+            class="w-full"
+          />
+        </UFormField>
+        <UFormField
+          v-if="form.series"
+          label="Edition"
+          help="Sorts the series, newest first, e.g. 2026."
+        >
+          <UInput
+            v-model="form.edition"
             class="w-full"
           />
         </UFormField>

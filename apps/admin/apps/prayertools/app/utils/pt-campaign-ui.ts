@@ -2,6 +2,7 @@
 import type { CampaignLanding, TranslatableText } from '@prayertools/shared/db/schema'
 import type { SitePlaceWording } from '@prayertools/shared/place'
 import type { SetupState } from '../components/PtSetupForm.vue'
+import { daysBetween } from '@prayertools/shared/dates'
 
 export type PtCampaignSummary = Pick<SetupState, 'start_mode' | 'start_date' | 'end_mode' | 'end_date' | 'length_days' | 'goal' | 'cadence'>
 
@@ -51,6 +52,15 @@ export function ptCampaignDates(c: PtCampaignSummary): string {
   const start = ptFormatDate(c.start_date)
   if (c.start_mode === 'join') return `From ${start} · each person finishes on their own`
   return `${start} – ${c.end_mode === 'date' && c.end_date ? ptFormatDate(c.end_date) : 'no end'}`
+}
+
+// Entries a campaign goes through, when its dates or length fix them.
+export function ptCampaignEntries(c: Pick<SetupState, 'start_mode' | 'start_date' | 'end_mode' | 'end_date' | 'length_days' | 'cadence'>): number | null {
+  if (c.start_mode === 'date' && c.end_mode === 'date' && c.start_date && c.end_date) {
+    const days = daysBetween(c.start_date, c.end_date) + 1
+    return c.cadence === 'weekly' ? Math.ceil(days / 7) : days
+  }
+  return c.end_mode === 'days' ? c.length_days : null
 }
 
 export function ptAnswersLine(c: PtCampaignSummary): string {

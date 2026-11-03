@@ -24,6 +24,8 @@ export default defineEventHandler(async (event) => {
     credit: lib.credit,
     topics: lib.topics,
     template_keys: lib.template_keys,
+    series: lib.series,
+    edition: lib.edition,
     entries
   }
   const name = lib.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'library'

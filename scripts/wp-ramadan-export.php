@@ -69,6 +69,8 @@ function export_pack( string $dir, string $out ): void {
 
     $pack = [
         'title' => "Ramadan $year",
+        'series' => 'Ramadan',
+        'edition' => (string) $year,
         'description' => PACKS[ $year ] ?? "Thirty days of prayer for Ramadan $year.",
         'cadence' => 'daily',
         'source_language' => 'en',

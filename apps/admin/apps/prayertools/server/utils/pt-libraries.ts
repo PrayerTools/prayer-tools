@@ -62,6 +62,8 @@ export function ptLibraryMeta(b: Record<string, unknown>, partial = false) {
   if ('license_note' in b) out.license_note = typeof b.license_note === 'string' ? b.license_note.slice(0, 500) : null
   if ('credit' in b) out.credit = typeof b.credit === 'string' ? b.credit.slice(0, 200) : null
   if ('topics' in b) out.topics = pgArray((Array.isArray(b.topics) ? b.topics : []).map(t => String(t).toLowerCase().trim()).filter(Boolean).slice(0, 12))
+  if ('series' in b) out.series = typeof b.series === 'string' && b.series.trim() ? b.series.trim().slice(0, 120) : null
+  if ('edition' in b) out.edition = typeof b.edition === 'string' && b.edition.trim() ? b.edition.trim().slice(0, 40) : null
   if ('template_keys' in b) out.template_keys = pgArray((Array.isArray(b.template_keys) ? b.template_keys : []).map(String).slice(0, 10))
   return out
 }

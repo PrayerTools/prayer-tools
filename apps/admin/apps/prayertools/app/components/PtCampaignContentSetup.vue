@@ -10,7 +10,7 @@
 import type { SetupState } from './PtSetupForm.vue'
 
 const props = defineProps<{
-  campaign: { id: string, cadence: SetupState['cadence'], start_mode: string, end_mode: string, length_days: number | null }
+  campaign: { id: string, cadence: SetupState['cadence'], start_mode: SetupState['start_mode'], start_date: string | null, end_mode: SetupState['end_mode'], end_date: string | null, length_days: number | null }
   templateKey: string
 }>()
 const emit = defineEmits<{ changed: [], added: [] }>()
@@ -174,6 +174,7 @@ defineExpose({ save })
         v-if="source === 'existing'"
         :template="templateKey"
         :cadence="cadence"
+        :length="ptCampaignEntries({ ...campaign, cadence })"
         :site-languages="site?.site.languages ?? []"
         :used-ids="(content?.libraries ?? []).map(l => l.libraryId).filter(Boolean) as string[]"
         @use="useLibrary"

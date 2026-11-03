@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
   const shared = await ptLibrariesSharedWith(user.userId)
   const sharedIds = [...shared.keys()]
   let query = db.selectFrom('pt_library').select([
-    'id', 'owner_user_id', 'title', 'description', 'cadence', 'entry_count', 'languages', 'source_language', 'topics', 'template_keys',
+    'id', 'owner_user_id', 'title', 'description', 'cadence', 'entry_count', 'languages', 'source_language', 'topics', 'template_keys', 'series', 'edition',
     'license', 'license_note', 'credit', 'visibility', 'share_status', 'published_version', 'published_at', 'updated_at'
   ])
   if (q.scope === 'mine') {
