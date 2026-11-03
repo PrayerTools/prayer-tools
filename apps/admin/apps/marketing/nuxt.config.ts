@@ -8,6 +8,8 @@ import { fileURLToPath } from 'node:url'
 const layerRoot = fileURLToPath(new URL('.', import.meta.url))
 
 export default defineNuxtConfig({
+  modules: [fileURLToPath(new URL('./modules/marketing-mcp.ts', import.meta.url))],
+
   alias: {
     '#marketing/server': fileURLToPath(new URL('./server/exports/index.ts', import.meta.url))
   },
