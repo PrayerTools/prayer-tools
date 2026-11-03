@@ -118,7 +118,7 @@ A site that exists for Ramadan: a fixed campaign of about 30 days, daily content
 
 ### Equip intercessors through the content
 - Choose or write content that is biblical and strategic: Scripture to pray, what to pray for the people or place, and why. Churches tend to need help with the strategic side; champions close to the field may need reminding of the biblical side.
-- Turn field reports into prayer content, leaving out sensitive details, with AI help to draft, review and remove details *(not built)*.
+- Turn field reports into prayer content, leaving out sensitive details, with AI help to draft, review and remove details.
 - Edit a library entry to fit this people or place; the first edit freezes the site's own copy of that library.
 - Use the content to teach intercessors how to pray, not only what to pray for.
 

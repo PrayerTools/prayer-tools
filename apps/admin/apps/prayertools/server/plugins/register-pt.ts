@@ -8,6 +8,7 @@ import { getRegisteredRecordType, registerCrmConsentPurpose, registerCrmRecordTy
 import { registerAiFeature } from '#ai/server'
 import { PT_PERMISSIONS, PT_PERMISSION_META, PT_PERSONAL_PERMISSIONS, PT_STATIC_ROLES } from '../../app/utils/pt-permissions'
 import { PT_LIBRARY_APP } from '@prayertools/shared/site'
+import { PRAYER_AI_FEATURES } from '@prayertools/shared/prayer-ai'
 import { platformConfig } from '@prayertools/shared/config'
 
 export default defineNitroPlugin(() => {
@@ -74,4 +75,5 @@ export default defineNitroPlugin(() => {
   registerCrmConsentPurpose('platform_news', { title: 'News from Prayer.Tools', description: 'Platform news, held in the staff org.' })
 
   registerAiFeature({ key: 'pt.translate', label: 'Prayer.Tools — translate content and site text' })
+  for (const f of Object.values(PRAYER_AI_FEATURES)) registerAiFeature({ key: f.key, label: f.label })
 })
