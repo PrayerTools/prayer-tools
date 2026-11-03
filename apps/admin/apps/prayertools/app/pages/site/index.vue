@@ -83,9 +83,9 @@ async function copyLink() {
 }
 
 const quickLinks = computed(() => [
-  { label: 'Prayer content', icon: 'i-lucide-book-open', to: '/site/content', perm: 'pt.site.read' },
-  { label: 'Landing page', icon: 'i-lucide-panels-top-left', to: '/site/landing', perm: 'pt.site.read' },
-  { label: 'Settings', icon: 'i-lucide-settings', to: '/site/settings', perm: 'pt.site.read' },
+  { label: 'Prayer content', icon: 'i-lucide-book-open', to: '/site/content', perm: 'pt.setup.read' },
+  { label: 'Landing page', icon: 'i-lucide-panels-top-left', to: '/site/landing', perm: 'pt.setup.read' },
+  { label: 'Settings', icon: 'i-lucide-settings', to: '/site/settings', perm: 'pt.setup.read' },
   { label: 'Intercessors', icon: 'i-lucide-users', to: '/crm/contacts', perm: 'crm.contacts.read' },
   { label: 'Stats', icon: 'i-lucide-chart-line', to: '/site/stats', perm: 'pt.stats.read' },
   { label: 'Campaigns', icon: 'i-lucide-calendar-range', to: '/site/campaigns', perm: 'pt.site.read' },
@@ -109,10 +109,11 @@ const quickLinks = computed(() => [
 
     <template v-else-if="site">
       <PtCampaignSwitcher />
-      <header class="flex items-start justify-between gap-4 flex-wrap">
+      <section class="dashboard-status flex items-start justify-between gap-6 flex-wrap rounded-lg bg-[#202833] p-6 sm:p-8 text-white" aria-labelledby="dashboard-site-title">
         <div class="min-w-0">
-          <div class="flex items-center gap-2">
-            <h1 class="text-2xl font-bold truncate">
+          <p class="mb-3 text-xs font-semibold uppercase tracking-widest text-orange-300">Campaign dashboard</p>
+          <div class="flex flex-wrap items-center gap-3">
+            <h1 id="dashboard-site-title" class="text-2xl font-bold break-words">
               {{ site.org.name }}
             </h1>
             <UBadge
@@ -121,11 +122,11 @@ const quickLinks = computed(() => [
               variant="subtle"
             />
           </div>
-          <p class="text-sm text-(--ui-text-muted) mt-1">
+          <p class="text-sm text-slate-200 mt-3 max-w-xl leading-relaxed">
             {{ phaseText }}
           </p>
         </div>
-        <div class="flex items-center gap-2 flex-wrap">
+        <div class="flex items-center gap-3 flex-wrap">
           <UButton
             v-if="can('pt.site.write')"
             :to="setupUrl"
@@ -133,6 +134,8 @@ const quickLinks = computed(() => [
             color="neutral"
             icon="i-lucide-wand-sparkles"
             label="Setup wizard"
+            size="lg"
+            class="dashboard-status-action"
           />
           <UButton
             v-if="status === 'published' && campaign?.published_at"
@@ -142,23 +145,27 @@ const quickLinks = computed(() => [
             color="neutral"
             icon="i-lucide-external-link"
             label="View site"
+            size="lg"
+            class="dashboard-status-action"
           />
           <UButton
             v-if="status === 'published' && campaign?.published_at"
             to="/site/landing/share"
             icon="i-lucide-share-2"
             label="Share"
+            size="lg"
           />
           <UButton
             v-if="status === 'draft' && can('pt.site.manage')"
             icon="i-lucide-rocket"
             label="Publish"
+            size="lg"
             :loading="publishing"
             :disabled="!checklist?.data?.canPublish"
             @click="publish"
           />
         </div>
-      </header>
+      </section>
 
       <UAlert
         v-if="status === 'draft' && !site.site.onboarding?.completed && can('pt.site.write')"
@@ -346,3 +353,19 @@ const quickLinks = computed(() => [
     </template>
   </div>
 </template>
+
+<style scoped>
+.dashboard-status-action {
+  color: #ffffff;
+  background: transparent;
+  border: 1px solid #94a3b8;
+  box-shadow: none;
+}
+.dashboard-status-action:hover,
+.dashboard-status-action:active {
+  color: #ffffff;
+  background: #354353;
+  border-color: #cbd5e1;
+}
+.dashboard-status-action:focus-visible { outline: 2px solid #ffffff; outline-offset: 3px; }
+</style>

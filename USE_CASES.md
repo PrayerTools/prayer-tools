@@ -50,7 +50,7 @@ Any champion who runs many sites, most often a mission agency: one per country, 
 ### Champion's team
 - **Owner:** shares full control; a site can have several.
 - **Editor:** content, email, settings and intercessor details.
-- **Mobilizer** *(not built)*: handles communication. Invites people to the campaign and communicates with intercessors before, during and after it: knows who the intercessors are, answers the inbox, emails the whole list and writes the campaign's messages (share messages, the end-of-campaign thank-you). Leaves the prayer content and site settings to others.
+- **Mobilizer:** handles communication. Invites people to the campaign and communicates with intercessors before, during and after it: knows who the intercessors are, answers the inbox, emails the whole list and writes the campaign's messages (share messages, the end-of-campaign thank-you). Leaves the prayer content and site settings to others.
 - **Translator:** translates by hand for teams that don't want AI translation.
 - **Viewer:** stats only, no personal data. For partners and board members.
 
@@ -174,8 +174,8 @@ The champion or the mobilizer:
 - Sign up on the web with email or in the app, and pick when to be reminded. Google and Apple sign-in *(planned)*.
 - Pray from the reminder link; say "Amen".
 - Change, pause or remove prayer times, language and time zone from the manage link in any email.
-- Unsubscribe from one campaign and keep the others *(not built)*.
-- Unsubscribe from all campaigns on every site at once *(not built)*. Today unsubscribing stops every campaign on one site.
+- Unsubscribe from one campaign and keep the others.
+- Unsubscribe from all campaigns on every site at once, from My prayer or an unsubscribe link.
 - See every campaign across sites in **My prayer** (`prayer.tools/my`), with past campaigns and their prayer totals.
 - Answer "Are you still praying?" check-ins.
 - Share the campaign, submit a story, contact the champion.

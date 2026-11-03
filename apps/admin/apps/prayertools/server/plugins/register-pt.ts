@@ -6,7 +6,7 @@ import { registerRailItem } from '#core/server/utils/rail-registry'
 import { registerAdminSection } from '#core/server/utils/admin-section-registry'
 import { getRegisteredRecordType, registerCrmConsentPurpose, registerCrmRecordType } from '#crm/server'
 import { registerAiFeature } from '#ai/server'
-import { PT_PERMISSIONS, PT_PERMISSION_META, PT_STATIC_ROLES } from '../../app/utils/pt-permissions'
+import { PT_PERMISSIONS, PT_PERMISSION_META, PT_PERSONAL_PERMISSIONS, PT_STATIC_ROLES } from '../../app/utils/pt-permissions'
 import { PT_LIBRARY_APP } from '@prayertools/shared/site'
 import { platformConfig } from '@prayertools/shared/config'
 
@@ -15,8 +15,8 @@ export default defineNitroPlugin(() => {
   platformConfig()
   registerPermissions(PT_PERMISSIONS, PT_PERMISSION_META)
   registerDefaultGrants('pt', {
-    member: ['pt.access', 'pt.site.read', 'pt.stats.read'],
-    admin: [...PT_PERMISSIONS]
+    member: ['pt.access', 'pt.site.read', 'pt.setup.read', 'pt.stats.read'],
+    admin: PT_PERMISSIONS.filter(p => !PT_PERSONAL_PERMISSIONS.includes(p))
   })
   for (const role of PT_STATIC_ROLES) {
     registerStaticRole({ ...role, source: 'pt' })
@@ -30,19 +30,19 @@ export default defineNitroPlugin(() => {
   configureApp('marketing', { title: 'Email', order: 70 })
   // The champion's own library (templates, images, blocks) and multi-site
   // sends, the same from every site.
-  registerApp({ id: PT_LIBRARY_APP, title: 'Library', path: '/personal', icon: 'i-lucide-library-big', description: 'Your templates, images and blocks, usable on any of your sites.', scope: 'user', permissions: [], defaultStatus: 'default', order: 90 })
+  registerApp({ id: PT_LIBRARY_APP, title: 'Library', path: '/personal', icon: 'i-lucide-library-big', description: 'Your templates, images and blocks, usable on any of your sites.', scope: 'user', permissions: [...PT_PERSONAL_PERMISSIONS], defaultStatus: 'default', order: 90 })
 
   // The rail is the only main navigation; every entry is "this, for the
   // current site". Sections with several pages use in-page tabs.
   const rail: [string, string, string, string, string, number][] = [
     ['site', 'Dashboard', '/@:orgSlug/site', 'i-lucide-layout-dashboard', 'pt.access', 10],
     ['site', 'Campaigns', '/@:orgSlug/site/campaigns', 'i-lucide-calendar-range', 'pt.site.read', 20],
-    ['site', 'Content', '/@:orgSlug/site/content', 'i-lucide-book-open', 'pt.site.read', 30],
-    ['site', 'Landing page', '/@:orgSlug/site/landing', 'i-lucide-panels-top-left', 'pt.site.read', 40],
+    ['site', 'Content', '/@:orgSlug/site/content', 'i-lucide-book-open', 'pt.setup.read', 30],
+    ['site', 'Landing page', '/@:orgSlug/site/landing', 'i-lucide-panels-top-left', 'pt.setup.read', 40],
     ['crm', 'Intercessors', '/@:orgSlug/crm/contacts', 'i-lucide-users', 'crm.contacts.read', 50],
     ['site', 'Stats', '/@:orgSlug/site/stats', 'i-lucide-chart-line', 'pt.stats.read', 80],
     ['site', 'Team', '/@:orgSlug/site/team', 'i-lucide-user-cog', 'org.members.read', 90],
-    ['site', 'Settings', '/@:orgSlug/site/settings', 'i-lucide-settings', 'pt.site.read', 100]
+    ['site', 'Settings', '/@:orgSlug/site/settings', 'i-lucide-settings', 'pt.setup.read', 100]
   ]
   for (const [appId, title, path, icon, requiredPermission, order] of rail) {
     registerRailItem({ appId, id: title.toLowerCase().replace(/\s+/g, '-'), title, path, icon, requiredPermission, order })

@@ -6,6 +6,7 @@ import { withUserContext } from '#core/server/utils/personal-apps'
 import { listUserOrgs, withOrgContext, withOrgScope, type TenantContext } from '#tenant/server'
 import { getMarketingHost } from '../../lib/registry'
 import { parseVersions } from '../../lib/render'
+import { jsonb, textArray, uuidArray } from '../../lib/db'
 import type { EmailVersions, MarketingDb, MarketingHost, MarketingTx } from '../../lib/types'
 
 export type MarketingPerm = 'marketing.access' | 'marketing.send'
@@ -162,4 +163,80 @@ export async function marketingSitesLanguages(orgIds: string[]) {
     for (const lang of l.languages) if (!seen.has(lang.code)) seen.set(lang.code, lang)
   }
   return { languages: [...seen.values()], perSite }
+}
+
+// A new draft email for the active org.
+export async function marketingCreateDraft(tx: Transaction<Database>, ctx: TenantContext, body: Record<string, unknown>) {
+  const host = marketingHost()
+  const { languages } = await host.languages(marketingTx(tx), ctx.orgId)
+  const input = marketingDraftInput(body, languages.map(l => l.code))
+  const row = await tx
+    .insertInto('marketing_email')
+    .values({
+      versions: jsonb(input.versions),
+      source_language: input.sourceLanguage,
+      audiences: textArray(input.audiences),
+      created_by: ctx.userId
+    })
+    .returning('id')
+    .executeTakeFirstOrThrow()
+  return { id: row.id }
+}
+
+// Replaces a draft's versions and audiences; 409 once it is no longer a draft.
+export async function marketingUpdateDraft(tx: Transaction<Database>, ctx: TenantContext, id: string | undefined, body: Record<string, unknown>) {
+  if (!marketingIsUuid(id)) marketingNotFound()
+  const host = marketingHost()
+  const { languages } = await host.languages(marketingTx(tx), ctx.orgId)
+  const input = marketingDraftInput(body, languages.map(l => l.code))
+  const res = await tx
+    .updateTable('marketing_email')
+    .set({ versions: jsonb(input.versions), source_language: input.sourceLanguage, audiences: textArray(input.audiences), updated_at: new Date() })
+    .where('id', '=', id)
+    .where('status', '=', 'draft')
+    .executeTakeFirst()
+  if (!Number(res.numUpdatedRows)) throw createError({ statusCode: 409, statusMessage: 'Only drafts can be edited.' })
+  return { ok: true }
+}
+
+// A new draft multi-site send owned by `userId`, for sites they can send from.
+export async function marketingCreateParentDraft(tx: MarketingTx, userId: string, b: Record<string, unknown>) {
+  const sites = await marketingRequireSites(userId, b.org_ids)
+  const { languages } = await marketingSitesLanguages(sites.map(s => s.id))
+  const input = marketingDraftInput(b, languages.map(l => l.code))
+  const row = await tx
+    .insertInto('marketing_parent')
+    .values({
+      owner_user_id: userId,
+      versions: jsonb(input.versions),
+      source_language: input.sourceLanguage,
+      org_ids: uuidArray(sites.map(s => s.id)),
+      audiences: textArray(input.audiences)
+    })
+    .returning('id')
+    .executeTakeFirstOrThrow()
+  return { id: row.id }
+}
+
+// Replaces a draft multi-site send's sites, versions and audiences.
+export async function marketingUpdateParentDraft(tx: MarketingTx, userId: string, id: string | undefined, b: Record<string, unknown>) {
+  if (!marketingIsUuid(id)) marketingNotFound()
+  const sites = await marketingRequireSites(userId, b.org_ids)
+  const { languages } = await marketingSitesLanguages(sites.map(s => s.id))
+  const input = marketingDraftInput(b, languages.map(l => l.code))
+  const res = await tx
+    .updateTable('marketing_parent')
+    .set({
+      versions: jsonb(input.versions),
+      source_language: input.sourceLanguage,
+      org_ids: uuidArray(sites.map(s => s.id)),
+      audiences: textArray(input.audiences),
+      updated_at: new Date()
+    })
+    .where('id', '=', id)
+    .where('owner_user_id', '=', userId)
+    .where('status', '=', 'draft')
+    .executeTakeFirst()
+  if (!Number(res.numUpdatedRows)) throw createError({ statusCode: 409, statusMessage: 'Only drafts can be edited.' })
+  return { ok: true }
 }

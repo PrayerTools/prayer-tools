@@ -35,6 +35,7 @@ Where champions and their teams build and run sites and their campaigns. Everyth
 - Per-site roles and invites from Nuxtinator's tenancy layer:
   - **Owner** — team, domains, sending identity, deleting the site, and everything an editor can do. A site can have several owners.
   - **Editor** — content, email, settings, and intercessors including their details.
+  - **Mobilizer** — invites people and talks with intercessors: intercessors and their prayer times, the inbox, site email, share and thank-you messages, and publishing stories. No prayer content or settings, so Content, Landing page and Settings stay off their rail; Share and Stories are reached from the dashboard.
   - **Translator** — edits the translations of content and custom sections, for teams that want a person rather than AI to translate.
   - **Viewer** — stats only, no personal data.
 - The last owner can't leave or be demoted. Operator access across sites for support; when an owner leaves, an operator can make another member an owner.

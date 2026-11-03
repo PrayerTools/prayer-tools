@@ -15,7 +15,7 @@ import type { MyManagedSiteView, MySiteView, MyView } from '../../shared/view'
 import { useDb } from './db'
 import { commitmentsOf, consentList } from './manage'
 import { requireSessionUser } from './account-session'
-import { staffOrgId } from './staff'
+import { platformNewsGranted, staffOrgId } from './staff'
 
 export interface PersonSubscription {
   id: string
@@ -68,7 +68,7 @@ async function managedSites(userId: string): Promise<MyManagedSiteView[]> {
 
 export async function buildMyView(userId: string | null): Promise<MyView> {
   const account = userId ? await accountById(useDb(), userId) : null
-  if (!account) return { signedIn: false, account: null, sites: [], managing: [], createUrl: null }
+  if (!account) return { signedIn: false, account: null, news: false, sites: [], managing: [], createUrl: null }
   const subs = await personSubscriptions(account.id)
   const sites: MySiteView[] = []
   for (const s of subs) {
@@ -125,7 +125,8 @@ export async function buildMyView(userId: string | null): Promise<MyView> {
   }
   return {
     signedIn: true,
-    account: { name: account.display_name, email: account.email },
+    account: { name: account.display_name, email: account.email, avatar: account.avatar || null },
+    news: await platformNewsGranted(account.id, account.email),
     sites,
     managing: await managedSites(account.id),
     createUrl: `/my/admin?to=${encodeURIComponent('/orgs/new')}`

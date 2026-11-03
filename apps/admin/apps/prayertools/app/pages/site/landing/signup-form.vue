@@ -132,366 +132,368 @@ async function saveOption(o: Option, patch: Record<string, unknown>) {
 <template>
   <div
     v-if="site"
-    class="max-w-4xl mx-auto space-y-8"
+    class="max-w-[96rem] mx-auto space-y-8"
   >
     <PtLandingTabs />
-    <header>
-      <div class="flex flex-wrap items-center gap-3">
-        <h1 class="text-2xl font-bold">
-          Signup form
-        </h1>
-        <UBadge
-          color="neutral"
-          variant="outline"
-          icon="i-lucide-layers"
-          label="Shared by all campaigns"
-        />
-      </div>
-      <p class="text-sm text-muted max-w-xl">
-        Ask intercessors a few questions of your own when they sign up, and add your own consent boxes.
-        Answers show on each intercessor’s record and in exports. They are never sent to analytics.
-      </p>
-    </header>
-
-    <UAlert
-      v-if="!can('pt.site.write')"
-      color="neutral"
-      variant="subtle"
-      icon="i-lucide-lock"
-      title="Only owners and editors can change the signup form. Translators can edit the wording."
-    />
-
-    <UCard>
-      <template #header>
-        <h2 class="font-semibold">
-          Always asked
-        </h2>
-      </template>
-      <ul class="space-y-2 text-sm">
-        <li
-          v-for="a in alwaysAsked"
-          :key="a.label"
-          class="flex items-start gap-2"
-        >
-          <UIcon
-            :name="a.icon"
-            class="text-muted size-4 mt-0.5 shrink-0"
+    <div class="max-w-4xl space-y-8">
+      <header class="theme-page-header rounded-lg">
+        <div class="flex flex-wrap items-center gap-3">
+          <h1 class="text-2xl font-bold">
+            Signup form
+          </h1>
+          <UBadge
+            color="neutral"
+            variant="outline"
+            icon="i-lucide-layers"
+            label="Shared by all campaigns"
           />
-          <span>
-            {{ a.label }}<span
-              v-if="a.note"
-              class="text-muted"
-            > · {{ a.note }}</span>
-          </span>
-        </li>
-      </ul>
-      <p class="text-sm text-muted mt-3">
-        Both consent boxes are unchecked by default. Site emails go only to people who ticked “updates from this site”
-        (or one of your own consent boxes). Prayer reminders don’t need consent; they come with signing up.
-      </p>
-    </UCard>
-
-    <section class="space-y-4">
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 class="text-lg font-semibold">
-            Your questions
-          </h2>
-          <p class="text-sm text-muted">
-            Up to {{ MAX_FIELDS }}. Keep the form short: every extra question means fewer signups. Answers are saved on
-            each person's contact record.
-          </p>
         </div>
-        <UDropdownMenu
-          v-if="can('pt.site.write')"
-          :items="addFieldItems"
-        >
-          <UButton
-            icon="i-lucide-plus"
-            label="Add a question"
-            :disabled="fields.length >= MAX_FIELDS || !!newField.kind"
-          />
-        </UDropdownMenu>
-      </div>
+        <p class="text-sm text-muted max-w-xl">
+          Ask intercessors a few questions of your own when they sign up, and add your own consent boxes.
+          Answers show on each intercessor’s record and in exports. They are never sent to analytics.
+        </p>
+      </header>
 
-      <UCard
-        v-if="!fields.length && !newField.kind"
+      <UAlert
+        v-if="!can('pt.site.write')"
+        color="neutral"
         variant="subtle"
-      >
-        <p class="text-sm text-muted">
-          No questions yet. People sign up with just the details above.
+        icon="i-lucide-lock"
+        title="Only owners and editors can change the signup form. Translators can edit the wording."
+      />
+
+      <UCard>
+        <template #header>
+          <h2 class="font-semibold">
+            Always asked
+          </h2>
+        </template>
+        <ul class="space-y-2 text-sm">
+          <li
+            v-for="a in alwaysAsked"
+            :key="a.label"
+            class="flex items-start gap-2"
+          >
+            <UIcon
+              :name="a.icon"
+              class="text-muted size-4 mt-0.5 shrink-0"
+            />
+            <span>
+              {{ a.label }}<span
+                v-if="a.note"
+                class="text-muted"
+              > · {{ a.note }}</span>
+            </span>
+          </li>
+        </ul>
+        <p class="text-sm text-muted mt-3">
+          Both consent boxes are unchecked by default. Site emails go only to people who ticked “updates from this site”
+          (or one of your own consent boxes). Prayer reminders don’t need consent; they come with signing up.
         </p>
       </UCard>
 
-      <UCard
-        v-for="(f, i) in fields"
-        :key="f.id"
-      >
-        <div class="space-y-4">
-          <div class="flex flex-wrap items-center justify-between gap-2">
-            <UBadge
-              variant="subtle"
-              color="neutral"
-              :icon="KINDS[f.kind]?.icon"
-              :label="KINDS[f.kind]?.label ?? f.kind"
-            />
-            <div
-              v-if="can('pt.site.write')"
-              class="flex items-center gap-1"
-            >
-              <USwitch
-                :model-value="f.required"
-                label="Required"
-                class="me-3"
-                @update:model-value="(v: boolean) => setRequired(f, v)"
-              />
-              <UButton
-                size="xs"
-                variant="ghost"
-                color="neutral"
-                icon="i-lucide-arrow-up"
-                aria-label="Move up"
-                :disabled="i === 0"
-                @click="moveField(i, -1)"
-              />
-              <UButton
-                size="xs"
-                variant="ghost"
-                color="neutral"
-                icon="i-lucide-arrow-down"
-                aria-label="Move down"
-                :disabled="i === fields.length - 1"
-                @click="moveField(i, 1)"
-              />
-              <UButton
-                size="xs"
-                variant="ghost"
-                color="error"
-                icon="i-lucide-trash-2"
-                aria-label="Stop asking"
-                @click="removingField = f"
-              />
-            </div>
-            <UBadge
-              v-else-if="f.required"
-              variant="outline"
-              color="neutral"
-              label="Required"
-            />
+      <section class="space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-semibold">
+              Your questions
+            </h2>
+            <p class="text-sm text-muted">
+              Up to {{ MAX_FIELDS }}. Keep the form short: every extra question means fewer signups. Answers are saved on
+              each person's contact record.
+            </p>
           </div>
-          <PtTranslatableInput
-            v-model="f.label"
-            :languages="site.site.languages"
-            :default-language="site.site.default_language"
-            :label="f.kind === 'checkbox' ? 'Checkbox text' : 'Question'"
-            :source-locked="!can('pt.site.write')"
-          />
-          <div
-            v-if="f.kind === 'select'"
-            class="space-y-3 border-s-2 border-default ps-4"
+          <UDropdownMenu
+            v-if="can('pt.site.write')"
+            :items="addFieldItems"
           >
-            <div class="text-sm font-medium">
-              Options
+            <UButton
+              icon="i-lucide-plus"
+              label="Add a question"
+              :disabled="fields.length >= MAX_FIELDS || !!newField.kind"
+            />
+          </UDropdownMenu>
+        </div>
+
+        <UCard
+          v-if="!fields.length && !newField.kind"
+          variant="subtle"
+        >
+          <p class="text-sm text-muted">
+            No questions yet. People sign up with just the details above.
+          </p>
+        </UCard>
+
+        <UCard
+          v-for="(f, i) in fields"
+          :key="f.id"
+        >
+          <div class="space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <UBadge
+                variant="subtle"
+                color="neutral"
+                :icon="KINDS[f.kind]?.icon"
+                :label="KINDS[f.kind]?.label ?? f.kind"
+              />
+              <div
+                v-if="can('pt.site.write')"
+                class="flex items-center gap-1"
+              >
+                <USwitch
+                  :model-value="f.required"
+                  label="Required"
+                  class="me-3"
+                  @update:model-value="(v: boolean) => setRequired(f, v)"
+                />
+                <UButton
+                  size="xs"
+                  variant="ghost"
+                  color="neutral"
+                  icon="i-lucide-arrow-up"
+                  aria-label="Move up"
+                  :disabled="i === 0"
+                  @click="moveField(i, -1)"
+                />
+                <UButton
+                  size="xs"
+                  variant="ghost"
+                  color="neutral"
+                  icon="i-lucide-arrow-down"
+                  aria-label="Move down"
+                  :disabled="i === fields.length - 1"
+                  @click="moveField(i, 1)"
+                />
+                <UButton
+                  size="xs"
+                  variant="ghost"
+                  color="error"
+                  icon="i-lucide-trash-2"
+                  aria-label="Stop asking"
+                  @click="removingField = f"
+                />
+              </div>
+              <UBadge
+                v-else-if="f.required"
+                variant="outline"
+                color="neutral"
+                label="Required"
+              />
             </div>
             <PtTranslatableInput
-              v-for="(o, j) in f.options"
-              :key="o.key"
-              v-model="o.label"
+              v-model="f.label"
               :languages="site.site.languages"
               :default-language="site.site.default_language"
-              :placeholder="`Option ${j + 1}`"
+              :label="f.kind === 'checkbox' ? 'Checkbox text' : 'Question'"
               :source-locked="!can('pt.site.write')"
             />
-          </div>
-          <div class="flex justify-end">
-            <UButton
-              size="sm"
-              label="Save"
-              @click="saveField(f)"
-            />
-          </div>
-        </div>
-      </UCard>
-
-      <UCard
-        v-if="newField.kind"
-        :ui="{ root: 'ring-primary/50' }"
-      >
-        <div class="space-y-4">
-          <UBadge
-            variant="subtle"
-            :icon="KINDS[newField.kind].icon"
-            :label="`New ${KINDS[newField.kind].label.toLowerCase()}`"
-          />
-          <PtTranslatableInput
-            v-model="newField.label"
-            :languages="site.site.languages"
-            :default-language="site.site.default_language"
-            :label="newField.kind === 'checkbox' ? 'Checkbox text' : 'Question'"
-            :placeholder="newField.kind === 'checkbox' ? 'I would like to join a prayer group' : 'Which church do you attend?'"
-          />
-          <div
-            v-if="newField.kind === 'select'"
-            class="space-y-3 border-s-2 border-default ps-4"
-          >
-            <div class="text-sm font-medium">
-              Options
-            </div>
             <div
-              v-for="(o, j) in newField.options"
-              :key="o.key"
-              class="flex items-start gap-2"
+              v-if="f.kind === 'select'"
+              class="space-y-3 border-s-2 border-default ps-4"
             >
+              <div class="text-sm font-medium">
+                Options
+              </div>
               <PtTranslatableInput
+                v-for="(o, j) in f.options"
+                :key="o.key"
                 v-model="o.label"
                 :languages="site.site.languages"
                 :default-language="site.site.default_language"
                 :placeholder="`Option ${j + 1}`"
-                class="flex-1 min-w-0"
-              />
-              <UButton
-                size="xs"
-                variant="ghost"
-                color="neutral"
-                icon="i-lucide-x"
-                aria-label="Remove option"
-                class="mt-1"
-                :disabled="newField.options.length <= 2"
-                @click="newField.options.splice(j, 1)"
+                :source-locked="!can('pt.site.write')"
               />
             </div>
-            <UButton
-              size="sm"
-              variant="soft"
-              icon="i-lucide-plus"
-              label="Add option"
-              @click="addOption"
-            />
+            <div class="flex justify-end">
+              <UButton
+                size="sm"
+                label="Save"
+                @click="saveField(f)"
+              />
+            </div>
           </div>
-          <div class="flex flex-wrap items-center justify-between gap-2">
-            <USwitch
-              v-model="newField.required"
-              label="Required"
+        </UCard>
+
+        <UCard
+          v-if="newField.kind"
+          :ui="{ root: 'ring-primary/50' }"
+        >
+          <div class="space-y-4">
+            <UBadge
+              variant="subtle"
+              :icon="KINDS[newField.kind].icon"
+              :label="`New ${KINDS[newField.kind].label.toLowerCase()}`"
             />
-            <div class="flex gap-2">
+            <PtTranslatableInput
+              v-model="newField.label"
+              :languages="site.site.languages"
+              :default-language="site.site.default_language"
+              :label="newField.kind === 'checkbox' ? 'Checkbox text' : 'Question'"
+              :placeholder="newField.kind === 'checkbox' ? 'I would like to join a prayer group' : 'Which church do you attend?'"
+            />
+            <div
+              v-if="newField.kind === 'select'"
+              class="space-y-3 border-s-2 border-default ps-4"
+            >
+              <div class="text-sm font-medium">
+                Options
+              </div>
+              <div
+                v-for="(o, j) in newField.options"
+                :key="o.key"
+                class="flex items-start gap-2"
+              >
+                <PtTranslatableInput
+                  v-model="o.label"
+                  :languages="site.site.languages"
+                  :default-language="site.site.default_language"
+                  :placeholder="`Option ${j + 1}`"
+                  class="flex-1 min-w-0"
+                />
+                <UButton
+                  size="xs"
+                  variant="ghost"
+                  color="neutral"
+                  icon="i-lucide-x"
+                  aria-label="Remove option"
+                  class="mt-1"
+                  :disabled="newField.options.length <= 2"
+                  @click="newField.options.splice(j, 1)"
+                />
+              </div>
+              <UButton
+                size="sm"
+                variant="soft"
+                icon="i-lucide-plus"
+                label="Add option"
+                @click="addOption"
+              />
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <USwitch
+                v-model="newField.required"
+                label="Required"
+              />
+              <div class="flex gap-2">
+                <UButton
+                  variant="ghost"
+                  color="neutral"
+                  label="Cancel"
+                  @click="newField.kind = null"
+                />
+                <UButton
+                  icon="i-lucide-plus"
+                  label="Add question"
+                  :loading="creatingField"
+                  @click="createField"
+                />
+              </div>
+            </div>
+          </div>
+        </UCard>
+      </section>
+
+      <section class="space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-semibold">
+              Your consent boxes
+            </h2>
+            <p class="text-sm text-muted">
+              Extra unchecked boxes after the two above, e.g. “Tell me about the mission trip”. Everyone who ticks one
+              becomes an audience for site emails. Up to {{ MAX_CONSENT_OPTIONS }}.
+            </p>
+          </div>
+          <UButton
+            v-if="can('pt.site.write')"
+            icon="i-lucide-plus"
+            variant="soft"
+            label="Add a consent box"
+            :disabled="(signup?.consentOptions.length ?? 0) >= MAX_CONSENT_OPTIONS || addingOption"
+            @click="addingOption = true"
+          />
+        </div>
+
+        <UCard
+          v-for="o in signup?.consentOptions ?? []"
+          :key="o.id"
+          :class="o.active ? '' : 'opacity-75'"
+        >
+          <div class="space-y-3">
+            <PtTranslatableInput
+              v-model="o.label"
+              :languages="site.site.languages"
+              :default-language="site.site.default_language"
+              label="Checkbox text"
+              :source-locked="!can('pt.site.write')"
+            />
+            <div class="flex items-center justify-between gap-2">
+              <USwitch
+                :model-value="o.active"
+                label="Offered at signup"
+                :disabled="!can('pt.site.write')"
+                @update:model-value="(v: boolean) => saveOption(o, { active: v })"
+              />
+              <UButton
+                size="sm"
+                label="Save"
+                @click="saveOption(o, { label: o.label })"
+              />
+            </div>
+          </div>
+        </UCard>
+
+        <UCard
+          v-if="addingOption"
+          :ui="{ root: 'ring-primary/50' }"
+        >
+          <div class="space-y-4">
+            <PtTranslatableInput
+              v-model="newOption"
+              :languages="site.site.languages"
+              :default-language="site.site.default_language"
+              label="Checkbox text"
+              placeholder="Tell me about the mission trip"
+            />
+            <div class="flex justify-end gap-2">
               <UButton
                 variant="ghost"
                 color="neutral"
                 label="Cancel"
-                @click="newField.kind = null"
+                @click="addingOption = false; newOption = null"
               />
               <UButton
                 icon="i-lucide-plus"
-                label="Add question"
-                :loading="creatingField"
-                @click="createField"
+                label="Add consent box"
+                @click="createOption"
               />
             </div>
           </div>
-        </div>
-      </UCard>
-    </section>
+        </UCard>
+      </section>
 
-    <section class="space-y-4">
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 class="text-lg font-semibold">
-            Your consent boxes
-          </h2>
-          <p class="text-sm text-muted">
-            Extra unchecked boxes after the two above, e.g. “Tell me about the mission trip”. Everyone who ticks one
-            becomes an audience for site emails. Up to {{ MAX_CONSENT_OPTIONS }}.
-          </p>
-        </div>
-        <UButton
-          v-if="can('pt.site.write')"
-          icon="i-lucide-plus"
-          variant="soft"
-          label="Add a consent box"
-          :disabled="(signup?.consentOptions.length ?? 0) >= MAX_CONSENT_OPTIONS || addingOption"
-          @click="addingOption = true"
-        />
-      </div>
-
-      <UCard
-        v-for="o in signup?.consentOptions ?? []"
-        :key="o.id"
-        :class="o.active ? '' : 'opacity-75'"
+      <UModal
+        v-model:open="removeFieldOpen"
+        title="Stop asking this question?"
+        description="It is removed from your signup form. Answers people already gave stay on their records and in exports."
       >
-        <div class="space-y-3">
-          <PtTranslatableInput
-            v-model="o.label"
-            :languages="site.site.languages"
-            :default-language="site.site.default_language"
-            label="Checkbox text"
-            :source-locked="!can('pt.site.write')"
-          />
-          <div class="flex items-center justify-between gap-2">
-            <USwitch
-              :model-value="o.active"
-              label="Offered at signup"
-              :disabled="!can('pt.site.write')"
-              @update:model-value="(v: boolean) => saveOption(o, { active: v })"
-            />
+        <template #footer>
+          <div class="flex justify-end gap-2 w-full">
             <UButton
-              size="sm"
-              label="Save"
-              @click="saveOption(o, { label: o.label })"
-            />
-          </div>
-        </div>
-      </UCard>
-
-      <UCard
-        v-if="addingOption"
-        :ui="{ root: 'ring-primary/50' }"
-      >
-        <div class="space-y-4">
-          <PtTranslatableInput
-            v-model="newOption"
-            :languages="site.site.languages"
-            :default-language="site.site.default_language"
-            label="Checkbox text"
-            placeholder="Tell me about the mission trip"
-          />
-          <div class="flex justify-end gap-2">
-            <UButton
-              variant="ghost"
-              color="neutral"
               label="Cancel"
-              @click="addingOption = false; newOption = null"
+              color="neutral"
+              variant="ghost"
+              @click="removingField = null"
             />
             <UButton
-              icon="i-lucide-plus"
-              label="Add consent box"
-              @click="createOption"
+              label="Stop asking"
+              color="error"
+              icon="i-lucide-trash-2"
+              @click="deleteField"
             />
           </div>
-        </div>
-      </UCard>
-    </section>
-
-    <UModal
-      v-model:open="removeFieldOpen"
-      title="Stop asking this question?"
-      description="It is removed from your signup form. Answers people already gave stay on their records and in exports."
-    >
-      <template #footer>
-        <div class="flex justify-end gap-2 w-full">
-          <UButton
-            label="Cancel"
-            color="neutral"
-            variant="ghost"
-            @click="removingField = null"
-          />
-          <UButton
-            label="Stop asking"
-            color="error"
-            icon="i-lucide-trash-2"
-            @click="deleteField"
-          />
-        </div>
-      </template>
-    </UModal>
+        </template>
+      </UModal>
+    </div>
   </div>
 </template>
