@@ -10,10 +10,11 @@ import { entryDate } from '@prayertools/shared/schedule'
 import { parseLink } from '@prayertools/shared/links'
 import { textIn } from '@prayertools/shared/translatable'
 import { videoEmbed } from '@prayertools/shared/video'
-import type { TranslatableText, CampaignCta, CampaignLanding, SignupFieldKind } from '@prayertools/shared/db/schema'
+import type { TranslatableText, CampaignLanding, SignupFieldKind } from '@prayertools/shared/db/schema'
 import type { CampaignRow } from '@prayertools/shared/subscriptions'
 import { platformConfig } from '@prayertools/shared/config'
 import { isSideCampaign } from '@prayertools/shared/setup'
+import { nextStep, nextStepCampaign, prayingIn } from '@prayertools/shared/next-step'
 import type { PageView, SiteResponse } from '../../shared/view'
 import { useDb } from './db'
 import type { SiteContext } from './site-context'
@@ -73,14 +74,14 @@ export async function buildSiteResponse(event: H3Event, ctx: SiteContext, fullPa
     } else {
       switch (pageName) {
         case '':
-          page = parsed.rest.length ? { kind: 'not_found' } : await landingPage(tx, ctx, data, campaign, lang)
+          page = parsed.rest.length ? { kind: 'not_found' } : await landingPage(tx, event, ctx, data, campaign, lang)
           break
         case 'pray':
           page = await prayPage(tx, ctx, data, campaign, lang, parsed.rest)
           break
         case 'signup':
           page = cv && (cv.state === 'between' || cv.state === 'ended')
-            ? await betweenPage(tx, data, campaign!, lang)
+            ? await betweenPage(tx, event, ctx, data, campaign!, lang)
             : { kind: 'signup', form: await signupForm(tx, data, lang, !!cv && (cv.state === 'upcoming' || cv.state === 'active')) }
           break
         case 'stats':
@@ -143,7 +144,7 @@ export async function buildSiteResponse(event: H3Event, ctx: SiteContext, fullPa
       }
     }
     if (page.kind === 'not_found') status = 404
-    const personal = PRIVATE_PAGES.has(pageName) || ctx.preview || data.site.status === 'draft'
+    const personal = PRIVATE_PAGES.has(pageName) || ctx.preview || data.site.status === 'draft' || (page.kind === 'between' && page.next?.kind === 'praying')
     return {
       host: 'site',
       site,
@@ -157,11 +158,11 @@ export async function buildSiteResponse(event: H3Event, ctx: SiteContext, fullPa
   })
 }
 
-async function landingPage(tx: Parameters<typeof loadSiteData>[0], ctx: SiteContext, data: SiteData, campaign: CampaignRow | null, lang: string): Promise<PageView> {
+async function landingPage(tx: Parameters<typeof loadSiteData>[0], event: H3Event, ctx: SiteContext, data: SiteData, campaign: CampaignRow | null, lang: string): Promise<PageView> {
   const def = data.site.default_language
   if (campaign) {
     const state = stateOf(data, campaign)
-    if (state === 'between' || state === 'ended') return await betweenPage(tx, data, campaign, lang)
+    if (state === 'between' || state === 'ended') return await betweenPage(tx, event, ctx, data, campaign, lang)
   }
   const landing = (campaign?.landing ?? {}) as CampaignLanding
   const templateKey = campaign?.template_key ?? null
@@ -212,14 +213,18 @@ async function landingPage(tx: Parameters<typeof loadSiteData>[0], ctx: SiteCont
   }
 }
 
-async function betweenPage(tx: Parameters<typeof loadSiteData>[0], data: SiteData, campaign: CampaignRow, lang: string): Promise<PageView> {
+// The person is known only from a manage session or a sign-in; anyone else
+// gets the invitation to the main campaign.
+async function betweenPage(tx: Parameters<typeof loadSiteData>[0], event: H3Event, ctx: SiteContext, data: SiteData, campaign: CampaignRow, lang: string): Promise<PageView> {
   const def = data.site.default_language
-  const cta = (campaign.cta ?? {}) as CampaignCta
+  const main = nextStepCampaign(campaign, data.campaigns)
+  const sub = main ? await managedSubscription(tx, event, ctx.orgId) : null
+  const praying = !!sub && (await prayingIn(tx, main!.id, [sub.id])).has(sub.id)
   return {
     kind: 'between',
     stats: await statsFor(tx, campaign, data.settings.default_duration_min),
     endMessage: textIn(campaign.end_message as TranslatableText | null, lang, def),
-    cta: cta.url ? { label: textIn(cta.label, lang, def), url: cta.url } : null
+    next: nextStep(campaign, main, { lang, defaultLang: def, praying })
   }
 }
 

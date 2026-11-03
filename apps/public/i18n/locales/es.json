@@ -226,6 +226,8 @@
     "thanks": "Gracias por orar",
     "results": "Resultados finales",
     "cta_default": "Continuar",
+    "keep_praying": "Sigue orando con {campaign}",
+    "still_praying": "Sigues orando con {campaign}.",
     "notify_title": "Avísame cuando esta campaña se realice de nuevo",
     "notify_intro": "Deja tu correo y {site} te avisará cuando comience la próxima campaña.",
     "notify_button": "Avísame",

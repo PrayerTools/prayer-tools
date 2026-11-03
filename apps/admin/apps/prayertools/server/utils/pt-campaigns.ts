@@ -77,6 +77,7 @@ export function ptCampaignExtras(b: Record<string, unknown>) {
 
 export function ptCta(input: unknown) {
   const c = (input ?? {}) as Record<string, unknown>
+  if (c.mode === 'none') return { mode: 'none' as const }
   const url = typeof c.url === 'string' && /^https?:\/\//.test(c.url) ? c.url.slice(0, 2000) : undefined
   const label = parseText(c.label) ?? undefined
   return url && label ? { url, label } : {}

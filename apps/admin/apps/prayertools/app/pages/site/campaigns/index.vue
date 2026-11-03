@@ -234,6 +234,7 @@ async function doConfirm() {
               :campaign-id="c.id"
               :end-message="c.end_message"
               :cta="c.cta"
+              :side="c.kind === 'side'"
               :languages="site.site.languages"
               :default-language="site.site.default_language"
               @saved="refresh"

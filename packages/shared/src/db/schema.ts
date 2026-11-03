@@ -336,9 +336,12 @@ export interface PtSiteTable {
   updated_at: Timestamp
 }
 
+// The champion's own button, or `mode: 'none'` for no button at all. Empty
+// means a side campaign invites its intercessors to the main campaign.
 export interface CampaignCta {
   label?: TranslatableText
   url?: string
+  mode?: 'none'
 }
 
 export interface PtCampaignTable {

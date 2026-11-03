@@ -19,7 +19,9 @@ useHead({ title: () => site.value.name })
       <section aria-labelledby="thanks-title" class="space-y-4">
         <h2 id="thanks-title" class="text-2xl font-bold">{{ t('between.thanks') }}</h2>
         <p v-if="page.endMessage" class="whitespace-pre-line text-stone-800">{{ page.endMessage }}</p>
-        <UButton v-if="page.cta" :to="page.cta.url" size="xl" :label="page.cta.label || t('between.cta_default')" trailing-icon="i-lucide-arrow-right" />
+        <UButton v-if="page.next?.kind === 'cta'" :to="page.next.url" size="xl" :label="page.next.label || t('between.cta_default')" trailing-icon="i-lucide-arrow-right" />
+        <UButton v-else-if="page.next?.kind === 'join'" :to="page.next.path" size="xl" :label="t('between.keep_praying', { campaign: page.next.campaign })" trailing-icon="i-lucide-arrow-right" />
+        <p v-else-if="page.next?.kind === 'praying'" class="text-lg font-medium">{{ t('between.still_praying', { campaign: page.next.campaign }) }}</p>
       </section>
       <section v-if="page.stats" aria-labelledby="results-title" class="space-y-4">
         <h2 id="results-title" class="text-2xl font-bold">{{ t('between.results') }}</h2>

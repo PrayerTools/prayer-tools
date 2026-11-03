@@ -37,7 +37,7 @@ export interface PtCampaign extends SetupState {
   // Null while the campaign is a draft being set up.
   published_at: string | null
   end_message: TranslatableText | null
-  cta: { url?: string, label?: TranslatableText } | null
+  cta: { url?: string, label?: TranslatableText, mode?: 'none' } | null
   landing: CampaignLanding | null
   commitments: number
   progress: PtGoalProgress
