@@ -51,7 +51,7 @@ async function setPublished(s: Story, published: boolean) {
               color="neutral"
               variant="outline"
               icon="i-lucide-layers"
-              label="Side campaigns show only stories from their runs"
+              label="Side campaigns choose their own stories"
             />
           </div>
           <p class="text-sm text-(--ui-text-muted) max-w-xl">

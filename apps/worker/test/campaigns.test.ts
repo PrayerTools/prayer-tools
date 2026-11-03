@@ -242,7 +242,7 @@ describe('campaign series', () => {
     })
   })
 
-  it('a side campaign\'s landing page shows published stories from its whole series, newest first', async () => {
+  it('a side campaign\'s landing page shows published stories from its whole series until it chooses its own', async () => {
     const { orgId } = await createSite(env)
     const main = await createCampaign(env, orgId, { name: 'Main' })
     const y2025 = await createCampaign(env, orgId, { name: '2025', kind: 'side' })
@@ -257,20 +257,23 @@ describe('campaign series', () => {
         wording_version: '1',
         may_publish: o.may_publish ?? true,
         published: o.published ?? true,
-        published_at: new Date(at)
-      }).execute()
+        published_at: new Date(at),
+        created_at: new Date(at)
+      }).returning('id').executeTakeFirstOrThrow().then(r => r.id)
       await story('old run', y2025, '2025-03-01')
       await story('this run', y2026, '2026-03-01')
-      await story('unpublished', y2026, '2026-03-02', { published: false })
-      await story('not allowed', y2026, '2026-03-03', { may_publish: false })
+      const unpublished = await story('unpublished', y2026, '2026-03-02', { published: false })
+      const notAllowed = await story('not allowed', y2026, '2026-03-03', { may_publish: false })
       await story('other campaign', other, '2026-03-04')
-      await story('main', main, '2026-03-05')
+      const fromMain = await story('main', main, '2026-03-05')
       await story('no campaign', null, '2026-03-06')
 
       const bodies = (rows: { body: string }[]) => rows.map(r => r.body)
-      expect(bodies(await landingStories(tx, y2026))).toEqual(['this run', 'old run'])
-      expect(bodies(await landingStories(tx, y2025))).toEqual(['this run', 'old run'])
+      expect(bodies(await landingStories(tx, { campaignId: y2026 }))).toEqual(['this run', 'old run'])
+      expect(bodies(await landingStories(tx, { campaignId: y2025 }))).toEqual(['this run', 'old run'])
       expect(bodies(await landingStories(tx))).toEqual(['no campaign', 'main', 'other campaign', 'this run', 'old run'])
+      expect(bodies(await landingStories(tx, { campaignId: y2026, storyIds: [unpublished, notAllowed, fromMain] }))).toEqual(['main', 'unpublished'])
+      expect(await landingStories(tx, { campaignId: y2026, storyIds: [] })).toEqual([])
     })
   })
 })

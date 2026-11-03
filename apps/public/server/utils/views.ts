@@ -179,7 +179,7 @@ async function landingPage(tx: Parameters<typeof loadSiteData>[0], ctx: SiteCont
     buttonLabel: s.button_url ? textIn(s.button_label, lang, def) || null : null,
     buttonUrl: s.button_url ?? null
   })).filter(s => s.heading || s.html || s.video)
-  const stories = await landingStories(tx, side ? campaign!.id : null)
+  const stories = await landingStories(tx, side ? { campaignId: campaign!.id, storyIds: landing.story_ids } : null)
   let today: { day: number, html: string, title: string } | null = null
   if (campaign && stateOf(data, campaign) !== 'upcoming') {
     const cv = campaignView(data, campaign)
