@@ -222,6 +222,8 @@ export interface MyManagedSiteView {
 export interface MyView {
   signedIn: boolean
   account: { name: string, email: string | null, avatar: string | null } | null
+  // News from Prayer.Tools.
+  news: boolean
   sites: MySiteView[]
   managing: MyManagedSiteView[]
   createUrl: string | null

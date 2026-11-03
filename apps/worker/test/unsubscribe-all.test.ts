@@ -86,6 +86,20 @@ describe('unsubscribeEverywhere', () => {
     })
   })
 
+  it('remindersOnly stops the subscriptions and keeps every consent', async () => {
+    const { orgId } = await createSite(env)
+    const campaignId = await createCampaign(env, orgId, { endMode: 'none' })
+    const email = testEmail(env)
+    const sub = await praying(orgId, campaignId, email)
+    const account = (await accountByEmail(env.admin, email))!
+    await unsubscribeEverywhere(env.app, account.id, { capture, remindersOnly: true })
+    expect(await stateOf(orgId, sub.subscriptionId, sub.contactId)).toEqual({
+      status: 'unsubscribed',
+      reminders: [null],
+      consents: { 'site_updates': 'opt_in', 'custom:church': 'opt_in' }
+    })
+  })
+
   it('deletes nothing and can run twice', async () => {
     const { orgId } = await createSite(env)
     const campaignId = await createCampaign(env, orgId, { endMode: 'none' })

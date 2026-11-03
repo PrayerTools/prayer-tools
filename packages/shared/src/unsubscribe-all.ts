@@ -5,8 +5,9 @@ import { setConsent, type ConsentCapture } from './crm'
 import { setSubscriptionStatus } from './subscriptions'
 
 // Visits each site the account subscribes on, plus `newsOrgId` (the org that
-// holds News from Prayer.Tools), one org per transaction.
-export async function unsubscribeEverywhere(db: Db, userId: string, opts: { newsOrgId?: string | null, capture: ConsentCapture }): Promise<void> {
+// holds News from Prayer.Tools), one org per transaction. `remindersOnly`
+// stops the subscriptions and leaves email consents as they are.
+export async function unsubscribeEverywhere(db: Db, userId: string, opts: { newsOrgId?: string | null, capture: ConsentCapture, remindersOnly?: boolean }): Promise<void> {
   const subs = await withPerson(db, userId, tx => tx
     .selectFrom('pt_subscription')
     .select('org_id')
@@ -14,13 +15,13 @@ export async function unsubscribeEverywhere(db: Db, userId: string, opts: { news
     .where('anonymized_at', 'is', null)
     .execute())
   const orgIds = new Set(subs.map(s => s.org_id))
-  if (opts.newsOrgId) orgIds.add(opts.newsOrgId)
-  for (const orgId of orgIds) await withOrg(db, orgId, tx => unsubscribeInSite(tx, userId, opts.capture))
+  if (opts.newsOrgId && !opts.remindersOnly) orgIds.add(opts.newsOrgId)
+  for (const orgId of orgIds) await withOrg(db, orgId, tx => unsubscribeInSite(tx, userId, opts.capture, opts.remindersOnly))
 }
 
 // In the current org: the account's subscriptions become unsubscribed, and
 // every purpose granted on its contacts' addresses is withdrawn.
-export async function unsubscribeInSite(tx: Tx, userId: string, capture: ConsentCapture): Promise<void> {
+export async function unsubscribeInSite(tx: Tx, userId: string, capture: ConsentCapture, remindersOnly = false): Promise<void> {
   const subs = await tx
     .selectFrom('pt_subscription')
     .select(['id', 'status', 'contact_id', 'platform_news_requested_at'])
@@ -29,8 +30,9 @@ export async function unsubscribeInSite(tx: Tx, userId: string, capture: Consent
     .execute()
   for (const sub of subs) {
     if (sub.status !== 'unsubscribed') await setSubscriptionStatus(tx, sub.id, 'unsubscribed')
-    if (sub.platform_news_requested_at) await tx.updateTable('pt_subscription').set({ platform_news_requested_at: null }).where('id', '=', sub.id).execute()
+    if (sub.platform_news_requested_at && !remindersOnly) await tx.updateTable('pt_subscription').set({ platform_news_requested_at: null }).where('id', '=', sub.id).execute()
   }
+  if (remindersOnly) return
   const contacts = await tx.selectFrom('crm_records').select('id').where('user_id', '=', userId).where('record_type', '=', 'contacts').execute()
   const contactIds = [...new Set([...contacts.map(c => c.id), ...subs.flatMap(s => s.contact_id ? [s.contact_id] : [])])]
   if (!contactIds.length) return
