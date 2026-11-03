@@ -61,7 +61,7 @@ const DIM_ICONS: Record<string, string> = { country: 'i-lucide-globe', source: '
 
 <template>
   <div class="max-w-6xl mx-auto space-y-6">
-    <header class="flex flex-wrap items-start justify-between gap-4">
+    <header class="theme-page-header rounded-lg flex flex-wrap items-start justify-between gap-4">
       <div>
         <div class="flex flex-wrap items-center gap-3">
           <h1 class="text-2xl font-bold">

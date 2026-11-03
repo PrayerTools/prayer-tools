@@ -59,6 +59,45 @@ import AdminLayout from '#core/app/layouts/default.vue'
   color: #ffffff;
 }
 .admin-theme :deep(h1), .admin-theme :deep(h2) { letter-spacing: -0.025em; }
+.admin-theme :deep(.theme-page-header) {
+  --ui-text: #ffffff;
+  --ui-text-highlighted: #ffffff;
+  --ui-text-toned: #e2e8f0;
+  --ui-text-muted: #cbd5e1;
+  --ui-text-dimmed: #b8c5d4;
+  --ui-bg: #202833;
+  --ui-bg-elevated: #263240;
+  --ui-bg-accented: #354353;
+  --ui-border: #64748b;
+  background: #202833;
+  color: #ffffff;
+  padding: 1.5rem;
+  gap: 1.5rem;
+}
+.admin-theme :deep(.theme-page-header h1) { color: #ffffff; line-height: 1.3; }
+.admin-theme :deep(.theme-page-header p) { color: #cbd5e1; line-height: 1.65; margin-top: 0.75rem; }
+.admin-theme :deep(.theme-page-header .ring-default) { color: #ffffff; background: transparent; border: 1px solid #94a3b8; box-shadow: none; }
+.admin-theme :deep(.theme-page-header .ring-default:hover) { color: #ffffff; background: #354353; border-color: #cbd5e1; }
+@media (min-width: 640px) {
+  .admin-theme :deep(.theme-page-header) { padding: 2rem; }
+}
+.admin-theme :deep(header.sticky > div:first-child > a) {
+  position: relative;
+  display: block;
+  width: 120px;
+  height: 38px;
+  flex-shrink: 0;
+  font-size: 0;
+}
+.admin-theme :deep(header.sticky > div:first-child > a::before),
+.admin-theme :deep(header.sticky > div:first-child > a::after) {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url('/prayer-tools-logo.png') center / contain no-repeat;
+}
+.admin-theme :deep(header.sticky > div:first-child > a::before) { clip-path: inset(0 69% 0 0); }
+.admin-theme :deep(header.sticky > div:first-child > a::after) { clip-path: inset(0 0 0 31%); filter: brightness(0) invert(1); }
 .admin-theme :deep(aside) {
   --chrome-bg: #202833;
   --ui-bg: #202833;

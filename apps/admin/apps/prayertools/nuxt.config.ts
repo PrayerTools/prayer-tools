@@ -9,9 +9,9 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     public: {
-      // The champion's library is a personal app: its pages stay at this path
-      // in every site.
-      personalApps: { library: '/personal' }
+      // Both library areas are shared across sites. Keep their bare URLs while
+      // retaining the last active site's navigation in the surrounding chrome.
+      personalApps: { library: '/personal', prayerLibraries: '/libraries' }
     }
   }
 })
