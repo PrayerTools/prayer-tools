@@ -529,7 +529,7 @@ async function translateWhy() {
                       required
                       :source-locked="!canWrite"
                     />
-                    <UFormField label="Image credit (shown under the image)">
+                    <UFormField label="Image credit (shown from an info icon on the image)">
                       <UInput
                         v-model="hero.image_credit"
                         class="w-full"
