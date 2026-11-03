@@ -2,6 +2,7 @@
 import type { Editor } from '@tiptap/vue-3'
 import type { EditorToolbarItem } from '@nuxt/ui'
 import { PtVerse } from '../utils/pt-verse'
+import { PtVideo } from '../utils/pt-video'
 
 const props = withDefaults(defineProps<{
   placeholder?: string
@@ -141,7 +142,7 @@ function insertImage(asset: { url: string, alt: string }) {
       v-slot="{ editor }"
       v-model="doc"
       content-type="json"
-      :extensions="[PtVerse]"
+      :extensions="[PtVerse, PtVideo]"
       :handlers="handlers"
       :placeholder="placeholder"
       :editable="!disabled"
