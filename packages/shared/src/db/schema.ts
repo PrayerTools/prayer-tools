@@ -289,6 +289,8 @@ export interface CampaignLanding {
   hidden?: string[]
   custom?: LandingCustomSection[]
   stories?: boolean
+  // A side campaign's chosen stories; absent until it chooses.
+  story_ids?: string[]
 }
 
 export interface CampaignShare {

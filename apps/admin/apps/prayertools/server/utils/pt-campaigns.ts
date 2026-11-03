@@ -9,7 +9,7 @@ import { isValidTimezone } from '@prayertools/shared/dates'
 import { parseText } from '@prayertools/shared/translatable'
 import { parsePlaceWording } from '@prayertools/shared/place'
 import { jsonb } from '@prayertools/shared/db/json'
-import { campaignById, loadCampaigns, normalizeCampaign } from '@prayertools/shared/campaigns'
+import { campaignById, campaignSeries, loadCampaigns, normalizeCampaign } from '@prayertools/shared/campaigns'
 import { goalProgress } from '@prayertools/shared/stats'
 import { campaignEntries, campaignLibraries, contentLength } from '@prayertools/shared/content'
 import { isTemplateWhy } from '@prayertools/shared/i18n/landing'
@@ -160,7 +160,9 @@ export async function ptCampaignDetail(tx: Transaction<Database>, id: string) {
       contentEntries: await contentLength(ptTx(tx), c.id),
       progress: await goalProgress(ptTx(tx), c, site.settings_merged.default_duration_min),
       // The place wording matters only when the campaign's content names the place.
-      usesPlaceWording: await ptCampaignUsesPlacePhrases(tx, c.id, { name: true })
+      usesPlaceWording: await ptCampaignUsesPlacePhrases(tx, c.id, { name: true }),
+      // Every run of the campaign, this one included.
+      series: (await campaignSeries(ptTx(tx), c.id, { drafts: true })).map(r => r.id)
     },
     libraries: await campaignLibraries(ptTx(tx), c.id)
   }

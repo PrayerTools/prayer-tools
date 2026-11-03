@@ -3,7 +3,7 @@
 import type { H3Event } from 'h3'
 import { withOrg } from '@prayertools/shared/db/scope'
 import { parseSitePath } from '@prayertools/shared/paths'
-import { visibleSections } from '@prayertools/shared/landing'
+import { landingStories, visibleSections } from '@prayertools/shared/landing'
 import { landingWhyDoc } from '@prayertools/shared/i18n/landing'
 import { prayingNow } from '@prayertools/shared/stats'
 import { entryDate } from '@prayertools/shared/schedule'
@@ -179,16 +179,7 @@ async function landingPage(tx: Parameters<typeof loadSiteData>[0], ctx: SiteCont
     buttonLabel: s.button_url ? textIn(s.button_label, lang, def) || null : null,
     buttonUrl: s.button_url ?? null
   })).filter(s => s.heading || s.html || s.video)
-  let storyQuery = tx
-    .selectFrom('pt_story')
-    .select(['id', 'body', 'name', 'use_name'])
-    .where('published', '=', true)
-    .where('may_publish', '=', true)
-  if (side) storyQuery = storyQuery.where('campaign_id', '=', campaign!.id)
-  const stories = await storyQuery
-    .orderBy('published_at', 'desc')
-    .limit(6)
-    .execute()
+  const stories = await landingStories(tx, side ? { campaignId: campaign!.id, storyIds: landing.story_ids } : null)
   let today: { day: number, html: string, title: string } | null = null
   if (campaign && stateOf(data, campaign) !== 'upcoming') {
     const cv = campaignView(data, campaign)

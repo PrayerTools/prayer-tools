@@ -3,7 +3,7 @@
 // the team chooses which (allowed) stories appear on the landing page.
 definePageMeta({ middleware: 'auth' })
 
-interface Story { id: string, name: string | null, body: string, language: string, may_publish: boolean, may_platform: boolean, use_name: boolean, published: boolean, created_at: string, conversation_id: string | null }
+interface Story { id: string, name: string | null, body: string, language: string, may_publish: boolean, may_platform: boolean, use_name: boolean, published: boolean, created_at: string, conversation_id: string | null, campaign_name: string | null }
 
 const { data: site, can } = usePtSite()
 const { data: meta } = usePtMeta()
@@ -51,7 +51,7 @@ async function setPublished(s: Story, published: boolean) {
               color="neutral"
               variant="outline"
               icon="i-lucide-layers"
-              label="Shared by all campaigns"
+              label="Side campaigns choose their own stories"
             />
           </div>
           <p class="text-sm text-(--ui-text-muted) max-w-xl">
@@ -95,7 +95,7 @@ async function setPublished(s: Story, published: boolean) {
         <div class="space-y-3">
           <div class="flex flex-wrap items-center justify-between gap-2 text-sm">
             <span class="font-medium">{{ s.name || 'No name given' }}</span>
-            <span class="text-(--ui-text-muted)">{{ ptFormatDate(s.created_at, { dateStyle: 'medium', timeStyle: 'short' }) }}<span v-if="s.language"> · {{ languageName(meta, s.language) }}</span></span>
+            <span class="text-(--ui-text-muted)">{{ ptFormatDate(s.created_at, { dateStyle: 'medium', timeStyle: 'short' }) }}<span v-if="s.language"> · {{ languageName(meta, s.language) }}</span><span v-if="s.campaign_name"> · {{ s.campaign_name }}</span></span>
           </div>
           <p class="whitespace-pre-line">
             {{ s.body }}
