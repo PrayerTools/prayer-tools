@@ -122,10 +122,18 @@ export function offeredTemplates(today: string): string[] {
   return ['generic', ...(ramadan && daysBetween(today, ramadan) <= RAMADAN_OFFER_DAYS ? ['ramadan'] : [])]
 }
 
+// A built-in template with the answers of a champion's own template laid
+// over it (`length_days` of a dated campaign is its length, as in TEMPLATES).
+export function withPersonalSetup(key: string | null, setup: Partial<SetupAnswers>): CampaignTemplate {
+  const base = getTemplate(key)
+  const answers = Object.fromEntries(Object.entries(setup).filter(([k, v]) => k in SETUP_DEFAULTS && v !== undefined))
+  return { ...base, setup: { ...base.setup, ...answers } }
+}
+
 // Fills the answers the champion left out from the template. Locking a
 // template's answers is up to the setup form.
-export function applyTemplate(key: string, chosen: Partial<SetupAnswers>): SetupAnswers {
-  const t = getTemplate(key)
+export function applyTemplate(key: string | CampaignTemplate, chosen: Partial<SetupAnswers>): SetupAnswers {
+  const t = typeof key === 'string' ? getTemplate(key) : key
   const merged: SetupAnswers = { ...SETUP_DEFAULTS, ...t.setup }
   for (const k of Object.keys(SETUP_DEFAULTS) as (keyof SetupAnswers)[]) {
     if (chosen[k] !== undefined) (merged as unknown as Record<string, unknown>)[k] = chosen[k]

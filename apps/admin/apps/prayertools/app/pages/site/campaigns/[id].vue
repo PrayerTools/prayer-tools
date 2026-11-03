@@ -56,6 +56,29 @@ async function save() {
   }
 }
 
+// "Save as template" keeps this campaign in the champion's personal library,
+// as a new template or over one they own or edit.
+const saveTemplate = reactive({ open: false, name: '', replaceId: undefined as string | undefined, saving: false })
+const { data: myTemplates, refresh: refreshTemplates } = useFetch<{ templates: { id: string, name: string, role: string }[] }>('/api/pt/campaign-templates', { key: 'pt-campaign-template-replace', immediate: false, server: false })
+const replaceItems = computed(() => (myTemplates.value?.templates ?? []).filter(t => t.role !== 'viewer').map(t => ({ value: t.id, label: t.name })))
+function openSaveTemplate() {
+  Object.assign(saveTemplate, { open: true, name: data.value?.campaign.name ?? '', replaceId: undefined })
+  refreshTemplates()
+}
+async function saveAsTemplate() {
+  saveTemplate.saving = true
+  try {
+    const body = saveTemplate.replaceId ? { replace_id: saveTemplate.replaceId } : { name: saveTemplate.name }
+    await $fetch(`/api/pt/campaigns/${id.value}/save-template`, { method: 'POST', body })
+    saveTemplate.open = false
+    toast.ok('Saved to your library', 'New campaigns on any of your sites can start from it.')
+  } catch (err) {
+    toast.fail(err)
+  } finally {
+    saveTemplate.saving = false
+  }
+}
+
 const confirmDelete = ref(false)
 async function remove() {
   try {
@@ -141,6 +164,14 @@ async function remove() {
           color="neutral"
           icon="i-lucide-chart-line"
           label="Public results"
+        />
+        <UButton
+          v-if="can('pt.campaigns.write')"
+          variant="ghost"
+          color="neutral"
+          icon="i-lucide-bookmark-plus"
+          label="Save as template"
+          @click="openSaveTemplate"
         />
       </div>
     </header>
@@ -348,6 +379,63 @@ async function remove() {
             label="Delete campaign"
             color="error"
             @click="remove"
+          />
+        </div>
+      </template>
+    </UModal>
+
+    <UModal
+      v-model:open="saveTemplate.open"
+      title="Save as template"
+    >
+      <template #body>
+        <div class="space-y-4">
+          <UFormField v-if="!saveTemplate.replaceId">
+            <template #label>
+              Template name <InfoTip text="Keeps this campaign's answers, landing page, hero image, end-of-campaign message, call to action and libraries in your library. New campaigns on any of your sites can start from it." />
+            </template>
+            <UInput
+              v-model="saveTemplate.name"
+              :maxlength="120"
+              class="w-full"
+            />
+          </UFormField>
+          <UFormField
+            v-if="replaceItems.length"
+            label="Or replace a template"
+          >
+            <div class="flex gap-2">
+              <USelect
+                v-model="saveTemplate.replaceId"
+                :items="replaceItems"
+                placeholder="Choose a template"
+                class="flex-1"
+              />
+              <UButton
+                v-if="saveTemplate.replaceId"
+                icon="i-lucide-x"
+                color="neutral"
+                variant="ghost"
+                aria-label="Save a new template instead"
+                @click="saveTemplate.replaceId = undefined"
+              />
+            </div>
+          </UFormField>
+        </div>
+      </template>
+      <template #footer>
+        <div class="flex justify-end gap-2 w-full">
+          <UButton
+            label="Cancel"
+            color="neutral"
+            variant="ghost"
+            @click="saveTemplate.open = false"
+          />
+          <UButton
+            :label="saveTemplate.replaceId ? 'Replace template' : 'Save template'"
+            :loading="saveTemplate.saving"
+            :disabled="!saveTemplate.replaceId && saveTemplate.name.trim().length < 2"
+            @click="saveAsTemplate"
           />
         </div>
       </template>

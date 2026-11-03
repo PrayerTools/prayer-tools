@@ -8,7 +8,7 @@ const route = useRoute()
 const id = computed(() => String(route.params.id))
 const { data: meta } = usePtMeta()
 const toast = usePtToast()
-const { data, refresh } = useFetch<{ library: Record<string, any>, entries: { day: number, language: string, unpublished: boolean }[], canEdit: boolean, usage: { following: number, copies: number } | null }>(() => `/api/pt/libraries/${id.value}`, { key: computed(() => `pt-library-${id.value}`) })
+const { data, refresh } = useFetch<{ library: Record<string, any>, entries: { day: number, language: string, unpublished: boolean }[], canEdit: boolean, role: 'owner' | 'editor' | 'viewer' | null, usage: { following: number, copies: number } | null }>(() => `/api/pt/libraries/${id.value}`, { key: computed(() => `pt-library-${id.value}`) })
 
 const lib = computed(() => data.value?.library)
 const form = ref<Record<string, any>>({})
@@ -67,6 +67,10 @@ async function publish() {
     toast.fail(err)
   }
 }
+const peopleOpen = ref(false)
+watch(peopleOpen, (open) => {
+  if (!open) refresh()
+})
 const shareOpen = ref(false)
 const rights = ref(false)
 async function requestShare() {
@@ -124,23 +128,33 @@ async function deleteLibrary() {
         </p>
       </div>
       <div
-        v-if="data.canEdit"
+        v-if="data.canEdit || data.role"
         class="flex gap-2"
       >
         <UButton
-          v-if="lib.visibility !== 'published' && lib.owner_user_id"
+          v-if="data.role"
+          variant="outline"
+          color="neutral"
+          icon="i-lucide-users"
+          :label="data.role === 'owner' ? 'Share with people' : 'Shared with you'"
+          @click="peopleOpen = true"
+        />
+        <UButton
+          v-if="lib.visibility !== 'published' && lib.owner_user_id && data.role === 'owner'"
           variant="outline"
           label="Share with everyone…"
           :disabled="lib.share_status === 'requested'"
           @click="shareOpen = true"
         />
         <UButton
+          v-if="data.canEdit"
           icon="i-lucide-upload"
           :label="unpublishedCount ? `Publish ${unpublishedCount} change${unpublishedCount === 1 ? '' : 's'}` : 'Published'"
           :disabled="!unpublishedCount"
           @click="publish"
         />
         <UButton
+          v-if="data.canEdit && data.role !== 'editor'"
           icon="i-lucide-trash-2"
           color="error"
           variant="ghost"
@@ -401,5 +415,10 @@ async function deleteLibrary() {
         </div>
       </template>
     </UModal>
+    <ShareDialog
+      v-model:open="peopleOpen"
+      :endpoint="`/api/pt/libraries/${id}/shares`"
+      :title="lib.title"
+    />
   </div>
 </template>

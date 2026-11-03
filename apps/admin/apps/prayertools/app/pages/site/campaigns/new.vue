@@ -5,7 +5,7 @@
 // dates at its own address. Its place and people group start as the current
 // campaign's (or, for a relaunch, the previous one's). How often there is new
 // content, and a personal-start campaign's length, are chosen in its setup
-// steps.
+// steps. It can also start from one of the champion's own templates.
 import { applyTemplate, offeredTemplates, overlappingCampaign } from '@prayertools/shared/setup'
 import { todayIn } from '@prayertools/shared/dates'
 import type { PtCampaign } from '../../../utils/pt-campaign-ui'
@@ -20,7 +20,7 @@ const toast = usePtToast()
 const { data: previous } = useFetch<{ campaign: PtCampaign }>(() => `/api/pt/campaigns/${relaunchOf.value}`, { immediate: !!relaunchOf.value, key: `pt-relaunch-${relaunchOf.value}` })
 
 const kind = ref<'side' | null>(route.query.kind === 'side' ? 'side' : null)
-const { draft, fillFrom, chooseTemplate, toBody } = usePtCampaignDraft({ relaunch: () => !!relaunchOf.value })
+const { draft, fillFrom, chooseTemplate, choosePersonalTemplate, toBody } = usePtCampaignDraft({ relaunch: () => !!relaunchOf.value })
 watch(previous, (p) => {
   const c = p?.campaign
   if (!c) return
@@ -144,11 +144,13 @@ async function create() {
         <PtCampaignFields
           v-model="draft"
           :with-template="!relaunchOf"
+          :with-personal="!relaunchOf"
           :with-cadence="false"
           :with-length="false"
           :dated="kind === 'side'"
           :languages="site?.site.languages"
           @choose="chooseTemplate"
+          @choose-personal="choosePersonalTemplate"
         />
       </div>
       <template #footer>

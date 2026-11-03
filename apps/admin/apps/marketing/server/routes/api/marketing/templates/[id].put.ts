@@ -18,7 +18,13 @@ export default defineMarketingUserHandler(async (event, tx, userId) => {
     patch.versions = jsonb(versions)
     patch.source_language = sourceLanguage
   }
-  const res = await tx.updateTable('marketing_template').set(patch).where('id', '=', id).where('owner_user_id', '=', userId).executeTakeFirst()
+  // The owner, or someone it is shared with as an editor.
+  const res = await tx.updateTable('marketing_template').set(patch).where('id', '=', id)
+    .where(eb => eb.or([
+      eb('owner_user_id', '=', userId),
+      eb.exists(eb.selectFrom('marketing_template_shares').select('id').where('resource_id', '=', id).where('grantee_user_id', '=', userId).where('role', '=', 'editor'))
+    ]))
+    .executeTakeFirst()
   if (!Number(res.numUpdatedRows)) marketingNotFound('Template not found.')
   return { ok: true }
 })

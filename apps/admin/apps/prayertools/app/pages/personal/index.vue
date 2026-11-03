@@ -1,16 +1,35 @@
 <script setup lang="ts">
 // The champion's personal library: images and reusable blocks, usable on
-// any of their sites. Email templates live under Site email → Templates.
+// any of their sites, and those shared with them. Email templates live under
+// Site email → Templates.
 definePageMeta({ middleware: 'auth', tenantExempt: true })
 
-interface Asset { id: string, url: string, url_small: string | null, alt: { source: string, values: Record<string, string> } | null, credit: string | null, focal_x: number, focal_y: number, width: number | null, height: number | null }
-interface Block { id: string, name: string, content: Record<string, any>, updated_at: string }
+type Role = 'owner' | 'editor' | 'viewer'
+interface Asset { id: string, url: string, url_small: string | null, alt: { source: string, values: Record<string, string> } | null, credit: string | null, focal_x: number, focal_y: number, width: number | null, height: number | null, role: Role, owner_name: string }
+interface Block { id: string, name: string, content: Record<string, any>, updated_at: string, role: Role, owner_name: string }
 
 const toast = usePtToast()
 const { data: assets, refresh: refreshAssets } = useFetch<{ assets: Asset[] }>('/api/pt/assets', { key: 'pt-assets' })
 const { data: blocks, refresh: refreshBlocks } = useFetch<{ blocks: Block[] }>('/api/pt/blocks', { key: 'pt-blocks' })
 const uploadOpen = ref(false)
 const editing = ref<Asset | null>(null)
+
+const view = ref<'mine' | 'shared'>('mine')
+const viewItems = [{ label: 'Mine', value: 'mine' }, { label: 'Shared with me', value: 'shared' }]
+const inView = (role: Role) => (view.value === 'mine') === (role === 'owner')
+const shownAssets = computed(() => (assets.value?.assets ?? []).filter(a => inView(a.role)))
+const shownBlocks = computed(() => (blocks.value?.blocks ?? []).filter(b => inView(b.role)))
+const sharing = ref<{ endpoint: string, title: string } | null>(null)
+function share(kind: 'assets' | 'blocks', id: string, title: string) {
+  editing.value = null
+  sharing.value = { endpoint: `/api/pt/${kind}/${id}/shares`, title }
+}
+function sharingClosed(open: boolean) {
+  if (open) return
+  sharing.value = null
+  refreshAssets()
+  refreshBlocks()
+}
 
 async function saveAsset() {
   const a = editing.value
@@ -60,6 +79,13 @@ async function deleteBlock(id: string) {
         Yours to reuse on any of your sites. Using one on a site makes a copy there.
       </p>
     </div>
+    <UTabs
+      v-model="view"
+      :items="viewItems"
+      :content="false"
+      size="sm"
+      class="w-fit"
+    />
 
     <section class="space-y-3">
       <div class="flex items-center justify-between">
@@ -67,6 +93,7 @@ async function deleteBlock(id: string) {
           Images
         </h2>
         <UButton
+          v-if="view === 'mine'"
           icon="i-lucide-upload"
           label="Upload"
           @click="uploadOpen = true"
@@ -74,7 +101,7 @@ async function deleteBlock(id: string) {
       </div>
       <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
         <button
-          v-for="a in assets?.assets ?? []"
+          v-for="a in shownAssets"
           :key="a.id"
           type="button"
           class="aspect-square rounded-md overflow-hidden border border-(--ui-border) focus-visible:ring-2 focus-visible:ring-(--ui-primary)"
@@ -90,10 +117,10 @@ async function deleteBlock(id: string) {
         </button>
       </div>
       <p
-        v-if="!assets?.assets.length"
+        v-if="!shownAssets.length"
         class="text-sm text-(--ui-text-muted)"
       >
-        No images yet.
+        {{ view === 'mine' ? 'No images yet.' : 'No images shared with you.' }}
       </p>
     </section>
 
@@ -103,20 +130,33 @@ async function deleteBlock(id: string) {
           Reusable blocks
         </h2>
         <UButton
+          v-if="view === 'mine'"
           icon="i-lucide-plus"
           label="New block"
           variant="soft"
           @click="editBlock()"
         />
       </div>
+      <p
+        v-if="view === 'shared' && !shownBlocks.length"
+        class="text-sm text-(--ui-text-muted)"
+      >
+        No blocks shared with you.
+      </p>
       <UCard
-        v-for="b in blocks?.blocks ?? []"
+        v-for="b in shownBlocks"
         :key="b.id"
       >
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0">
             <p class="font-medium">
               {{ b.name }}
+            </p>
+            <p
+              v-if="b.role !== 'owner'"
+              class="text-xs text-(--ui-text-muted)"
+            >
+              From {{ b.owner_name }} · {{ b.role === 'editor' ? 'Can edit' : 'Can view' }}
             </p>
             <PtContentView
               :doc="b.content"
@@ -127,10 +167,19 @@ async function deleteBlock(id: string) {
             <UButton
               size="xs"
               variant="ghost"
+              color="neutral"
+              :label="b.role === 'owner' ? 'Share' : 'Sharing'"
+              @click="share('blocks', b.id, b.name)"
+            />
+            <UButton
+              v-if="b.role !== 'viewer'"
+              size="xs"
+              variant="ghost"
               label="Edit"
               @click="editBlock(b)"
             />
             <UButton
+              v-if="b.role === 'owner'"
               size="xs"
               variant="ghost"
               color="error"
@@ -153,10 +202,17 @@ async function deleteBlock(id: string) {
       @update:open="(v) => { if (!v) editing = null }"
     >
       <template #body>
-        <div
+        <fieldset
           v-if="editing"
+          :disabled="editing.role === 'viewer'"
           class="space-y-3"
         >
+          <p
+            v-if="editing.role !== 'owner'"
+            class="text-sm text-(--ui-text-muted)"
+          >
+            From {{ editing.owner_name }} · {{ editing.role === 'editor' ? 'Can edit' : 'Can view' }}
+          </p>
           <div class="relative">
             <img
               :src="editing.url"
@@ -198,23 +254,41 @@ async function deleteBlock(id: string) {
               class="w-full"
             />
           </UFormField>
-        </div>
+        </fieldset>
       </template>
       <template #footer>
         <div class="flex justify-between w-full">
+          <div class="flex gap-2">
+            <UButton
+              v-if="editing?.role === 'owner'"
+              color="error"
+              variant="ghost"
+              label="Delete"
+              @click="editing && deleteAsset(editing)"
+            />
+            <UButton
+              color="neutral"
+              variant="ghost"
+              icon="i-lucide-users"
+              :label="editing?.role === 'owner' ? 'Share' : 'Sharing'"
+              @click="editing && share('assets', editing.id, editing.alt?.values[editing.alt.source] || 'image')"
+            />
+          </div>
           <UButton
-            color="error"
-            variant="ghost"
-            label="Delete"
-            @click="editing && deleteAsset(editing)"
-          />
-          <UButton
+            v-if="editing?.role !== 'viewer'"
             label="Save"
             @click="saveAsset"
           />
         </div>
       </template>
     </UModal>
+
+    <ShareDialog
+      :open="!!sharing"
+      :endpoint="sharing?.endpoint ?? ''"
+      :title="sharing?.title"
+      @update:open="sharingClosed"
+    />
 
     <UModal
       v-model:open="block.open"

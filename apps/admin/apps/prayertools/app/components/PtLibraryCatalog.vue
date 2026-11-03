@@ -15,6 +15,7 @@ interface Library {
   suggested: boolean
   mine: boolean
   platform: boolean
+  role: 'owner' | 'editor' | 'viewer' | null
 }
 
 const props = withDefaults(defineProps<{ template?: string | null, cadence?: string, siteLanguages?: string[], usedIds?: string[] }>(), { template: null, cadence: undefined, siteLanguages: () => [], usedIds: () => [] })
@@ -140,6 +141,13 @@ function coverage(lib: Library): string {
               <UBadge
                 v-if="lib.mine"
                 label="Yours"
+                color="neutral"
+                variant="subtle"
+                size="sm"
+              />
+              <UBadge
+                v-else-if="lib.role"
+                label="Shared with you"
                 color="neutral"
                 variant="subtle"
                 size="sm"

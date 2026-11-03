@@ -23,7 +23,13 @@ export default defineEventHandler(async (event) => {
       patch[k] = v
     }
   }
-  const res = await withUserContext(event, { appId: PT_LIBRARY_APP }, tx => ptTx(tx).updateTable('pt_personal_asset').set(patch as never).where('id', '=', id).where('owner_user_id', '=', user.userId).executeTakeFirst())
+  // The owner, or someone it is shared with as an editor.
+  const res = await withUserContext(event, { appId: PT_LIBRARY_APP }, tx => ptTx(tx).updateTable('pt_personal_asset').set(patch as never).where('id', '=', id)
+    .where(eb => eb.or([
+      eb('owner_user_id', '=', user.userId),
+      eb.exists(eb.selectFrom('pt_personal_asset_shares').select('id').where('resource_id', '=', id).where('grantee_user_id', '=', user.userId).where('role', '=', 'editor'))
+    ]))
+    .executeTakeFirst())
   if (!Number(res.numUpdatedRows)) ptNotFound('Image not found.')
   return { ok: true }
 })

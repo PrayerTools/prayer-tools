@@ -1,9 +1,11 @@
 import type { Transaction } from 'kysely'
 import type { Database } from '#core/server/database/schema'
 import type { TenantContext } from '#tenant/server'
-import { applyTemplate, campaignStatus, DEFAULT_SLOT_MIN, displayLength, isSideCampaign, overlappingCampaign, pickCurrentCampaign, SLOT_OPTIONS, suggestCampaignSlug, suggestSideSlug, TEMPLATES, validateSetup, type SetupAnswers } from '@prayertools/shared/setup'
+import { applyTemplate, campaignStatus, DEFAULT_SLOT_MIN, displayLength, isSideCampaign, overlappingCampaign, pickCurrentCampaign, SLOT_OPTIONS, suggestCampaignSlug, suggestSideSlug, TEMPLATES, validateSetup, withPersonalSetup, type CampaignTemplate, type SetupAnswers } from '@prayertools/shared/setup'
 import type { CampaignBranding, CampaignKind } from '@prayertools/shared/db/schema'
 import type { CampaignRow } from '@prayertools/shared/subscriptions'
+import { addTemplateLibraries, readPersonalTemplate, type PersonalTemplate } from '@prayertools/shared/personal-templates'
+import { runAsShareUser } from '#core/server/utils/shares'
 import { campaignSlugError } from '@prayertools/shared/paths'
 import { isValidTimezone } from '@prayertools/shared/dates'
 import { parseText } from '@prayertools/shared/translatable'
@@ -14,7 +16,7 @@ import { goalProgress } from '@prayertools/shared/stats'
 import { campaignEntries, campaignLibraries, contentLength } from '@prayertools/shared/content'
 import { isTemplateWhy } from '@prayertools/shared/i18n/landing'
 
-export function ptSetupFromBody(b: Record<string, unknown>, templateKey: string, base?: Partial<SetupAnswers>, kind: CampaignKind | null = null): SetupAnswers {
+export function ptSetupFromBody(b: Record<string, unknown>, templateKey: string | CampaignTemplate, base?: Partial<SetupAnswers>, kind: CampaignKind | null = null): SetupAnswers {
   const chosen: Partial<SetupAnswers> = { ...base }
   for (const k of ['start_mode', 'start_date', 'end_mode', 'end_date', 'length_days', 'goal', 'cadence', 'track_time'] as const) {
     if (k in b) (chosen as Record<string, unknown>)[k] = b[k]
@@ -83,8 +85,8 @@ export function ptCta(input: unknown) {
   return url && label ? { url, label } : {}
 }
 
-// Creates a campaign from setup answers, or relaunches `relaunchOf` with its
-// answers, libraries and look.
+// Creates a campaign from setup answers, relaunches `relaunchOf` with its
+// answers, libraries and look, or starts from `personal_template_id`.
 export async function ptCreateCampaign(tx: Transaction<Database>, ctx: TenantContext, b: Record<string, unknown>) {
   const site = await ptSite(tx)
   let base: Record<string, unknown> | undefined
@@ -100,8 +102,15 @@ export async function ptCreateCampaign(tx: Transaction<Database>, ctx: TenantCon
       b.end_date = new Date(Date.parse(b.start_date) + days * 86_400_000).toISOString().slice(0, 10)
     }
   }
+  let personal: PersonalTemplate | null = null
+  if (!previous && typeof b.personal_template_id === 'string') {
+    const id = b.personal_template_id
+    personal = await runAsShareUser(ctx.userId, utx => readPersonalTemplate(ptTx(utx), id))
+    if (!personal) ptNotFound('Template not found.')
+    templateKey = personal.template_key ?? 'generic'
+  }
   const kind = previous ? previous.kind : ptCampaignKind(b.kind)
-  const answers = ptSetupFromBody(b, templateKey, base as never, kind)
+  const answers = ptSetupFromBody(b, personal ? withPersonalSetup(templateKey, personal.setup) : templateKey, base as never, kind)
   const extras = ptCampaignExtras(b)
   const timezone = (extras.timezone as string) ?? site.timezone
   await ptAssertNoOverlap(tx, { ...answers, timezone }, kind)
@@ -112,6 +121,7 @@ export async function ptCreateCampaign(tx: Transaction<Database>, ctx: TenantCon
   const hasMain = !!(await tx.selectFrom('pt_campaign').select('id').where('kind', 'is', null).executeTakeFirst())
   const mains = previous ? [] : (await loadCampaigns(ptTx(tx), { drafts: true })).filter(c => !isSideCampaign(c))
   const look = previous ?? pickCurrentCampaign(mains)?.campaign ?? mains.at(-1)
+  const carried = previous ?? personal
   const created = await tx.insertInto('pt_campaign').values({
     slug,
     name,
@@ -124,14 +134,14 @@ export async function ptCreateCampaign(tx: Transaction<Database>, ctx: TenantCon
     people_group: 'people_group' in extras ? extras.people_group : (look?.people_group ?? null),
     latitude: 'latitude' in extras ? extras.latitude : (look?.latitude ?? null),
     longitude: 'longitude' in extras ? extras.longitude : (look?.longitude ?? null),
-    goal_target: (extras.goal_target as number | null | undefined) ?? previous?.goal_target ?? null,
-    slot_min: 'slot_min' in extras ? extras.slot_min as number | null : (previous?.slot_min ?? null),
-    end_message: b.end_message ? jsonb(parseText(b.end_message)) : (previous?.end_message ? jsonb(previous.end_message) : null),
-    cta: jsonb(b.cta ? ptCta(b.cta) : (previous?.cta ?? {})),
-    landing: jsonb(look && (previous || kind !== 'side') ? look.landing : {}),
-    branding: jsonb(look?.branding ?? {}),
+    goal_target: (extras.goal_target as number | null | undefined) ?? previous?.goal_target ?? personal?.setup.goal_target ?? null,
+    slot_min: 'slot_min' in extras ? extras.slot_min as number | null : (previous?.slot_min ?? personal?.setup.slot_min ?? null),
+    end_message: b.end_message ? jsonb(parseText(b.end_message)) : (carried?.end_message ? jsonb(carried.end_message) : null),
+    cta: jsonb(b.cta ? ptCta(b.cta) : (carried?.cta ?? {})),
+    landing: jsonb(personal ? personal.landing : look && (previous || kind !== 'side') ? look.landing : {}),
+    branding: jsonb(personal ? { ...look?.branding, ...personal.branding } : (look?.branding ?? {})),
     share: jsonb(look?.share ?? {}),
-    description: look?.description && (previous || kind !== 'side') ? jsonb(look.description) : null,
+    description: personal ? (personal.description ? jsonb(personal.description) : null) : look?.description && (previous || kind !== 'side') ? jsonb(look.description) : null,
     relaunch_of: previous?.id ?? null,
     // A campaign starts as a draft, except a site's first main campaign while
     // the site is being set up: it goes live with the site, whose checklist covers it.
@@ -141,6 +151,7 @@ export async function ptCreateCampaign(tx: Transaction<Database>, ctx: TenantCon
     const libs = await tx.selectFrom('pt_campaign_library').select(['site_library_id', 'position']).where('campaign_id', '=', previous.id).execute()
     if (libs.length) await tx.insertInto('pt_campaign_library').values(libs.map(l => ({ campaign_id: created.id, site_library_id: l.site_library_id, position: l.position }))).execute()
   }
+  if (personal) await addTemplateLibraries(ptTx(tx), created.id, personal.library_ids, ctx.userId)
   return { campaign: normalizeCampaign(created) }
 }
 

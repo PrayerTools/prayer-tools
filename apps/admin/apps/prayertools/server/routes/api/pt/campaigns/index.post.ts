@@ -6,4 +6,7 @@
 // Any other campaign takes its images, share messages, place and people group
 // from the current main campaign, and a main campaign its landing page and
 // description too, so the site's root page keeps its look.
+// `personal_template_id` starts from one of the caller's own (or shared)
+// templates instead: its answers, landing page, hero image, description, end
+// message, call to action and libraries.
 export default definePtHandler('pt.campaigns.write', async (event, tx, ctx) => ptCreateCampaign(tx, ctx, await ptBody(event)))

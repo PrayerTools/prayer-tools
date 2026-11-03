@@ -56,7 +56,7 @@ Three processes on one Postgres, one Docker image each (`apps/<app>/Dockerfile`,
 - Two DB URLs everywhere: `DATABASE_URL` (BYPASSRLS: migrations, sweeps, operator views) and `APP_DATABASE_URL` (RLS: requests).
 - Site tables carry `org_id` with policy `tenant_isolation`. Use `withOrg(db, orgId, tx => …)`; inserts omit `org_id`. Person scope: `withPerson(db, userId, …)` for a person's own subscriptions/commitments across sites.
 - **One site per transaction, always.** Cross-site work visits each site in turn (`listUserOrgs` / `withOrgScope` from `#tenant/server`, `forEachOrg` in the worker).
-- User-owned tables (`pt_personal_*`, `marketing_template`, `marketing_parent`) use `user_isolation` via `withUserContext(event, { appId: PT_LIBRARY_APP }, …)`.
+- User-owned tables (`pt_personal_*`, `marketing_template`, `marketing_parent`) use `user_isolation` via `withUserContext(event, { appId: PT_LIBRARY_APP }, …)`; library items shared with named people use core share tables and `user_read`/`user_update`/… policies instead (see `docs/dev-context.md`).
 - A new table with `org_id` but no RLS must be added to the allow-list in `apps/worker/test/isolation.test.ts`, or that test fails.
 - GUCs are `SET LOCAL` and `prepare: false`, so PgBouncer transaction mode works.
 - jsonb writes go through `jsonb(value)` from `@prayertools/shared/db/json` (bare `JSON.stringify` stores a jsonb string). Arrays use `pgArray(values, type)`.

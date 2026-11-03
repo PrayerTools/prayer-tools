@@ -3,11 +3,13 @@
 // changed: the template (`withTemplate`), name, setup answers, place, its
 // wording in each language (`withPlaceWording`), people group and timezone.
 // The draft comes from usePtCampaignDraft; choosing a template emits `choose`
-// for its chooseTemplate.
-import type { PtCampaignDraft } from '../composables/usePtCampaignDraft'
+// for its chooseTemplate, and one of the champion's own (`withPersonal`)
+// `choosePersonal` for its choosePersonalTemplate.
+import type { PtCampaignDraft, PtPersonalTemplateOption } from '../composables/usePtCampaignDraft'
 
 withDefaults(defineProps<{
   withTemplate?: boolean
+  withPersonal?: boolean
   withPlaceWording?: boolean
   withCadence?: boolean
   withLength?: boolean
@@ -15,9 +17,9 @@ withDefaults(defineProps<{
   dated?: boolean
   languages?: string[]
   disabled?: boolean
-}>(), { withTemplate: false, withPlaceWording: false, withCadence: true, withLength: true, lockTemplate: false, dated: false, languages: () => [], disabled: false })
+}>(), { withTemplate: false, withPersonal: false, withPlaceWording: false, withCadence: true, withLength: true, lockTemplate: false, dated: false, languages: () => [], disabled: false })
 const draft = defineModel<PtCampaignDraft>({ required: true })
-const emit = defineEmits<{ choose: [key: string] }>()
+const emit = defineEmits<{ choose: [key: string], choosePersonal: [template: PtPersonalTemplateOption] }>()
 </script>
 
 <template>
@@ -28,9 +30,12 @@ const emit = defineEmits<{ choose: [key: string] }>()
     <PtTemplateChoice
       v-if="withTemplate"
       v-model="draft.templateKey"
+      v-model:personal="draft.personalTemplateId"
       :timezone="draft.timezone"
+      :with-personal="withPersonal"
       class="py-6 first:pt-0"
       @choose="(k: string) => emit('choose', k)"
+      @choose-personal="(t: PtPersonalTemplateOption) => emit('choosePersonal', t)"
     />
     <UFormField
       :ui="{ label: 'text-base font-semibold' }"

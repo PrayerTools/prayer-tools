@@ -1,13 +1,14 @@
 <script setup lang="ts">
-// Libraries: your own (usable on all your sites, private until shared) and
-// the catalog of published ones.
+// Libraries: your own (usable on all your sites, private until shared), those
+// shared with you, and the catalog of published ones.
 definePageMeta({ middleware: 'auth', tenantExempt: true })
 
-interface Library { id: string, title: string, description: string | null, cadence: string, entry_count: number, languages: string[], visibility: string, share_status: string | null, published_version: number, updated_at: string, platform: boolean }
+interface Library { id: string, title: string, description: string | null, cadence: string, entry_count: number, languages: string[], visibility: string, share_status: string | null, published_version: number, updated_at: string, platform: boolean, role: 'owner' | 'editor' | 'viewer' | null, owner_name: string | null }
 
 const { data: meta } = usePtMeta()
 const toast = usePtToast()
 const { data: mine, refresh } = useFetch<{ libraries: Library[] }>('/api/pt/libraries', { query: { scope: 'mine' }, key: 'pt-my-libraries' })
+const { data: shared } = useFetch<{ libraries: Library[] }>('/api/pt/libraries', { query: { scope: 'shared' }, key: 'pt-shared-libraries' })
 
 const createOpen = ref(false)
 const form = reactive({ title: '', description: '', cadence: 'daily', source_language: 'en', license: 'own', credit: '' })
@@ -72,6 +73,38 @@ async function create() {
             </div>
             <p class="text-xs text-(--ui-text-muted)">
               {{ l.entry_count }} {{ l.cadence === 'weekly' ? 'weeks' : 'days' }} · {{ l.languages.map(x => languageName(meta, x)).join(', ') || 'no entries yet' }} · version {{ l.published_version }}
+            </p>
+          </NuxtLink>
+        </div>
+      </section>
+
+      <section
+        v-if="shared?.libraries.length"
+        class="space-y-3"
+      >
+        <h2 class="font-semibold">
+          Shared with you
+        </h2>
+        <div class="grid sm:grid-cols-2 gap-3">
+          <NuxtLink
+            v-for="l in shared.libraries"
+            :key="l.id"
+            :to="`/libraries/${l.id}`"
+            class="block rounded-lg border border-(--ui-border) p-4 hover:bg-(--ui-bg-elevated)"
+          >
+            <div class="flex items-start justify-between gap-2">
+              <p class="font-medium">
+                {{ l.title }}
+              </p>
+              <UBadge
+                :label="l.role === 'editor' ? 'Can edit' : 'Can view'"
+                color="neutral"
+                variant="soft"
+                size="sm"
+              />
+            </div>
+            <p class="text-xs text-(--ui-text-muted)">
+              From {{ l.owner_name }} · {{ l.entry_count }} {{ l.cadence === 'weekly' ? 'weeks' : 'days' }} · {{ l.languages.map(x => languageName(meta, x)).join(', ') || 'no entries yet' }} · version {{ l.published_version }}
             </p>
           </NuxtLink>
         </div>

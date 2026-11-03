@@ -91,6 +91,10 @@ export const PT_STATIC_ROLES: { key: Exclude<PtRoleKey, 'admin'>, name: string, 
   }
 ]
 
+// Held by everyone the personal library is on for; gates the library's share
+// routes.
+export const PT_LIBRARY_SHARE = 'pt.library.share'
+
 declare module '#permissions' {
-  interface PermissionRegistry extends Record<PtPermission, true> {}
+  interface PermissionRegistry extends Record<PtPermission | typeof PT_LIBRARY_SHARE, true> {}
 }

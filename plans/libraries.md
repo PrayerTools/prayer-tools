@@ -26,7 +26,7 @@ Reusable prayer content that champions can use directly or modify. prayer.tools 
 ## Ownership and sharing
 
 - **Platform libraries:** created and maintained by the prayer.tools team through an operator-only screen, available to every site.
-- **Champion libraries:** created in the admin app; owned by the champion's account and usable on all of their sites, private to them until published. Sharing with specific people is deferred.
+- **Champion libraries:** created in the admin app; owned by the champion's account and usable on all of their sites, private to them until published. The owner can share one with named people, who can view it (and use it on their sites) or also edit and publish it.
 - **Share request:** the owner requests sharing and confirms they have the rights to it → prayer.tools reviews, seeing the license → the library is published to the catalog for everyone.
 - **Versions:** the owner edits a draft and publishes; sites that haven't edited the library follow the latest published version, so work in progress never reaches other sites.
 - Libraries sit outside site isolation: readable when you own them or when they are published. A site's edited copy belongs to the site and stays in its org.
