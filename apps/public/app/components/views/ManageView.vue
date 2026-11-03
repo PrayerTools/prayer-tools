@@ -2,8 +2,8 @@
 import type { ManageCampaignView, ManageView } from '~~/shared/view'
 import { timezones, type CommitmentInput } from '~/utils/commitment'
 
-const props = defineProps<{ manage: ManageView | null }>()
-const { site, link } = useSite()
+const props = defineProps<{ manage: ManageView | null, signedInAs: string | null }>()
+const { site, link, st } = useSite()
 const { t } = useI18n()
 const route = useRoute()
 const toast = useToast()
@@ -11,8 +11,11 @@ useHead({ title: () => `${t('manage.title')} · ${site.value.name}` })
 
 const busy = ref(false)
 const confirmDelete = ref(false)
+const leaveOpen = ref(false)
+const leaving = ref<{ id: string, name: string } | null>(null)
 const profile = reactive({ name: props.manage?.name ?? '', language: props.manage?.language ?? site.value.lang, timezone: props.manage?.timezone ?? 'UTC' })
 const tzItems = timezones()
+const signupOpen = computed(() => site.value.status !== 'archived' && (site.value.campaign?.state === 'active' || site.value.campaign?.state === 'upcoming'))
 const languageItems = computed(() => site.value.languages.map(l => ({ label: l.native, value: l.code })))
 // A personal-start campaign holds one prayer time per person, which carries their progress.
 const canAdd = (c: ManageCampaignView) => c.state !== 'ended' && props.manage?.status !== 'unsubscribed' && !(c.personal && c.commitments.length)
@@ -38,6 +41,17 @@ const saveProfile = () => call('profile', 'POST', props.manage?.accountLinked ? 
 const setConsent = (purpose: string, grant: boolean) => call('consent', 'POST', { purpose, grant })
 const setStatus = (status: 'active' | 'unsubscribed') => call('status', 'POST', { status }, status === 'unsubscribed' ? t('manage.unsubscribed') : t('manage.resubscribed'))
 
+function askLeave(c: ManageCampaignView) {
+  leaving.value = { id: c.id, name: c.name }
+  leaveOpen.value = true
+}
+
+async function leave() {
+  if (!leaving.value) return
+  await call('leave', 'POST', { campaign: leaving.value.id }, t('manage.left', { campaign: leaving.value.name }))
+  leaveOpen.value = false
+}
+
 async function deleteData() {
   busy.value = true
   try {
@@ -56,8 +70,11 @@ async function deleteData() {
     <h1 class="text-3xl font-bold">{{ t('manage.title') }}</h1>
 
     <div v-if="!manage" class="space-y-4">
-      <p class="text-stone-700">{{ t('manage.signed_out') }}</p>
-      <UButton :href="site.myUrl" external :label="t('footer.my')" />
+      <p class="text-stone-700">{{ signedInAs ? t('manage.signed_in_empty', { email: signedInAs, site: site.name }) : t('manage.signed_out') }}</p>
+      <div class="flex flex-wrap gap-2">
+        <UButton v-if="signedInAs && signupOpen" :to="link('signup')" :label="st('landing.signup.title')" />
+        <UButton :href="site.myUrl" external :variant="signedInAs && signupOpen ? 'outline' : 'solid'" :label="t('footer.my')" />
+      </div>
     </div>
 
     <template v-else>
@@ -91,6 +108,15 @@ async function deleteData() {
             @update="update"
             @pause="pause"
             @remove="remove"
+          />
+          <UButton
+            v-if="c.state !== 'ended' && c.commitments.length"
+            size="sm"
+            variant="link"
+            color="neutral"
+            icon="i-lucide-log-out"
+            :label="t('manage.leave', { campaign: c.name })"
+            @click="askLeave(c)"
           />
         </section>
         <p class="text-sm">
@@ -137,6 +163,13 @@ async function deleteData() {
           <UButton variant="outline" color="error" icon="i-lucide-trash-2" :label="t('manage.delete')" @click="confirmDelete = true" />
         </div>
       </section>
+
+      <UModal v-model:open="leaveOpen" :title="t('manage.leave_confirm_title', { campaign: leaving?.name ?? '' })" :description="t('manage.leave_confirm_body', { campaign: leaving?.name ?? '', site: site.name })">
+        <template #footer>
+          <UButton color="error" :loading="busy" :label="t('manage.leave', { campaign: leaving?.name ?? '' })" @click="leave" />
+          <UButton variant="ghost" color="neutral" :label="t('common.cancel')" @click="leaveOpen = false" />
+        </template>
+      </UModal>
 
       <UModal v-model:open="confirmDelete" :title="t('manage.delete_confirm_title')" :description="t('manage.delete_confirm_body', { site: site.name })">
         <template #footer>

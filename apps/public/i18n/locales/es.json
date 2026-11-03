@@ -1,4 +1,5 @@
 {
+  "theme": { "light": "Cambiar al tema claro", "dark": "Cambiar al tema oscuro" },
   "a11y": {
     "skip": "Saltar al contenido"
   },
@@ -225,6 +226,8 @@
     "thanks": "Gracias por orar",
     "results": "Resultados finales",
     "cta_default": "Continuar",
+    "keep_praying": "Sigue orando con {campaign}",
+    "still_praying": "Sigues orando con {campaign}.",
     "notify_title": "Avísame cuando esta campaña se realice de nuevo",
     "notify_intro": "Deja tu correo y {site} te avisará cuando comience la próxima campaña.",
     "notify_button": "Avísame",
@@ -260,6 +263,7 @@
     "title": "Tus horarios de oración",
     "intro": "Sesión iniciada como {email} en {site}.",
     "signed_out": "Abre el enlace de uno de nuestros correos para administrar aquí tus horarios de oración, o usa Mi oración para ver todas tus campañas.",
+    "signed_in_empty": "Has iniciado sesión como {email}. Todavía no tienes horarios de oración en {site}.",
     "unverified": "Tu correo aún no está confirmado. Los recordatorios comenzarán cuando hagas clic en el enlace de nuestro correo.",
     "name_on_my": "Tu nombre es el mismo en todas las campañas con las que oras. Cámbialo en",
     "status_unsubscribed": "Cancelaste tu suscripción. No recibirás recordatorios.",
@@ -285,6 +289,10 @@
     "download": "Descargar mis datos",
     "unsubscribe": "Detener todos los recordatorios",
     "unsubscribed": "Cancelaste tu suscripción",
+    "leave": "Dejar de orar con {campaign}",
+    "leave_confirm_title": "¿Dejar de orar con {campaign}?",
+    "leave_confirm_body": "Tus horarios de oración en {campaign} terminan hoy y sus recordatorios se detienen. Tus otras campañas con {site} continúan.",
+    "left": "Dejaste de orar con {campaign}",
     "delete": "Eliminar mis datos",
     "delete_confirm_title": "¿Eliminar tus datos?",
     "delete_confirm_body": "Esto elimina tus horarios de oración y tus datos de {site}. No se puede deshacer.",
@@ -304,6 +312,11 @@
     "confirm": "Cancelar suscripción",
     "all": "Cancelar la suscripción a todas las campañas de Prayer.Tools"
   },
+  "leave": {
+    "title": "Detener recordatorios",
+    "body": "¿Dejar de orar con {campaign} y detener sus recordatorios? Tus otras campañas con {site} continúan.",
+    "confirm": "Detener recordatorios de {campaign}"
+  },
   "notice": {
     "checkin_yes": "¡Gracias por avisarnos! Sigue orando: tus recordatorios continúan.",
     "checkin_sometimes": "¡Gracias! Tus recordatorios continúan. Ora cuando puedas.",
@@ -311,6 +324,7 @@
     "link_invalid": "Este enlace no es válido o ya se usó.",
     "unsubscribed": "Cancelaste tu suscripción. No recibirás más recordatorios de {site}.",
     "unsubscribed_all": "Cancelaste tu suscripción a todas las campañas de Prayer.Tools. No recibirás más recordatorios ni correos de ellas.",
+    "left_campaign": "Ya no recibirás recordatorios de esta campaña. Tus otros horarios de oración con {site} continúan.",
     "verify_invalid": "Este enlace de confirmación no es válido o ha caducado. Vuelve a inscribirte.",
     "deleted": "Tus datos han sido eliminados.",
     "not_found": "No pudimos encontrar lo que buscabas."
@@ -385,6 +399,11 @@
     "continue_title": "¿Iniciar sesión en {site}?",
     "continue_body": "{site} ({host}) verá tu nombre y tu correo electrónico, {email}.",
     "continue_button": "Continuar a {site}"
+  },
+  "account": {
+    "menu": "Menú de la cuenta",
+    "site_times": "Horarios de oración en este sitio",
+    "my_account": "Mi cuenta"
   },
   "home": {
     "title": "Campañas de oración por los lugares y pueblos que te importan",

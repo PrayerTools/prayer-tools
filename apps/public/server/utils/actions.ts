@@ -4,7 +4,7 @@ import type { H3Event } from 'h3'
 import { withOrg } from '@prayertools/shared/db/scope'
 import { parseLink, personalToken } from '@prayertools/shared/links'
 import { hashToken } from '@prayertools/shared/tokens'
-import { createWebSignup, recordActivity, setSubscriptionStatus, verifySubscription } from '@prayertools/shared/subscriptions'
+import { createWebSignup, leaveCampaign, recordActivity, setSubscriptionStatus, verifySubscription } from '@prayertools/shared/subscriptions'
 import { findContactByEmail, primaryEmailOf } from '@prayertools/shared/crm'
 import { recordEvent } from '@prayertools/shared/stats'
 import { sitePath } from '@prayertools/shared/paths'
@@ -221,4 +221,28 @@ export async function unsubscribePost(event: H3Event, ctx: SiteContext, token: s
     return ok ? 'Unsubscribed' : 'Not found'
   }
   return sendRedirect(event, !ok ? '/notice/link_invalid' : userId ? '/notice/unsubscribed_all' : '/notice/unsubscribed', 303)
+}
+
+// Leaving one campaign from a reminder: the confirm form on /l/<token> and
+// one-click from mail clients, handled like unsubscribePost.
+export async function leaveCampaignPost(event: H3Event, ctx: SiteContext, token: string) {
+  const raw = (await readRawBody(event, 'utf8')) ?? ''
+  const oneClick = raw.includes('List-Unsubscribe=One-Click')
+  const link = parseLink(token, 'l')
+  let ok = false
+  if (link?.campaignId && link.orgId === ctx.orgId) {
+    const campaignId = link.campaignId
+    ok = await withOrg(useDb(), ctx.orgId, async (tx) => {
+      const sub = await tx.selectFrom('pt_subscription').select('id').where('id', '=', link.subscriptionId).executeTakeFirst()
+      if (!sub) return false
+      await leaveCampaign(tx, sub.id, campaignId)
+      return true
+    })
+  }
+  if (oneClick) {
+    setResponseStatus(event, ok ? 200 : 404)
+    setResponseHeader(event, 'content-type', 'text/plain; charset=utf-8')
+    return ok ? 'Unsubscribed' : 'Not found'
+  }
+  return sendRedirect(event, ok ? '/notice/left_campaign' : '/notice/link_invalid', 303)
 }

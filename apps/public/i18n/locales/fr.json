@@ -1,4 +1,5 @@
 {
+  "theme": { "light": "Passer au thème clair", "dark": "Passer au thème sombre" },
   "a11y": {
     "skip": "Aller au contenu"
   },
@@ -225,6 +226,8 @@
     "thanks": "Merci d'avoir prié",
     "results": "Résultats finaux",
     "cta_default": "Continuer",
+    "keep_praying": "Continuez à prier avec {campaign}",
+    "still_praying": "Vous priez toujours avec {campaign}.",
     "notify_title": "Me prévenir lorsque cette campagne reprendra",
     "notify_intro": "Laissez votre adresse e-mail et {site} vous préviendra au début de la prochaine campagne.",
     "notify_button": "Me prévenir",
@@ -260,6 +263,7 @@
     "title": "Vos moments de prière",
     "intro": "Connecté en tant que {email} pour {site}.",
     "signed_out": "Ouvrez le lien de l'un de nos e-mails pour gérer ici vos moments de prière, ou utilisez Ma prière pour voir toutes vos campagnes.",
+    "signed_in_empty": "Vous êtes connecté en tant que {email}. Vous n'avez pas encore de moments de prière sur {site}.",
     "unverified": "Votre adresse e-mail n'est pas encore confirmée. Les rappels commenceront dès que vous aurez cliqué sur le lien de notre e-mail.",
     "name_on_my": "Votre nom est le même dans toutes les campagnes avec lesquelles vous priez. Modifiez-le dans",
     "status_unsubscribed": "Vous êtes désabonné. Vous ne recevrez pas de rappels.",
@@ -285,6 +289,10 @@
     "download": "Télécharger mes données",
     "unsubscribe": "Arrêter tous les rappels",
     "unsubscribed": "Vous êtes désabonné",
+    "leave": "Ne plus prier avec {campaign}",
+    "leave_confirm_title": "Ne plus prier avec {campaign} ?",
+    "leave_confirm_body": "Vos temps de prière dans {campaign} s'arrêtent aujourd'hui, ainsi que ses rappels. Vos autres campagnes avec {site} continuent.",
+    "left": "Vous ne priez plus avec {campaign}",
     "delete": "Supprimer mes données",
     "delete_confirm_title": "Supprimer vos données ?",
     "delete_confirm_body": "Cela supprime vos moments de prière et vos informations de {site}. Cette action est irréversible.",
@@ -304,6 +312,11 @@
     "confirm": "Se désabonner",
     "all": "Se désabonner de toutes les campagnes Prayer.Tools"
   },
+  "leave": {
+    "title": "Arrêter les rappels",
+    "body": "Ne plus prier avec {campaign} et arrêter ses rappels ? Vos autres campagnes avec {site} continuent.",
+    "confirm": "Arrêter les rappels pour {campaign}"
+  },
   "notice": {
     "checkin_yes": "Merci de nous avoir répondu ! Continuez à prier — vos rappels continuent.",
     "checkin_sometimes": "Merci ! Vos rappels continuent. Priez quand vous le pouvez.",
@@ -311,6 +324,7 @@
     "link_invalid": "Ce lien n'est pas valide ou a déjà été utilisé.",
     "unsubscribed": "Vous êtes désabonné. Vous ne recevrez plus de rappels de {site}.",
     "unsubscribed_all": "Vous êtes désabonné de toutes les campagnes Prayer.Tools. Vous ne recevrez plus de rappels ni d’e-mails de leur part.",
+    "left_campaign": "Vous ne recevrez plus de rappels pour cette campagne. Vos autres temps de prière avec {site} continuent.",
     "verify_invalid": "Ce lien de confirmation n'est pas valide ou a expiré. Veuillez vous réinscrire.",
     "deleted": "Vos données ont été supprimées.",
     "not_found": "Nous n'avons pas trouvé ce que vous cherchiez."
@@ -385,6 +399,11 @@
     "continue_title": "Se connecter à {site} ?",
     "continue_body": "{site} ({host}) verra votre nom et votre adresse e-mail, {email}.",
     "continue_button": "Continuer vers {site}"
+  },
+  "account": {
+    "menu": "Menu du compte",
+    "site_times": "Moments de prière sur ce site",
+    "my_account": "Mon compte"
   },
   "home": {
     "title": "Des campagnes de prière pour les lieux et les peuples qui vous tiennent à cœur",

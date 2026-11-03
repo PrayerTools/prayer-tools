@@ -1,4 +1,8 @@
 {
+  "theme": {
+    "light": "Switch to light theme",
+    "dark": "Switch to dark theme"
+  },
   "a11y": {
     "skip": "Skip to content"
   },
@@ -225,6 +229,8 @@
     "thanks": "Thank you for praying",
     "results": "Final results",
     "cta_default": "Continue",
+    "keep_praying": "Keep praying with {campaign}",
+    "still_praying": "You're still praying with {campaign}.",
     "notify_title": "Notify me when this campaign runs again",
     "notify_intro": "Leave your email and {site} will let you know when the next campaign starts.",
     "notify_button": "Notify me",
@@ -260,6 +266,7 @@
     "title": "Your prayer times",
     "intro": "Signed in as {email} for {site}.",
     "signed_out": "Open the link from one of our emails to manage your prayer times here, or use My prayer to see all your campaigns.",
+    "signed_in_empty": "You're signed in as {email}. You have no prayer times on {site} yet.",
     "unverified": "Your email is not confirmed yet. Reminders start once you click the link in our email.",
     "name_on_my": "Your name is the same on every campaign you pray with. Change it on",
     "status_unsubscribed": "You are unsubscribed. You will not receive reminders.",
@@ -285,6 +292,10 @@
     "download": "Download my data",
     "unsubscribe": "Stop all reminders",
     "unsubscribed": "You are unsubscribed",
+    "leave": "Stop praying with {campaign}",
+    "leave_confirm_title": "Stop praying with {campaign}?",
+    "leave_confirm_body": "Your prayer times in {campaign} end today and its reminders stop. Your other campaigns with {site} continue.",
+    "left": "You stopped praying with {campaign}",
     "delete": "Delete my data",
     "delete_confirm_title": "Delete your data?",
     "delete_confirm_body": "This removes your prayer times and details from {site}. It cannot be undone.",
@@ -304,6 +315,11 @@
     "confirm": "Unsubscribe",
     "all": "Unsubscribe from all Prayer.Tools campaigns"
   },
+  "leave": {
+    "title": "Stop reminders",
+    "body": "Stop praying with {campaign} and stop its reminders? Your other campaigns with {site} continue.",
+    "confirm": "Stop reminders for {campaign}"
+  },
   "notice": {
     "checkin_yes": "Thank you for letting us know! Keep praying — your reminders continue.",
     "checkin_sometimes": "Thank you! Your reminders continue. Pray whenever you can.",
@@ -311,6 +327,7 @@
     "link_invalid": "This link is not valid or has already been used.",
     "unsubscribed": "You are unsubscribed. You will not receive any more reminders from {site}.",
     "unsubscribed_all": "You are unsubscribed from all Prayer.Tools campaigns. You will not receive any more reminders or emails from them.",
+    "left_campaign": "You will no longer get reminders for this campaign. Your other prayer times with {site} continue.",
     "verify_invalid": "This confirmation link is not valid or has expired. Please sign up again.",
     "deleted": "Your data has been deleted.",
     "not_found": "We could not find what you were looking for."
@@ -386,17 +403,31 @@
     "continue_body": "{site} ({host}) will see your name and email address, {email}.",
     "continue_button": "Continue to {site}"
   },
+  "account": {
+    "menu": "Account menu",
+    "site_times": "Prayer times on this site",
+    "my_account": "My account"
+  },
   "home": {
-    "title": "Prayer campaigns for the places and peoples you care about",
-    "intro": "Set up a campaign, invite people to pray, and cover every hour with daily prayer content and reminders.",
+    "title": "Discipleship Through Prayer",
+    "intro": "Prayer campaigns for the places and peoples you care about. Gather your community around a shared purpose, guide them with daily prayer content, and help them build a regular rhythm of prayer.",
     "start": "Start a prayer campaign",
     "sign_in": "Sign in",
-    "features": "What you get",
-    "coverage_title": "24/7 coverage",
-    "coverage_body": "People choose times to pray so no hour of the day or night is left uncovered.",
-    "content_title": "Daily prayer content",
-    "content_body": "Guided prayer for each day, ready to use or written by your team.",
-    "reminders_title": "Reminders",
-    "reminders_body": "Everyone praying gets an email or app reminder at the times they chose."
+    "features": "Help people begin praying and keep growing",
+    "coverage_title": "Catalyze prayer",
+    "coverage_body": "Set up a campaign for a people, place or cause. Invite people to choose times to pray, and work together to cover every hour of the day and night.",
+    "content_title": "Disciple through prayer",
+    "content_body": "Give people daily prayer guides that help them know what to pray and grow as they pray. Use an existing guide or write your own.",
+    "reminders_title": "Build a regular habit",
+    "reminders_body": "Help people make space for prayer with a schedule they choose. Email or app reminders bring them back and encourage a prayer habit that lasts.",
+    "how_label": "How it works",
+    "how_title": "Inspire prayer. Grow a habit. Make disciples.",
+    "how_intro": "Gather people around the places and peoples you care about, then help them grow through a regular rhythm of guided prayer.",
+    "step_setup_title": "Create your campaign",
+    "step_setup_body": "Choose the place or people you want to pray for, set your campaign dates, and add daily prayer content from a library or write your own.",
+    "step_invite_title": "Invite people to join",
+    "step_invite_body": "Share your campaign link with your church, friends, or network. Each person chooses a prayer time that fits their day, helping you build around-the-clock coverage.",
+    "step_pray_title": "Keep praying together",
+    "step_pray_body": "Participants receive reminders for their chosen times and follow your daily prayer content. You can see which times are covered and invite others to fill the gaps."
   }
 }

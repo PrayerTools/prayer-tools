@@ -12,7 +12,7 @@ import { sessionAccount } from '../utils/account-session'
 export default defineEventHandler(async (event) => {
   const ctx = siteContext(event)
   const account = await sessionAccount(event)
-  const signedIn = account?.email ? { email: account.email, name: account.display_name || null } : null
+  const signedIn = account?.email ? { email: account.email, name: account.display_name || null, avatar: account.avatar || null } : null
   if (!account && !readManageCookie(event, ctx.orgId)) return { referral_code: null, email: null, name: null, account: null, campaigns: [] }
   return await withOrg(useDb(), ctx.orgId, async (tx) => {
     const sub = await managedSubscription(tx, event, ctx.orgId)

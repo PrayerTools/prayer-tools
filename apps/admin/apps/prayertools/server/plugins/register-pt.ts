@@ -6,7 +6,7 @@ import { registerRailItem } from '#core/server/utils/rail-registry'
 import { registerAdminSection } from '#core/server/utils/admin-section-registry'
 import { getRegisteredRecordType, registerCrmConsentPurpose, registerCrmRecordType } from '#crm/server'
 import { registerAiFeature } from '#ai/server'
-import { PT_PERMISSIONS, PT_PERMISSION_META, PT_STATIC_ROLES } from '../../app/utils/pt-permissions'
+import { PT_PERMISSIONS, PT_PERMISSION_META, PT_PERSONAL_PERMISSIONS, PT_STATIC_ROLES } from '../../app/utils/pt-permissions'
 import { PT_LIBRARY_APP } from '@prayertools/shared/site'
 import { platformConfig } from '@prayertools/shared/config'
 
@@ -16,7 +16,7 @@ export default defineNitroPlugin(() => {
   registerPermissions(PT_PERMISSIONS, PT_PERMISSION_META)
   registerDefaultGrants('pt', {
     member: ['pt.access', 'pt.site.read', 'pt.stats.read'],
-    admin: [...PT_PERMISSIONS]
+    admin: PT_PERMISSIONS.filter(p => !PT_PERSONAL_PERMISSIONS.includes(p))
   })
   for (const role of PT_STATIC_ROLES) {
     registerStaticRole({ ...role, source: 'pt' })
@@ -30,7 +30,7 @@ export default defineNitroPlugin(() => {
   configureApp('marketing', { title: 'Email', order: 70 })
   // The champion's own library (templates, images, blocks) and multi-site
   // sends, the same from every site.
-  registerApp({ id: PT_LIBRARY_APP, title: 'Library', path: '/personal', icon: 'i-lucide-library-big', description: 'Your templates, images and blocks, usable on any of your sites.', scope: 'user', permissions: [], defaultStatus: 'default', order: 90 })
+  registerApp({ id: PT_LIBRARY_APP, title: 'Library', path: '/personal', icon: 'i-lucide-library-big', description: 'Your templates, images and blocks, usable on any of your sites.', scope: 'user', permissions: [...PT_PERSONAL_PERMISSIONS], defaultStatus: 'default', order: 90 })
 
   // The rail is the only main navigation; every entry is "this, for the
   // current site". Sections with several pages use in-page tabs.

@@ -1,5 +1,7 @@
 import { sql, type Transaction } from 'kysely'
 import type { Database } from '#core/server/database/schema'
+import type { TenantContext } from '#tenant/server'
+import type { TiptapDoc } from '@prayertools/shared/db/schema'
 import { jsonb } from '@prayertools/shared/db/json'
 
 type Tx = Transaction<Database>
@@ -109,4 +111,67 @@ export async function ptCampaignLibraries(tx: Tx, campaignId: string, languages:
     })
   }
   return libraries
+}
+
+// One entry of a site library: the library's published text while the site
+// follows it, the site's copy otherwise.
+export async function ptSiteEntry(tx: Tx, siteLibraryId: string, day: number, lang: string) {
+  const sl = await ptSiteLibrary(tx, siteLibraryId)
+  if (!Number.isInteger(day) || day < 1) ptBadRequest('Invalid day.')
+  const follows = !!sl.library_id && sl.frozen_version === null
+  if (follows) {
+    const rows = await tx.selectFrom('pt_library_entry').select(['language', 'published']).where('library_id', '=', sl.library_id!).where('day', '=', day).where('published', 'is not', null).execute()
+    const hit = rows.find(r => r.language === lang)
+    return { source: 'library', doc: (hit?.published ?? null) as TiptapDoc | null, stale: false, edited: false, languages: rows.map(r => r.language) }
+  }
+  const rows = await tx.selectFrom('pt_site_entry').select(['language', 'content', 'stale', 'edited']).where('site_library_id', '=', sl.id).where('day', '=', day).execute()
+  const hit = rows.find(r => r.language === lang)
+  return { source: 'site', doc: (hit?.content ?? null) as TiptapDoc | null, stale: hit?.stale ?? false, edited: hit?.edited ?? false, languages: rows.map(r => r.language) }
+}
+
+// Saves one entry (day × language) of a site library, freezing a followed
+// library's copy first. Needs pt.content.write for the default language and
+// pt.content.translate for the others.
+export async function ptSaveSiteEntry(tx: Tx, ctx: TenantContext, b: { siteLibraryId?: string, day?: number, lang?: string, doc?: unknown, followsEdit?: boolean }) {
+  const site = await ptSite(tx)
+  const lang = String(b.lang ?? '')
+  const day = Number(b.day)
+  if (!site.languages.includes(lang)) ptBadRequest('Not a site language.')
+  if (!Number.isInteger(day) || day < 1 || day > 3650) ptBadRequest('Invalid day.')
+  const isSource = lang === site.default_language
+  ptNeed(ctx, isSource ? 'pt.content.write' : 'pt.content.translate')
+  const doc = ptDoc(b.doc)
+  if (!doc) ptBadRequest('Invalid content.')
+  const siteLibraryId = String(b.siteLibraryId ?? '')
+  await ptFreezeCopy(tx, siteLibraryId)
+  const now = new Date()
+  await tx.insertInto('pt_site_entry')
+    .values({ site_library_id: siteLibraryId, day, language: lang, content: jsonb(doc), edited: true, stale: false, updated_at: now } as never)
+    .onConflict(oc => oc.columns(['site_library_id', 'day', 'language']).doUpdateSet({ content: jsonb(doc) as never, edited: true, stale: false, updated_at: now }))
+    .execute()
+  if (isSource) {
+    await tx.updateTable('pt_site_entry').set({ stale: true }).where('site_library_id', '=', siteLibraryId).where('day', '=', day).where('language', '!=', lang).execute()
+  }
+  return { ok: true }
+}
+
+// Stacks content on a campaign: a catalog library the site follows, or a new
+// site library to write from scratch.
+export async function ptAddCampaignContent(tx: Tx, ctx: TenantContext, b: { campaignId?: string, libraryId?: string, title?: string, cadence?: string }) {
+  const campaign = await tx.selectFrom('pt_campaign').select(['id', 'cadence', 'name']).where('id', '=', String(b.campaignId)).executeTakeFirst()
+  if (!campaign) ptNotFound('Campaign not found.')
+  let siteLibraryId: string
+  if (b.libraryId) {
+    const lib = await ptLibraryReadable(tx, b.libraryId, ctx.userId)
+    const existing = await tx.selectFrom('pt_site_library').select('id').where('library_id', '=', lib.id).executeTakeFirst()
+    siteLibraryId = existing?.id ?? (await tx.insertInto('pt_site_library').values({ library_id: lib.id, title: lib.title, cadence: lib.cadence }).returning('id').executeTakeFirstOrThrow()).id
+  } else {
+    const title = (String(b.title ?? '').trim() || `${campaign.name} library`).slice(0, 120)
+    const cadence = b.cadence === 'weekly' ? 'weekly' : campaign.cadence
+    siteLibraryId = (await tx.insertInto('pt_site_library').values({ library_id: null, title, cadence }).returning('id').executeTakeFirstOrThrow()).id
+  }
+  const max = await tx.selectFrom('pt_campaign_library').select(eb => eb.fn.max('position').as('max')).where('campaign_id', '=', campaign.id).executeTakeFirst()
+  await tx.insertInto('pt_campaign_library').values({ campaign_id: campaign.id, site_library_id: siteLibraryId, position: Number(max?.max ?? -1) + 1 })
+    .onConflict(oc => oc.columns(['campaign_id', 'site_library_id']).doNothing()).execute()
+  return { siteLibraryId }
 }

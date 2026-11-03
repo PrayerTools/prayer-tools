@@ -10,7 +10,7 @@ import { useDb } from '../utils/db'
 import { NOT_FOUND_CACHE, PRIVATE_CACHE, limit, requestHost, setCache } from '../utils/request'
 import { buildSiteContext, resolveSiteCached } from '../utils/site-context'
 import { PREVIEW_COOKIE, previewCookieMatches } from '../utils/cookies'
-import { addTimesLink, checkinAnswer, exchangeManageLink, legacyFuel, legacyManage, previewLink, unsubscribePost, verifyLink } from '../utils/actions'
+import { addTimesLink, checkinAnswer, exchangeManageLink, leaveCampaignPost, legacyFuel, legacyManage, previewLink, unsubscribePost, verifyLink } from '../utils/actions'
 import { editorAccess, editorFrameAncestors } from '../utils/editor'
 import { claimHandoff, confirmEmailChange, continueToAdmin, continueToSite, exchangeSignInLink, signInFromSite, undoEmailChange } from '../utils/account-links'
 import { finishSocialSignIn, startSocialSignIn } from '../utils/social-sign-in'
@@ -156,6 +156,10 @@ export default defineEventHandler(async (event) => {
   if (event.method === 'POST' && first === 'u' && second && segs.length === 2) {
     limit(event, 'unsubscribe', 30, 60_000)
     return await unsubscribePost(event, ctx, second)
+  }
+  if (event.method === 'POST' && first === 'l' && second && segs.length === 2) {
+    limit(event, 'unsubscribe', 30, 60_000)
+    return await leaveCampaignPost(event, ctx, second)
   }
   if (!isGet) return
   if (first === 'account' && second === 'sign-in' && segs.length === 2) return signInFromSite(event, ctx)

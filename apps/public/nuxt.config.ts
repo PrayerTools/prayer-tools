@@ -13,10 +13,12 @@ export default defineNuxtConfig({
   devServer: { port: 3380, host: 'localhost' },
 
   ui: {
-    colorMode: false,
+    colorMode: true,
     fonts: false,
     theme: { colors: ['primary', 'neutral', 'success', 'warning', 'error', 'info'] }
   },
+
+  colorMode: { preference: 'light', fallback: 'light', classSuffix: '' },
 
   i18n: {
     strategy: 'no_prefix',

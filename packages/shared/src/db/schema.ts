@@ -289,6 +289,8 @@ export interface CampaignLanding {
   hidden?: string[]
   custom?: LandingCustomSection[]
   stories?: boolean
+  // A side campaign's chosen stories; absent until it chooses.
+  story_ids?: string[]
 }
 
 export interface CampaignShare {
@@ -334,9 +336,12 @@ export interface PtSiteTable {
   updated_at: Timestamp
 }
 
+// The champion's own button, or `mode: 'none'` for no button at all. Empty
+// means a side campaign invites its intercessors to the main campaign.
 export interface CampaignCta {
   label?: TranslatableText
   url?: string
+  mode?: 'none'
 }
 
 export interface PtCampaignTable {
@@ -368,6 +373,8 @@ export interface PtCampaignTable {
   branding: JsonDefault<CampaignBranding>
   share: JsonDefault<CampaignShare>
   description: Json<TranslatableText | null> | null
+  // The campaign this one was relaunched from.
+  relaunch_of: string | null
   // Null while the campaign is a draft being set up.
   published_at: NullableTimestamp
   ended_at: NullableTimestamp
@@ -454,6 +461,8 @@ export interface PtCommitmentTable {
   advanced_on: NullableDateOnly
   // Personal-start campaigns: when the person went through the last entry.
   finished_at: NullableTimestamp
+  // When the person left the campaign; the commitment ends that day.
+  left_at: NullableTimestamp
   created_at: Timestamp
   updated_at: Timestamp
 }
@@ -673,6 +682,8 @@ export interface UsersTable {
   password: string | null
   is_admin: Generated<boolean>
   verified: Generated<boolean>
+  // Image URL, '' for none.
+  avatar: Generated<string>
 }
 
 // The social-auth layer's Google / Apple accounts linked to a user.

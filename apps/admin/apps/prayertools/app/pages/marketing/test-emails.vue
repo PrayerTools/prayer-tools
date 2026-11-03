@@ -55,81 +55,83 @@ async function send(kind: string) {
 </script>
 
 <template>
-  <div class="max-w-3xl mx-auto space-y-6">
+  <div class="max-w-5xl mx-auto p-4 sm:p-6 space-y-6">
     <MarketingTabs />
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <div class="flex flex-wrap items-center gap-3">
-          <h1 class="text-2xl font-semibold">
-            Test emails
-          </h1>
-          <PtCampaignSwitcher />
-        </div>
-        <p class="text-sm text-(--ui-text-muted)">
-          See exactly what people receive. Site emails to groups of people are under Site email.
-        </p>
-      </div>
-      <USelect
-        v-model="lang"
-        :items="(site?.site.languages ?? []).map(l => ({ label: languageName(meta, l), value: l }))"
-        class="w-44"
-      />
-    </div>
-    <UCard
-      v-for="e in EMAILS"
-      :key="e.kind"
-    >
-      <div class="flex items-center justify-between gap-4">
+    <div class="max-w-3xl space-y-6">
+      <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p class="font-medium">
-            {{ e.title }}
-          </p>
+          <div class="flex flex-wrap items-center gap-3">
+            <h1 class="text-2xl font-semibold">
+              Test emails
+            </h1>
+            <PtCampaignSwitcher />
+          </div>
           <p class="text-sm text-(--ui-text-muted)">
-            {{ e.description }}
+            See exactly what people receive. Site emails to groups of people are under Site email.
           </p>
         </div>
-        <UButton
-          label="Send me a test"
-          variant="soft"
-          :loading="sending === e.kind"
-          @click="send(e.kind)"
+        <USelect
+          v-model="lang"
+          :items="(site?.site.languages ?? []).map(l => ({ label: languageName(meta, l), value: l }))"
+          class="w-44"
         />
       </div>
-    </UCard>
-
-    <UCard v-if="site">
-      <template #header>
-        <h2 class="font-semibold">
-          Announcement to app users
-        </h2>
-        <p class="text-sm text-(--ui-text-muted)">
-          A push notification to everyone praying for this site with the Prayer.Tools app. People who use email get site
-          emails instead.
-        </p>
-      </template>
-      <div class="space-y-3">
-        <PtTranslatableInput
-          v-model="push.heading"
-          :languages="site.site.languages"
-          :default-language="site.site.default_language"
-          label="Title"
-        />
-        <PtTranslatableInput
-          v-model="push.body"
-          :languages="site.site.languages"
-          :default-language="site.site.default_language"
-          label="Message"
-          multiline
-        />
-        <div class="flex justify-end">
+      <UCard
+        v-for="e in EMAILS"
+        :key="e.kind"
+      >
+        <div class="flex items-center justify-between gap-4">
+          <div>
+            <p class="font-medium">
+              {{ e.title }}
+            </p>
+            <p class="text-sm text-(--ui-text-muted)">
+              {{ e.description }}
+            </p>
+          </div>
           <UButton
-            label="Send to app users"
-            icon="i-lucide-smartphone"
-            :loading="push.sending"
-            @click="sendPush"
+            label="Send me a test"
+            variant="soft"
+            :loading="sending === e.kind"
+            @click="send(e.kind)"
           />
         </div>
-      </div>
-    </UCard>
+      </UCard>
+
+      <UCard v-if="site">
+        <template #header>
+          <h2 class="font-semibold">
+            Announcement to app users
+          </h2>
+          <p class="text-sm text-(--ui-text-muted)">
+            A push notification to everyone praying for this site with the Prayer.Tools app. People who use email get site
+            emails instead.
+          </p>
+        </template>
+        <div class="space-y-3">
+          <PtTranslatableInput
+            v-model="push.heading"
+            :languages="site.site.languages"
+            :default-language="site.site.default_language"
+            label="Title"
+          />
+          <PtTranslatableInput
+            v-model="push.body"
+            :languages="site.site.languages"
+            :default-language="site.site.default_language"
+            label="Message"
+            multiline
+          />
+          <div class="flex justify-end">
+            <UButton
+              label="Send to app users"
+              icon="i-lucide-smartphone"
+              :loading="push.sending"
+              @click="sendPush"
+            />
+          </div>
+        </div>
+      </UCard>
+    </div>
   </div>
 </template>
