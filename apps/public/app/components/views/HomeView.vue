@@ -11,6 +11,11 @@ const steps = [
   { icon: 'i-lucide-heart-handshake', key: 'pray' }
 ] as const
 
+const strategic = [
+  { icon: 'i-lucide-moon-star', key: 'ramadan' },
+  { icon: 'i-lucide-globe', key: 'peoples' }
+] as const
+
 const photoIndex = ref(0)
 const currentPhoto = computed(() => heroPhotos[photoIndex.value]!)
 onMounted(() => {
@@ -56,6 +61,32 @@ onMounted(() => {
         </li>
         </ol>
       </section>
+      <section class="vision-band" aria-labelledby="home-vision">
+        <div class="max-w-7xl mx-auto px-6 py-20 sm:py-24">
+          <div class="max-w-3xl space-y-4">
+            <p class="text-sm font-semibold uppercase tracking-[0.18em] text-[#f58220]">{{ t('home.vision_label') }}</p>
+            <h2 id="home-vision" class="text-3xl font-semibold tracking-tight sm:text-4xl text-balance text-white">{{ t('home.vision_title') }}</h2>
+            <p class="text-lg leading-relaxed text-white/80 text-pretty">{{ t('home.vision_body') }}</p>
+          </div>
+        </div>
+      </section>
+      <section class="max-w-7xl mx-auto px-6 py-20 sm:py-24" aria-labelledby="home-next">
+        <div class="mb-12 max-w-2xl space-y-4">
+          <p class="text-sm font-semibold uppercase tracking-[0.18em] text-(--ui-primary)">{{ t('home.next_label') }}</p>
+          <h2 id="home-next" class="text-3xl font-semibold tracking-tight sm:text-4xl text-balance">{{ t('home.next_title') }}</h2>
+          <p class="text-lg leading-relaxed text-stone-700">{{ t('home.next_intro') }}</p>
+        </div>
+        <ul class="grid gap-6 md:grid-cols-2">
+          <li v-for="item in strategic" :key="item.key" class="feature-card rounded-lg bg-white p-7 sm:p-8">
+            <span class="mb-7 flex size-12 items-center justify-center rounded-2xl bg-[#fff0e3]"><UIcon :name="item.icon" class="size-6 text-[#b84c0b]" aria-hidden="true" /></span>
+            <h3 class="mb-3 text-xl font-semibold tracking-tight">{{ t(`home.next_${item.key}_title`) }}</h3>
+            <p class="text-base leading-relaxed text-stone-700">{{ t(`home.next_${item.key}_body`) }}</p>
+          </li>
+        </ul>
+        <div class="mt-10">
+          <UButton :to="`${adminUrl}/orgs/new`" external size="xl" class="hero-cta rounded-full px-6 py-4 font-semibold" :label="t('home.next_cta')" />
+        </div>
+      </section>
     </main>
     <footer class="mx-6 border-t border-[#e8ded5] py-8 text-center text-sm text-stone-500 space-y-4">
       <nav aria-label="Footer" class="flex flex-wrap justify-center gap-x-6 gap-y-3 text-stone-700">
@@ -84,6 +115,7 @@ onMounted(() => {
 .hero-my-prayer:hover { color: #ffffff; background: rgb(255 255 255 / 12%); border-color: #ffffff; }
 .hero-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 40%; }
 .feature-card { border: 1px solid #eee5dc; box-shadow: 0 8px 30px #50321a05; }
+.vision-band { background: #202833; }
 @media (max-width: 639px) {
   .hero-content { min-height: 680px; }
   .hero-overlay { background: linear-gradient(90deg, rgb(13 22 32 / 86%), rgb(13 22 32 / 62%)); }
