@@ -46,7 +46,7 @@ const searchLibrariesTool = defineMcpTool({
     const userId = ctx.auth.userId
     let q = db.selectFrom('pt_library').select([
       'id', 'owner_user_id', 'title', 'description', 'cadence', 'entry_count', 'languages', 'source_language', 'topics', 'template_keys',
-      'license', 'credit', 'visibility', 'published_version'
+      'series', 'edition', 'license', 'credit', 'visibility', 'published_version'
     ])
     if (input.mine) q = q.where('owner_user_id', '=', userId)
     else q = q.where(eb => eb.or([eb('visibility', '=', 'published'), eb('owner_user_id', '=', userId)])).where('published_version', '>', 0)

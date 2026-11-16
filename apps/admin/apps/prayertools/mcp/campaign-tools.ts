@@ -40,13 +40,15 @@ const detailFields = {
 const createCampaignTool = defineMcpTool({
   name: 'create_campaign',
   title: 'Create Campaign',
-  description: 'Create a campaign on a site. A site runs one main campaign at a time (main campaign dates can\'t overlap); a side campaign (e.g. Ramadan on a site with an ongoing campaign) runs alongside at its own address and needs start and end dates. Pass relaunch_of to run a past campaign again with its setup, content and look. New campaigns are drafts until published in the admin, except a draft site\'s first main campaign, which goes live with the site.',
+  description: 'Create a campaign on a site. A site runs one main campaign at a time (main campaign dates can\'t overlap); a side campaign (e.g. Ramadan on a site with an ongoing campaign) runs alongside at its own address and needs start and end dates. Pass relaunch_of to run a past campaign again with its setup, content and look; with editions, libraries from a yearly series are swapped for a newer edition (e.g. the 2027 Ramadan guide in place of the 2026 one), otherwise the same libraries are reused. New campaigns are drafts until published in the admin, except a draft site\'s first main campaign, which goes live with the site.',
   appId: SITE_APP,
   scope: 'pt.campaigns.write',
   input: z.object({
     org: orgInput,
     kind: z.enum(['main', 'side']).default('main'),
     relaunch_of: idInput('A past campaign to relaunch.').optional(),
+    editions: z.record(z.string().uuid(), z.string().uuid()).optional()
+      .describe('With relaunch_of: libraries to replace with a newer edition. Each key is a site library id of the past campaign (get_campaign_content) and its value the id of a newer edition of the same series (search_libraries lists series and edition). The site\'s edits to the replaced library stay with that library and are not copied to the new edition.'),
     ...setupFields,
     ...detailFields
   }).strict(),
@@ -56,7 +58,7 @@ const createCampaignTool = defineMcpTool({
     const b: Record<string, unknown> = { ...rest, kind: kind === 'side' ? 'side' : null }
     if (relaunch_of) b.relaunchOf = relaunch_of
     const { campaign } = await ptCreateCampaign(tx, tenant, b)
-    await audit(ctx, tx, 'CREATE', 'pt_campaign', campaign.id, { kind, relaunch_of })
+    await audit(ctx, tx, 'CREATE', 'pt_campaign', campaign.id, { kind, relaunch_of, editions: rest.editions })
     return result(
       `Created ${kind} campaign "${campaign.name}" (${campaign.published_at ? 'live with the site' : 'draft'}). Add its prayer content with add_campaign_content.`,
       { campaign: { id: campaign.id, name: campaign.name, slug: campaign.slug, published: !!campaign.published_at }, adminUrl: adminLink(tenant.orgSlug, `/site/campaigns/${campaign.id}`) }

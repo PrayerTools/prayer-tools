@@ -6,6 +6,8 @@
 // topic, language, cadence and text. The preview opens on the library's
 // details, then its entries day by day. Emits
 // the chosen library id.
+import { newestEditionFirst, seriesKey } from '@prayertools/shared/editions'
+
 interface Library {
   id: string
   owner_user_id: string | null
@@ -82,22 +84,20 @@ function score(lib: Library): number {
   return (lib.suggested ? 5 : 0) + langs * 2 + lengthFit(lib) * 2
 }
 
-const editionOrder = (a: Library, b: Library) => (b.edition ?? '').localeCompare(a.edition ?? '', undefined, { numeric: true })
-
 const cards = computed<Card[]>(() => {
   const libs = (data.value?.libraries ?? []).filter(l => (!topic.value || l.topics.includes(topic.value)) && (!allLanguages.value || !missing(l).length))
   const series = new Map<string, Library[]>()
   const out: Card[] = []
   for (const lib of libs) {
-    if (!lib.series) {
+    const key = seriesKey(lib)
+    if (!key) {
       out.push({ key: lib.id, lib, earlier: [], score: score(lib) })
       continue
     }
-    const key = `${lib.owner_user_id ?? 'platform'}:${lib.series.toLowerCase()}`
     series.set(key, [...series.get(key) ?? [], lib])
   }
   for (const [key, editions] of series) {
-    const [latest, ...earlier] = editions.sort(editionOrder)
+    const [latest, ...earlier] = editions.sort(newestEditionFirst)
     out.push({ key, lib: latest!, earlier, score: score(latest!) })
   }
   return out.sort((a, b) => b.score - a.score || a.lib.title.localeCompare(b.lib.title))
