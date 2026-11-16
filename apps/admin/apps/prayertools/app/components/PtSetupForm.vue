@@ -40,9 +40,9 @@ watch([() => props.dated, () => state.value.start_mode, () => state.value.end_mo
 
 type CampaignType = 'fixed' | 'ongoing' | 'anytime'
 const typeItems = [
-  { value: 'fixed', label: 'Short and focused', description: 'Start date to end date', help: 'Everyone prays together for a set time, from a start date to an end date.' },
-  { value: 'ongoing', label: 'Ongoing', description: 'Keeps going', help: 'Starts on a date and keeps going, with or without an end date.' },
-  { value: 'anytime', label: 'Start anytime', description: 'Starts at sign-up', help: 'No start date. Each person begins at day 1 when they sign up.' }
+  { value: 'fixed', label: PT_LABELS.campaignType.fixed, description: 'Start date to end date', help: 'Everyone prays together for a set time, from a start date to an end date.' },
+  { value: 'ongoing', label: PT_LABELS.campaignType.ongoing, description: 'Keeps going', help: 'Starts on a date and keeps going, with or without an end date.' },
+  { value: 'anytime', label: PT_LABELS.campaignType.anytime, description: 'Starts at sign-up', help: 'No start date. Each person begins at day 1 when they sign up.' }
 ]
 // Choice cards sit side by side when the form is wide enough, each with its picture at the bottom.
 const choiceCardsUi = {

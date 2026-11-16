@@ -9,6 +9,7 @@ export const PT_LABELS = {
   goal: { people: 'People mobilized', prayer_time: 'Prayer time', coverage: '24/7 coverage' } as Record<string, string>,
   cadence: { daily: 'Daily', weekly: 'Weekly' } as Record<string, string>,
   length: { fixed: 'Fixed', ongoing: 'Ongoing' } as Record<string, string>,
+  campaignType: { fixed: 'Short and focused', ongoing: 'Ongoing', anytime: 'Start anytime' } as Record<string, string>,
   template: {
     generic: 'Start from scratch',
     ramadan: 'Ramadan',
@@ -66,6 +67,18 @@ export const PT_TEMPLATE_ICONS: Record<string, string> = {
   disaster_4: 'i-lucide-siren',
   disaster_12: 'i-lucide-life-buoy',
   anytime: 'i-lucide-play'
+}
+
+export const PT_CAMPAIGN_TYPE_ICONS: Record<string, string> = {
+  fixed: 'i-lucide-calendar-range',
+  ongoing: 'i-lucide-infinity',
+  anytime: 'i-lucide-play'
+}
+
+export const PT_GOAL_ICONS: Record<string, string> = {
+  people: 'i-lucide-users',
+  prayer_time: 'i-lucide-clock',
+  coverage: 'i-lucide-sun-moon'
 }
 
 export function ptStatusColor(status: string): 'success' | 'warning' | 'neutral' | 'info' | 'error' {

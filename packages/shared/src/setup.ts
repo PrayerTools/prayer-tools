@@ -197,6 +197,17 @@ export function displayLength(c: CampaignDates): 'fixed' | 'ongoing' {
   return 'ongoing'
 }
 
+export type CampaignType = 'fixed' | 'ongoing' | 'anytime'
+
+// The kind of campaign the setup form offers: 'anytime' starts when each
+// person signs up, 'fixed' runs on shared dates for up to 50 days, 'ongoing' is any other.
+export function campaignType(c: Pick<CampaignDates, 'start_mode' | 'start_date' | 'end_mode' | 'end_date'>): CampaignType {
+  if (c.start_mode === 'join') return 'anytime'
+  if (c.end_mode === 'none') return 'ongoing'
+  if (c.start_date && c.end_date && daysBetween(c.start_date, c.end_date) > FIXED_MAX_DAYS) return 'ongoing'
+  return 'fixed'
+}
+
 export type CampaignStatus = 'upcoming' | 'active' | 'ended'
 
 export function campaignStatus(c: CampaignDates, now: Date = new Date()): CampaignStatus {

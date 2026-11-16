@@ -11,7 +11,7 @@ interface SiteRow {
   suspended: boolean
   url: string
   onboarding: { step?: string, completed?: boolean }
-  campaign: { id: string, name: string, state: string, start_date: string | null } | null
+  campaign: { id: string, name: string, state: string, start_date: string | null, type: string, goal: string } | null
   people: number
 }
 
@@ -187,6 +187,27 @@ function roleLabel(roles: string[]): string {
               class="text-(--ui-text-muted)"
             >
               No campaign yet
+            </p>
+            <p
+              v-if="s.campaign"
+              class="flex flex-wrap items-center gap-x-4 gap-y-1 text-(--ui-text-muted)"
+            >
+              <span class="inline-flex items-center gap-1.5">
+                <UIcon
+                  :name="PT_CAMPAIGN_TYPE_ICONS[s.campaign.type] ?? 'i-lucide-calendar'"
+                  class="size-4 shrink-0"
+                />
+                <span class="sr-only">Type:</span>
+                {{ PT_LABELS.campaignType[s.campaign.type] }}
+              </span>
+              <span class="inline-flex items-center gap-1.5">
+                <UIcon
+                  :name="PT_GOAL_ICONS[s.campaign.goal] ?? 'i-lucide-target'"
+                  class="size-4 shrink-0"
+                />
+                <span class="sr-only">Goal:</span>
+                {{ PT_LABELS.goal[s.campaign.goal] }}
+              </span>
             </p>
             <p class="text-(--ui-text-muted)">
               {{ s.people.toLocaleString() }} people · {{ roleLabel(s.roles) }}
