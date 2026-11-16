@@ -40,10 +40,17 @@ watch([() => props.dated, () => state.value.start_mode, () => state.value.end_mo
 
 type CampaignType = 'fixed' | 'ongoing' | 'anytime'
 const typeItems = [
-  { value: 'fixed', label: 'Short and focused', description: 'Everyone prays together for a set time, from a start date to an end date.' },
-  { value: 'ongoing', label: 'Ongoing', description: 'Starts on a date and keeps going, with or without an end date.' },
-  { value: 'anytime', label: 'Start anytime', description: 'No start date. Each person begins at day 1 when they sign up.' }
+  { value: 'fixed', label: 'Short and focused', description: 'Start date to end date', help: 'Everyone prays together for a set time, from a start date to an end date.' },
+  { value: 'ongoing', label: 'Ongoing', description: 'Keeps going', help: 'Starts on a date and keeps going, with or without an end date.' },
+  { value: 'anytime', label: 'Start anytime', description: 'Starts at sign-up', help: 'No start date. Each person begins at day 1 when they sign up.' }
 ]
+// Choice cards sit side by side when the form is wide enough, each with its picture at the bottom.
+const choiceCardsUi = {
+  root: '@container',
+  fieldset: 'grid gap-3 @xl:grid-cols-3',
+  wrapper: 'self-stretch flex flex-col',
+  description: 'flex-1 flex flex-col'
+}
 function typeOf(s: SetupDraft): CampaignType {
   if (s.start_mode === 'join') return 'anytime'
   if (s.end_mode === 'none') return 'ongoing'
@@ -87,7 +94,7 @@ const datedCampaign = computed(() => state.value.start_mode === 'date' && state.
 const goalItems = computed(() => (meta.value?.setup.goals ?? ['prayer_time', 'people', 'coverage']).map(g => ({
   value: g,
   label: PT_LABELS.goal[g],
-  description: g === 'coverage' && !datedCampaign.value ? 'Needs a start date and an end date.' : PT_LABELS.goalDescription[g],
+  description: g === 'coverage' && !datedCampaign.value ? 'Needs start and end dates.' : PT_LABELS.goalTag[g],
   disabled: g === 'coverage' && !datedCampaign.value
 })))
 const defaultSlot = computed(() => meta.value?.setup.defaultSlot ?? 15)
@@ -125,16 +132,33 @@ const lengthLabel = computed(() => {
       v-if="!props.dated && open('start_mode')"
       class="space-y-4 py-6 first:pt-0 last:pb-0"
     >
-      <UFormField
-        label="What kind of campaign is it?"
-        :ui="{ label: 'text-base font-semibold' }"
-      >
+      <UFormField :ui="{ label: 'text-base font-semibold' }">
+        <template #label>
+          What kind of campaign is it?
+          <InfoTip>
+            <p
+              v-for="t in typeItems"
+              :key="t.value"
+            >
+              <span class="font-medium text-(--ui-text-highlighted)">{{ t.label }}.</span> {{ t.help }}
+            </p>
+          </InfoTip>
+        </template>
         <URadioGroup
           :model-value="campaignType"
           :items="typeItems"
           variant="card"
+          :ui="choiceCardsUi"
           @update:model-value="(v) => chooseType(v as CampaignType)"
-        />
+        >
+          <template #description="{ item }">
+            <span>{{ item.description }}</span>
+            <PtSetupArt
+              :name="item.value"
+              class="mt-auto pt-3"
+            />
+          </template>
+        </URadioGroup>
       </UFormField>
     </section>
     <section class="space-y-4 py-6 first:pt-0 last:pb-0">
@@ -243,17 +267,34 @@ const lengthLabel = computed(() => {
       </template>
     </section>
     <section class="space-y-4 py-6 first:pt-0 last:pb-0">
-      <UFormField
-        label="What is the goal?"
-        :ui="{ label: 'text-base font-semibold' }"
-      >
+      <UFormField :ui="{ label: 'text-base font-semibold' }">
+        <template #label>
+          What is the goal?
+          <InfoTip>
+            <p
+              v-for="g in goalItems"
+              :key="g.value"
+            >
+              <span class="font-medium text-(--ui-text-highlighted)">{{ g.label }}.</span> {{ PT_LABELS.goalDescription[g.value] }}
+            </p>
+          </InfoTip>
+        </template>
         <URadioGroup
           :model-value="state.goal ?? undefined"
           :items="goalItems"
           variant="card"
+          :ui="choiceCardsUi"
           :disabled="!open('goal')"
           @update:model-value="(v) => { state.goal = v as SetupState['goal'] }"
-        />
+        >
+          <template #description="{ item }">
+            <span>{{ item.description }}</span>
+            <PtSetupArt
+              :name="item.value"
+              class="mt-auto pt-3"
+            />
+          </template>
+        </URadioGroup>
       </UFormField>
       <UFormField
         v-if="state.goal === 'people'"

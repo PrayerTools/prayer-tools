@@ -23,6 +23,7 @@ export const PT_LABELS = {
     disaster_12: 'Twelve days of daily prayer after a disaster.',
     anytime: 'No start date. Each person begins at day 1 when they sign up.'
   } as Record<string, string>,
+  goalTag: { people: 'Easiest to explain', prayer_time: 'Builds a habit', coverage: 'Big network, big challenge' } as Record<string, string>,
   goalDescription: {
     people: 'Count how many people commit to pray. The easiest goal to picture and share, such as "100 people praying 15 minutes".',
     prayer_time: 'Aim for an amount of prayer, such as 24 hours of prayer every day. Each person picks a set time to pray, and a plan helps them keep at it.',
