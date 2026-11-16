@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // New campaign, or a relaunch: a new campaign on the same site that starts
-// from the previous one's answers and content. A main campaign shows at the
+// from the previous one's answers and content, offering the newest edition of
+// each library that has one in place of the previous run's. A main campaign shows at the
 // site's address, one at a time; a side campaign runs beside it on fixed
 // dates at its own address. Its place and people group start as the current
 // campaign's (or, for a relaunch, the previous one's). How often there is new
@@ -28,6 +29,35 @@ watch(previous, (p) => {
   kind.value = c.kind
   draft.value.name = c.name.replace(/\d{4}/, (y: string) => String(Number(y) + 1))
 }, { immediate: true })
+
+// Libraries of the previous run with a newer edition. Each starts on the
+// newest one; KEEP_EDITION stays with the previous run's.
+interface EditionOffer {
+  siteLibraryId: string
+  library: { id: string, title: string, edition: string | null }
+  edited: boolean
+  newer: { id: string, title: string, edition: string | null }[]
+}
+const KEEP_EDITION = 'keep'
+const { data: editions } = useFetch<{ libraries: EditionOffer[] }>(() => `/api/pt/campaigns/${relaunchOf.value}/editions`, { immediate: !!relaunchOf.value, key: `pt-relaunch-editions-${relaunchOf.value}` })
+const offers = computed(() => (relaunchOf.value ? editions.value?.libraries ?? [] : []).map(o => ({ ...o, newest: o.newer[0]! })))
+type Offer = typeof offers.value[number]
+const editionChoice = ref<Record<string, string>>({})
+watch(offers, (list) => {
+  editionChoice.value = Object.fromEntries(list.map(o => [o.siteLibraryId, editionChoice.value[o.siteLibraryId] ?? o.newest.id]))
+}, { immediate: true })
+function editionLabel(lib: { title: string, edition: string | null }): string {
+  return lib.edition ? `${lib.title} · ${lib.edition} edition` : lib.title
+}
+function editionName(lib: { title: string, edition: string | null }): string {
+  return lib.edition ? `the ${lib.edition} edition` : lib.title
+}
+function editionItems(o: Offer) {
+  return [
+    { value: o.newest.id, label: editionLabel(o.newest), description: `Newer edition, used in place of ${editionName(o.library)}.` },
+    { value: KEEP_EDITION, label: editionLabel(o.library), description: 'Keep the previous campaign\'s content.' }
+  ]
+}
 
 // A site runs one main campaign at a time: the dates other main campaigns hold, and the one these dates would overlap.
 const { data: existing } = usePtCampaignList()
@@ -69,6 +99,8 @@ async function create() {
   try {
     const body: Record<string, unknown> = { ...toBody(), kind: kind.value }
     if (relaunchOf.value) body.relaunchOf = relaunchOf.value
+    const replaced = offers.value.filter(o => editionChoice.value[o.siteLibraryId] !== KEEP_EDITION).map(o => [o.siteLibraryId, o.newest.id])
+    if (replaced.length) body.editions = Object.fromEntries(replaced)
     const res = await $fetch<{ campaign: { id: string, published_at: string | null } }>('/api/pt/campaigns', { method: 'POST', body })
     await refreshNuxtData(ptCampaignsKey(slug.value))
     // A draft continues in the campaign's setup steps.
@@ -125,7 +157,9 @@ async function create() {
       variant="subtle"
       color="info"
       title="Starts from the previous campaign"
-      description="The new campaign reuses the same prayer content. Libraries you follow pick up their latest version; content you edited carries over. You can invite people from the past campaign with a site email."
+      :description="offers.length
+        ? 'The new campaign reuses the same prayer content, except where you choose a newer edition of a library below. Of the libraries it keeps, those you follow pick up their latest version and content you edited carries over. You can invite people from the past campaign with a site email.'
+        : 'The new campaign reuses the same prayer content. Libraries you follow pick up their latest version; content you edited carries over. You can invite people from the past campaign with a site email.'"
     />
 
     <UCard>
@@ -140,6 +174,33 @@ async function create() {
             :items="kindItems"
             variant="card"
           />
+        </UFormField>
+        <UFormField
+          v-if="offers.length"
+          :ui="{ label: 'text-base font-semibold' }"
+        >
+          <template #label>
+            Prayer content <InfoTip text="A library this campaign uses has a newer edition. Choose which one the new campaign starts with. The previous campaign keeps its content either way." />
+          </template>
+          <div class="space-y-4">
+            <div
+              v-for="o in offers"
+              :key="o.siteLibraryId"
+              class="space-y-2"
+            >
+              <URadioGroup
+                v-model="editionChoice[o.siteLibraryId]"
+                :items="editionItems(o)"
+                variant="card"
+              />
+              <p
+                v-if="o.edited"
+                class="text-sm text-(--ui-warning)"
+              >
+                This site edited its copy of {{ editionName(o.library) }}. Those edits stay with it and are not copied to {{ editionName(o.newest) }}.
+              </p>
+            </div>
+          </div>
         </UFormField>
         <PtCampaignFields
           v-model="draft"

@@ -85,8 +85,27 @@ export function ptCta(input: unknown) {
   return url && label ? { url, label } : {}
 }
 
+// A relaunch's chosen editions, as the previous campaign's site library → the
+// library that replaces it: a newer edition of the same series the caller may use.
+async function ptChosenEditions(tx: Transaction<Database>, userId: string, previous: CampaignRow | null, input: unknown): Promise<Map<string, string>> {
+  const chosen = new Map<string, string>()
+  if (input === undefined || input === null) return chosen
+  if (typeof input !== 'object' || Array.isArray(input)) ptBadRequest('Editions must map a site library to the library that replaces it.')
+  const entries = Object.entries(input)
+  if (!entries.length) return chosen
+  if (!previous) ptBadRequest('A newer edition can only be chosen when relaunching a campaign.')
+  const available = await ptNewerEditions(tx, userId, previous.id)
+  for (const [siteLibraryId, libraryId] of entries) {
+    const newer = available.find(a => a.siteLibraryId === siteLibraryId)?.newer
+    if (!newer?.some(n => n.id === libraryId)) ptBadRequest('A library can only be replaced by a newer edition of the same series.')
+    chosen.set(siteLibraryId, libraryId as string)
+  }
+  return chosen
+}
+
 // Creates a campaign from setup answers, relaunches `relaunchOf` with its
-// answers, libraries and look, or starts from `personal_template_id`.
+// answers, libraries and look (`editions` swaps libraries for newer editions),
+// or starts from `personal_template_id`.
 export async function ptCreateCampaign(tx: Transaction<Database>, ctx: TenantContext, b: Record<string, unknown>) {
   const site = await ptSite(tx)
   let base: Record<string, unknown> | undefined
@@ -102,6 +121,7 @@ export async function ptCreateCampaign(tx: Transaction<Database>, ctx: TenantCon
       b.end_date = new Date(Date.parse(b.start_date) + days * 86_400_000).toISOString().slice(0, 10)
     }
   }
+  const editions = await ptChosenEditions(tx, ctx.userId, previous, b.editions)
   let personal: PersonalTemplate | null = null
   if (!previous && typeof b.personal_template_id === 'string') {
     const id = b.personal_template_id
@@ -149,7 +169,12 @@ export async function ptCreateCampaign(tx: Transaction<Database>, ctx: TenantCon
   } as never).returningAll().executeTakeFirstOrThrow()
   if (previous) {
     const libs = await tx.selectFrom('pt_campaign_library').select(['site_library_id', 'position']).where('campaign_id', '=', previous.id).execute()
-    if (libs.length) await tx.insertInto('pt_campaign_library').values(libs.map(l => ({ campaign_id: created.id, site_library_id: l.site_library_id, position: l.position }))).execute()
+    const kept = libs.filter(l => !editions.has(l.site_library_id))
+    if (kept.length) await tx.insertInto('pt_campaign_library').values(kept.map(l => ({ campaign_id: created.id, site_library_id: l.site_library_id, position: l.position }))).execute()
+    for (const l of libs) {
+      const libraryId = editions.get(l.site_library_id)
+      if (libraryId) await ptAddCampaignContent(tx, ctx, { campaignId: created.id, libraryId }, l.position)
+    }
   }
   if (personal) await addTemplateLibraries(ptTx(tx), created.id, personal.library_ids, ctx.userId)
   return { campaign: normalizeCampaign(created) }

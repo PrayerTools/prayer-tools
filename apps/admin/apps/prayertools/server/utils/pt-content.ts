@@ -3,6 +3,7 @@ import type { Database } from '#core/server/database/schema'
 import type { TenantContext } from '#tenant/server'
 import type { TiptapDoc } from '@prayertools/shared/db/schema'
 import { jsonb } from '@prayertools/shared/db/json'
+import { newerEditions } from '@prayertools/shared/editions'
 
 type Tx = Transaction<Database>
 
@@ -162,9 +163,41 @@ export async function ptSaveSiteEntry(tx: Tx, ctx: TenantContext, b: { siteLibra
   return { ok: true }
 }
 
+// The campaign's libraries that have newer editions of their series, each with
+// those the user may use as in the catalog (published; public, theirs or shared with them), newest first.
+export async function ptNewerEditions(tx: Tx, userId: string, campaignId: string) {
+  const stack = await tx.selectFrom('pt_campaign_library as cl')
+    .innerJoin('pt_site_library as sl', 'sl.id', 'cl.site_library_id')
+    .innerJoin('pt_library as l', 'l.id', 'sl.library_id')
+    .select(['sl.id as siteLibraryId', 'sl.frozen_version', 'l.id', 'l.owner_user_id', 'l.title', 'l.series', 'l.edition'])
+    .where('cl.campaign_id', '=', campaignId).where('l.series', 'is not', null)
+    .orderBy('cl.position').execute()
+  if (!stack.length) return []
+  // An edition the campaign already uses is not offered in place of another.
+  const stacked = new Set(stack.map(s => s.id))
+  const candidates = (await tx.selectFrom('pt_library').select(['id', 'owner_user_id', 'title', 'series', 'edition'])
+    .where(sql<string>`lower(series)`, 'in', [...new Set(stack.map(s => s.series!.toLowerCase()))])
+    .where('published_version', '>', 0)
+    .where(eb => eb.or([
+      eb('visibility', '=', 'published'),
+      eb('owner_user_id', '=', userId),
+      sql<boolean>`pt_library_shares_has_member(pt_library.id, ${userId}::uuid)`
+    ]))
+    .execute()).filter(c => !stacked.has(c.id))
+  const edited = new Set((await tx.selectFrom('pt_site_entry').select('site_library_id').distinct()
+    .where('site_library_id', 'in', stack.map(s => s.siteLibraryId)).where('edited', '=', true).execute()).map(r => r.site_library_id))
+  return stack.map(s => ({
+    siteLibraryId: s.siteLibraryId,
+    library: { id: s.id, title: s.title, edition: s.edition },
+    // The site's edits belong to its copy of this edition.
+    edited: s.frozen_version !== null || edited.has(s.siteLibraryId),
+    newer: newerEditions(s, candidates).map(n => ({ id: n.id, title: n.title, edition: n.edition }))
+  })).filter(s => s.newer.length)
+}
+
 // Stacks content on a campaign: a catalog library the site follows, or a new
-// site library to write from scratch.
-export async function ptAddCampaignContent(tx: Tx, ctx: TenantContext, b: { campaignId?: string, libraryId?: string, title?: string, cadence?: string }) {
+// site library to write from scratch. It goes last, or at `position`.
+export async function ptAddCampaignContent(tx: Tx, ctx: TenantContext, b: { campaignId?: string, libraryId?: string, title?: string, cadence?: string }, position?: number) {
   const campaign = await tx.selectFrom('pt_campaign').select(['id', 'cadence', 'name']).where('id', '=', String(b.campaignId)).executeTakeFirst()
   if (!campaign) ptNotFound('Campaign not found.')
   let siteLibraryId: string
@@ -178,7 +211,7 @@ export async function ptAddCampaignContent(tx: Tx, ctx: TenantContext, b: { camp
     siteLibraryId = (await tx.insertInto('pt_site_library').values({ library_id: null, title, cadence }).returning('id').executeTakeFirstOrThrow()).id
   }
   const max = await tx.selectFrom('pt_campaign_library').select(eb => eb.fn.max('position').as('max')).where('campaign_id', '=', campaign.id).executeTakeFirst()
-  await tx.insertInto('pt_campaign_library').values({ campaign_id: campaign.id, site_library_id: siteLibraryId, position: Number(max?.max ?? -1) + 1 })
+  await tx.insertInto('pt_campaign_library').values({ campaign_id: campaign.id, site_library_id: siteLibraryId, position: position ?? Number(max?.max ?? -1) + 1 })
     .onConflict(oc => oc.columns(['campaign_id', 'site_library_id']).doNothing()).execute()
   return { siteLibraryId }
 }
