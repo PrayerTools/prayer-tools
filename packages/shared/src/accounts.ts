@@ -210,14 +210,16 @@ export async function deleteAccountOnRequest(db: Db, userId: string): Promise<{ 
 }
 
 // Removes an account nothing uses any more: not in use as above, and with no
-// subscription, contact or live admin session. Runs on the admin connection,
-// since use spans every site.
+// subscription, contact, Google / Apple link or live admin session, since
+// nobody asked for it to go. Runs on the admin connection, since use spans
+// every site.
 export async function deleteAccountIfUnused(tx: Tx, userId: string): Promise<boolean> {
   const res = await sql<{ id: string }>`
     DELETE FROM users u
     WHERE u.id = ${userId} AND NOT ${accountInUse}
       AND NOT EXISTS (SELECT 1 FROM pt_subscription s WHERE s.user_id = u.id)
       AND NOT EXISTS (SELECT 1 FROM crm_records r WHERE r.user_id = u.id)
+      AND NOT EXISTS (SELECT 1 FROM user_identities i WHERE i.user_id = u.id)
       AND NOT EXISTS (SELECT 1 FROM sessions se WHERE se.user_id = u.id AND se.expires_at > now())
     RETURNING u.id
   `.execute(tx)

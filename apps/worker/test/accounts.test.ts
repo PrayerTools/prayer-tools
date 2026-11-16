@@ -175,15 +175,13 @@ describe('accounts', () => {
     await env.admin.insertInto('memberships').values({ user_id: account.id, org_id: orgId }).execute()
     expect(await env.admin.transaction().execute(tx => deleteAccountIfUnused(tx, account.id))).toBe(false)
     await env.admin.deleteFrom('memberships').where('user_id', '=', account.id).execute()
-    await env.admin.insertInto('user_identities').values({ user_id: account.id, provider: 'apple', subject: uid() }).execute()
-    await sql`UPDATE user_identities SET refresh_token_enc = 'enc' WHERE user_id = ${account.id}`.execute(env.admin)
+    await env.admin.insertInto('user_identities').values({ user_id: account.id, provider: 'google', subject: uid() }).execute()
     expect(await env.admin.transaction().execute(tx => deleteAccountIfUnused(tx, account.id))).toBe(false)
-    await sql`UPDATE user_identities SET refresh_token_enc = NULL WHERE user_id = ${account.id}`.execute(env.admin)
+    await env.admin.deleteFrom('user_identities').where('user_id', '=', account.id).execute()
     expect(await env.admin.transaction().execute(tx => deleteAccountIfUnused(tx, account.id))).toBe(true)
-    expect(await env.admin.selectFrom('user_identities').select('id').where('user_id', '=', account.id).execute()).toHaveLength(0)
   })
 
-  // An account a public Google / Apple sign-in made, with a sign-in on the public server.
+  // An account a public Google / Apple sign-in made.
   async function socialAccount(created = new Date()) {
     const email = testEmail(env)
     const user = await env.admin.insertInto('users').values({ email, display_name: 'Ruth', verified: true, created }).returning('id').executeTakeFirstOrThrow()
@@ -192,13 +190,16 @@ describe('accounts', () => {
     return user.id
   }
 
-  it('sweeps an account a public Google / Apple sign-in made that never prayed with a site', async () => {
-    const old = await socialAccount(new Date(Date.now() - 2 * DAY))
-    const fresh = await socialAccount()
+  it('sweeps an old account with nothing, but keeps one with only a Google identity', async () => {
+    const created = new Date(Date.now() - 2 * DAY)
+    const email = testEmail(env)
+    const bare = await env.admin.insertInto('users').values({ email, display_name: '', verified: true, created }).returning('id').executeTakeFirstOrThrow()
+    const linked = await env.admin.insertInto('users').values({ email: testEmail(env), display_name: 'Ruth', verified: true, created }).returning('id').executeTakeFirstOrThrow()
+    await env.admin.insertInto('user_identities').values({ user_id: linked.id, provider: 'google', subject: uid() }).execute()
     await deleteUnusedAccounts(testCtx(env))
-    const users = await env.admin.selectFrom('users').select('id').where('id', 'in', [old, fresh]).execute()
-    expect(users.map(u => u.id)).toEqual([fresh])
-    expect(await env.admin.selectFrom('user_identities').select('id').where('user_id', '=', old).execute()).toHaveLength(0)
+    const users = await env.admin.selectFrom('users').select('id').where('id', 'in', [bare.id, linked.id]).execute()
+    expect(users.map(u => u.id)).toEqual([linked.id])
+    expect(await env.admin.selectFrom('user_identities').select('id').where('user_id', '=', linked.id).execute()).toHaveLength(1)
   })
 
   it('deletes an account signed in with Google / Apple on request, with its links, sign-ins and codes', async () => {
