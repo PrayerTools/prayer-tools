@@ -1,9 +1,30 @@
 <script setup lang="ts">
 // Per-day 24/7 coverage as a month calendar; shade deepens with coverage.
+// Each campaign day is a button that selects it.
 const props = defineProps<{
   days: { date: string, percent: number }[]
   today?: string
 }>()
+const selected = defineModel<string | null>('selected', { default: null })
+const root = ref<HTMLElement | null>(null)
+
+// The one day Tab stops on; the arrow keys reach the others.
+const tabStop = computed(() => props.days.some(d => d.date === selected.value) ? selected.value : props.days[0]?.date)
+
+const KEY_STEPS: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7, Home: -Infinity, End: Infinity }
+
+function onKeydown(e: KeyboardEvent, date: string) {
+  const step = KEY_STEPS[e.key]
+  if (step === undefined) return
+  e.preventDefault()
+  const at = props.days.findIndex(d => d.date === date)
+  const next = props.days[Math.min(props.days.length - 1, Math.max(0, at + step))]
+  if (next) root.value?.querySelector<HTMLElement>(`[data-date="${next.date}"]`)?.focus()
+}
+
+function dayName(date: string, percent: number): string {
+  return `${ptFormatDate(date, { dateStyle: 'full' })}${date === props.today ? ', today' : ''}: ${Math.round(percent)}% covered`
+}
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
@@ -38,7 +59,10 @@ function shade(pct: number): string {
 </script>
 
 <template>
-  <div class="space-y-4">
+  <div
+    ref="root"
+    class="space-y-4"
+  >
     <div class="flex flex-wrap items-center gap-3 text-xs text-(--ui-text-muted)">
       <span>Coverage per day:</span>
       <span class="flex items-center gap-1"><span class="size-3 rounded-sm bg-(--ui-bg-elevated) border border-(--ui-border)" /> none</span>
@@ -46,6 +70,8 @@ function shade(pct: number): string {
       <span class="flex items-center gap-1"><span class="size-3 rounded-sm bg-(--ui-primary)/40" /> under 50%</span>
       <span class="flex items-center gap-1"><span class="size-3 rounded-sm bg-(--ui-primary)/70" /> under 100%</span>
       <span class="flex items-center gap-1"><span class="size-3 rounded-sm bg-(--ui-primary)" /> 24/7</span>
+      <span class="flex items-center gap-1.5 ps-1"><span class="size-3 rounded-sm bg-(--ui-primary)/40 ring-2 ring-(--ui-text)" /> today</span>
+      <span class="flex items-center gap-2 ps-1.5"><span class="size-2.5 rounded-xs bg-(--ui-primary)/40 outline-2 outline-offset-2 outline-(--ui-text)" /> selected</span>
     </div>
     <div class="grid gap-6 sm:grid-cols-2">
       <div
@@ -56,14 +82,15 @@ function shade(pct: number): string {
           {{ m.label }}
         </div>
         <div
-          class="grid grid-cols-7 gap-0.5 text-center text-xs"
-          role="grid"
+          class="grid grid-cols-7 gap-1.5 text-center text-xs"
+          role="group"
           :aria-label="m.label"
         >
           <div
             v-for="w in WEEKDAYS"
             :key="w"
             class="text-(--ui-text-muted) pb-1"
+            aria-hidden="true"
           >
             {{ w }}
           </div>
@@ -72,17 +99,28 @@ function shade(pct: number): string {
             :key="c?.date ?? `lead-${i}`"
           >
             <div v-if="!c" />
-            <div
-              v-else
-              class="aspect-square rounded-sm flex flex-col items-center justify-center leading-tight"
-              :class="[c.info ? shade(c.info.percent) : 'text-(--ui-text-dimmed)', c.date === props.today ? 'ring-2 ring-(--ui-text)' : '']"
-              :title="c.info ? `${ptFormatDate(c.date, { dateStyle: 'full' })}: ${Math.round(c.info.percent)}% covered` : undefined"
+            <button
+              v-else-if="c.info"
+              type="button"
+              class="aspect-square rounded-sm flex flex-col items-center justify-center leading-tight cursor-pointer outline-(--ui-text) outline-offset-[3px] focus-visible:outline-2 focus-visible:outline-dashed"
+              :class="[shade(c.info.percent), c.date === props.today ? 'ring-2 ring-(--ui-text)' : '', c.date === selected ? 'outline-2' : '']"
+              :data-date="c.date"
+              :tabindex="c.date === tabStop ? 0 : -1"
+              :aria-pressed="c.date === selected"
+              :aria-label="dayName(c.date, c.info.percent)"
+              :title="dayName(c.date, c.info.percent)"
+              @click="selected = c.date"
+              @keydown="onKeydown($event, c.date)"
             >
               <span>{{ c.n }}</span>
-              <span
-                v-if="c.info"
-                class="text-[10px] opacity-80 tabular-nums"
-              >{{ Math.round(c.info.percent) }}%</span>
+              <span class="text-[10px] opacity-80 tabular-nums">{{ Math.round(c.info.percent) }}%</span>
+            </button>
+            <div
+              v-else
+              class="aspect-square rounded-sm flex flex-col items-center justify-center leading-tight text-(--ui-text-dimmed)"
+              :class="c.date === props.today ? 'ring-2 ring-(--ui-text)' : ''"
+            >
+              <span>{{ c.n }}</span>
             </div>
           </template>
         </div>
