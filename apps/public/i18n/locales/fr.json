@@ -239,6 +239,9 @@
     "notify_intro_campaign": "Laissez votre adresse e-mail et {site} vous préviendra lorsque {campaign} reprendra.",
     "notify_button": "Me prévenir",
     "notify_done": "Presque terminé ! Consultez vos e-mails et confirmez : nous vous préviendrons lorsqu'elle reprendra.",
+    "notify_as": "Connecté en tant que {email}",
+    "notify_as_named": "Connecté en tant que {name} ({email})",
+    "notify_already": "Vous l'avez déjà demandé. Nous vous écrirons une fois lorsque cette campagne reprendra.",
     "again_title": "{campaign} reprend"
   },
   "archived": {

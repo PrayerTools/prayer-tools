@@ -5,7 +5,8 @@ import { addDays, todayIn } from '@prayertools/shared/dates'
 import { suppress } from '@prayertools/shared/email/suppression'
 import { ptMarketingHost, WAITING_AUDIENCE_PREFIX } from '@prayertools/shared/marketing-host'
 import { campaignById } from '@prayertools/shared/campaigns'
-import { confirmNotify, nextRun, notifyOffer, requestNotify, waitingCounts } from '@prayertools/shared/notify-requests'
+import { accountById, type Account } from '@prayertools/shared/accounts'
+import { confirmNotify, nextRun, notifyOffer, requestNotify, requestNotifyAsAccount, waitingCounts } from '@prayertools/shared/notify-requests'
 import { announceRunsAgain } from '../src/daily/runs-again'
 import { cleanup, closeEnv, createCampaign, createSite, mailsTo, testCtx, testEmail, testEnv, type TestEnv } from './helpers'
 
@@ -236,5 +237,97 @@ describe('notify me when a campaign runs again', () => {
     const ctx = testCtx(env)
     await announceRunsAgain(ctx, ctx.log)
     expect(await withOrg(env.app, orgId, tx => waitingCounts(tx))).toEqual(new Map())
+  })
+})
+
+describe('notify me when signed in', () => {
+  async function signedIn(name = 'Signed In') {
+    const email = testEmail(env, 'account')
+    const row = await env.admin.insertInto('users').values({ email, display_name: name, verified: true, created: new Date(), updated: new Date() }).returning('id').executeTakeFirstOrThrow()
+    return (await accountById(env.admin, row.id))!
+  }
+
+  // As the public server asks for a signed-in visitor.
+  async function askAsAccount(orgId: string, campaignId: string, account: Account) {
+    return await withOrg(env.app, orgId, async (tx) => {
+      const site = await tx.selectFrom('pt_site').select('status').executeTakeFirstOrThrow()
+      const campaign = (await campaignById(tx, campaignId, { drafts: true }))!
+      return await requestNotifyAsAccount(tx, { site, campaign, account, language: 'en', consent: { wording: { key: 'between.notify_title' }, surface: 'notify_form', source: 'test', language: 'en' } })
+    })
+  }
+
+  async function requestsOf(orgId: string, email: string) {
+    return await withOrg(env.admin, orgId, tx => tx
+      .selectFrom('pt_notify_request as n')
+      .innerJoin('crm_records as r', 'r.id', 'n.contact_id')
+      .innerJoin('crm_contact_channels as cc', 'cc.record_id', 'n.contact_id')
+      .innerJoin('crm_channels as ch', 'ch.id', 'cc.channel_id')
+      .leftJoin('crm_channel_consents as k', join => join.onRef('k.channel_id', '=', 'ch.id').on('k.purpose', '=', PURPOSE_SITE_UPDATES))
+      .select(['n.confirmed_at', 'n.token_hash', 'r.user_id', 'ch.verified', 'k.status as consent'])
+      .where('ch.normalized_value', '=', email.toLowerCase())
+      .execute())
+  }
+
+  it('records a confirmed request on the contact linked to the account, and counts it as waiting', async () => {
+    const { orgId } = await createSite(env)
+    const first = await endedCampaign(orgId)
+    const account = await signedIn()
+
+    expect(await askAsAccount(orgId, first, account)).toBe('confirmed')
+    const rows = await requestsOf(orgId, account.email!)
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({ token_hash: null, user_id: account.id, verified: true, consent: 'opt_in' })
+    expect(rows[0]!.confirmed_at).not.toBeNull()
+    expect(await withOrg(env.app, orgId, tx => waitingCounts(tx))).toEqual(new Map([[first, 1]]))
+  })
+
+  it('does nothing more when the account asks again', async () => {
+    const { orgId } = await createSite(env)
+    const first = await endedCampaign(orgId)
+    const account = await signedIn()
+    await askAsAccount(orgId, first, account)
+    const before = await requestsOf(orgId, account.email!)
+
+    expect(await askAsAccount(orgId, first, account)).toBe('already')
+    expect(await requestsOf(orgId, account.email!)).toEqual(before)
+  })
+
+  it('confirms a request still waiting on its emailed link', async () => {
+    const { orgId } = await createSite(env)
+    const first = await endedCampaign(orgId)
+    const account = await signedIn()
+    const pending = await askToHear(orgId, first, { email: account.email!, confirm: false })
+
+    expect(await askAsAccount(orgId, first, account)).toBe('confirmed')
+    const rows = await requestsOf(orgId, account.email!)
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.confirmed_at).not.toBeNull()
+    expect(await withOrg(env.app, orgId, tx => confirmNotify(tx, pending.token!))).toBeNull()
+    expect(await askAsAccount(orgId, first, account)).toBe('already')
+  })
+
+  it('answers a signed-in request when the next run is published', async () => {
+    const { orgId } = await createSite(env)
+    const first = await endedCampaign(orgId)
+    const account = await signedIn()
+    await askAsAccount(orgId, first, account)
+    const next = await createCampaign(env, orgId, { name: 'Lent 2027', relaunchOf: first, startDate: addDays(today, 10), endDate: addDays(today, 40) })
+    const ctx = testCtx(env)
+
+    expect(await announceRunsAgain(ctx, ctx.log)).toMatchObject({ sent: 1 })
+    expect(mailsTo(ctx.mails, account.email!).map(m => m.subject)).toEqual(['Lent 2027 is running again'])
+    expect(await requestOf(orgId, account.email!)).toMatchObject({ notified_campaign_id: next })
+  })
+
+  it('refuses a campaign whose page offers no request form', async () => {
+    const { orgId } = await createSite(env)
+    const running = await createCampaign(env, orgId, { name: 'Pray for France', startDate: addDays(today, -5), endMode: 'none' })
+    const first = await endedCampaign(orgId)
+    await createCampaign(env, orgId, { name: 'Lent 2027', relaunchOf: first, startDate: addDays(today, 10), endDate: addDays(today, 40) })
+    const account = await signedIn()
+
+    expect(await askAsAccount(orgId, running, account)).toBe('closed')
+    expect(await askAsAccount(orgId, first, account)).toBe('closed')
+    expect(await withOrg(env.admin, orgId, tx => tx.selectFrom('pt_notify_request').select('id').execute())).toEqual([])
   })
 })
