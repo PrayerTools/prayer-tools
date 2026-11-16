@@ -1,11 +1,11 @@
 // Your sites: every site the user belongs to, with role, status, live
-// address, current or next campaign and people count, each read inside its
+// address, current or next campaign (with its type and goal) and people count, each read inside its
 // own org; and the invitations to sites waiting for their email address.
 import { requireAuth } from '#core/server/utils/auth'
 import { db } from '#core/server/utils/database'
 import { getInviteOrgs } from '#core/server/utils/invites'
 import { withOrgScope } from '#tenant/server'
-import { pickCurrentCampaign } from '@prayertools/shared/setup'
+import { campaignType, pickCurrentCampaign } from '@prayertools/shared/setup'
 import { peopleCount } from '@prayertools/shared/stats'
 import { siteUrlFor } from '@prayertools/shared/site'
 import { loadCampaigns } from '@prayertools/shared/campaigns'
@@ -32,7 +32,7 @@ export default defineEventHandler(async (event) => {
         status: site.status,
         onboarding: site.onboarding,
         url: await siteUrlFor(tx, m.id, m.slug),
-        campaign: current ? { id: current.campaign.id, name: current.campaign.name, state: current.state, start_date: current.campaign.start_date } : null,
+        campaign: current ? { id: current.campaign.id, name: current.campaign.name, state: current.state, start_date: current.campaign.start_date, type: campaignType(current.campaign), goal: current.campaign.goal } : null,
         people: current ? await peopleCount(tx, current.campaign) : 0
       }
     })

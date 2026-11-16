@@ -4,7 +4,7 @@
 // Counts only; no personal data.
 import { sql } from 'kysely'
 import { goalProgress, prayingNow, statTotals, activeRules } from '@prayertools/shared/stats'
-import { buildGrid, coverageByDay } from '@prayertools/shared/coverage'
+import { buildGrid, coverageCalendar } from '@prayertools/shared/coverage'
 import { campaignStatus, displayLength, slotMinutes } from '@prayertools/shared/setup'
 import { toIsoDate } from '@prayertools/shared/dates'
 import { campaignById } from '@prayertools/shared/campaigns'
@@ -27,6 +27,7 @@ export default definePtHandler('pt.stats.read', async (event, tx) => {
   for (const k of Object.keys(topDims)) topDims[k] = topDims[k]!.sort((a, b) => b.total - a.total).slice(0, 15)
   let progress = null
   let coverage = null
+  let coverageSlots = null
   let commitments = 0
   if (campaign) {
     progress = await goalProgress(t, campaign, site.settings_merged.default_duration_min)
@@ -34,7 +35,9 @@ export default definePtHandler('pt.stats.read', async (event, tx) => {
     commitments = Number(cRow?.n ?? 0)
     if (campaign.goal === 'coverage' && campaign.start_date && campaign.end_date) {
       const grid = buildGrid(campaign.start_date, campaign.end_date, campaign.timezone, await activeRules(t, campaign.id), site.settings_merged.default_duration_min, slotMinutes(campaign))
-      coverage = coverageByDay(grid, campaign.start_date, campaign.end_date, campaign.timezone).map(d => ({ date: d.date, percent: d.percent }))
+      const { days, ...slots } = coverageCalendar(grid, campaign.start_date, campaign.end_date, campaign.timezone)
+      coverage = days
+      coverageSlots = slots
     }
   }
   const anon = await tx.selectFrom('pt_subscription as s').select(eb => eb.fn.countAll<string>().as('n'))
@@ -48,6 +51,7 @@ export default definePtHandler('pt.stats.read', async (event, tx) => {
     dims: topDims,
     progress,
     coverage,
+    coverageSlots,
     commitments,
     prayingNow: await prayingNow(t),
     anonymousApp: Number(anon?.n ?? 0)

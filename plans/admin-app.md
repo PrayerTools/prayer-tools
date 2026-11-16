@@ -90,7 +90,7 @@ Keeps what today's flow does behind the scenes: Turnstile and a bad-words check 
 
 The marketing layer (Doxa's marketing system — composer, Tiptap templates, audiences, senders, consent, one-click unsubscribe — ported to Nuxtinator), scoped to a site and built on the CRM.
 
-- **Audiences:** the current campaign's intercessors, past campaigns' intercessors (re-engagement for a relaunch), everyone who consented, everyone who ticked one of the site's custom consent options. Consent is per site, so it carries across campaigns.
+- **Audiences:** each campaign's intercessors, by campaign name (a past campaign's for re-engagement or a relaunch), everyone who consented, everyone who ticked one of the site's custom consent options. An email can go to several audiences; each person gets it once. Consent is per site, so it carries across campaigns.
 - **Before sending:** the confirm names the site and how many people the email reaches there ("Send to 1,240 people on Pray for Damascus?"); a multi-site send lists every site and its count.
 - **Several sites at once** (a secondary action, see Navigation): a champion can write one email and send it to chosen audiences on several of their sites. Each person gets one email, from the most recently joined chosen site where they consented; unsubscribing stops updates from every chosen site they belong to (see [architecture.md](architecture.md)).
 - **Templates and variables:** start from the champion's personal templates; variables (`{site name}`, `{campaign name}`, `{past campaign}`, `{site link}`, `{first name}`) are filled in per site.

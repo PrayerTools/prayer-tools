@@ -86,20 +86,20 @@ describe('marketing', () => {
     const versions = jsonb({ en: { subject: 'Hi', content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'News' }] }] } } })
     await withOrg(env.app, a.orgId, tx => sql`
       INSERT INTO marketing_email (versions, source_language, audiences, status, scheduled_at)
-      VALUES (${versions}, 'en', '{current_campaign}', 'scheduled', now() - interval '1 minute')
+      VALUES (${versions}, 'en', '{consented_updates}', 'scheduled', now() - interval '1 minute')
     `.execute(tx))
     const user = await env.admin.insertInto('users').values({ email: `u-${Date.now()}@test.example`, display_name: 'Champion', created: new Date(), updated: new Date() }).returning('id').executeTakeFirstOrThrow()
     env.users.push(user.id)
     const parent = await sql<{ id: string }>`
       INSERT INTO marketing_parent (owner_user_id, versions, source_language, org_ids, audiences)
-      VALUES (${user.id}, ${versions}, 'en', ${`{${a.orgId},${b.orgId}}`}::uuid[], '{current_campaign}') RETURNING id
+      VALUES (${user.id}, ${versions}, 'en', ${`{${a.orgId},${b.orgId}}`}::uuid[], '{consented_updates}') RETURNING id
     `.execute(env.admin)
     await asUser(env.app as never, user.id, tx => scheduleParent(tx, parent.rows[0]!.id, user.id, new Date(Date.now() - 60_000)))
     // A delivery claimed by a crashed pass long ago.
     await withOrg(env.app, b.orgId, async (tx) => {
       const email = await sql<{ id: string }>`
         INSERT INTO marketing_email (versions, source_language, audiences, status, started_at)
-        VALUES (${versions}, 'en', '{current_campaign}', 'sending', now()) RETURNING id
+        VALUES (${versions}, 'en', '{consented_updates}', 'sending', now()) RETURNING id
       `.execute(tx)
       await sql`
         INSERT INTO marketing_delivery (email_id, address, language, status, claimed_at)

@@ -33,7 +33,7 @@ There are no campaign types. A campaign is described by four setup answers; temp
 - While it is upcoming or running, the site's landing page shows a card linking to it. Only the landing page does.
 - Intercessors keep one subscription per site, with commitments in each campaign they join. There is no option to pause main-campaign reminders during a side campaign.
 - Relaunching a side campaign keeps it a side campaign and copies its landing page.
-- Site email audiences can pick any campaign by name, as well as the current main campaign and past campaigns.
+- Site email audiences can pick any campaign by name.
 
 ## Goals and commitments
 

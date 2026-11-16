@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyTemplate, campaignEndDate, campaignLength, offeredTemplates, campaignStatus, campaignsOverlap, defaultDuration, displayLength, durationOptions, durationRule, overlappingCampaign, pickCurrentCampaign, slotMinutes, suggestCampaignSlug, suggestSideSlug, validateSetup, type CampaignDates } from '../src/setup'
+import { applyTemplate, campaignEndDate, campaignLength, offeredTemplates, campaignStatus, campaignType, campaignsOverlap, defaultDuration, displayLength, durationOptions, durationRule, overlappingCampaign, pickCurrentCampaign, slotMinutes, suggestCampaignSlug, suggestSideSlug, validateSetup, type CampaignDates } from '../src/setup'
 
 const NY = 'America/New_York'
 
@@ -13,6 +13,15 @@ describe('displayLength', () => {
     expect(displayLength(c({ start_date: '2026-03-01', end_date: '2026-04-21' }))).toBe('ongoing')
     expect(displayLength(c({ end_mode: 'none', end_date: null }))).toBe('ongoing')
     expect(displayLength(c({ start_mode: 'join', start_date: null, end_mode: 'days', end_date: null, length_days: 7 }))).toBe('ongoing')
+  })
+})
+
+describe('campaignType', () => {
+  it('names the kind of campaign from how it starts and ends', () => {
+    expect(campaignType(c({ start_date: '2026-03-01', end_date: '2026-04-20' }))).toBe('fixed')
+    expect(campaignType(c({ start_date: '2026-03-01', end_date: '2026-04-21' }))).toBe('ongoing')
+    expect(campaignType(c({ end_mode: 'none', end_date: null }))).toBe('ongoing')
+    expect(campaignType(c({ start_mode: 'join', start_date: null, end_mode: 'days', end_date: null, length_days: 7 }))).toBe('anytime')
   })
 })
 
