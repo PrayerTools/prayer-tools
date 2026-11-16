@@ -10,7 +10,7 @@ Implementation of the plans in [plans/](plans/): each site is a Nuxtinator org; 
 | `apps/admin` | `app.prayer.tools` — Nuxtinator host (SPA). Fetched layers in `_layers/` (see `layers.ts`, `layers.lock.json`); our layers in `apps/admin/apps/`: `prayertools` (sites, campaigns, content, libraries, landing page, intercessors, stats, domains, team, operator screens) and `marketing` (site email, templates, multi-site sends, one-click unsubscribe; written to move into Nuxtinator later). Owns every migration. |
 | `apps/public` | Site domains, `api.` (app API, OpenAPI at `/v1/openapi.json`), `go.`, and `/my` — Nuxt SSR with i18n (en, es, fr, pt, ar; others fall back to English UI). |
 | `apps/worker` | Reminder sweep, job queue (thank-yous, check-ins, domain alerts, push announcements), marketing delivery, hourly/daily sweeps (closing campaigns, personal-start completion, check-ins, unverified cleanup, app inactivity, stats refresh, domain health, retention, partitions). |
-| `scripts/` | `db-setup.ts` (roles + database), `migrate.ts` (migrations without booting the admin app), `seed-dev.ts` (sample library and sites), `admin-shots.ts` (screenshots + console errors). |
+| `scripts/` | `db-setup.ts` (roles + database), `migrate.ts` (migrations without booting the admin app), `seed-dev.ts` (sample library and sites), `seed-use-cases.ts` (a site per use case in `USE_CASES.md`), `admin-shots.ts` (screenshots + console errors). |
 | `docs/dev-context.md` | Conventions and local environment for anyone working here. |
 
 ## Local setup
