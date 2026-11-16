@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { MarketingDraft, MarketingLanguage, MarketingVariable, MarketingVersions } from '../../utils/marketing-ui'
+import type { MarketingDraft, MarketingLanguage, MarketingStep, MarketingVariable, MarketingVersions } from '../../utils/marketing-ui'
 import { MARKETING_FAILED_REASONS, MARKETING_PAUSE_REASONS, MARKETING_SKIP_REASONS, MARKETING_STATUS, marketingDate, marketingErrorMessage, marketingHasText } from '../../utils/marketing-ui'
 
 definePageMeta({ middleware: 'auth' })
@@ -99,23 +99,50 @@ function toggleAudience(key: string, on: boolean | 'indeterminate') {
   draft.value.audiences = [...set]
 }
 
-const problems = computed(() => {
+// A draft is written in steps; the step in view is kept in the URL, so it holds when a new email gets its id.
+const STEPS: MarketingStep[] = ['details', 'content', 'review']
+const step = computed<MarketingStep>(() => STEPS.find(s => s === route.query.step) ?? 'details')
+
+// What each step still needs before the next one opens.
+const stepProblems = computed<Record<MarketingStep, string[]>>(() => {
   const src = draft.value.versions[draft.value.source_language]
-  const out: string[] = []
-  if (!src?.subject.trim()) out.push('Add a subject.')
-  if (!marketingHasText(src?.content)) out.push('Write the email.')
-  if (!draft.value.audiences.length) out.push('Choose at least one audience.')
-  return out
+  return {
+    details: [...(src?.subject.trim() ? [] : ['Add a subject.']), ...(draft.value.audiences.length ? [] : ['Choose at least one audience.'])],
+    content: marketingHasText(src?.content) ? [] : ['Write the email.'],
+    review: []
+  }
+})
+const problems = computed(() => STEPS.flatMap(s => stepProblems.value[s]))
+
+const stepTabs = computed(() => {
+  const needsDetails = stepProblems.value.details.length > 0
+  return [
+    { label: 'Subject and audience', value: 'details', icon: 'i-lucide-users' },
+    { label: 'Write', value: 'content', icon: 'i-lucide-pen-line', disabled: needsDetails },
+    { label: 'Preview and send', value: 'review', icon: 'i-lucide-send', disabled: needsDetails || stepProblems.value.content.length > 0 }
+  ]
 })
 
-async function save(quiet = false): Promise<boolean> {
+const chosenAudiences = computed(() => audiences.value.filter(a => draft.value.audiences.includes(a.key)).map(a => a.label).join(', '))
+
+function setStep(to: MarketingStep) {
+  return navigateTo({ query: { ...route.query, step: to } }, { replace: true })
+}
+
+async function saveAndContinue() {
+  const to = STEPS[STEPS.indexOf(step.value) + 1]
+  if (!to || !(await save(true, to))) return
+  await setStep(to)
+}
+
+async function save(quiet = false, openStep: MarketingStep = step.value): Promise<boolean> {
   saving.value = true
   try {
     const body = { versions: draft.value.versions, source_language: draft.value.source_language, audiences: draft.value.audiences }
     if (id.value === 'new') {
       const res = await $fetch<{ id: string }>('/api/marketing/emails', { method: 'POST', body })
       id.value = res.id
-      await navigateTo(`/marketing/${res.id}`, { replace: true })
+      await navigateTo({ path: `/marketing/${res.id}`, query: { step: openStep } }, { replace: true })
     } else {
       await $fetch(`/api/marketing/emails/${id.value}`, { method: 'PUT', body })
     }
@@ -288,6 +315,15 @@ const testFn = async (lang: string) => (await $fetch<{ to: string }>('/api/marke
     </template>
 
     <template v-if="meta">
+      <UTabs
+        v-if="editable"
+        :model-value="step"
+        :items="stepTabs"
+        :content="false"
+        class="w-full"
+        @update:model-value="v => setStep(v as MarketingStep)"
+      />
+
       <MarketingComposer
         v-model="draft"
         :languages="meta.languages"
@@ -295,10 +331,14 @@ const testFn = async (lang: string) => (await $fetch<{ to: string }>('/api/marke
         :preview="previewFn"
         :send-test="testFn"
         :disabled="!editable"
+        :step="editable ? step : undefined"
       />
 
       <template v-if="isDraft">
-        <div class="space-y-3">
+        <div
+          v-if="!editable || step === 'details'"
+          class="space-y-3"
+        >
           <h2 class="text-lg font-semibold">
             Who gets it
           </h2>
@@ -306,19 +346,18 @@ const testFn = async (lang: string) => (await $fetch<{ to: string }>('/api/marke
             Only people who opted in on this site are counted and emailed. Addresses that bounced or complained anywhere are left out.
           </p>
           <div class="grid sm:grid-cols-2 gap-2">
-            <div
+            <UCheckbox
               v-for="a in audiences"
               :key="a.key"
-              class="rounded-lg border border-(--ui-border) p-3"
-            >
-              <UCheckbox
-                :model-value="draft.audiences.includes(a.key)"
-                :label="`${a.label} · ${a.count.toLocaleString()}`"
-                :description="a.description"
-                :disabled="!editable"
-                @update:model-value="v => toggleAudience(a.key, v)"
-              />
-            </div>
+              variant="card"
+              class="p-3"
+              :class="{ 'cursor-pointer': editable }"
+              :model-value="draft.audiences.includes(a.key)"
+              :label="`${a.label} · ${a.count.toLocaleString()}`"
+              :description="a.description"
+              :disabled="!editable"
+              @update:model-value="v => toggleAudience(a.key, v)"
+            />
           </div>
           <p
             v-if="draft.audiences.length"
@@ -332,7 +371,22 @@ const testFn = async (lang: string) => (await $fetch<{ to: string }>('/api/marke
           v-if="editable"
           class="space-y-3 border-t border-(--ui-border) pt-4"
         >
-          <div class="flex flex-wrap gap-2">
+          <template v-if="step === 'review'">
+            <p
+              v-if="draft.audiences.length"
+              class="text-sm"
+            >
+              <span class="font-medium">{{ combined.toLocaleString() }} {{ combined === 1 ? 'person' : 'people' }} will get this email.</span>
+              <span class="text-(--ui-text-muted)"> {{ chosenAudiences }}</span>
+            </p>
+            <MarketingSchedule
+              :loading="sending"
+              :problems="problems"
+              :targets="meta ? [{ name: meta.site.name, count: combined }] : []"
+              @send="send"
+            />
+          </template>
+          <div class="flex flex-wrap items-center gap-2">
             <UButton
               label="Save draft"
               icon="i-lucide-save"
@@ -349,13 +403,21 @@ const testFn = async (lang: string) => (await $fetch<{ to: string }>('/api/marke
               variant="ghost"
               @click="remove"
             />
+            <template v-if="step !== 'review'">
+              <div class="flex-1" />
+              <span
+                v-if="stepProblems[step].length"
+                class="text-sm text-(--ui-text-muted)"
+              >{{ stepProblems[step].join(' ') }}</span>
+              <UButton
+                label="Save and continue"
+                trailing-icon="i-lucide-arrow-right"
+                :loading="saving"
+                :disabled="stepProblems[step].length > 0"
+                @click="saveAndContinue"
+              />
+            </template>
           </div>
-          <MarketingSchedule
-            :loading="sending"
-            :problems="problems"
-            :targets="meta ? [{ name: meta.site.name, count: combined }] : []"
-            @send="send"
-          />
         </div>
       </template>
     </template>

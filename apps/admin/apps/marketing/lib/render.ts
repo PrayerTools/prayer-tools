@@ -72,6 +72,7 @@ function preheaderHtml(text: string): string {
 export interface RenderedEmail {
   lang: string
   subject: string
+  preheader: string
   html: string
   text: string
 }
@@ -92,5 +93,5 @@ export async function renderEmail(
   const preheader = fillVars(v.preheader ?? '', vars)
   const body = await host.renderContent(tx, orgId, v.content, { lang, vars })
   const wrapped = await host.wrap(tx, orgId, lang, { html: preheaderHtml(preheader) + body.html, text: body.text }, { unsubscribeUrl: opts.unsubscribeUrl, test: opts.test })
-  return { lang, subject, html: wrapped.html, text: wrapped.text }
+  return { lang, subject, preheader, html: wrapped.html, text: wrapped.text }
 }

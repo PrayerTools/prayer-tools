@@ -4,6 +4,8 @@ export interface MarketingDoc { type: 'doc', content?: unknown[] }
 export interface MarketingVersion { subject: string, preheader?: string, content: MarketingDoc }
 export type MarketingVersions = Record<string, MarketingVersion>
 export interface MarketingDraft { versions: MarketingVersions, source_language: string, audiences: string[] }
+// The steps a draft is written in: subject and audience, the email itself, then preview and send.
+export type MarketingStep = 'details' | 'content' | 'review'
 
 export const MARKETING_STATUS: Record<string, { label: string, color: 'neutral' | 'info' | 'primary' | 'warning' | 'success' | 'error' }> = {
   draft: { label: 'Draft', color: 'neutral' },

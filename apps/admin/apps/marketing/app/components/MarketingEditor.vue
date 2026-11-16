@@ -49,6 +49,9 @@ const items: EditorToolbarItem[][] = [
   ]
 ]
 
+// Images get corner handles to drag them smaller or larger; the chosen width is sent with the email.
+const image = { resize: { enabled: true, alwaysPreserveAspectRatio: true, minWidth: 48 } }
+
 function insert(editor: Editor, key: string) {
   editor.chain().focus().insertContent(`{${key}}`).run()
 }
@@ -105,7 +108,7 @@ function insertContent(editor: Editor, insert: MarketingInsert) {
 
 <template>
   <div
-    class="rounded-md border border-(--ui-border) bg-(--ui-bg)"
+    class="marketing-editor rounded-md border border-(--ui-border) bg-(--ui-bg)"
     :class="props.disabled ? 'opacity-70 pointer-events-none' : ''"
   >
     <UEditor
@@ -114,6 +117,7 @@ function insertContent(editor: Editor, insert: MarketingInsert) {
       content-type="json"
       placeholder="Write your email…"
       :extensions="extensions"
+      :image="image"
       :editable="!props.disabled"
       :text-direction="props.dir"
       :ui="{ base: 'px-4 py-3 prose-sm max-w-none focus:outline-none min-h-64' }"
@@ -181,3 +185,50 @@ function insertContent(editor: Editor, insert: MarketingInsert) {
     </template>
   </div>
 </template>
+
+<style>
+.marketing-editor [data-resize-wrapper] {
+  max-width: 100%;
+}
+/* The stored width may be wider than the editor; the height follows it so the image keeps its shape. */
+.marketing-editor [data-resize-wrapper] img {
+  height: auto !important;
+}
+.marketing-editor [data-resize-container].ProseMirror-selectednode {
+  background: transparent;
+}
+.marketing-editor [data-resize-container].ProseMirror-selectednode img,
+.marketing-editor [data-resize-container][data-resize-state="true"] img {
+  outline: 2px solid var(--ui-primary);
+}
+.marketing-editor [data-resize-handle] {
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  border: 2px solid var(--ui-bg);
+  background: var(--ui-primary);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.marketing-editor [data-resize-wrapper]:hover [data-resize-handle],
+.marketing-editor [data-resize-container].ProseMirror-selectednode [data-resize-handle],
+.marketing-editor [data-resize-container][data-resize-state="true"] [data-resize-handle] {
+  opacity: 1;
+}
+.marketing-editor [data-resize-handle="top-left"] {
+  transform: translate(-50%, -50%);
+  cursor: nwse-resize;
+}
+.marketing-editor [data-resize-handle="bottom-right"] {
+  transform: translate(50%, 50%);
+  cursor: nwse-resize;
+}
+.marketing-editor [data-resize-handle="top-right"] {
+  transform: translate(50%, -50%);
+  cursor: nesw-resize;
+}
+.marketing-editor [data-resize-handle="bottom-left"] {
+  transform: translate(-50%, 50%);
+  cursor: nesw-resize;
+}
+</style>

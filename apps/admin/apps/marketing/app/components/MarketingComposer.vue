@@ -1,14 +1,18 @@
 <script setup lang="ts">
-import type { MarketingDraft, MarketingLanguage, MarketingVariable, MarketingVersion, MarketingVersions } from '../utils/marketing-ui'
+import type { MarketingDraft, MarketingLanguage, MarketingStep, MarketingVariable, MarketingVersion, MarketingVersions } from '../utils/marketing-ui'
 import { marketingEmptyVersion, marketingErrorMessage, marketingHasText } from '../utils/marketing-ui'
+
+interface MarketingPreview { subject: string, preheader?: string, html: string, lang: string }
 
 const props = withDefaults(defineProps<{
   languages: MarketingLanguage[]
   variables: MarketingVariable[]
-  preview: (lang: string) => Promise<{ subject: string, html: string, lang: string }>
+  preview: (lang: string) => Promise<MarketingPreview>
   sendTest: (lang: string) => Promise<string>
   translateHeaders?: Record<string, string>
   disabled?: boolean
+  // Shows one step of a stepped draft; without it the whole composer shows at once.
+  step?: MarketingStep
 }>(), { translateHeaders: () => ({}), disabled: false })
 
 const draft = defineModel<MarketingDraft>({ required: true })
@@ -48,8 +52,10 @@ watch(() => props.languages, (langs) => {
   if (!langs.some(l => l.code === active.value)) active.value = draft.value.source_language
 })
 
-const current = computed(() => draft.value.versions[active.value] ?? marketingEmptyVersion())
-const currentDir = computed(() => props.languages.find(l => l.code === active.value)?.dir ?? 'ltr')
+// The details step edits the source language; translations are written on the content step.
+const shown = computed(() => props.step === 'details' ? draft.value.source_language : active.value)
+const current = computed(() => draft.value.versions[shown.value] ?? marketingEmptyVersion())
+const currentDir = computed(() => props.languages.find(l => l.code === shown.value)?.dir ?? 'ltr')
 const sourceLabel = computed(() => props.languages.find(l => l.code === draft.value.source_language)?.label ?? draft.value.source_language)
 
 // ── AI translate ────────────────────────────────────────────────────────────
@@ -80,18 +86,29 @@ async function translate() {
 // ── Preview and test ────────────────────────────────────────────────────────
 const previewOpen = ref(false)
 const previewing = ref(false)
-const previewData = ref<{ subject: string, html: string, lang: string } | null>(null)
-async function openPreview() {
+const previewData = ref<MarketingPreview | null>(null)
+let previewRequest = 0
+async function loadPreview(): Promise<boolean> {
+  const request = ++previewRequest
   previewing.value = true
   try {
-    previewData.value = await props.preview(active.value)
-    previewOpen.value = true
+    const data = await props.preview(active.value)
+    if (request === previewRequest) previewData.value = data
+    return true
   } catch (err) {
     toast.add({ title: 'Preview failed', description: marketingErrorMessage(err), color: 'error' })
+    return false
   } finally {
-    previewing.value = false
+    if (request === previewRequest) previewing.value = false
   }
 }
+async function openPreview() {
+  if (await loadPreview()) previewOpen.value = true
+}
+// The review step shows the preview on the page, for the language tab in view.
+watch([() => props.step, active, () => draft.value.versions], ([step]) => {
+  if (step === 'review') loadPreview()
+}, { immediate: true })
 
 const testing = ref(false)
 async function test() {
@@ -151,7 +168,10 @@ async function saveTemplate() {
 
 <template>
   <div class="space-y-4">
-    <div class="flex flex-wrap items-end gap-3">
+    <div
+      v-if="!step || step === 'details'"
+      class="flex flex-wrap items-end gap-3"
+    >
       <UFormField
         label="Written in"
         class="w-56"
@@ -173,6 +193,7 @@ async function saveTemplate() {
         @click="openTemplates"
       />
       <UButton
+        v-if="!step"
         label="Save as template"
         icon="i-lucide-bookmark-plus"
         color="neutral"
@@ -183,6 +204,7 @@ async function saveTemplate() {
     </div>
 
     <UTabs
+      v-if="!step || (step !== 'details' && languages.length > 1)"
       v-model="active"
       :items="tabs"
       :content="false"
@@ -190,11 +212,12 @@ async function saveTemplate() {
     />
 
     <div
-      :key="active"
+      v-if="step !== 'review'"
+      :key="shown"
       class="space-y-3"
     >
       <div
-        v-if="active !== draft.source_language"
+        v-if="shown !== draft.source_language"
         class="flex flex-wrap items-center gap-2 text-sm text-(--ui-text-muted)"
       >
         <UButton
@@ -209,28 +232,31 @@ async function saveTemplate() {
         />
         <span>Leave this language empty and its readers get the {{ sourceLabel }} version.</span>
       </div>
-      <UFormField label="Subject">
-        <UInput
-          v-model="current.subject"
-          :dir="currentDir"
-          :disabled="disabled"
-          :maxlength="200"
-          class="w-full"
-        />
-      </UFormField>
-      <UFormField
-        label="Preview text"
-        help="Shown after the subject in most inboxes."
-      >
-        <UInput
-          v-model="current.preheader"
-          :dir="currentDir"
-          :disabled="disabled"
-          :maxlength="200"
-          class="w-full"
-        />
-      </UFormField>
+      <template v-if="step !== 'content' || shown !== draft.source_language">
+        <UFormField label="Subject">
+          <UInput
+            v-model="current.subject"
+            :dir="currentDir"
+            :disabled="disabled"
+            :maxlength="200"
+            class="w-full"
+          />
+        </UFormField>
+        <UFormField
+          label="Preview text"
+          help="Shown after the subject in most inboxes."
+        >
+          <UInput
+            v-model="current.preheader"
+            :dir="currentDir"
+            :disabled="disabled"
+            :maxlength="200"
+            class="w-full"
+          />
+        </UFormField>
+      </template>
       <MarketingEditor
+        v-if="step !== 'details'"
         v-model="current.content"
         :variables="variables"
         :dir="currentDir"
@@ -239,8 +265,40 @@ async function saveTemplate() {
       />
     </div>
 
-    <div class="flex flex-wrap gap-2">
+    <div
+      v-if="step === 'review'"
+      class="rounded-lg border border-(--ui-border) overflow-hidden"
+    >
+      <div class="px-4 py-3 border-b border-(--ui-border)">
+        <p class="font-medium">
+          {{ previewData?.subject || 'No subject' }} <InfoTip text="Placeholders show sample values. The footer shows the site's unsubscribe link." />
+        </p>
+        <p
+          v-if="previewData?.preheader"
+          class="text-sm text-(--ui-text-muted) truncate"
+        >
+          {{ previewData.preheader }}
+        </p>
+      </div>
+      <iframe
+        v-if="previewData"
+        :srcdoc="previewData.html"
+        sandbox=""
+        title="Email preview"
+        class="block w-full h-[70vh] bg-white"
+      />
+      <USkeleton
+        v-else
+        class="h-[70vh] w-full rounded-none"
+      />
+    </div>
+
+    <div
+      v-if="!step || step === 'review'"
+      class="flex flex-wrap gap-2"
+    >
       <UButton
+        v-if="!step"
         label="Preview"
         icon="i-lucide-eye"
         color="neutral"
@@ -256,6 +314,15 @@ async function saveTemplate() {
         :loading="testing"
         :disabled="!complete(draft.source_language)"
         @click="test"
+      />
+      <UButton
+        v-if="step"
+        label="Save as template"
+        icon="i-lucide-bookmark-plus"
+        color="neutral"
+        variant="outline"
+        :disabled="!complete(draft.source_language)"
+        @click="templateName = draft.versions[draft.source_language]?.subject ?? ''; saveOpen = true"
       />
     </div>
 
