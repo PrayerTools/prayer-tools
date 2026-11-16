@@ -1,0 +1,14 @@
+{
+  "name": "@prayertools/cli",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "pt": "src/index.ts"
+  },
+  "scripts": {
+    "test": "bun test"
+  },
+  "dependencies": {
+    "fflate": "^0.8.2"
+  }
+}

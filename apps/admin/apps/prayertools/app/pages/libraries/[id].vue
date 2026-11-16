@@ -14,7 +14,7 @@ const { data, refresh } = useFetch<{ library: Record<string, any>, entries: { da
 
 const lib = computed(() => data.value?.library)
 const form = ref<Record<string, any>>({})
-watch(lib, l => { if (l) form.value = { title: l.title, description: l.description, cadence: l.cadence, source_language: l.source_language, license: l.license, license_note: l.license_note, credit: l.credit, topics: l.topics, template_keys: l.template_keys, series: l.series, edition: l.edition } }, { immediate: true })
+watch(lib, l => { if (l) form.value = { title: l.title, description: l.description, cadence: l.cadence, source_language: l.source_language, license: l.license, license_note: l.license_note, credit: l.credit, topics: l.topics, template_keys: l.template_keys, series: l.series, edition: l.edition, key: l.key } }, { immediate: true })
 
 const languages = computed(() => {
   const set = new Set([lib.value?.source_language, ...(data.value?.entries ?? []).map(e => e.language)].filter(Boolean) as string[])
@@ -252,6 +252,19 @@ async function deleteLibrary() {
         >
           <UInput
             v-model="form.edition"
+            class="w-full"
+          />
+        </UFormField>
+        <UFormField
+          v-if="!lib.owner_user_id"
+          label="Key"
+        >
+          <template #label>
+            Key <InfoTip text="Names this library in content packs and the prayer.tools CLI, e.g. ramadan-2026. A pack with this key updates this library even after either is renamed." />
+          </template>
+          <UInput
+            v-model="form.key"
+            placeholder="ramadan-2026"
             class="w-full"
           />
         </UFormField>

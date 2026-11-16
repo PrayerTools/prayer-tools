@@ -21,6 +21,7 @@ bun run dev:worker                    # worker (bun --watch)
 bun run all                           # all three in parallel (public on 3031)
 DATABASE_URL=… bun run scripts/seed-dev.ts   # sample library + sites ramadan-demo, demo-247, draft-site
 DATABASE_URL=… bun run scripts/migrate.ts    # migrations without booting the admin app
+bun pt --help                         # CLI for platform libraries (apps/cli): login, libraries push/pull/publish/delete
 
 bun run test        # shared, worker (test DB), public, marketing (test DB)
 bun run typecheck   # packages/shared only; apps: bun run --cwd apps/admin typecheck / --cwd apps/public typecheck

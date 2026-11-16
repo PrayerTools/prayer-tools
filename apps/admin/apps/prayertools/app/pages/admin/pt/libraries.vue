@@ -26,6 +26,7 @@ async function createPlatform() {
 }
 interface PackSummary {
   title: string
+  key: string | null
   target: { id: string, title: string } | null
   titleMatch: string | null
   days: number
@@ -37,11 +38,13 @@ interface PackSummary {
   kept: number
   unchanged: number
   skipped: string[]
+  edited: string[]
 }
 const { data: meta } = usePtMeta()
 const importFile = ref<File | null>(null)
 const importTarget = ref('auto')
 const publishNow = ref(true)
+const overwriteEdits = ref(false)
 const summary = ref<PackSummary | null>(null)
 const checking = ref(false)
 const importing = ref(false)
@@ -57,11 +60,13 @@ function packForm(confirm: boolean): FormData {
   if (confirm) {
     form.append('confirm', '1')
     if (publishNow.value) form.append('publish', '1')
+    if (overwriteEdits.value) form.append('overwrite', '1')
   }
   return form
 }
 async function checkPack() {
   summary.value = null
+  overwriteEdits.value = false
   if (!importFile.value) return
   checking.value = true
   try {
@@ -167,10 +172,16 @@ async function importPack() {
           :key="l.id"
           class="py-2 flex justify-between"
         >
-          <NuxtLink
-            :to="`/libraries/${l.id}`"
-            class="hover:underline"
-          >{{ l.title }}</NuxtLink>
+          <span>
+            <NuxtLink
+              :to="`/libraries/${l.id}`"
+              class="hover:underline"
+            >{{ l.title }}</NuxtLink>
+            <code
+              v-if="l.key"
+              class="ml-2 text-xs text-(--ui-text-dimmed)"
+            >{{ l.key }}</code>
+          </span>
           <span class="text-(--ui-text-muted)">{{ l.languages.map((c: string) => languageName(meta, c)).join(', ') || 'Unpublished' }} · {{ l.entry_count }} entries · v{{ l.published_version }}</span>
         </li>
       </ul>
@@ -223,7 +234,7 @@ async function importPack() {
             </template>
           </p>
           <p class="text-(--ui-text-muted)">
-            {{ summary.days }} days · {{ summary.languages.map(l => languageName(meta, l)).join(', ') }}<span v-if="summary.images"> · {{ summary.images }} images</span>
+            <code v-if="summary.key">{{ summary.key }} · </code>{{ summary.days }} days · {{ summary.languages.map(l => languageName(meta, l)).join(', ') }}<span v-if="summary.images"> · {{ summary.images }} images</span>
           </p>
           <div class="flex flex-wrap gap-2">
             <UBadge
@@ -265,6 +276,21 @@ async function importPack() {
             :description="summary.skipped.slice(0, 5).join('; ') + (summary.skipped.length > 5 ? '; …' : '')"
           />
           <UAlert
+            v-if="summary.edited.length"
+            color="warning"
+            variant="subtle"
+            icon="i-lucide-triangle-alert"
+            :title="`${summary.edited.length} ${summary.edited.length === 1 ? 'entry was' : 'entries were'} edited here since the last import`"
+            :description="summary.edited.slice(0, 5).join('; ') + (summary.edited.length > 5 ? '; …' : '')"
+          >
+            <template #actions>
+              <UCheckbox
+                v-model="overwriteEdits"
+                label="Overwrite these edits"
+              />
+            </template>
+          </UAlert>
+          <UAlert
             v-if="summary.titleMatch && summary.titleMatch !== summary.target?.id"
             color="warning"
             variant="subtle"
@@ -281,6 +307,7 @@ async function importPack() {
               :label="summary.target ? 'Update library' : 'Create library'"
               icon="i-lucide-upload"
               :loading="importing"
+              :disabled="summary.edited.length > 0 && !overwriteEdits"
               @click="importPack"
             />
           </div>

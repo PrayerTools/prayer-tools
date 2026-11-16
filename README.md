@@ -35,6 +35,23 @@ Mail goes to Mailpit (localhost:1025, UI :8025) in development. `PT_SECRET` must
 
 The admin app is an MCP server at `<NUXT_PUBLIC_SITE_URL>/mcp`, so champions can add prayer.tools to claude.ai or ChatGPT as a custom connector and sign in through OAuth (set `OAUTH_CONSENT_COOKIE_SECRET` and `OAUTH_ALLOW_DCR=true`). The prayer.tools tools (`apps/admin/apps/prayertools/mcp/`) create sites and campaigns, edit the landing page and signup form, and stack, write and translate prayer content; the site email tools (`apps/admin/apps/marketing/mcp/`) save drafts only. Content goes in and out as a flat block list (`@prayertools/shared/content-blocks`), not Tiptap JSON. Publishing, sending, deleting and domains stay in the admin. Tools never return intercessors' personal data, except the inbox layer's tools; the CRM layer's MCP tools are turned off (`mcpDisabledApps`).
 
+## CLI for platform libraries
+
+`bun pt …` (from the repo root; `apps/cli`) manages platform libraries through the admin app, so content packs go in without a database URL. Operators only.
+
+```bash
+bun pt login                          # local admin (http://localhost:3030), signs in through the browser
+bun pt login prod https://<admin host> # once per server; later commands take --prod
+bun pt libraries list
+bun pt libraries push building/ramadan-packs/   # preview, confirm, write drafts; --publish to release
+bun pt libraries pull ramadan-2026              # drafts and images as a pack folder
+bun pt libraries publish ramadan-2026
+bun pt libraries delete ramadan-2026            # refuses while sites follow it; --detach freezes their copies first
+bun pt packs unzip pack.zip                     # pack zip → pack folder
+```
+
+Sign-in is OAuth (needs `OAUTH_CONSENT_COOKIE_SECRET` and `OAUTH_ALLOW_DCR=true` on the admin app) with the `pt.operator.libraries` scope; the routes under `/api/pt/admin/libraries` that accept it also check `users.is_admin` on every call. Tokens go to the macOS Keychain or `secret-tool`, else `~/.config/prayertools/credentials.json`. A pack's `key` matches it to its library ahead of the title, and `push` refuses to overwrite entries edited in the admin since the last push unless given `--overwrite`.
+
 ## Tests
 
 ```bash

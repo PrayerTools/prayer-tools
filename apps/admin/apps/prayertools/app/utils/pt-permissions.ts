@@ -95,6 +95,10 @@ export const PT_STATIC_ROLES: { key: Exclude<PtRoleKey, 'admin'>, name: string, 
 // routes.
 export const PT_LIBRARY_SHARE = 'pt.library.share'
 
+// The OAuth scope that lets a client (the prayer.tools CLI) manage platform
+// libraries. Routes that accept it also require the user to be an operator.
+export const PT_OPERATOR_LIBRARIES = 'pt.operator.libraries'
+
 declare module '#permissions' {
-  interface PermissionRegistry extends Record<PtPermission | typeof PT_LIBRARY_SHARE, true> {}
+  interface PermissionRegistry extends Record<PtPermission | typeof PT_LIBRARY_SHARE | typeof PT_OPERATOR_LIBRARIES, true> {}
 }

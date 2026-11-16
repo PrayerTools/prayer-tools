@@ -8,7 +8,8 @@
     "apps/admin",
     "apps/admin/_layers/*",
     "apps/public",
-    "apps/worker"
+    "apps/worker",
+    "apps/cli"
   ],
   "scripts": {
     "setup": "bun install && bun run --cwd apps/admin sync-layers && bun install",
@@ -19,7 +20,8 @@
     "db:setup": "bun run scripts/db-setup.ts",
     "test": "bun run --cwd packages/shared test && bun run --cwd apps/worker test && bun run --cwd apps/public test && cd apps/admin/apps/marketing && npx vitest run",
     "typecheck": "bun run --cwd packages/shared typecheck",
-    "smoke": "node apps/admin/scripts/smoke.ts && bun run --cwd apps/public smoke"
+    "smoke": "node apps/admin/scripts/smoke.ts && bun run --cwd apps/public smoke",
+    "pt": "bun apps/cli/src/index.ts"
   },
   "devDependencies": {
     "playwright": "1.57"

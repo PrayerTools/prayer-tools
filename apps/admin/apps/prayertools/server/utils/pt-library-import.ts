@@ -3,6 +3,8 @@
 // as "images/<file>". An import creates a library or replaces an existing
 // platform library's details and entries; entries missing from the pack are
 // removed. A dry run reports what would change without writing anything.
+// A pack's `key` matches it to its library ahead of the title.
+import { createHash } from 'node:crypto'
 import { unzipSync, strFromU8 } from 'fflate'
 import { sql } from 'kysely'
 import { pgArray, jsonb } from '@prayertools/shared/db/json'
@@ -16,6 +18,7 @@ const MAX_ENTRIES = 20_000
 
 export interface PtPack {
   meta: Record<string, unknown>
+  key: string | null
   title: string
   entries: { day: number, language: string, doc: TiptapDoc }[]
   images: Map<string, Uint8Array>
@@ -24,7 +27,10 @@ export interface PtPack {
 
 export interface PtPackSummary {
   title: string
+  key: string | null
   target: { id: string, title: string } | null
+  // Whether the library's details (title, license, key, …) would change.
+  metaChanged: boolean
   titleMatch: string | null
   days: number
   languages: string[]
@@ -36,6 +42,9 @@ export interface PtPackSummary {
   kept: number
   unchanged: number
   skipped: string[]
+  // Entries edited since a pack last wrote them, which the import would
+  // change or remove.
+  edited: string[]
 }
 
 // WordPress prayer fuel HTML as headings, paragraphs, list items and quotes.
@@ -153,45 +162,80 @@ export function ptReadPack(data: Uint8Array): PtPack {
   if (missing.length) ptBadRequest(`Images missing from the zip: ${missing.slice(0, 5).join(', ')}${missing.length > 5 ? ` and ${missing.length - 5} more` : ''}.`)
   for (const name of images.keys()) if (!refs.has(name)) images.delete(name)
 
-  return { meta, title: String(meta.title), entries, images, skipped }
+  return { meta, key: ptLibraryKey(raw.key), title: String(meta.title), entries, images, skipped }
+}
+
+function docHash(doc: unknown): string {
+  return createHash('sha256').update(canonical(doc)).digest('hex')
+}
+
+// Each image's stored name, and the entries with their images' stored URLs.
+function withStoredImages(pack: PtPack): { names: Map<string, string>, entries: PtPack['entries'] } {
+  const names = new Map<string, string>()
+  const urls = new Map<string, string>()
+  for (const [path, bytes] of pack.images) {
+    const name = ptLibraryImageName(path, bytes)
+    names.set(path, name)
+    urls.set(path, ptLibraryImageUrl(name))
+  }
+  return { names, entries: pack.entries.map(e => ({ ...e, doc: withImageUrls(e.doc, urls) as TiptapDoc })) }
 }
 
 // The platform library a pack would update: the one chosen, or (for "auto")
-// one with the pack's title; null means a new library.
-async function resolveTarget(target: string, title: string): Promise<{ id: string, title: string } | null> {
+// the one with the pack's key, else one with its title and no other key; null
+// means a new library.
+async function resolveTarget(target: string, pack: PtPack): Promise<{ id: string, title: string } | null> {
   const db = ptAdminDb()
-  if (target === 'new') return null
+  const platform = () => db.selectFrom('pt_library').select(['id', 'title']).where('owner_user_id', 'is', null)
+  const keyed = pack.key ? await platform().where('key', '=', pack.key).executeTakeFirst() : undefined
+  let lib: { id: string, title: string } | undefined
   if (target === 'auto') {
-    return await db.selectFrom('pt_library').select(['id', 'title']).where('owner_user_id', 'is', null).where('title', '=', title).executeTakeFirst() ?? null
+    let byTitle = platform().where('title', '=', pack.title)
+    if (pack.key) byTitle = byTitle.where('key', 'is', null)
+    lib = keyed ?? await byTitle.executeTakeFirst()
+  } else if (target !== 'new') {
+    lib = /^[0-9a-f-]{36}$/i.test(target) ? await platform().where('id', '=', target).executeTakeFirst() : undefined
+    if (!lib) ptBadRequest('Choose a platform library to update, or a new library.')
   }
-  const lib = /^[0-9a-f-]{36}$/i.test(target)
-    ? await db.selectFrom('pt_library').select(['id', 'title']).where('owner_user_id', 'is', null).where('id', '=', target).executeTakeFirst()
-    : undefined
-  if (!lib) ptBadRequest('Choose a platform library to update, or a new library.')
-  return lib
+  if (keyed && keyed.id !== lib?.id) ptBadRequest(`The key "${pack.key}" belongs to “${keyed.title}”.`)
+  return lib ?? null
 }
 
 export async function ptPackSummary(pack: PtPack, target: string): Promise<PtPackSummary> {
   const db = ptAdminDb()
-  const lib = await resolveTarget(target, pack.title)
+  const lib = await resolveTarget(target, pack)
   const match = await db.selectFrom('pt_library').select('id').where('owner_user_id', 'is', null).where('title', '=', pack.title).executeTakeFirst()
   const existing = lib
-    ? await db.selectFrom('pt_library_entry').select(['day', 'language', 'draft', 'published']).where('library_id', '=', lib.id).execute()
+    ? await db.selectFrom('pt_library_entry').select(['day', 'language', 'draft', 'published', 'pushed_hash']).where('library_id', '=', lib.id).execute()
     : []
   const before = new Map(existing.map(e => [`${e.day}:${e.language}`, canonical(e.draft)]))
+  const editedSincePush = new Set(existing.filter(e => e.pushed_hash && e.pushed_hash !== docHash(e.draft)).map(e => `${e.day}:${e.language}`))
+  const edited: string[] = []
   let added = 0
   let changed = 0
   let unchanged = 0
-  for (const e of pack.entries) {
-    const prev = before.get(`${e.day}:${e.language}`)
+  for (const e of withStoredImages(pack).entries) {
+    const id = `${e.day}:${e.language}`
+    const prev = before.get(id)
     if (prev === undefined) added++
     else if (prev === canonical(e.doc)) unchanged++
-    else changed++
+    else {
+      changed++
+      if (editedSincePush.has(id)) edited.push(`day ${e.day} ${e.language}`)
+    }
   }
   const keep = new Set(pack.entries.map(e => `${e.day}:${e.language}`))
+  for (const e of existing) {
+    if (!keep.has(`${e.day}:${e.language}`) && e.published === null && editedSincePush.has(`${e.day}:${e.language}`)) edited.push(`day ${e.day} ${e.language}`)
+  }
+  const compared = Object.entries({ ...pack.meta, ...(pack.key ? { key: pack.key } : {}) })
+  const changedSql = sql<boolean>`${sql.join(compared.map(([k, v]) => sql`${sql.ref(k)} IS DISTINCT FROM ${v}`), sql` OR `)}`
+  const metaRow = lib ? await db.selectFrom('pt_library').select(changedSql.as('changed')).where('id', '=', lib.id).executeTakeFirst() : null
   return {
     title: pack.title,
+    key: pack.key,
     target: lib,
+    metaChanged: metaRow ? !!metaRow.changed : true,
     titleMatch: match?.id ?? null,
     days: Math.max(...pack.entries.map(e => e.day)),
     languages: [...new Set(pack.entries.map(e => e.language))],
@@ -201,24 +245,31 @@ export async function ptPackSummary(pack: PtPack, target: string): Promise<PtPac
     removed: existing.filter(e => !keep.has(`${e.day}:${e.language}`) && e.published === null).length,
     kept: existing.filter(e => !keep.has(`${e.day}:${e.language}`) && e.published !== null).length,
     unchanged,
-    skipped: pack.skipped
+    skipped: pack.skipped,
+    edited
   }
 }
 
-export async function ptApplyPack(pack: PtPack, target: string, publish: boolean): Promise<{ id: string, version: number | null }> {
-  const lib = await resolveTarget(target, pack.title)
-  const urls = new Map<string, string>()
-  for (const [name, bytes] of pack.images) urls.set(name, await ptStoreLibraryImage(Buffer.from(bytes)))
-  const entries = pack.entries.map(e => ({ ...e, doc: withImageUrls(e.doc, urls) as TiptapDoc }))
+// Writes the pack to the library the summary names. Refuses when the import
+// would overwrite entries edited since a pack last wrote them, unless
+// `overwrite` is set.
+export async function ptApplyPack(pack: PtPack, summary: PtPackSummary, opts: { publish: boolean, overwrite: boolean }): Promise<{ id: string, version: number | null }> {
+  if (summary.edited.length && !opts.overwrite) {
+    throw createError({ statusCode: 409, statusMessage: `${summary.edited.length} ${summary.edited.length === 1 ? 'entry was' : 'entries were'} edited in the admin since the last import; importing would overwrite them.`, data: { edited: summary.edited } })
+  }
+  const lib = summary.target
+  const { names, entries } = withStoredImages(pack)
+  for (const [path, bytes] of pack.images) await ptStoreLibraryImage(Buffer.from(bytes), names.get(path))
 
   const id = await ptAdminDb().transaction().execute(async (tx) => {
-    const meta = { ...pack.meta, updated_at: new Date() }
+    const meta = { ...pack.meta, ...(pack.key ? { key: pack.key } : {}), updated_at: new Date() }
     const id = lib
       ? (await tx.updateTable('pt_library').set(meta as never).where('id', '=', lib.id).returning('id').executeTakeFirstOrThrow()).id
       : (await tx.insertInto('pt_library').values({ ...meta, owner_user_id: null, visibility: 'published' } as never).returning('id').executeTakeFirstOrThrow()).id
     for (const e of entries) {
-      await tx.insertInto('pt_library_entry').values({ library_id: id, day: e.day, language: e.language, draft: jsonb(e.doc), published: null } as never)
-        .onConflict(oc => oc.columns(['library_id', 'day', 'language']).doUpdateSet({ draft: jsonb(e.doc) as never, updated_at: new Date() } as never)).execute()
+      const pushed_hash = docHash(e.doc)
+      await tx.insertInto('pt_library_entry').values({ library_id: id, day: e.day, language: e.language, draft: jsonb(e.doc), published: null, pushed_hash } as never)
+        .onConflict(oc => oc.columns(['library_id', 'day', 'language']).doUpdateSet({ draft: jsonb(e.doc) as never, pushed_hash, updated_at: new Date() } as never)).execute()
     }
     // Entries missing from the pack go, except published ones: sites may be following them.
     const keep = entries.map(e => `${e.day}:${e.language}`)
@@ -226,6 +277,6 @@ export async function ptApplyPack(pack: PtPack, target: string, publish: boolean
       .where(sql<boolean>`(day::text || ':' || language) <> ALL(${pgArray(keep)})`).execute()
     return id
   })
-  const version = publish ? await ptPublishLibrary(id) : null
+  const version = opts.publish ? await ptPublishLibrary(id) : null
   return { id, version }
 }

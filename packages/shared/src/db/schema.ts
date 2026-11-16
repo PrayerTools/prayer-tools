@@ -180,6 +180,8 @@ export interface PtSiteReportTable {
 export interface PtLibraryTable {
   id: Generated<string>
   owner_user_id: string | null
+  // Platform libraries only: names the library in content packs and the CLI.
+  key: string | null
   title: string
   description: string | null
   cadence: Cadence
@@ -212,6 +214,9 @@ export interface PtLibraryEntryTable {
   draft: Json<TiptapDoc>
   published: Json<TiptapDoc | null> | null
   published_version: number | null
+  // Hash of the draft a content pack last wrote; a different draft hash means
+  // the entry was edited since.
+  pushed_hash: string | null
   updated_at: Timestamp
 }
 

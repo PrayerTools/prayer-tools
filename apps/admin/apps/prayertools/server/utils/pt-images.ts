@@ -32,9 +32,39 @@ async function store(buf: Buffer, name: string, contentType: string, folder = 'p
 const LIBRARY_IMAGE_VERSION = 'w1600-q78'
 let libraryClient: S3Client | null = null
 
-// An image inside a library entry: one WebP of up to 1600 px; returns its URL.
-export async function ptStoreLibraryImage(input: Buffer): Promise<string> {
-  const name = `${createHash('sha256').update(LIBRARY_IMAGE_VERSION).update(input).digest('hex').slice(0, 32)}.webp`
+const STORED_NAME = /^[0-9a-f]{32}\.webp$/
+
+function libraryImageBase(): string {
+  const env = process.env
+  return s3Configured()
+    ? `${env.S3_PUBLIC_BASE_URL!.replace(/\/$/, '')}/pt-images/`
+    : `${(env.NUXT_PUBLIC_SITE_URL || 'http://localhost:2380').replace(/\/$/, '')}/uploads/`
+}
+
+// The stored name for a pack image. A file already named like a stored library
+// image (as `pt libraries pull` writes them) keeps its name, so pulling and
+// pushing a pack leaves its entries unchanged.
+export function ptLibraryImageName(fileName: string, input: Uint8Array): string {
+  const base = fileName.split('/').pop() ?? ''
+  if (STORED_NAME.test(base)) return base
+  return `${createHash('sha256').update(LIBRARY_IMAGE_VERSION).update(input).digest('hex').slice(0, 32)}.webp`
+}
+
+export function ptLibraryImageUrl(name: string): string {
+  return `${libraryImageBase()}${name}`
+}
+
+// The stored name of a library image URL on this server's storage, or null.
+export function ptStoredLibraryImageName(url: string): string | null {
+  const base = libraryImageBase()
+  if (!url.startsWith(base)) return null
+  const name = url.slice(base.length)
+  return STORED_NAME.test(name) ? name : null
+}
+
+// An image inside a library entry: one WebP of up to 1600 px, stored under
+// `name` unless a file of that name is already stored; returns its URL.
+export async function ptStoreLibraryImage(input: Buffer, name = ptLibraryImageName('', input)): Promise<string> {
   const resize = () => sharp(input, { failOn: 'error' }).rotate()
     .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true }).webp({ quality: 78 }).toBuffer()
   const env = process.env
@@ -45,12 +75,12 @@ export async function ptStoreLibraryImage(input: Buffer): Promise<string> {
     if (!await libraryClient.exists(key, { bucketName })) {
       await libraryClient.putObject(key, await resize(), { metadata: { 'Content-Type': 'image/webp' }, bucketName })
     }
-    return `${env.S3_PUBLIC_BASE_URL!.replace(/\/$/, '')}/${key}`
+    return ptLibraryImageUrl(name)
   }
   await mkdir(LOCAL_DIR, { recursive: true })
   const path = join(LOCAL_DIR, name)
   if (!await access(path).then(() => true, () => false)) await writeFile(path, await resize())
-  return `${(env.NUXT_PUBLIC_SITE_URL || 'http://localhost:2380').replace(/\/$/, '')}/uploads/${name}`
+  return ptLibraryImageUrl(name)
 }
 
 export async function ptReadLocalUpload(key: string): Promise<Buffer | null> {
