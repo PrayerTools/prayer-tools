@@ -239,6 +239,9 @@
     "notify_intro_campaign": "Deja tu correo y {site} te avisará cuando {campaign} se realice de nuevo.",
     "notify_button": "Avísame",
     "notify_done": "¡Casi listo! Revisa tu correo y confirma, y te avisaremos cuando se realice de nuevo.",
+    "notify_as": "Sesión iniciada como {email}",
+    "notify_as_named": "Sesión iniciada como {name} ({email})",
+    "notify_already": "Ya lo habías pedido. Te escribiremos una vez cuando esta campaña se realice de nuevo.",
     "again_title": "{campaign} se realiza de nuevo"
   },
   "archived": {

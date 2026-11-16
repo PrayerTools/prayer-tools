@@ -242,6 +242,9 @@
     "notify_intro_campaign": "Leave your email and {site} will let you know when {campaign} runs again.",
     "notify_button": "Notify me",
     "notify_done": "Almost done! Check your email and confirm, and we will let you know when it runs again.",
+    "notify_as": "Signed in as {email}",
+    "notify_as_named": "Signed in as {name} ({email})",
+    "notify_already": "You have already asked. We will email you once when this campaign runs again.",
     "again_title": "{campaign} is running again"
   },
   "archived": {

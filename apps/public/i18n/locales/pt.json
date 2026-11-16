@@ -239,6 +239,9 @@
     "notify_intro_campaign": "Deixe seu e-mail e {site} avisará você quando {campaign} acontecer de novo.",
     "notify_button": "Avise-me",
     "notify_done": "Quase pronto! Verifique seu e-mail e confirme, e avisaremos quando ela acontecer de novo.",
+    "notify_as": "Conectado como {email}",
+    "notify_as_named": "Conectado como {name} ({email})",
+    "notify_already": "Você já pediu. Escreveremos uma vez quando esta campanha acontecer de novo.",
     "again_title": "{campaign} está acontecendo de novo"
   },
   "archived": {
