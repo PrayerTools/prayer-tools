@@ -78,6 +78,46 @@ export interface SlotCounts {
   slots: number[]
 }
 
+// The grid as the coverage screens fetch it: every slot's count in `slots`,
+// and for each day the range of indexes (`from` up to `to`) that is its slots.
+export interface CoverageCalendar {
+  start: string
+  slotMinutes: number
+  timezone: string
+  days: { date: string, percent: number, from: number, to: number }[]
+  slots: number[]
+}
+
+export function coverageCalendar(grid: CoverageGrid, startDate: string, endDate: string, tz: string): CoverageCalendar {
+  let from = 0
+  const days = coverageByDay(grid, startDate, endDate, tz).map((d) => {
+    const day = { date: d.date, percent: d.percent, from, to: from + d.slots.length }
+    from += d.slots.length
+    return day
+  })
+  return { start: grid.start.toISOString(), slotMinutes: grid.slotMinutes, timezone: tz, days, slots: grid.slots }
+}
+
+export interface DaySlot {
+  index: number
+  at: Date
+  count: number
+  // The slot has already started.
+  past: boolean
+}
+
+// The slots at indexes `from` up to `to`, each at its real instant.
+export function slotsInRange(c: SlotCounts, from: number, to: number, now: Date = new Date()): DaySlot[] {
+  const start = new Date(c.start).getTime()
+  const slotMs = c.slotMinutes * 60_000
+  const out: DaySlot[] = []
+  for (let i = Math.max(0, from); i < Math.min(to, c.slots.length); i++) {
+    const at = start + i * slotMs
+    out.push({ index: i, at: new Date(at), count: c.slots[i] ?? 0, past: at < now.getTime() })
+  }
+  return out
+}
+
 export interface TimeOfDayCoverage {
   // Minute of the local day the slot starts at.
   minute: number
@@ -94,6 +134,29 @@ function offsetReader(tz: string): (at: number) => number {
     const wall = Date.UTC(+p.year!, +p.month! - 1, +p.day!, +p.hour!, +p.minute!, +p.second!)
     return wall - Math.floor(at / 1000) * 1000
   }
+}
+
+// Consecutive slots grouped by the clock hour they start in, in `tz`. An hour
+// the clocks repeat makes two groups; an hour they skip makes none.
+export function slotsByClockHour(slots: DaySlot[], tz: string): DaySlot[][] {
+  const offsetAt = offsetReader(tz)
+  const groups: DaySlot[][] = []
+  let last = ''
+  for (const slot of slots) {
+    const offset = offsetAt(slot.at.getTime())
+    const key = `${Math.floor((slot.at.getTime() + offset) / 3_600_000)}/${offset}`
+    if (key !== last) groups.push([])
+    last = key
+    groups[groups.length - 1]!.push(slot)
+  }
+  return groups
+}
+
+// The day a coverage screen opens on: today when the campaign includes it,
+// otherwise the first day with an uncovered slot, otherwise the first day.
+export function openingCoverageDay(days: { date: string, percent: number }[], today: string): string | null {
+  const day = days.find(d => d.date === today) ?? days.find(d => d.percent < 100) ?? days[0]
+  return day?.date ?? null
 }
 
 // Coming slots (starting at or after `from`) with their local minute of the

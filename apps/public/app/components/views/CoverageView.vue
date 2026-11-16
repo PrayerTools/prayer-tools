@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { GoalProgressView } from '~~/shared/view'
+import { slotsInRange } from '@prayertools/shared/coverage'
 import { browserTimezone } from '~/utils/commitment'
 
 defineProps<{ progress: GoalProgressView | null }>()
@@ -43,20 +44,13 @@ const showToggle = computed(() => !!data.value && localTz.value !== data.value.t
 
 const day = computed(() => data.value?.days.find(d => d.date === selectedDay.value) ?? null)
 
-function slotStart(index: number): Date {
-  return new Date(Date.parse(data.value!.start) + index * data.value!.slotMinutes * 60_000)
-}
-
 const slots = computed(() => {
   if (!data.value || !day.value) return []
   const fmt = new Intl.DateTimeFormat(site.value.lang, { hour: 'numeric', minute: '2-digit', timeZone: tz.value })
-  const out = []
-  for (let i = day.value.from; i < day.value.to; i++) {
-    const at = slotStart(i)
-    const iso = at.toISOString()
-    out.push({ i, iso, label: fmt.format(at), count: data.value.slots[i] ?? 0, past: at.getTime() < Date.now(), picked: picks.value.includes(iso) })
-  }
-  return out
+  return slotsInRange(data.value, day.value.from, day.value.to).map((s) => {
+    const iso = s.at.toISOString()
+    return { i: s.index, iso, label: fmt.format(s.at), count: s.count, past: s.past, picked: picks.value.includes(iso) }
+  })
 })
 
 function dayLabel(date: string): string {
