@@ -5,6 +5,7 @@ COPY package.json bun.lock bunfig.toml ./
 # Bun requires every listed workspace to exist; their manifests are enough.
 COPY apps/admin/package.json apps/admin/
 COPY apps/public/package.json apps/public/
+COPY apps/cli/package.json apps/cli/
 COPY packages/shared packages/shared
 COPY apps/admin/apps/marketing/lib apps/admin/apps/marketing/lib
 COPY apps/worker apps/worker

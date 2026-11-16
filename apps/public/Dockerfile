@@ -5,6 +5,7 @@ COPY package.json bun.lock bunfig.toml ./
 # Bun requires every listed workspace to exist; their manifests are enough.
 COPY apps/admin/package.json apps/admin/
 COPY apps/worker/package.json apps/worker/
+COPY apps/cli/package.json apps/cli/
 COPY packages/shared packages/shared
 COPY apps/public apps/public
 RUN bun install --filter @prayertools/public
