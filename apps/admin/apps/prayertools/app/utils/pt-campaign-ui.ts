@@ -3,6 +3,7 @@ import type { CampaignLanding, TranslatableText } from '@prayertools/shared/db/s
 import type { SitePlaceWording } from '@prayertools/shared/place'
 import type { SetupState } from '../components/PtSetupForm.vue'
 import { daysBetween } from '@prayertools/shared/dates'
+import { campaignEndDate } from '@prayertools/shared/setup'
 
 export type PtCampaignSummary = Pick<SetupState, 'start_mode' | 'start_date' | 'end_mode' | 'end_date' | 'length_days' | 'goal' | 'cadence'>
 
@@ -41,6 +42,8 @@ export interface PtCampaign extends SetupState {
   cta: { url?: string, label?: TranslatableText, mode?: 'none' } | null
   landing: CampaignLanding | null
   commitments: number
+  // People with a confirmed "notify me" request on this campaign, not yet told.
+  waiting: number
   progress: PtGoalProgress
 }
 
@@ -48,10 +51,16 @@ export interface PtCampaign extends SetupState {
 export const PT_SETUP_STEPS = ['setup', 'languages', 'content', 'landing', 'publish'] as const
 export type PtSetupStep = typeof PT_SETUP_STEPS[number]
 
-export function ptCampaignDates(c: PtCampaignSummary): string {
+// The last day of a campaign's dates: the day it ended once it has, else its end date.
+export function ptCampaignEnd(c: Pick<PtCampaignSummary, 'end_mode' | 'end_date'> & { ended_at?: string | null, timezone?: string }): string | null {
+  return campaignEndDate({ end_mode: c.end_mode, end_date: c.end_date, ended_at: c.ended_at ?? null, timezone: c.timezone ?? 'UTC' })
+}
+
+export function ptCampaignDates(c: PtCampaignSummary & { ended_at?: string | null, timezone?: string }): string {
   const start = ptFormatDate(c.start_date)
-  if (c.start_mode === 'join') return `From ${start} · each person finishes on their own`
-  return `${start} – ${c.end_mode === 'date' && c.end_date ? ptFormatDate(c.end_date) : 'no end'}`
+  const end = ptCampaignEnd(c)
+  if (c.start_mode === 'join') return c.ended_at ? `Ended ${ptFormatDate(end)} · each person started on their own` : `From ${start} · each person finishes on their own`
+  return `${start} – ${end ? ptFormatDate(end) : 'no end'}`
 }
 
 // Entries a campaign goes through, when its dates or length fix them.

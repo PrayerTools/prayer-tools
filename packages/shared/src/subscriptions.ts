@@ -120,7 +120,7 @@ export async function insertCommitment(tx: Tx, sub: SubscriptionRow, campaign: C
     starts_on: window.starts_on,
     ends_on: window.ends_on
   }
-  const next = remindersOn(sub) ? nextReminderUtc({ ...values, paused: false } as CommitmentRule) : null
+  const next = remindersOn(sub) && !campaign.ended_at ? nextReminderUtc({ ...values, paused: false } as CommitmentRule) : null
   return await tx
     .insertInto('pt_commitment')
     .values({ ...values, days_of_week: sql`${`{${values.days_of_week.join(',')}}`}::smallint[]`, dates: sql`${`{${values.dates.map(d => `"${d.toISOString()}"`).join(',')}}`}::timestamptz[]`, next_reminder_utc: next })
@@ -141,7 +141,8 @@ export async function updateCommitment(tx: Tx, sub: SubscriptionRow, commitmentI
     ...(patch.paused !== undefined ? { paused: patch.paused } : {})
   }
   if (merged.frequency === 'daily') merged.days_of_week = []
-  const next = remindersOn(sub) ? nextReminderUtc(merged) : null
+  const campaign = await tx.selectFrom('pt_campaign').select('ended_at').where('id', '=', existing.campaign_id).executeTakeFirst()
+  const next = remindersOn(sub) && !campaign?.ended_at ? nextReminderUtc(merged) : null
   return await tx
     .updateTable('pt_commitment')
     .set({
@@ -162,13 +163,20 @@ export async function updateCommitment(tx: Tx, sub: SubscriptionRow, commitmentI
 
 // Recomputes next_reminder_utc for every commitment of a subscription, after
 // verification, a status change or a timezone change. Commitments in campaigns
-// the person left keep none.
+// the person left keep none, and those in ended campaigns get none.
 export async function refreshReminders(tx: Tx, subscriptionId: string): Promise<void> {
   const sub = await tx.selectFrom('pt_subscription').selectAll().where('id', '=', subscriptionId).executeTakeFirst()
   if (!sub) return
-  const commitments = await tx.selectFrom('pt_commitment').selectAll().where('subscription_id', '=', subscriptionId).where('left_at', 'is', null).execute()
+  const commitments = await tx
+    .selectFrom('pt_commitment as c')
+    .innerJoin('pt_campaign as k', 'k.id', 'c.campaign_id')
+    .selectAll('c')
+    .select('k.ended_at as campaign_ended_at')
+    .where('c.subscription_id', '=', subscriptionId)
+    .where('c.left_at', 'is', null)
+    .execute()
   for (const c of commitments) {
-    const next = remindersOn(sub) ? nextReminderUtc(ruleOf(c)) : null
+    const next = remindersOn(sub) && !c.campaign_ended_at ? nextReminderUtc(ruleOf(c)) : null
     await tx.updateTable('pt_commitment').set({ next_reminder_utc: next, claimed_at: null }).where('id', '=', c.id).execute()
   }
 }

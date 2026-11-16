@@ -2,7 +2,7 @@
 // picks the campaign and loads what the page shows, all inside the site's org.
 import type { H3Event } from 'h3'
 import { withOrg } from '@prayertools/shared/db/scope'
-import { parseSitePath } from '@prayertools/shared/paths'
+import { parseSitePath, sitePath } from '@prayertools/shared/paths'
 import { landingStories, visibleSections } from '@prayertools/shared/landing'
 import { landingWhyDoc } from '@prayertools/shared/i18n/landing'
 import { prayingNow } from '@prayertools/shared/stats'
@@ -16,6 +16,8 @@ import type { CampaignRow } from '@prayertools/shared/subscriptions'
 import { platformConfig } from '@prayertools/shared/config'
 import { isSideCampaign } from '@prayertools/shared/setup'
 import { nextStep, nextStepCampaign, prayingIn } from '@prayertools/shared/next-step'
+import { notifyOffer } from '@prayertools/shared/notify-requests'
+import { campaignSegment } from '@prayertools/shared/campaigns'
 import type { PageView, SiteResponse } from '../../shared/view'
 import { useDb } from './db'
 import type { SiteContext } from './site-context'
@@ -247,11 +249,16 @@ async function betweenPage(tx: Parameters<typeof loadSiteData>[0], event: H3Even
   const main = nextStepCampaign(campaign, data.campaigns)
   const sub = main ? await managedSubscription(tx, event, ctx.orgId) : null
   const praying = !!sub && (await prayingIn(tx, main!.id, [sub.id])).has(sub.id)
+  const offer = await notifyOffer(tx, data.site, campaign)
   return {
     kind: 'between',
     stats: await statsFor(tx, campaign, data.settings.default_duration_min),
     endMessage: textIn(campaign.end_message as TranslatableText | null, lang, def),
-    next: nextStep(campaign, main, { lang, defaultLang: def, praying })
+    next: nextStep(campaign, main, { lang, defaultLang: def, praying }),
+    notify: offer.form,
+    again: offer.running
+      ? { campaign: offer.running.name, path: sitePath({ lang, defaultLang: def, campaignSlug: campaignSegment(offer.running, data.current?.campaign.id) }) }
+      : null
   }
 }
 

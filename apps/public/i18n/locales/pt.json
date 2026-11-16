@@ -236,8 +236,10 @@
     "still_praying": "Você continua orando com {campaign}.",
     "notify_title": "Avise-me quando esta campanha acontecer de novo",
     "notify_intro": "Deixe seu e-mail e {site} avisará você quando a próxima campanha começar.",
+    "notify_intro_campaign": "Deixe seu e-mail e {site} avisará você quando {campaign} acontecer de novo.",
     "notify_button": "Avise-me",
-    "notify_done": "Quase pronto! Verifique seu e-mail e confirme, e avisaremos quando ela acontecer de novo."
+    "notify_done": "Quase pronto! Verifique seu e-mail e confirme, e avisaremos quando ela acontecer de novo.",
+    "again_title": "{campaign} está acontecendo de novo"
   },
   "archived": {
     "body": "Esta campanha foi encerrada. Obrigado a todos que oraram.",
@@ -381,7 +383,11 @@
     "notice_link_invalid": "Este link de acesso não é válido ou já foi usado. Solicite um novo abaixo.",
     "notice_signed_out": "Você saiu da sua conta.",
     "notice_deleted": "Seus dados foram excluídos.",
-    "notice_deleted_kept": "Seus dados de oração foram excluídos. Sua conta continua porque você ainda a usa em outro lugar no Prayer.Tools.",
+    "notice_deleted_kept_operator": "Seus dados de oração foram excluídos. Sua conta continua porque você é operador do Prayer.Tools.",
+    "notice_deleted_kept_team": "Seus dados de oração foram excluídos. Sua conta continua porque você está na equipe de uma campanha. Você pode excluí-la na página da sua conta no aplicativo de administração.",
+    "notice_deleted_kept_app": "Seus dados de oração foram excluídos. Sua conta continua porque o aplicativo Prayer.Tools a usa em um dos seus dispositivos.",
+    "notice_deleted_kept_admin_sign_in": "Seus dados de oração foram excluídos. Sua conta continua porque você entra no aplicativo de administração com ela usando uma senha ou a Apple. Você pode excluí-la na página da sua conta no aplicativo de administração.",
+    "notice_deleted_kept_records": "Seus dados de oração foram excluídos. Sua conta continua porque registros que você criou na equipe de uma campanha ainda fazem referência a ela.",
     "notice_stopped_reminders": "Todos os seus lembretes de oração foram interrompidos.",
     "notice_stopped_all": "Todos os seus lembretes e e-mails de oração foram interrompidos.",
     "notice_link_sent": "Confira seu e-mail para encontrar o link.",

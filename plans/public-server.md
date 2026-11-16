@@ -30,6 +30,7 @@ Host middleware resolves the site from the hostname (`site_domain`), runs inside
 - Embeddable signup / coverage widget for external sites (replaces the WordPress shortcodes)
 - Before a campaign starts: signup is open and reminders begin on the start date.
 - Between campaigns (the last campaign has ended, no new one yet): final results, the end-of-campaign call to action, and "Notify me when this campaign runs again" (the site-updates consent) in place of signup.
+- An ended campaign at its own address (a past run, or a side campaign such as `/ramadan-2026`): the same page. "Notify me" is offered while no other run of its series is upcoming or running; once one is, the page links to that run instead.
 - Archived sites: a short "this campaign has ended" page; no signup.
 - Drafts: reachable only through the champion's preview link, never cached.
 - Footer: a "Give" link to the Prayer.Tools donation page.

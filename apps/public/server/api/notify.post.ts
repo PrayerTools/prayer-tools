@@ -4,7 +4,7 @@
 import { withOrg } from '@prayertools/shared/db/scope'
 import { normalizeEmail, PURPOSE_SITE_UPDATES, setConsent, upsertContact } from '@prayertools/shared/crm'
 import { notifyConfirmEmail } from '@prayertools/shared/email/templates'
-import { requestNotify } from '@prayertools/shared/notify-requests'
+import { notifyOffer, requestNotify } from '@prayertools/shared/notify-requests'
 import { useDb, ensureSystemUserOnce } from '../utils/db'
 import { deliver, prepareSiteMail } from '../utils/mail'
 import { bad, background, clientIp, limit, readJson, requireTurnstile, str } from '../utils/request'
@@ -24,6 +24,7 @@ export default defineEventHandler(async (event) => {
     const wanted = str(body.campaign, 40)
     const campaign = wanted ? data.campaigns.find(c => c.id === wanted || c.slug === wanted) : data.current?.campaign
     if (!campaign) bad('closed')
+    if (!(await notifyOffer(tx, data.site, campaign)).form) bad('closed')
     const site = data.site
     const lang = site.languages.includes(str(body.language, 10)) ? str(body.language, 10) : site.default_language
     const contact = await upsertContact(tx, { email: normalized, name: str(body.name, 200) || null, data: { pt_language: lang }, source: 'notify form' })

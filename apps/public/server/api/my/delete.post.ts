@@ -1,9 +1,10 @@
-// Delete my prayer data on every site, then the account itself unless it is
-// still in use (a site team, an admin app sign-in, an app install, or records
-// it created in a site's CRM).
+// Delete my prayer data on every site, then the account itself with its
+// Google / Apple links and sign-ins, unless it is still in use (see
+// deleteAccountOnRequest); the reply then says why it stays.
 import { withOrg } from '@prayertools/shared/db/scope'
 import { deleteSubscriptionData } from '@prayertools/shared/subscriptions'
 import { deleteChannelIfUnused } from '@prayertools/shared/crm'
+import { deleteAccountOnRequest } from '@prayertools/shared/accounts'
 import { useDb } from '../../utils/db'
 import { limit } from '../../utils/request'
 import { accountSiteIds, personSubscriptions } from '../../utils/my'
@@ -28,21 +29,6 @@ export default defineEventHandler(async (event) => {
     })
   }
   await endAccountSession(event)
-  let accountDeleted = false
-  try {
-    const res = await useDb()
-      .deleteFrom('users')
-      .where('id', '=', userId)
-      .where('password', 'is', null)
-      .where('is_admin', '=', false)
-      .where(eb => eb.not(eb.exists(eb.selectFrom('memberships').select('memberships.id').whereRef('memberships.user_id', '=', 'users.id'))))
-      .where(eb => eb.not(eb.exists(eb.selectFrom('pt_user_device').select('pt_user_device.id').whereRef('pt_user_device.user_id', '=', 'users.id'))))
-      .where(eb => eb.not(eb.exists(eb.selectFrom('user_identities').select('user_identities.id').whereRef('user_identities.user_id', '=', 'users.id'))))
-      .executeTakeFirst()
-    accountDeleted = Number(res.numDeletedRows) > 0
-  } catch (err) {
-    // A record the account created in a site's CRM keeps it.
-    if ((err as { code?: string }).code !== '23503') throw err
-  }
-  return { ok: true, account_deleted: accountDeleted }
+  const res = await deleteAccountOnRequest(useDb(), userId)
+  return res.deleted ? { ok: true, account_deleted: true } : { ok: true, account_deleted: false, kept_reason: res.reason }
 })

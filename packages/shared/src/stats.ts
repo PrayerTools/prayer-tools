@@ -2,8 +2,8 @@
 // raw events for a limited window. Everything runs inside the site's org.
 import { sql } from 'kysely'
 import type { Tx } from './db/scope'
-import type { Goal } from './db/schema'
-import { displayLength, slotMinutes, type CampaignDates } from './setup'
+import type { Goal, SubscriptionStatus } from './db/schema'
+import { campaignEndDate, campaignStatus, displayLength, slotMinutes, type CampaignDates } from './setup'
 import { todayIn } from './dates'
 import { buildGrid, coveragePercent } from './coverage'
 import type { CommitmentRule } from './schedule'
@@ -69,9 +69,10 @@ export interface CampaignForCount extends CampaignDates {
 // People signed up to a campaign. Web people count once their email is
 // verified; app people once they joined and created a reminder. Fixed
 // campaigns count everyone who committed (completed included); ongoing ones
-// count people with an active commitment.
+// count people with an active commitment, as of the last day once ended.
 export async function peopleCount(tx: Tx, c: CampaignForCount, now: Date = new Date()): Promise<number> {
-  const today = todayIn(c.timezone, now)
+  const ended = campaignStatus(c, now) === 'ended'
+  const day = (ended && campaignEndDate(c)) || todayIn(c.timezone, now)
   const fixed = displayLength(c) === 'fixed'
   let q = tx
     .selectFrom('pt_commitment as cm')
@@ -82,22 +83,28 @@ export async function peopleCount(tx: Tx, c: CampaignForCount, now: Date = new D
     .where('s.anonymized_at', 'is', null)
   if (!fixed) {
     q = q
-      .where('s.status', '=', 'active')
+      .where('s.status', 'in', countedStatuses(ended))
       .where('cm.paused', '=', false)
       .where('cm.left_at', 'is', null)
-      .where(eb => eb.or([eb('cm.ends_on', 'is', null), eb('cm.ends_on', '>=', today)]))
+      .where(eb => eb.or([eb('cm.ends_on', 'is', null), eb('cm.ends_on', '>=', day)]))
   }
   const row = await q.executeTakeFirst()
   return Number(row?.n ?? 0)
 }
 
-export async function activeRules(tx: Tx, campaignId: string): Promise<(CommitmentRule & { subscription_id: string })[]> {
+// Ending a campaign completes the subscriptions it leaves with nothing open,
+// so its final numbers keep them.
+function countedStatuses(ended: boolean): SubscriptionStatus[] {
+  return ended ? ['active', 'completed'] : ['active']
+}
+
+export async function activeRules(tx: Tx, campaignId: string, opts: { ended?: boolean } = {}): Promise<(CommitmentRule & { subscription_id: string })[]> {
   const rows = await tx
     .selectFrom('pt_commitment as cm')
     .innerJoin('pt_subscription as s', 's.id', 'cm.subscription_id')
     .select(['cm.subscription_id', 'cm.kind', 'cm.frequency', 'cm.days_of_week', 'cm.time', 'cm.timezone', 'cm.duration_min', 'cm.dates', 'cm.starts_on', 'cm.ends_on', 'cm.paused'])
     .where('cm.campaign_id', '=', campaignId)
-    .where('s.status', '=', 'active')
+    .where('s.status', 'in', countedStatuses(!!opts.ended))
     .where(eb => eb.or([eb('s.verified_at', 'is not', null), eb('s.delivery', '=', 'app')]))
     .execute()
   return rows.map(r => ({
@@ -122,7 +129,7 @@ export async function goalProgress(tx: Tx, c: CampaignForCount, defaultMinutes =
     const target = c.goal_target
     return { goal: c.goal, people, value: people, target, percent: target ? Math.min(100, Math.round(people / target * 100)) : null }
   }
-  const rules = await activeRules(tx, c.id)
+  const rules = await activeRules(tx, c.id, { ended: campaignStatus(c, now) === 'ended' })
   if (c.goal === 'prayer_time') {
     let perDay = 0
     for (const r of rules) {
