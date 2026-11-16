@@ -58,8 +58,8 @@ const languages = computed(() => {
 
 const siteItems = computed(() => sites.value.filter(s => orgIds.value.includes(s.id)).map(s => ({ label: s.name, value: s.id })))
 
-// Audience keys across the chosen sites; site-specific options (custom consents
-// and single campaigns) name their site.
+// Audience keys across the chosen sites, the ones every site shares first;
+// site-specific options (custom consents and single campaigns) name their site.
 const audienceKeys = computed(() => {
   const map = new Map<string, { key: string, label: string, description?: string, perSite: { name: string, count: number }[] }>()
   for (const s of audienceSites.value) {
@@ -69,7 +69,8 @@ const audienceKeys = computed(() => {
       map.set(a.key, entry)
     }
   }
-  return [...map.values()]
+  const all = [...map.values()]
+  return [...all.filter(a => !a.key.includes(':')), ...all.filter(a => a.key.includes(':'))]
 })
 
 async function loadParent() {

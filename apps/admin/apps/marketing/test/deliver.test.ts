@@ -72,7 +72,7 @@ describe('single-site send', () => {
     const emailId = await createEmail(env, site.orgId, { status: 'draft' })
     const host = captureHost()
     await withOrg(env.app, site.orgId, async (tx) => {
-      const email = { id: emailId, org_id: site.orgId, parent_id: null, audiences: ['current_campaign', 'consented_updates'] }
+      const email = { id: emailId, org_id: site.orgId, parent_id: null, audiences: [`campaign:${site.campaignId}`, 'consented_updates'] }
       await materialize(host, tx as never, email)
       await materialize(host, tx as never, email)
     })
@@ -193,6 +193,29 @@ describe('multi-site send', () => {
 
     await run(host)
     expect(host.mails).toHaveLength(3)
+  })
+
+  it('sends each site\'s campaign audience from that site only', async () => {
+    const user = await createUser(env)
+    const s1 = await createSite(env, 'First site')
+    const s2 = await createSite(env, 'Second site')
+    const p1 = await addPerson(env, s1)
+    const p2 = await addPerson(env, s2)
+    const outside = await addPerson(env, s2, { commitment: false })
+
+    const parent = await env.admin.insertInto('marketing_parent' as never).values({
+      owner_user_id: user,
+      versions: sql`${JSON.stringify(versions())}::text::jsonb`,
+      source_language: 'en',
+      org_ids: sql`${`{${[s1.orgId, s2.orgId].join(',')}}`}::uuid[]`,
+      audiences: sql`${`{campaign:${s1.campaignId},campaign:${s2.campaignId}}`}::text[]`
+    } as never).returning('id' as never).executeTakeFirstOrThrow() as { id: string }
+    expect(await asUser(env.app as never, user, tx => scheduleParent(tx, parent.id, user, new Date(Date.now() - 1000)))).toBe(true)
+
+    const host = captureHost()
+    await run(host)
+    expect(host.mails.map(m => [m.to, m.meta.org_id]).sort()).toEqual([[p1.email, s1.orgId], [p2.email, s2.orgId]].sort())
+    expect(host.mails.find(m => m.to === outside.email)).toBeUndefined()
   })
 })
 
