@@ -2,6 +2,8 @@
 
 Who prayer.tools is for and what each of them needs to do. Drawn from the plans, the session logs and our design conversations. Items marked *(not built)* are planned but missing; *(open)* are undecided.
 
+The mobile app is not built yet. What it still needs is kept in [mobile-app/todos.md](mobile-app/todos.md).
+
 ## Personas
 
 ### Champion
@@ -87,7 +89,7 @@ How it works:
 - Each side campaign has fixed dates, its own address (`/ramadan-2027`), landing page and content.
 - The main landing page shows a card linking to it while it is upcoming or running.
 - Existing intercessors join with one confirmation email; their main-campaign reminders continue.
-- At the end, its intercessors are invited to join the main campaign, unless the champion sets a different call to action *(not built)*.
+- At the end, its intercessors are invited to join the main campaign, unless the champion sets a different call to action or none.
 
 ### 3. A yearly Ramadan site
 A site that exists for Ramadan: a fixed campaign of about 30 days, daily content, relaunched every year. This was the first use case prayer.tools was built for, and it is still common.
@@ -131,8 +133,9 @@ The champion or the mobilizer:
 - List the site in the Prayer.Tools directory (operator approves).
 
 ### Fill 24/7 coverage
-- Intercessors choose open times to fill gaps. How they are shown which times need someone is *(open)*.
-- The champion sees coverage per day and per slot and emails intercessors to fill gaps.
+- Intercessors choose open times to fill gaps. The picker lists the hours that most need someone and shades each hour by how covered it is.
+- The champion sees coverage per day and per slot.
+- To ask people to fill gaps, the champion or mobilizer writes an ordinary site email to the campaign's intercessors.
 - Reminders go out some time before the chosen slot *(not built: today they go out at the chosen time; how long before is open)*.
 - Coverage is exact across DST.
 
@@ -141,11 +144,12 @@ The champion or the mobilizer:
 - Watch people signed up, goal progress, prayer activity and "praying now" on the dashboard.
 - The mobilizer sends updates to the campaign's intercessors who consented; reminders keep going regardless.
 - Answer contact messages and stories in the site inbox.
-- Publish allowed stories on the landing page. A main campaign's page shows stories from any earlier campaign on the site. A side campaign's next run (Ramadan 2026 → 2027) carries over the previous run's stories, or at least lets the champion pick from them *(not built: today a side campaign's page shows only its own)*.
+- Publish allowed stories on the landing page. A main campaign's page shows stories from any earlier campaign on the site. A side campaign's page shows the stories from every run of it (Ramadan 2026 → 2027), or the ones the champion picks from anywhere on the site.
 
 ### Close a campaign
+- A campaign with an end date closes after its last day. The champion can end any running campaign sooner from the campaigns page, which is how an ongoing one ends; it asks for the thank-you message and call to action if they aren't set.
 - Everyone who took part gets a thank-you (email, and push in the app), with the champion's message and a call to action.
-- Between campaigns the site shows the final results, the call to action and "Notify me when this campaign runs again". Those people are told when it does.
+- Between campaigns the site shows the final results, the call to action and "Notify me when this campaign runs again", on main and side campaigns alike. A signed-in visitor asks with one button. Those people are told when it does, and the champion sees how many are waiting.
 
 ### Relaunch
 - Create the next run (Ramadan 2027) on the same site. The address, team, branding and intercessors stay; the previous run stays reachable with its stats.
@@ -171,7 +175,7 @@ The champion or the mobilizer:
 
 ## Intercessor
 
-- Sign up on the web with email or in the app, and pick when to be reminded. Google and Apple sign-in *(planned)*.
+- Sign up on the web with email, Google or Apple, or in the app, and pick when to be reminded.
 - Pray from the reminder link; say "Amen".
 - Change, pause or remove prayer times, language and time zone from the manage link in any email.
 - Unsubscribe from one campaign and keep the others.
