@@ -236,8 +236,10 @@
     "still_praying": "Sigues orando con {campaign}.",
     "notify_title": "Avísame cuando esta campaña se realice de nuevo",
     "notify_intro": "Deja tu correo y {site} te avisará cuando comience la próxima campaña.",
+    "notify_intro_campaign": "Deja tu correo y {site} te avisará cuando {campaign} se realice de nuevo.",
     "notify_button": "Avísame",
-    "notify_done": "¡Casi listo! Revisa tu correo y confirma, y te avisaremos cuando se realice de nuevo."
+    "notify_done": "¡Casi listo! Revisa tu correo y confirma, y te avisaremos cuando se realice de nuevo.",
+    "again_title": "{campaign} se realiza de nuevo"
   },
   "archived": {
     "body": "Esta campaña ha terminado. Gracias a todos los que oraron.",

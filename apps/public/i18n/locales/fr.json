@@ -236,8 +236,10 @@
     "still_praying": "Vous priez toujours avec {campaign}.",
     "notify_title": "Me prévenir lorsque cette campagne reprendra",
     "notify_intro": "Laissez votre adresse e-mail et {site} vous préviendra au début de la prochaine campagne.",
+    "notify_intro_campaign": "Laissez votre adresse e-mail et {site} vous préviendra lorsque {campaign} reprendra.",
     "notify_button": "Me prévenir",
-    "notify_done": "Presque terminé ! Consultez vos e-mails et confirmez : nous vous préviendrons lorsqu'elle reprendra."
+    "notify_done": "Presque terminé ! Consultez vos e-mails et confirmez : nous vous préviendrons lorsqu'elle reprendra.",
+    "again_title": "{campaign} reprend"
   },
   "archived": {
     "body": "Cette campagne est terminée. Merci à tous ceux qui ont prié.",
