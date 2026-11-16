@@ -1,13 +1,16 @@
 <script setup lang="ts">
 // The site's launch checklist, with a link to fix each open item. `openOnly`
 // lists just what is still to do and hides itself when nothing is. With
-// `campaignId` it checks that campaign instead of the current one.
+// `campaignId` it checks that campaign instead of the current one. With
+// `stepFor` (inside the setup wizard), an item it maps to a step emits `fix`
+// with that step instead of linking to the admin page.
 export interface PtChecklist {
   items: { key: string, label: string, done: boolean, required: boolean, important?: boolean, detail?: string, to: string }[]
   canPublish: boolean
 }
 
-const props = withDefaults(defineProps<{ openOnly?: boolean, title?: string, campaignId?: string }>(), { openOnly: false, title: 'Launch checklist', campaignId: undefined })
+const props = withDefaults(defineProps<{ openOnly?: boolean, title?: string, campaignId?: string, stepFor?: Record<string, string> }>(), { openOnly: false, title: 'Launch checklist', campaignId: undefined, stepFor: undefined })
+const emit = defineEmits<{ fix: [step: string] }>()
 
 const { slug } = usePtSite()
 const { data, refresh } = useFetch<PtChecklist>('/api/pt/site/checklist', {
@@ -67,7 +70,14 @@ defineExpose({ refresh, data })
           </div>
         </div>
         <UButton
-          v-if="!item.done"
+          v-if="!item.done && stepFor?.[item.key]"
+          size="xs"
+          variant="link"
+          label="Fix"
+          @click="emit('fix', stepFor[item.key]!)"
+        />
+        <UButton
+          v-else-if="!item.done"
           :to="item.to"
           size="xs"
           variant="link"

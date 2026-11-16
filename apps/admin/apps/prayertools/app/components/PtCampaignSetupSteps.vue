@@ -148,6 +148,16 @@ watch([step, () => props.campaign?.id], ([s]) => {
 }, { immediate: true })
 
 const checklist = ref<{ refresh: () => Promise<void>, data: PtChecklist | null } | null>(null)
+// The wizard step that fixes each checklist item, so fixing one stays in the wizard.
+const CHECKLIST_STEPS: Record<string, PtSetupStep> = {
+  dates: 'setup',
+  content: 'content',
+  content_languages: 'content',
+  place_wording: 'content',
+  why: 'landing',
+  description: 'landing',
+  image: 'landing'
+}
 defineExpose({ refreshChecklist: () => checklist.value?.refresh() })
 </script>
 
@@ -294,6 +304,8 @@ defineExpose({ refreshChecklist: () => checklist.value?.refresh() })
           ref="checklist"
           :campaign-id="campaign.id"
           :title="checklistTitle"
+          :step-for="CHECKLIST_STEPS"
+          @fix="(s: string) => { step = s as PtSetupStep }"
         />
 
         <UCard v-if="preview">
