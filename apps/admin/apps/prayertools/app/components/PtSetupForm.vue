@@ -106,6 +106,11 @@ const slot = computed({
   get: () => state.value.slot_min ?? defaultSlot.value,
   set: (v: number) => { state.value.slot_min = v === defaultSlot.value ? null : v }
 })
+// The prayer-time target is stored as minutes per day and entered in hours.
+const targetHours = computed({
+  get: () => state.value.goal_target == null ? null : Math.round(state.value.goal_target / 60 * 100) / 100,
+  set: (v: number | null) => { state.value.goal_target = v ? Math.max(1, Math.round(v * 60)) : null }
+})
 
 watch(datedCampaign, (dated) => {
   if (!dated && state.value.goal === 'coverage') state.value.goal = 'prayer_time'
@@ -296,16 +301,12 @@ const lengthLabel = computed(() => {
           </template>
         </URadioGroup>
       </UFormField>
-      <UFormField
+      <USwitch
         v-if="state.goal === 'people'"
-        label="Track time committed"
-        help="Ask people how long they will pray (15 minutes by default)."
-      >
-        <USwitch
-          v-model="state.track_time"
-          :disabled="!open('track_time')"
-        />
-      </UFormField>
+        v-model="state.track_time"
+        label="Ask how long each person will pray"
+        :disabled="!open('track_time')"
+      />
       <UFormField
         v-if="state.goal === 'coverage'"
         label="Length of one prayer slot"
@@ -318,14 +319,24 @@ const lengthLabel = computed(() => {
         />
       </UFormField>
       <UFormField
-        v-if="state.goal && state.goal !== 'coverage'"
-        :label="state.goal === 'people' ? 'How many people are you hoping for? (optional)' : 'Minutes of prayer per day to aim for'"
-        :help="state.goal === 'prayer_time' ? '1440 minutes is 24 hours of prayer every day.' : undefined"
+        v-if="state.goal === 'people'"
+        label="How many people are you hoping for? (optional)"
       >
         <UInputNumber
           v-model="state.goal_target"
           :min="1"
-          :placeholder="state.goal === 'prayer_time' ? '1440' : ''"
+        />
+      </UFormField>
+      <UFormField
+        v-if="state.goal === 'prayer_time'"
+        label="Hours of prayer per day to aim for"
+      >
+        <UInputNumber
+          v-model="targetHours"
+          :min="0"
+          :step-snapping="false"
+          :format-options="{ maximumFractionDigits: 2 }"
+          placeholder="24"
         />
       </UFormField>
     </section>
@@ -341,7 +352,9 @@ const lengthLabel = computed(() => {
           v-model="state.cadence"
           :items="PT_CADENCE_ITEMS"
           orientation="horizontal"
-          variant="card"
+          variant="table"
+          indicator="hidden"
+          :ui="{ item: 'px-5 py-2' }"
           :disabled="!open('cadence')"
         />
       </UFormField>
