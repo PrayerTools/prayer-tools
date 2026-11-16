@@ -8,6 +8,7 @@ import { loadSiteMailContext, thankYouEmail, type SiteMailContext } from '@praye
 import { emailT } from '@prayertools/shared/i18n/email'
 import { textIn } from '@prayertools/shared/translatable'
 import { loadCampaigns } from '@prayertools/shared/campaigns'
+import { thankYouAudience } from '@prayertools/shared/campaign-end'
 import { nextStep, nextStepCampaign, prayingIn } from '@prayertools/shared/next-step'
 import type { PtCampaignTable, PtSubscriptionTable } from '@prayertools/shared/db/schema'
 import type { Selectable } from 'kysely'
@@ -99,14 +100,8 @@ async function thankYou(ctx: JobContext, payload: Record<string, unknown>) {
     }
     const batch = await withOrg(ctx.app, orgId, async (tx) => {
       const base = await loadCampaign(tx, campaignId)
-      let q = tx
-        .selectFrom('pt_subscription as s')
+      let q = thankYouAudience(tx, campaignId)
         .selectAll('s')
-        .where('s.delivery', '=', 'email')
-        .where('s.verified_at', 'is not', null)
-        .where('s.status', '<>', 'unsubscribed')
-        .where('s.anonymized_at', 'is', null)
-        .where(eb => eb.exists(eb.selectFrom('pt_commitment as c').select('c.id').whereRef('c.subscription_id', '=', 's.id').where('c.campaign_id', '=', campaignId).where('c.left_at', 'is', null)))
         .orderBy('s.id')
         .limit(THANK_YOU_BATCH)
       if (p.cursor) q = q.where('s.id', '>', p.cursor)

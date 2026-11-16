@@ -3,7 +3,7 @@
 // which commitment fields are asked). Options and defaults live here; a
 // campaign stores its answers.
 import type { Cadence, CampaignKind, EndMode, Goal, StartMode } from './db/schema'
-import { addDays, daysBetween, isIsoDate, todayIn } from './dates'
+import { addDays, daysBetween, isIsoDate, localDateOf, todayIn } from './dates'
 import { campaignSlugError } from './paths'
 
 export const START_MODES: readonly StartMode[] = ['date', 'join']
@@ -218,6 +218,15 @@ export function campaignStatus(c: CampaignDates, now: Date = new Date()): Campai
   return 'active'
 }
 
+// The last day of a campaign: its end date, or the day it was ended when that
+// came sooner or it has no end date. Null while an open-ended one runs.
+export function campaignEndDate(c: Pick<CampaignDates, 'end_mode' | 'end_date' | 'timezone' | 'ended_at'>): string | null {
+  const planned = c.end_mode === 'date' ? c.end_date : null
+  const ended = c.ended_at ? localDateOf(new Date(c.ended_at), c.timezone) : null
+  if (planned && ended) return ended < planned ? ended : planned
+  return planned ?? ended
+}
+
 // Number of entries in the campaign's content sequence, when bounded. A
 // personal-start campaign without a length follows its content (see
 // `campaignEntries` in content.ts).
@@ -293,13 +302,9 @@ export function pickCurrentCampaign<T extends CampaignLike>(campaigns: T[], now:
   }
   const upcoming = withStatus.filter(x => x.s === 'upcoming').sort((a, b) => (a.c.start_date ?? '').localeCompare(b.c.start_date ?? ''))
   if (upcoming.length) return { campaign: upcoming[0]!.c, state: 'upcoming' }
-  const ended = withStatus.filter(x => x.s === 'ended').sort((a, b) => endKey(b.c).localeCompare(endKey(a.c)))
+  const ended = withStatus.filter(x => x.s === 'ended').sort((a, b) => (campaignEndDate(b.c) ?? '').localeCompare(campaignEndDate(a.c) ?? ''))
   if (ended.length) return { campaign: ended[0]!.c, state: 'between' }
   return null
-}
-
-function endKey(c: CampaignLike): string {
-  return c.end_date ?? (c.ended_at ? new Date(c.ended_at).toISOString().slice(0, 10) : '')
 }
 
 // Main campaign date ranges on one site may not overlap, so the site's root

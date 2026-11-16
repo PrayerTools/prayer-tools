@@ -14,13 +14,14 @@ const { data, pending, error } = useFetch<{
   progress: { goal: string, people: number, value: number, target: number | null, percent: number | null } | null
   coverage: { date: string, percent: number, from: number, to: number }[] | null
   coverageSlots: { start: string, slotMinutes: number, timezone: string, slots: number[] } | null
-  campaign: { id: string, name: string, start_date: string | null, end_date: string | null, length: string } | null
+  campaign: { id: string, name: string, start_date: string | null, end_mode: 'date' | 'none' | 'days', end_date: string | null, ended_at: string | null, timezone: string, length: string } | null
   commitments: number
   prayingNow: number
   anonymousApp: number
 }>('/api/pt/stats', { query: computed(() => ({ campaign: campaignId.value })), key: computed(() => `pt-stats-${campaignId.value}`), watch: [campaignId] })
 
 const campaign = computed(() => data.value?.campaign ?? null)
+const campaignEnd = computed(() => campaign.value ? ptCampaignEnd(campaign.value) : null)
 const hours = (min: number) => min >= 60 ? `${(min / 60).toLocaleString(undefined, { maximumFractionDigits: 1 })} h` : `${Math.round(min)} min`
 const total = (metric: string) => data.value?.totals?.[metric] ?? 0
 
@@ -84,7 +85,7 @@ const DIM_ICONS: Record<string, string> = { country: 'i-lucide-globe', source: '
         </div>
         <p class="text-sm text-(--ui-text-muted)">
           <template v-if="campaign">
-            {{ campaign.name }}: {{ ptFormatDate(campaign.start_date) }} – {{ campaign.end_date ? ptFormatDate(campaign.end_date) : 'ongoing' }}
+            {{ campaign.name }}: {{ ptFormatDate(campaign.start_date) }} – {{ campaignEnd ? ptFormatDate(campaignEnd) : 'ongoing' }}
           </template>
           <template v-else>
             All time

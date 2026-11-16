@@ -19,7 +19,7 @@ There are no campaign types. A campaign is described by four setup answers; temp
 ## Lifecycle
 
 - **Site:** draft → published → archived. New sites start as drafts and are seen through a preview link until published. Archived sites show a short "this campaign has ended" page with no signup and no reminders, and can be un-archived. There is no paused state.
-- **Campaign:** upcoming → active → ended, from its dates, never set by hand. Personal-start campaigns have no end date; each person finishes on their own.
+- **Campaign:** upcoming → active → ended. It ends when its end date passes, or when the champion ends it from the campaign list: any running campaign can be ended there, and that is how one with no end date ends. Ending keeps the setup answers (a relaunch starts from them), the day it ended is its last day, and an ended campaign is not reopened. Personal-start campaigns have no end date; each person finishes on their own.
 - **Before a campaign starts** signup is open and reminders begin on the start date.
 - **Between campaigns** the site shows the final results and the end-of-campaign call to action, and offers "Notify me when this campaign runs again" (the site-updates consent) in place of signup; those people are the audience for the relaunch invitation.
 
@@ -60,12 +60,12 @@ Every campaign shows the number of people signed up, whatever its goal.
 - **App:** a person counts once they join the campaign and create a reminder.
 - Opening prayer content and "Amen" are tracked for stats; they don't decide who counts.
 - **Fixed campaigns:** everyone who committed to the campaign, including those who have completed it.
-- **Ongoing campaigns:** people with active commitments. The app inactivity sweep and email check-ins (see [README.md](README.md)) remove people who stop.
+- **Ongoing campaigns:** people with active commitments. The app inactivity sweep and email check-ins (see [README.md](README.md)) remove people who stop. Once the campaign has ended, the count is of those still praying on its last day.
 
 ## End of a campaign
 
-- **Shared calendar:** when the campaign ends, everyone gets the end-of-campaign thank-you with the champion's optional message and call to action (see [admin-app.md](admin-app.md)).
-- **Personal start:** when a person opens the last entry, their subscription becomes `completed` and reminders stop; it never loops back to day 1. They get the same thank-you and call to action.
+- **Shared calendar:** when the campaign ends, by its end date or by the champion, reminders stop and everyone gets the end-of-campaign thank-you with the champion's optional message and call to action (see [admin-app.md](admin-app.md)).
+- **Personal start:** when a person opens the last entry, their subscription becomes `completed` and reminders stop; it never loops back to day 1. They get the same thank-you and call to action. When the champion ends the campaign, people part-way through stop there and get the campaign's thank-you; those who had finished are not thanked again.
 - The call to action is where a campaign hands people on, e.g. a 4-day crisis campaign's "Join the 12-day campaign".
 
 ## Templates

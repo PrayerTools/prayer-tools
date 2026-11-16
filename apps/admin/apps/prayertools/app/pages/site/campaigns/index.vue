@@ -1,11 +1,13 @@
 <script setup lang="ts">
 // The site's campaigns, grouped by state, each with its dates, setup answers,
 // people and prayer times, and the actions that fit its state.
+import { emailT } from '@prayertools/shared/i18n/email'
+import { textIn } from '@prayertools/shared/translatable'
 import type { PtCampaign } from '../../../utils/pt-campaign-ui'
 
 definePageMeta({ middleware: 'auth' })
 
-const { data: site, can } = usePtSite()
+const { data: site, can, refresh: refreshSite } = usePtSite()
 const toast = usePtToast()
 const { data, status, refresh } = usePtCampaignList()
 const canEdit = computed(() => can('pt.campaigns.write'))
@@ -41,6 +43,63 @@ async function doConfirm() {
     toast.fail(err, 'Could not delete the campaign')
   } finally {
     confirming.value = false
+  }
+}
+
+// Ending a running campaign. The confirmation shows the thank-you, or asks for
+// its missing parts; what is edited there is saved by the request that ends it.
+const canEnd = (c: PtCampaign) => canEdit.value && !!c.published_at && c.status === 'active'
+const ending = reactive({ open: false, campaign: null as PtCampaign | null, editing: false, busy: false })
+const endPreview = ref<{ sends: boolean, recipients: number } | null>(null)
+const thankYouEditor = useTemplateRef<{ values: () => Record<string, unknown>, incomplete: boolean }>('thankYouEditor')
+const defaultLanguage = computed(() => site.value?.site.default_language ?? 'en')
+const messageOf = (c: PtCampaign) => textIn(c.end_message, defaultLanguage.value)
+// The button is settled once the champion wrote their own or chose to have none.
+function buttonOf(c: PtCampaign) {
+  if (c.cta?.mode === 'none') return { none: true as const }
+  return c.cta?.url ? { none: false as const, label: textIn(c.cta.label, defaultLanguage.value), url: c.cta.url } : null
+}
+const endMessage = computed(() => ending.campaign ? messageOf(ending.campaign) : '')
+const endButton = computed(() => ending.campaign ? buttonOf(ending.campaign) : null)
+const endStandardText = computed(() => ending.campaign ? emailT(defaultLanguage.value, 'thanks.body', { campaign: ending.campaign.name }) : '')
+const endMissing = computed(() => {
+  if (endMessage.value && endButton.value) return ''
+  const both = !endMessage.value && !endButton.value
+  const what = both ? 'no message of its own and no button' : !endMessage.value ? 'no message of its own' : 'no button'
+  const side = ending.campaign?.kind === 'side' && !endButton.value ? ' Without a button of your own, the email invites people to your main campaign.' : ''
+  return `This campaign has ${what} yet. Add ${both ? 'them' : 'one'} here, or end it without.${side}`
+})
+const endRecipients = computed(() => {
+  const p = endPreview.value
+  if (!p) return 'The people who took part get the thank-you email.'
+  if (!p.sends) return 'No thank-you email is sent, because your site is not published.'
+  if (!p.recipients) return 'No thank-you email is sent: nobody with a confirmed email took part.'
+  return p.recipients === 1 ? '1 person who took part gets the thank-you email.' : `${p.recipients.toLocaleString()} people who took part get the thank-you email.`
+})
+async function askEnd(c: PtCampaign) {
+  Object.assign(ending, { open: true, campaign: c, editing: !messageOf(c) || !buttonOf(c), busy: false })
+  endPreview.value = null
+  const preview = await $fetch<{ sends: boolean, recipients: number }>(`/api/pt/campaigns/${c.id}/end`).catch(() => null)
+  if (ending.campaign?.id === c.id) endPreview.value = preview
+}
+async function doEnd() {
+  const c = ending.campaign
+  if (!c) return
+  const editor = ending.editing ? thankYouEditor.value : null
+  if (editor?.incomplete) {
+    toast.fail(new Error('Give your button a text and a link, or choose another option.'), 'Could not end the campaign')
+    return
+  }
+  ending.busy = true
+  try {
+    const res = await $fetch<{ thankYou: boolean }>(`/api/pt/campaigns/${c.id}/end`, { method: 'POST', body: editor ? editor.values() : {} })
+    toast.ok(`${c.name} has ended`, res.thankYou ? 'The thank-you emails are on their way.' : undefined)
+    ending.open = false
+    await Promise.all([refresh(), refreshSite()])
+  } catch (err) {
+    toast.fail(err, 'Could not end the campaign')
+  } finally {
+    ending.busy = false
   }
 }
 </script>
@@ -194,6 +253,15 @@ async function doConfirm() {
               label="Relaunch"
             />
             <UButton
+              v-if="canEnd(c)"
+              size="sm"
+              variant="outline"
+              color="error"
+              icon="i-lucide-circle-stop"
+              label="End campaign"
+              @click="askEnd(c)"
+            />
+            <UButton
               v-if="canEdit && c.commitments === 0"
               size="sm"
               variant="ghost"
@@ -258,7 +326,7 @@ async function doConfirm() {
       v-if="blocker"
       v-model:open="blockedOpen"
       :title="`${blocker.name} has no end date`"
-      description="A site runs one main campaign at a time, and this one keeps running until it is ended. Another campaign with fixed dates, like Ramadan, can run alongside it as a side campaign."
+      description="A site runs one main campaign at a time, and this one keeps running until you end it with End campaign on its card here. Another campaign with fixed dates, like Ramadan, can run alongside it as a side campaign."
     >
       <template #footer>
         <div class="flex justify-end gap-2 w-full">
@@ -282,6 +350,74 @@ async function doConfirm() {
         </div>
       </template>
     </UModal>
+
+    <ConfirmModal
+      v-model:open="ending.open"
+      :title="`End ${ending.campaign?.name ?? 'this campaign'} now?`"
+      confirm-label="End campaign"
+      :loading="ending.busy"
+      :ui="{ content: 'max-w-xl' }"
+      @confirm="doEnd"
+    >
+      <div
+        v-if="ending.campaign && site"
+        class="space-y-4 text-sm"
+      >
+        <ul class="list-disc ps-5 space-y-1">
+          <li>Prayer reminders stop and nobody new can sign up.</li>
+          <li>{{ endRecipients }}</li>
+          <li v-if="ending.campaign.start_mode === 'join'">
+            People part-way through stop where they are. Those who already finished got their thank-you then.
+          </li>
+          <li>{{ ending.campaign.kind === 'side' ? 'Its page shows' : 'Your site shows' }} the final results in place of signup.</li>
+          <li>This can't be undone.</li>
+        </ul>
+        <USeparator label="Thank-you email" />
+        <p class="text-(--ui-text-muted)">
+          Everyone is told “{{ endStandardText }}” and how much they prayed. Your own message and button follow.
+        </p>
+        <div
+          v-if="!ending.editing"
+          class="rounded-md border border-(--ui-border) bg-(--ui-bg-elevated)/50 p-4 space-y-2"
+        >
+          <p class="whitespace-pre-line">
+            {{ endMessage }}
+          </p>
+          <p class="text-(--ui-text-muted)">
+            <template v-if="endButton && !endButton.none">
+              Button: {{ endButton.label }} ({{ endButton.url }})
+            </template>
+            <template v-else>
+              No button.
+            </template>
+          </p>
+          <UButton
+            size="sm"
+            variant="outline"
+            color="neutral"
+            icon="i-lucide-pencil"
+            label="Change"
+            @click="ending.editing = true"
+          />
+        </div>
+        <template v-else>
+          <p v-if="endMissing">
+            {{ endMissing }}
+          </p>
+          <PtCampaignThankYou
+            ref="thankYouEditor"
+            :key="ending.campaign.id"
+            embedded
+            :campaign-id="ending.campaign.id"
+            :end-message="ending.campaign.end_message"
+            :cta="ending.campaign.cta"
+            :side="ending.campaign.kind === 'side'"
+            :languages="site.site.languages"
+            :default-language="site.site.default_language"
+          />
+        </template>
+      </div>
+    </ConfirmModal>
 
     <UModal
       v-model:open="confirm.open"

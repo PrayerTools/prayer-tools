@@ -33,15 +33,16 @@ const phaseText = computed(() => {
   const c = campaign.value
   if (!c) return 'No campaign yet.'
   if (!c.published_at) return `${c.name} is a draft. Finish its setup and publish it to put it on your site.`
-  if (c.start_mode === 'join') return `${c.name}: open since ${ptFormatDate(c.start_date)}. Each person starts when they join.`
+  if (c.start_mode === 'join' && c.status !== 'ended') return `${c.name}: open since ${ptFormatDate(c.start_date)}. Each person starts when they join.`
   if (c.status === 'upcoming') {
     const n = daysUntil(c.start_date!)
     return `${c.name} starts ${ptFormatDate(c.start_date)} (in ${n} ${n === 1 ? 'day' : 'days'}). Signup is open.`
   }
   if (c.status === 'active') return c.end_date ? `${c.name} runs until ${ptFormatDate(c.end_date)}.` : `${c.name} has run since ${ptFormatDate(c.start_date)}, with no end date.`
+  const ended = ptCampaignEnd(c)
   return site.value?.currentCampaign?.id === c.id
-    ? `${c.name} ended ${c.end_date ? ptFormatDate(c.end_date) : ''}. The site shows the results and offers “Notify me when this campaign runs again”.`
-    : `${c.name} ended ${c.end_date ? ptFormatDate(c.end_date) : ''}.`
+    ? `${c.name} ended ${ended ? ptFormatDate(ended) : ''}. The site shows the results and offers “Notify me when this campaign runs again”.`
+    : `${c.name} ended ${ended ? ptFormatDate(ended) : ''}.`
 })
 
 const progressLabel = computed(() => {
