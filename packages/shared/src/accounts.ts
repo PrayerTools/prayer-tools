@@ -169,18 +169,56 @@ export async function accountOrgIds(admin: Db, userId: string): Promise<string[]
   return rows.rows.map(r => r.org_id)
 }
 
-// Removes an account nothing uses any more: no subscription, contact, app
-// device or membership, no admin app sign-in (password, Google / Apple
-// identity, live session) and not a platform admin. Runs on the admin
-// connection, since use spans every site.
+// Why an account stays when its owner asks to delete it. A Google / Apple link
+// alone keeps nothing; an Apple link holding a refresh token is an admin sign-in,
+// since only the admin app stores one and its account deletion revokes it at Apple.
+export type AccountKeptReason = 'operator' | 'team' | 'app' | 'admin_sign_in' | 'records'
+
+// Each use, as a condition on `users u`, in the order reasons are reported.
+const USES = {
+  operator: sql<boolean>`u.is_admin`,
+  team: sql<boolean>`EXISTS (SELECT 1 FROM memberships m WHERE m.user_id = u.id)`,
+  app: sql<boolean>`EXISTS (SELECT 1 FROM pt_user_device d WHERE d.user_id = u.id)`,
+  admin_sign_in: sql<boolean>`(u.password IS NOT NULL OR EXISTS (SELECT 1 FROM user_identities i WHERE i.user_id = u.id AND i.refresh_token_enc IS NOT NULL))`
+}
+type Use = keyof typeof USES
+
+// True when the account `users u` is still in use beyond its prayer data.
+export const accountInUse = sql<boolean>`(${sql.join(Object.values(USES), sql` OR `)})`
+
+// Deletes the account its owner asked to delete, with its sign-ins, codes and
+// Google / Apple links, unless it is still in use.
+export async function deleteAccountOnRequest(db: Db, userId: string): Promise<{ deleted: true } | { deleted: false, reason: AccountKeptReason }> {
+  let rows: (Record<Use, boolean> & { deleted: boolean })[]
+  try {
+    rows = (await sql<Record<Use, boolean> & { deleted: boolean }>`
+      WITH gone AS (DELETE FROM users u WHERE u.id = ${userId} AND NOT ${accountInUse} RETURNING u.id)
+      SELECT ${USES.operator} AS operator, ${USES.team} AS team, ${USES.app} AS app, ${USES.admin_sign_in} AS admin_sign_in,
+        EXISTS (SELECT 1 FROM gone) AS deleted
+      FROM users u WHERE u.id = ${userId}
+    `.execute(db)).rows
+  } catch (err) {
+    // A record it created in a site's CRM (`crm_records.created_by`) keeps it.
+    if ((err as { code?: string }).code !== '23503') throw err
+    return { deleted: false, reason: 'records' }
+  }
+  const use = rows[0]
+  if (!use || use.deleted) return { deleted: true }
+  const reason = (Object.keys(USES) as Use[]).find(k => use[k])
+  if (!reason) throw new Error('account kept without a use')
+  return { deleted: false, reason }
+}
+
+// Removes an account nothing uses any more: not in use as above, and with no
+// subscription, contact, Google / Apple link or live admin session, since
+// nobody asked for it to go. Runs on the admin connection, since use spans
+// every site.
 export async function deleteAccountIfUnused(tx: Tx, userId: string): Promise<boolean> {
   const res = await sql<{ id: string }>`
     DELETE FROM users u
-    WHERE u.id = ${userId} AND u.password IS NULL AND NOT u.is_admin
+    WHERE u.id = ${userId} AND NOT ${accountInUse}
       AND NOT EXISTS (SELECT 1 FROM pt_subscription s WHERE s.user_id = u.id)
       AND NOT EXISTS (SELECT 1 FROM crm_records r WHERE r.user_id = u.id)
-      AND NOT EXISTS (SELECT 1 FROM pt_user_device d WHERE d.user_id = u.id)
-      AND NOT EXISTS (SELECT 1 FROM memberships m WHERE m.user_id = u.id)
       AND NOT EXISTS (SELECT 1 FROM user_identities i WHERE i.user_id = u.id)
       AND NOT EXISTS (SELECT 1 FROM sessions se WHERE se.user_id = u.id AND se.expires_at > now())
     RETURNING u.id
