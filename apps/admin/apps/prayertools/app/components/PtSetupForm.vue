@@ -40,10 +40,17 @@ watch([() => props.dated, () => state.value.start_mode, () => state.value.end_mo
 
 type CampaignType = 'fixed' | 'ongoing' | 'anytime'
 const typeItems = [
-  { value: 'fixed', label: 'Short and focused', description: 'Everyone prays together for a set time, from a start date to an end date.' },
-  { value: 'ongoing', label: 'Ongoing', description: 'Starts on a date and keeps going, with or without an end date.' },
-  { value: 'anytime', label: 'Start anytime', description: 'No start date. Each person begins at day 1 when they sign up.' }
+  { value: 'fixed', label: 'Short and focused', description: 'Start date to end date', help: 'Everyone prays together for a set time, from a start date to an end date.' },
+  { value: 'ongoing', label: 'Ongoing', description: 'Keeps going', help: 'Starts on a date and keeps going, with or without an end date.' },
+  { value: 'anytime', label: 'Start anytime', description: 'Starts at sign-up', help: 'No start date. Each person begins at day 1 when they sign up.' }
 ]
+// Choice cards sit side by side when the form is wide enough, each with its picture at the bottom.
+const choiceCardsUi = {
+  root: '@container',
+  fieldset: 'grid gap-3 @xl:grid-cols-3',
+  wrapper: 'self-stretch flex flex-col',
+  description: 'flex-1 flex flex-col'
+}
 function typeOf(s: SetupDraft): CampaignType {
   if (s.start_mode === 'join') return 'anytime'
   if (s.end_mode === 'none') return 'ongoing'
@@ -87,7 +94,7 @@ const datedCampaign = computed(() => state.value.start_mode === 'date' && state.
 const goalItems = computed(() => (meta.value?.setup.goals ?? ['prayer_time', 'people', 'coverage']).map(g => ({
   value: g,
   label: PT_LABELS.goal[g],
-  description: g === 'coverage' && !datedCampaign.value ? 'Needs a start date and an end date.' : PT_LABELS.goalDescription[g],
+  description: g === 'coverage' && !datedCampaign.value ? 'Needs start and end dates.' : PT_LABELS.goalTag[g],
   disabled: g === 'coverage' && !datedCampaign.value
 })))
 const defaultSlot = computed(() => meta.value?.setup.defaultSlot ?? 15)
@@ -98,6 +105,11 @@ const slotItems = computed(() => (meta.value?.setup.slotOptions ?? [5, 10, 15, 3
 const slot = computed({
   get: () => state.value.slot_min ?? defaultSlot.value,
   set: (v: number) => { state.value.slot_min = v === defaultSlot.value ? null : v }
+})
+// The prayer-time target is stored as minutes per day and entered in hours.
+const targetHours = computed({
+  get: () => state.value.goal_target == null ? null : Math.round(state.value.goal_target / 60 * 100) / 100,
+  set: (v: number | null) => { state.value.goal_target = v ? Math.max(1, Math.round(v * 60)) : null }
 })
 
 watch(datedCampaign, (dated) => {
@@ -125,16 +137,33 @@ const lengthLabel = computed(() => {
       v-if="!props.dated && open('start_mode')"
       class="space-y-4 py-6 first:pt-0 last:pb-0"
     >
-      <UFormField
-        label="What kind of campaign is it?"
-        :ui="{ label: 'text-base font-semibold' }"
-      >
+      <UFormField :ui="{ label: 'text-base font-semibold' }">
+        <template #label>
+          What kind of campaign is it?
+          <InfoTip>
+            <p
+              v-for="t in typeItems"
+              :key="t.value"
+            >
+              <span class="font-medium text-(--ui-text-highlighted)">{{ t.label }}.</span> {{ t.help }}
+            </p>
+          </InfoTip>
+        </template>
         <URadioGroup
           :model-value="campaignType"
           :items="typeItems"
           variant="card"
+          :ui="choiceCardsUi"
           @update:model-value="(v) => chooseType(v as CampaignType)"
-        />
+        >
+          <template #description="{ item }">
+            <span>{{ item.description }}</span>
+            <PtSetupArt
+              :name="item.value"
+              class="mt-auto pt-3"
+            />
+          </template>
+        </URadioGroup>
       </UFormField>
     </section>
     <section class="space-y-4 py-6 first:pt-0 last:pb-0">
@@ -243,28 +272,41 @@ const lengthLabel = computed(() => {
       </template>
     </section>
     <section class="space-y-4 py-6 first:pt-0 last:pb-0">
-      <UFormField
-        label="What is the goal?"
-        :ui="{ label: 'text-base font-semibold' }"
-      >
+      <UFormField :ui="{ label: 'text-base font-semibold' }">
+        <template #label>
+          What is the goal?
+          <InfoTip>
+            <p
+              v-for="g in goalItems"
+              :key="g.value"
+            >
+              <span class="font-medium text-(--ui-text-highlighted)">{{ g.label }}.</span> {{ PT_LABELS.goalDescription[g.value] }}
+            </p>
+          </InfoTip>
+        </template>
         <URadioGroup
           :model-value="state.goal ?? undefined"
           :items="goalItems"
           variant="card"
+          :ui="choiceCardsUi"
           :disabled="!open('goal')"
           @update:model-value="(v) => { state.goal = v as SetupState['goal'] }"
-        />
+        >
+          <template #description="{ item }">
+            <span>{{ item.description }}</span>
+            <PtSetupArt
+              :name="item.value"
+              class="mt-auto pt-3"
+            />
+          </template>
+        </URadioGroup>
       </UFormField>
-      <UFormField
+      <USwitch
         v-if="state.goal === 'people'"
-        label="Track time committed"
-        help="Ask people how long they will pray (15 minutes by default)."
-      >
-        <USwitch
-          v-model="state.track_time"
-          :disabled="!open('track_time')"
-        />
-      </UFormField>
+        v-model="state.track_time"
+        label="Ask how long each person will pray"
+        :disabled="!open('track_time')"
+      />
       <UFormField
         v-if="state.goal === 'coverage'"
         label="Length of one prayer slot"
@@ -277,14 +319,24 @@ const lengthLabel = computed(() => {
         />
       </UFormField>
       <UFormField
-        v-if="state.goal && state.goal !== 'coverage'"
-        :label="state.goal === 'people' ? 'How many people are you hoping for? (optional)' : 'Minutes of prayer per day to aim for'"
-        :help="state.goal === 'prayer_time' ? '1440 minutes is 24 hours of prayer every day.' : undefined"
+        v-if="state.goal === 'people'"
+        label="How many people are you hoping for? (optional)"
       >
         <UInputNumber
           v-model="state.goal_target"
           :min="1"
-          :placeholder="state.goal === 'prayer_time' ? '1440' : ''"
+        />
+      </UFormField>
+      <UFormField
+        v-if="state.goal === 'prayer_time'"
+        label="Hours of prayer per day to aim for"
+      >
+        <UInputNumber
+          v-model="targetHours"
+          :min="0"
+          :step-snapping="false"
+          :format-options="{ maximumFractionDigits: 2 }"
+          placeholder="24"
         />
       </UFormField>
     </section>
@@ -300,7 +352,9 @@ const lengthLabel = computed(() => {
           v-model="state.cadence"
           :items="PT_CADENCE_ITEMS"
           orientation="horizontal"
-          variant="card"
+          variant="table"
+          indicator="hidden"
+          :ui="{ item: 'px-5 py-2' }"
           :disabled="!open('cadence')"
         />
       </UFormField>

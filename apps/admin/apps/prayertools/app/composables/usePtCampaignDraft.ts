@@ -1,4 +1,4 @@
-import { suggestedStartDate } from '@prayertools/shared/setup'
+import { SETUP_DEFAULTS, suggestedStartDate } from '@prayertools/shared/setup'
 import { addDays, todayIn } from '@prayertools/shared/dates'
 import type { SitePlaceWording } from '@prayertools/shared/place'
 import type { PersonalTemplateSetup } from '@prayertools/shared/db/schema'
@@ -40,7 +40,7 @@ export function usePtCampaignDraft(opts: PtCampaignDraftOptions = {}) {
     templateKey: 'generic',
     personalTemplateId: null,
     name: '',
-    setup: { start_mode: 'date', start_date: null, end_mode: 'date', end_date: null, length_days: null, goal: null, cadence: 'daily', track_time: false, goal_target: null, slot_min: null },
+    setup: { start_mode: 'date', start_date: null, end_mode: 'date', end_date: null, length_days: null, goal: null, cadence: 'daily', track_time: SETUP_DEFAULTS.track_time, goal_target: null, slot_min: null },
     timezone: 'UTC',
     location: null,
     peopleGroup: '',

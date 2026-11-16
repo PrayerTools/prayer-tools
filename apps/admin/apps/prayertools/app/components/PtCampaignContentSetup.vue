@@ -101,7 +101,9 @@ defineExpose({ save })
         :model-value="cadence"
         :items="PT_CADENCE_ITEMS"
         orientation="horizontal"
-        variant="card"
+        variant="table"
+        indicator="hidden"
+        :ui="{ item: 'px-5 py-2' }"
         :disabled="!cadenceOpen || savingCadence"
         @update:model-value="(v) => saveCadence(v as SetupState['cadence'])"
       />

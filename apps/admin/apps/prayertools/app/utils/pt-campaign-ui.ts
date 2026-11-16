@@ -7,8 +7,8 @@ import { daysBetween } from '@prayertools/shared/dates'
 export type PtCampaignSummary = Pick<SetupState, 'start_mode' | 'start_date' | 'end_mode' | 'end_date' | 'length_days' | 'goal' | 'cadence'>
 
 export const PT_CADENCE_ITEMS = [
-  { value: 'daily', label: 'Daily', description: 'A new prayer entry every day.' },
-  { value: 'weekly', label: 'Weekly', description: 'A new prayer entry every week.' }
+  { value: 'daily', label: 'Daily' },
+  { value: 'weekly', label: 'Weekly' }
 ]
 
 export interface PtGoalProgress {
