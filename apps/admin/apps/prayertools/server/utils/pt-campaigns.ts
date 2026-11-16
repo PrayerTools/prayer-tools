@@ -15,6 +15,7 @@ import { campaignById, campaignEditMissing, campaignSeries, loadCampaigns, norma
 import { goalProgress } from '@prayertools/shared/stats'
 import { campaignEntries, campaignLibraries, contentLength } from '@prayertools/shared/content'
 import { isTemplateWhy } from '@prayertools/shared/i18n/landing'
+import { waitingCounts } from '@prayertools/shared/notify-requests'
 
 export function ptSetupFromBody(b: Record<string, unknown>, templateKey: string | CampaignTemplate, base?: Partial<SetupAnswers>, kind: CampaignKind | null = null): SetupAnswers {
   const chosen: Partial<SetupAnswers> = { ...base }
@@ -254,18 +255,20 @@ export async function ptUpdateCampaign(tx: Transaction<Database>, ctx: TenantCon
 }
 
 // Every campaign on the site, newest first, with status, length, commitment
-// count and goal progress.
+// count, goal progress and how many people wait to hear that it runs again.
 export async function ptListCampaigns(tx: Transaction<Database>) {
   const site = await ptSite(tx)
   const rows = (await tx.selectFrom('pt_campaign').selectAll().orderBy('start_date', 'desc').orderBy('created_at', 'desc').execute()).map(normalizeCampaign)
   const counts = await tx.selectFrom('pt_commitment').select(['campaign_id', eb => eb.fn.countAll<string>().as('n')]).groupBy('campaign_id').execute()
   const commitments = new Map(counts.map(r => [r.campaign_id, Number(r.n)]))
+  const waiting = await waitingCounts(ptTx(tx))
   const campaigns = []
   for (const c of rows) {
     campaigns.push({
       ...c,
       status: campaignStatus(c),
       commitments: commitments.get(c.id) ?? 0,
+      waiting: waiting.get(c.id) ?? 0,
       length: displayLength(c),
       progress: await goalProgress(ptTx(tx), c, site.settings_merged.default_duration_min)
     })

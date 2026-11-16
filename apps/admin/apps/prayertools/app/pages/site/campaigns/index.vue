@@ -158,6 +158,16 @@ async function doConfirm() {
               </div>
             </div>
           </div>
+          <p
+            v-if="c.status === 'ended' && c.waiting"
+            class="text-sm flex items-center gap-1.5"
+          >
+            <UIcon
+              name="i-lucide-bell"
+              class="size-4 shrink-0 text-muted"
+            />
+            {{ c.waiting === 1 ? '1 person asked' : `${c.waiting.toLocaleString()} people asked` }} to hear when this runs again. Relaunching it tells them.
+          </p>
           <div class="flex items-center gap-2 flex-wrap">
             <UButton
               v-if="canEdit && !c.published_at"

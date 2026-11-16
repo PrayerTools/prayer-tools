@@ -239,7 +239,9 @@ export type PageView =
   // `sections` are the sections after the hero, in page order: a standard key or `custom:<id>`.
   // `placeholders` are the ones the admin editor's preview shows as empty.
   | { kind: 'landing', sections: string[], progress: GoalProgressView | null, subtitle: string, why: string, today: { day: number, html: string, title: string } | null, stories: StoryView[], custom: CustomSectionView[], prayingNow: number, form: SignupFormView, placeholders: string[], side: SideCampaignView[] }
-  | { kind: 'between', stats: StatsView | null, endMessage: string, next: NextStep | null }
+  // `notify` offers the "notify me" form; `again` is the open run of the same
+  // series, shown in its place.
+  | { kind: 'between', stats: StatsView | null, endMessage: string, next: NextStep | null, notify: boolean, again: { campaign: string, path: string } | null }
   | { kind: 'archived' }
   | { kind: 'not_started', startDate: string }
   | { kind: 'pray', day: number, chosen: boolean, personal: boolean, dateLabel: string | null, blocks: ContentBlockView[], prev: number | null, next: number | null, length: number | null }

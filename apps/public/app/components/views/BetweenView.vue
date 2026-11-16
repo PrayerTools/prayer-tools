@@ -27,10 +27,14 @@ useHead({ title: () => site.value.name })
         <h2 id="results-title" class="text-2xl font-bold">{{ t('between.results') }}</h2>
         <StatsGrid :stats="page.stats" />
       </section>
-      <section v-if="site.campaign?.isCurrent" aria-labelledby="notify-title" class="rounded-2xl bg-white border border-stone-200 p-6 space-y-3">
+      <section v-if="page.notify" aria-labelledby="notify-title" class="rounded-2xl bg-white border border-stone-200 p-6 space-y-3">
         <h2 id="notify-title" class="text-2xl font-bold">{{ t('between.notify_title') }}</h2>
-        <p class="text-stone-700">{{ st('between.notify_intro', { site: site.name }) }}</p>
+        <p class="text-stone-700">{{ site.campaign?.isCurrent ? st('between.notify_intro', { site: site.name }) : t('between.notify_intro_campaign', { site: site.name, campaign: site.campaign?.name }) }}</p>
         <NotifyForm />
+      </section>
+      <section v-else-if="page.again" aria-labelledby="again-title" class="rounded-2xl bg-white border border-stone-200 p-6 space-y-3">
+        <h2 id="again-title" class="text-2xl font-bold">{{ t('between.again_title', { campaign: page.again.campaign }) }}</h2>
+        <UButton :to="page.again.path" size="xl" :label="st('landing.signup.title')" trailing-icon="i-lucide-arrow-right" />
       </section>
       <section aria-labelledby="share-title" class="space-y-3">
         <h2 id="share-title" class="text-2xl font-bold">{{ st('landing.share.title') }}</h2>

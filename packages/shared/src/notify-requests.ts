@@ -53,11 +53,32 @@ export async function confirmNotify(tx: Tx, token: string, now = new Date()): Pr
   return row ? { campaignId: row.campaign_id } : null
 }
 
-// The run that answers a request made on `campaignId`: the first published
-// campaign of its series created after it that has not ended.
+// The run that answers a request made on `campaignId`, and the run its ended
+// page sends people to: the oldest other published campaign of its series
+// that is upcoming or running.
 export async function nextRun(tx: Tx, campaignId: string, now = new Date()): Promise<CampaignRow | null> {
   const series = await campaignSeries(tx, campaignId)
-  const at = series.findIndex(c => c.id === campaignId)
-  if (at < 0) return null
-  return series.slice(at + 1).find(c => campaignStatus(c, now) !== 'ended') ?? null
+  if (!series.some(c => c.id === campaignId)) return null
+  return series.find(c => c.id !== campaignId && campaignStatus(c, now) !== 'ended') ?? null
+}
+
+// What a campaign's page offers once it has ended: the request form while no
+// run of its series is open, else that run. Neither on an archived site, nor
+// for a draft or a campaign that has not ended.
+export async function notifyOffer(tx: Tx, site: { status: string }, campaign: CampaignRow, now = new Date()): Promise<{ form: boolean, running: CampaignRow | null }> {
+  if (site.status === 'archived' || !campaign.published_at || campaignStatus(campaign, now) !== 'ended') return { form: false, running: null }
+  const running = await nextRun(tx, campaign.id, now)
+  return { form: !running, running }
+}
+
+// Confirmed requests not yet answered, counted by the campaign asked on.
+export async function waitingCounts(tx: Tx): Promise<Map<string, number>> {
+  const rows = await tx
+    .selectFrom('pt_notify_request')
+    .select(['campaign_id', eb => eb.fn.countAll<string>().as('n')])
+    .where('confirmed_at', 'is not', null)
+    .where('notified_at', 'is', null)
+    .groupBy('campaign_id')
+    .execute()
+  return new Map(rows.map(r => [r.campaign_id, Number(r.n)]))
 }

@@ -24,7 +24,8 @@ const SEND_CONCURRENCY = 10
 
 export async function announceRunsAgain(ctx: WorkerContext, log: Logger): Promise<Record<string, number>> {
   const now = ctx.now()
-  // Sites with confirmed requests and a relaunch published after the campaign asked on.
+  // Sites with confirmed requests and another published campaign, upcoming or
+  // running, that a relaunch may link to the one asked on; `nextRun` settles it.
   const due = await sql<{ org_id: string }>`
     SELECT DISTINCT r.org_id::text AS org_id
     FROM pt_notify_request r
@@ -33,8 +34,11 @@ export async function announceRunsAgain(ctx: WorkerContext, log: Logger): Promis
     WHERE r.confirmed_at IS NOT NULL AND r.notified_at IS NULL
       AND EXISTS (
         SELECT 1 FROM pt_campaign k
-        WHERE k.org_id = r.org_id AND k.relaunch_of IS NOT NULL AND k.published_at IS NOT NULL
-          AND k.ended_at IS NULL AND k.created_at > asked.created_at
+        WHERE k.org_id = r.org_id AND k.id <> asked.id
+          AND (k.relaunch_of IS NOT NULL OR asked.relaunch_of IS NOT NULL)
+          AND k.published_at IS NOT NULL AND k.ended_at IS NULL
+          AND NOT (k.end_mode = 'date' AND k.end_date IS NOT NULL
+            AND k.end_date < (${now.toISOString()}::timestamptz AT TIME ZONE k.timezone)::date)
       )
   `.execute(ctx.admin)
 
@@ -68,6 +72,7 @@ export async function announceRunsAgain(ctx: WorkerContext, log: Logger): Promis
     const mctx = await loadSiteMailContext(tx, orgId)
     const current = pickCurrentCampaign(await loadCampaigns(tx), now)?.campaign
     const out: { id: string, mail: OutgoingMail }[] = []
+    const told = new Set<string>()
     for (const r of answered) {
       const to = emails.get(r.id)
       if (!to || !consented.has(to.channelId) || suppressed.has(to.email.trim().toLowerCase())) {
@@ -82,6 +87,9 @@ export async function announceRunsAgain(ctx: WorkerContext, log: Logger): Promis
         .returning('id')
         .executeTakeFirst()
       if (!marked) continue
+      // One email per person and run, on however many campaigns of the series they asked.
+      if (told.has(`${r.contact_id}:${run.id}`)) continue
+      told.add(`${r.contact_id}:${run.id}`)
       const lang = personLanguage(r.language, site)
       const path = sitePath({ lang, defaultLang: site.default_language, campaignSlug: campaignSegment(run, current?.id), page: 'signup' })
       const rendered = runsAgainEmail(mctx, lang, {

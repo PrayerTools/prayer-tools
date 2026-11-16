@@ -41,6 +41,8 @@ export interface PtCampaign extends SetupState {
   cta: { url?: string, label?: TranslatableText, mode?: 'none' } | null
   landing: CampaignLanding | null
   commitments: number
+  // People with a confirmed "notify me" request on this campaign, not yet told.
+  waiting: number
   progress: PtGoalProgress
 }
 
