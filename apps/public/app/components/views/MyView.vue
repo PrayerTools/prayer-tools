@@ -113,8 +113,8 @@ async function signOut() {
 async function deleteAll() {
   busy.value = true
   try {
-    const res = await $fetch<{ account_deleted: boolean }>('/api/my/delete', { method: 'POST' })
-    await navigateTo(`/my?notice=${res.account_deleted ? 'deleted' : 'deleted_kept'}`, { external: true })
+    const res = await $fetch<{ account_deleted: boolean, kept_reason?: string }>('/api/my/delete', { method: 'POST' })
+    await navigateTo(`/my?notice=${res.account_deleted ? 'deleted' : `deleted_kept_${res.kept_reason}`}`, { external: true })
   } finally {
     busy.value = false
   }

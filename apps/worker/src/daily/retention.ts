@@ -4,7 +4,7 @@
 import { sql } from 'kysely'
 import { forEachOrg } from '@prayertools/shared/db/scope'
 import { anonymizeSubscription } from '@prayertools/shared/subscriptions'
-import { deleteAccountIfUnused } from '@prayertools/shared/accounts'
+import { accountInUse, deleteAccountIfUnused } from '@prayertools/shared/accounts'
 import { NOTIFY_CONFIRM_DAYS } from '@prayertools/shared/notify-requests'
 import type { WorkerContext } from '../context'
 import type { Logger } from '../log'
@@ -96,12 +96,9 @@ export async function deleteUnusedAccounts(ctx: WorkerContext): Promise<number> 
   const graceCutoff = new Date(ctx.now().getTime() - DAY)
   const candidates = await sql<{ id: string }>`
     SELECT u.id::text AS id FROM users u
-    WHERE u.created < ${graceCutoff}::timestamptz AND u.password IS NULL AND NOT u.is_admin
+    WHERE u.created < ${graceCutoff}::timestamptz AND NOT ${accountInUse}
       AND NOT EXISTS (SELECT 1 FROM pt_subscription s WHERE s.user_id = u.id)
       AND NOT EXISTS (SELECT 1 FROM crm_records r WHERE r.user_id = u.id)
-      AND NOT EXISTS (SELECT 1 FROM pt_user_device d WHERE d.user_id = u.id)
-      AND NOT EXISTS (SELECT 1 FROM memberships m WHERE m.user_id = u.id)
-      AND NOT EXISTS (SELECT 1 FROM user_identities i WHERE i.user_id = u.id)
       AND NOT EXISTS (SELECT 1 FROM sessions se WHERE se.user_id = u.id AND se.expires_at > now())
     LIMIT ${BATCH}
   `.execute(ctx.admin)

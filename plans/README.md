@@ -84,7 +84,7 @@ Admin app, public server, worker and a shared package (domain logic, types, emai
 - Unsubscribed: 12 months after unsubscribing the subscription and its contact are anonymized (name, custom answers, reminder times removed); it remains as a count in stats.
 - Archived sites: 12 months after archiving, their intercessors' personal data is anonymized; stats remain.
 - An app device not seen for 12 months is taken as uninstalled and removed. An account left with no email and no device lets go of its app subscriptions (the rows stay, so campaign counts don't change).
-- An account with no subscription, linked contact, app device, membership, password, Google / Apple identity or live admin session is deleted with its email; a hashed address stays in the global suppression list only if it bounced or complained.
+- An account with no subscription, linked contact, app device, membership, password, Apple sign-in holding a refresh token (stored only by the admin app) or live admin session is deleted with its email and its Google / Apple links; a hashed address stays in the global suppression list only if it bounced or complained.
 - Raw `prayer_session` rows older than 2 years are dropped by partition, once the site, campaign and per-person rollups hold everything shown (see [analytics.md](analytics.md)).
 - Champions can't shorten these yet.
 

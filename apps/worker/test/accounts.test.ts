@@ -1,6 +1,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { sql } from 'kysely'
 import { withOrg } from '@prayertools/shared/db/scope'
-import { accountByEmail, deleteAccountIfUnused, syncAccountContacts } from '@prayertools/shared/accounts'
+import { accountByEmail, deleteAccountIfUnused, deleteAccountOnRequest, syncAccountContacts } from '@prayertools/shared/accounts'
 import { primaryEmailOf, setConsent } from '@prayertools/shared/crm'
 import { createWebSignup, verifySubscription } from '@prayertools/shared/subscriptions'
 import { syncLinkedContacts } from '../src/daily/accounts'
@@ -174,9 +175,63 @@ describe('accounts', () => {
     await env.admin.insertInto('memberships').values({ user_id: account.id, org_id: orgId }).execute()
     expect(await env.admin.transaction().execute(tx => deleteAccountIfUnused(tx, account.id))).toBe(false)
     await env.admin.deleteFrom('memberships').where('user_id', '=', account.id).execute()
-    await env.admin.insertInto('user_identities').values({ user_id: account.id, provider: 'google', subject: uid() }).execute()
+    await env.admin.insertInto('user_identities').values({ user_id: account.id, provider: 'apple', subject: uid() }).execute()
+    await sql`UPDATE user_identities SET refresh_token_enc = 'enc' WHERE user_id = ${account.id}`.execute(env.admin)
     expect(await env.admin.transaction().execute(tx => deleteAccountIfUnused(tx, account.id))).toBe(false)
-    await env.admin.deleteFrom('user_identities').where('user_id', '=', account.id).execute()
+    await sql`UPDATE user_identities SET refresh_token_enc = NULL WHERE user_id = ${account.id}`.execute(env.admin)
     expect(await env.admin.transaction().execute(tx => deleteAccountIfUnused(tx, account.id))).toBe(true)
+    expect(await env.admin.selectFrom('user_identities').select('id').where('user_id', '=', account.id).execute()).toHaveLength(0)
+  })
+
+  // An account a public Google / Apple sign-in made, with a sign-in on the public server.
+  async function socialAccount(created = new Date()) {
+    const email = testEmail(env)
+    const user = await env.admin.insertInto('users').values({ email, display_name: 'Ruth', verified: true, created }).returning('id').executeTakeFirstOrThrow()
+    await env.admin.insertInto('user_identities').values({ user_id: user.id, provider: 'google', subject: uid(), email }).execute()
+    await env.admin.insertInto('user_identities').values({ user_id: user.id, provider: 'apple', subject: uid(), email }).execute()
+    return user.id
+  }
+
+  it('sweeps an account a public Google / Apple sign-in made that never prayed with a site', async () => {
+    const old = await socialAccount(new Date(Date.now() - 2 * DAY))
+    const fresh = await socialAccount()
+    await deleteUnusedAccounts(testCtx(env))
+    const users = await env.admin.selectFrom('users').select('id').where('id', 'in', [old, fresh]).execute()
+    expect(users.map(u => u.id)).toEqual([fresh])
+    expect(await env.admin.selectFrom('user_identities').select('id').where('user_id', '=', old).execute()).toHaveLength(0)
+  })
+
+  it('deletes an account signed in with Google / Apple on request, with its links, sign-ins and codes', async () => {
+    const userId = await socialAccount()
+    const later = new Date(Date.now() + DAY)
+    await env.admin.insertInto('pt_account_session').values([
+      { user_id: userId, host: '.localhost', token_hash: uid(), expires_at: later },
+      { user_id: userId, host: 'custom.example', token_hash: uid(), expires_at: later }
+    ]).execute()
+    await env.admin.insertInto('pt_auth_code').values({ user_id: userId, purpose: 'sign_in', code_hash: uid(), expires_at: later }).execute()
+    await env.admin.insertInto('sessions').values({ user_id: userId, client: 'web', refresh_token_hash: uid(), expires_at: later } as never).execute()
+    expect(await deleteAccountOnRequest(env.app, userId)).toEqual({ deleted: true })
+    expect(await env.admin.selectFrom('users').select('id').where('id', '=', userId).execute()).toHaveLength(0)
+    for (const table of ['user_identities', 'pt_account_session', 'pt_auth_code', 'sessions'] as const) {
+      expect(await env.admin.selectFrom(table).select('id').where('user_id', '=', userId).execute()).toHaveLength(0)
+    }
+  })
+
+  it('keeps an account asked to be deleted while it is in use, and says why', async () => {
+    const { orgId } = await createSite(env)
+    const cases: [string, (userId: string) => Promise<unknown>][] = [
+      ['operator', id => env.admin.updateTable('users').set({ is_admin: true }).where('id', '=', id).execute()],
+      ['team', id => env.admin.insertInto('memberships').values({ user_id: id, org_id: orgId }).execute()],
+      ['app', id => env.admin.insertInto('pt_user_device').values({ user_id: id, credential_hash: uid() }).execute()],
+      ['admin_sign_in', id => env.admin.updateTable('users').set({ password: 'hash' }).where('id', '=', id).execute()],
+      ['admin_sign_in', id => sql`UPDATE user_identities SET refresh_token_enc = 'enc' WHERE user_id = ${id} AND provider = 'apple'`.execute(env.admin)],
+      ['records', id => withOrg(env.admin, orgId, tx => tx.insertInto('crm_records').values({ record_type: 'contacts', name: 'Boaz', created_by: id }).execute())]
+    ]
+    for (const [reason, use] of cases) {
+      const userId = await socialAccount()
+      await use(userId)
+      expect(await deleteAccountOnRequest(env.app, userId)).toEqual({ deleted: false, reason })
+      expect(await env.admin.selectFrom('users').select('id').where('id', '=', userId).execute()).toHaveLength(1)
+    }
   })
 })
