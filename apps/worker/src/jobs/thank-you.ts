@@ -9,7 +9,7 @@ import { emailT } from '@prayertools/shared/i18n/email'
 import { textIn } from '@prayertools/shared/translatable'
 import { loadCampaigns } from '@prayertools/shared/campaigns'
 import { thankYouAudience } from '@prayertools/shared/campaign-end'
-import { nextStep, nextStepCampaign, prayingIn } from '@prayertools/shared/next-step'
+import { nextStep, nextStepCampaign, prayingIn, type NextCampaign } from '@prayertools/shared/next-step'
 import type { PtCampaignTable, PtSubscriptionTable } from '@prayertools/shared/db/schema'
 import type { Selectable } from 'kysely'
 import { personLanguage, personLinks, siteMail, siteRow, type SiteRow } from '../mail'
@@ -35,7 +35,7 @@ async function totalsFor(tx: Tx, campaignId: string, subIds: string[]): Promise<
   return new Map(rows.map(r => [r.subscription_id, { prayers: Number(r.prayers), seconds: Number(r.seconds) }]))
 }
 
-function renderFor(mctx: SiteMailContext, site: SiteRow, campaign: Campaign, main: { name: string } | null, sub: Sub, totals: Totals | undefined, personal: boolean, praying: boolean) {
+function renderFor(mctx: SiteMailContext, site: SiteRow, campaign: Campaign, main: NextCampaign | null, sub: Sub, totals: Totals | undefined, personal: boolean, praying: boolean) {
   const lang = personLanguage(sub.language, site)
   const links = personLinks(mctx, sub)
   const message = textIn(campaign.end_message, lang, site.default_language) || null
@@ -60,8 +60,8 @@ function pushText(campaign: Campaign, site: SiteRow, lang: string, siteName: str
   }
 }
 
-// `main` is the main campaign the thank-you invites people to, if any.
-async function loadCampaign(tx: Tx, campaignId: string): Promise<{ campaign: Campaign, main: { id: string, name: string } | null, site: SiteRow, mctx: SiteMailContext, orgId: string }> {
+// `main` is the campaign the thank-you invites people to, if any.
+async function loadCampaign(tx: Tx, campaignId: string): Promise<{ campaign: Campaign, main: NextCampaign | null, site: SiteRow, mctx: SiteMailContext, orgId: string }> {
   const campaign = await tx.selectFrom('pt_campaign').selectAll().where('id', '=', campaignId).executeTakeFirst()
   if (!campaign) throw new JobError(`Campaign ${campaignId} not found`, false)
   const site = await siteRow(tx)

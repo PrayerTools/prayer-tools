@@ -43,7 +43,6 @@ const GUIDANCE: Record<string, Record<string, string>> = {
     generic: 'Tell visitors what you are praying for and why it matters. Two or three short paragraphs work well: who or what you pray for, what you hope God will do, and why each person\'s prayer counts.',
     ramadan: 'During Ramadan many Muslims seek God. Share why you are praying for them this month, what you hope for, and how praying 15 minutes a day makes a difference.',
     disaster_4: 'Say briefly what happened, who is affected, and what you are asking God for in these first days. Keep it short: people should be able to start praying right away.',
-    disaster_12: 'Describe the needs as the response continues: people affected, those helping, and the churches serving. Invite visitors to keep praying for the next days.',
     anytime: 'Tell visitors what they will pray for and that they can start today: everyone begins at the first entry on the day they sign up.'
   }
 }

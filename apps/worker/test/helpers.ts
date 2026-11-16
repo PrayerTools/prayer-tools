@@ -102,6 +102,7 @@ export interface CampaignOpts {
   endMessage?: TranslatableText
   cta?: CampaignCta
   kind?: 'side' | null
+  templateKey?: string
   relaunchOf?: string
   // A draft campaign when false.
   published?: boolean
@@ -123,6 +124,7 @@ export async function createCampaign(env: TestEnv, orgId: string, o: CampaignOpt
     end_message: o.endMessage ? jsonb(o.endMessage) : null,
     cta: jsonb(o.cta ?? {}),
     kind: o.kind ?? null,
+    template_key: o.templateKey ?? null,
     relaunch_of: o.relaunchOf ?? null,
     published_at: o.published === false ? null : new Date()
   }).returning('id').executeTakeFirstOrThrow())

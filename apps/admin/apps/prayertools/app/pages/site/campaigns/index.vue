@@ -3,6 +3,7 @@
 // people and prayer times, and the actions that fit its state.
 import { emailT } from '@prayertools/shared/i18n/email'
 import { textIn } from '@prayertools/shared/translatable'
+import { getTemplate } from '@prayertools/shared/setup'
 import type { PtCampaign } from '../../../utils/pt-campaign-ui'
 
 definePageMeta({ middleware: 'auth' })
@@ -62,12 +63,21 @@ function buttonOf(c: PtCampaign) {
 const endMessage = computed(() => ending.campaign ? messageOf(ending.campaign) : '')
 const endButton = computed(() => ending.campaign ? buttonOf(ending.campaign) : null)
 const endStandardText = computed(() => ending.campaign ? emailT(defaultLanguage.value, 'thanks.body', { campaign: ending.campaign.name }) : '')
+// Who the email invites people to when the champion set no button of their own.
+function endInvite(): string {
+  const c = ending.campaign
+  if (!c || endButton.value) return ''
+  const side = c.kind === 'side'
+  if (getTemplate(c.template_key).cta === 'next_campaign') {
+    return ` Without a button of your own, the email invites people to the campaign that starts after this one${side ? ', or else to your main campaign' : ''}.`
+  }
+  return side ? ' Without a button of your own, the email invites people to your main campaign.' : ''
+}
 const endMissing = computed(() => {
   if (endMessage.value && endButton.value) return ''
   const both = !endMessage.value && !endButton.value
   const what = both ? 'no message of its own and no button' : !endMessage.value ? 'no message of its own' : 'no button'
-  const side = ending.campaign?.kind === 'side' && !endButton.value ? ' Without a button of your own, the email invites people to your main campaign.' : ''
-  return `This campaign has ${what} yet. Add ${both ? 'them' : 'one'} here, or end it without.${side}`
+  return `This campaign has ${what} yet. Add ${both ? 'them' : 'one'} here, or end it without.${endInvite()}`
 })
 const endRecipients = computed(() => {
   const p = endPreview.value
@@ -313,6 +323,7 @@ async function doEnd() {
               :end-message="c.end_message"
               :cta="c.cta"
               :side="c.kind === 'side'"
+              :template-key="c.template_key"
               :languages="site.site.languages"
               :default-language="site.site.default_language"
               @saved="refresh"
@@ -412,6 +423,7 @@ async function doEnd() {
             :end-message="ending.campaign.end_message"
             :cta="ending.campaign.cta"
             :side="ending.campaign.kind === 'side'"
+            :template-key="ending.campaign.template_key"
             :languages="site.site.languages"
             :default-language="site.site.default_language"
           />

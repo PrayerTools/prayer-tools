@@ -243,7 +243,7 @@ async function landingPage(tx: Parameters<typeof loadSiteData>[0], event: H3Even
 }
 
 // The person is known only from a manage session or a sign-in; anyone else
-// gets the invitation to the main campaign.
+// gets the invitation to the next campaign.
 async function betweenPage(tx: Parameters<typeof loadSiteData>[0], event: H3Event, ctx: SiteContext, data: SiteData, campaign: CampaignRow, lang: string): Promise<PageView> {
   const def = data.site.default_language
   const main = nextStepCampaign(campaign, data.campaigns)

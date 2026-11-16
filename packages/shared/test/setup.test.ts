@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyTemplate, campaignEndDate, campaignLength, offeredTemplates, campaignStatus, campaignType, campaignsOverlap, defaultDuration, displayLength, durationOptions, durationRule, overlappingCampaign, pickCurrentCampaign, slotMinutes, suggestCampaignSlug, suggestSideSlug, validateSetup, type CampaignDates } from '../src/setup'
+import { applyTemplate, campaignEndDate, campaignLength, handOnCampaign, offeredTemplates, suggestedStartDate, campaignStatus, campaignType, campaignsOverlap, defaultDuration, displayLength, durationOptions, durationRule, overlappingCampaign, pickCurrentCampaign, slotMinutes, suggestCampaignSlug, suggestSideSlug, validateSetup, type CampaignDates } from '../src/setup'
 
 const NY = 'America/New_York'
 
@@ -128,9 +128,39 @@ describe('side campaigns', () => {
 })
 
 describe('offeredTemplates', () => {
-  it('offers Ramadan in the months before it starts, and building your own always', () => {
-    expect(offeredTemplates('2026-10-28')).toEqual(['generic', 'ramadan'])
-    expect(offeredTemplates('2026-03-01')).toEqual(['generic'])
+  it('offers Ramadan in the months before it starts, and building your own and the crisis template always', () => {
+    expect(offeredTemplates('2026-10-28')).toEqual(['generic', 'ramadan', 'disaster_4'])
+    expect(offeredTemplates('2026-03-01')).toEqual(['generic', 'disaster_4'])
+  })
+
+  it('starts a 4-day crisis campaign tomorrow', () => {
+    expect(suggestedStartDate('disaster_4', '2026-11-16')).toBe('2026-11-17')
+    expect(suggestedStartDate('generic', '2026-11-16')).toBeNull()
+  })
+})
+
+describe('handOnCampaign', () => {
+  const now = new Date('2026-11-16T12:00:00Z')
+  const c = (id: string, start: string, end: string | null, more: Record<string, unknown> = {}) => ({
+    id, start_mode: 'date' as const, start_date: start, end_mode: end ? 'date' as const : 'none' as const, end_date: end, length_days: null,
+    cadence: 'daily' as const, timezone: 'UTC', ended_at: null, kind: null, published_at: '2026-11-01', ...more
+  })
+  const crisis = c('four', '2026-11-10', '2026-11-13', { template_key: 'disaster_4' })
+  const twelve = c('twelve', '2026-11-14', '2026-11-25')
+
+  it('hands a crisis campaign on to the first campaign starting after it that has not ended', () => {
+    const later = c('later', '2026-12-01', '2026-12-10')
+    expect(handOnCampaign(crisis, [crisis, later, twelve], now)?.id).toBe('twelve')
+    expect(handOnCampaign(crisis, [crisis, c('done', '2026-11-11', '2026-11-12'), later], now)?.id).toBe('later')
+    expect(handOnCampaign(crisis, [crisis, { ...twelve, published_at: null }], now)).toBeNull()
+    expect(handOnCampaign(crisis, [c('earlier', '2026-11-01', null), crisis], now)).toBeNull()
+  })
+
+  it('falls back to the main campaign for a side campaign, and hands nothing on otherwise', () => {
+    const main = c('main', '2026-01-01', null)
+    expect(handOnCampaign({ ...crisis, kind: 'side' }, [main, { ...crisis, kind: 'side' }], now)?.id).toBe('main')
+    expect(handOnCampaign({ ...c('side', '2026-11-01', '2026-11-05'), kind: 'side' }, [main], now)?.id).toBe('main')
+    expect(handOnCampaign(c('plain', '2026-11-01', '2026-11-05'), [main, twelve], now)).toBeNull()
   })
 })
 
@@ -146,9 +176,9 @@ describe('applyTemplate', () => {
   })
 
   it('keeps the answers the champion changed from the template', () => {
-    expect(applyTemplate('disaster_12', { start_date: '2027-02-08', end_date: '2027-02-19' }).end_date).toBe('2027-02-19')
+    expect(applyTemplate('disaster_4', { start_date: '2027-02-08', end_date: '2027-02-19' }).end_date).toBe('2027-02-19')
     expect(applyTemplate('ramadan', { start_date: '2027-02-08', end_date: '2027-02-20', cadence: 'weekly' })).toMatchObject({ end_date: '2027-02-20', cadence: 'weekly' })
-    expect(validateSetup(applyTemplate('disaster_12', { start_date: '2027-02-08', end_date: '2027-02-19' }), 'side')).toEqual([])
+    expect(validateSetup(applyTemplate('disaster_4', { start_date: '2027-02-08', end_date: '2027-02-19' }), 'side')).toEqual([])
   })
 
   it('start anytime: personal start that follows the content, daily or weekly', () => {

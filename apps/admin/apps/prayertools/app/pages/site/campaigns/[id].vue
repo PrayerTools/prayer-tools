@@ -356,6 +356,7 @@ async function remove() {
         :end-message="data.campaign.end_message"
         :cta="data.campaign.cta"
         :side="data.campaign.kind === 'side'"
+        :template-key="data.campaign.template_key"
         :languages="site.site.languages"
         :default-language="site.site.default_language"
         @saved="refresh"

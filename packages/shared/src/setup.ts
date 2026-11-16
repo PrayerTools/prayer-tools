@@ -83,14 +83,6 @@ export const TEMPLATES: readonly CampaignTemplate[] = [
     cta: 'next_campaign'
   },
   {
-    key: 'disaster_12',
-    setup: { start_mode: 'date', end_mode: 'date', length_days: 12, cadence: 'daily' },
-    open: ['start_date', 'goal', 'track_time'],
-    topics: ['crisis'],
-    hiddenSections: [],
-    cta: 'none'
-  },
-  {
     key: 'anytime',
     setup: { start_mode: 'join', end_mode: 'days', length_days: null, cadence: 'daily' },
     open: ['cadence', 'goal', 'track_time'],
@@ -111,7 +103,9 @@ export const RAMADAN_START_DATES = [
 ] as const
 
 // Start date a template suggests, on or after `today`; null when it has none.
+// A 4-day crisis campaign starts tomorrow, leaving a day to prepare its content.
 export function suggestedStartDate(key: string, today: string): string | null {
+  if (key === 'disaster_4') return addDays(today, 1)
   if (key !== 'ramadan') return null
   return RAMADAN_START_DATES.find(d => d >= today) ?? null
 }
@@ -119,10 +113,11 @@ export function suggestedStartDate(key: string, today: string): string | null {
 // How many days ahead of Ramadan a new campaign is offered the Ramadan template.
 export const RAMADAN_OFFER_DAYS = 180
 
-// Templates a new campaign can start from on `today`; "generic" (build your own) is always first.
+// Templates a new campaign can start from on `today`; "generic" (build your own)
+// is always first, and the crisis template is always offered.
 export function offeredTemplates(today: string): string[] {
   const ramadan = suggestedStartDate('ramadan', today)
-  return ['generic', ...(ramadan && daysBetween(today, ramadan) <= RAMADAN_OFFER_DAYS ? ['ramadan'] : [])]
+  return ['generic', ...(ramadan && daysBetween(today, ramadan) <= RAMADAN_OFFER_DAYS ? ['ramadan'] : []), 'disaster_4']
 }
 
 // A built-in template with the answers of a champion's own template laid
@@ -305,6 +300,24 @@ export function pickCurrentCampaign<T extends CampaignLike>(campaigns: T[], now:
   const ended = withStatus.filter(x => x.s === 'ended').sort((a, b) => (campaignEndDate(b.c) ?? '').localeCompare(campaignEndDate(a.c) ?? ''))
   if (ended.length) return { campaign: ended[0]!.c, state: 'between' }
   return null
+}
+
+// The campaign an ended one invites its intercessors to when the champion set
+// no button of their own. A template with the `next_campaign` call to action
+// hands on to the first published campaign starting after it that hasn't
+// ended (a 4-day crisis campaign to the longer one after it); failing that, a side
+// campaign invites to the main campaign while it runs or is open for signup.
+export function handOnCampaign<T extends CampaignLike>(campaign: { id?: string, kind?: CampaignKind | null, template_key?: string | null, start_date?: string | null }, campaigns: T[], now: Date = new Date()): T | null {
+  const start = campaign.start_date
+  if (getTemplate(campaign.template_key).cta === 'next_campaign' && start) {
+    const next = campaigns
+      .filter(c => c.id !== campaign.id && isPublishedCampaign(c) && !!c.start_date && c.start_date > start && campaignStatus(c, now) !== 'ended')
+      .sort((a, b) => a.start_date!.localeCompare(b.start_date!))[0]
+    if (next) return next
+  }
+  if (!isSideCampaign(campaign)) return null
+  const current = pickCurrentCampaign(campaigns, now)
+  return current && current.state !== 'between' ? current.campaign : null
 }
 
 // Main campaign date ranges on one site may not overlap, so the site's root

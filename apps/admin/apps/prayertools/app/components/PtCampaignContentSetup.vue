@@ -69,11 +69,13 @@ async function saveLength(length: number | null | undefined) {
 }
 const writeUrl = computed(() => `/site/content?campaign=${props.campaign.id}`)
 const hasOwn = computed(() => (content.value?.libraries ?? []).some(l => !l.libraryId))
-// Writing one's own comes first; a campaign that already uses a library opens on the catalog.
+// Writing one's own comes first; a campaign without content of its own opens
+// on the catalog when it already uses a library or its template suggests some.
 const hasLibrary = computed(() => (content.value?.libraries ?? []).some(l => l.libraryId))
+const suggestsLibraries = computed(() => !!meta.value?.templates.find(x => x.key === props.templateKey)?.topics.length)
 const source = ref<'existing' | 'own'>('own')
-watch([hasOwn, hasLibrary], ([own, library]) => {
-  if (library && !own) source.value = 'existing'
+watch([hasOwn, hasLibrary, suggestsLibraries], ([own, library, suggests]) => {
+  if (!own && (library || suggests)) source.value = 'existing'
 }, { immediate: true })
 async function save(): Promise<boolean> {
   if (source.value !== 'own' || hasOwn.value) return true

@@ -164,7 +164,7 @@ The champion or the mobilizer:
 
 ## Other campaign kinds
 
-- **Crisis response:** a 4-day campaign started right away, handing people on to a 12-day one through its call to action *(one-step join not built)*.
+- **Crisis response:** a 4-day campaign started right away. Its thank-you invites people to the campaign that starts after it on the site, such as a longer follow-up, unless the champion sets their own button *(one-step join not built)*.
 - **Start anytime:** a devotional where each person starts on day 1 the day they join and finishes at the last entry.
 - **School:** ongoing weekly content through the school year.
 - **Own content:** write content, publish it as a library for other sites, and ask Prayer.Tools to share it with everyone.

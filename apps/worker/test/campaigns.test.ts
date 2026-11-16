@@ -303,7 +303,7 @@ describe('next step after a side campaign', () => {
     await drainJobs(ctx, ctx.log)
 
     const invite = mailsTo(ctx.mails, newcomer.email)[0]!
-    expect(invite.text).toMatch(/Keep praying with Everyday: https?:\/\/\S+\/signup\n/)
+    expect(invite.text).toMatch(/Keep praying with Everyday: https?:\/\/\S+\/signup\?from=c\w+\n/)
     expect(invite.html).toContain('Keep praying with Everyday')
     expect(mailsTo(ctx.mails, fr.email)[0]!.text).toMatch(/Continuez à prier avec Everyday: https?:\/\/\S+\/fr\/signup/)
     expect(mailsTo(ctx.mails, lapsed.email)[0]!.text).toContain('Keep praying with Everyday')
@@ -336,6 +336,31 @@ describe('next step after a side campaign', () => {
       expect(m.text).not.toContain('Keep praying')
       expect(m.text).not.toContain('still praying')
     }
+  })
+})
+
+describe('next step after a crisis campaign', () => {
+  it('invites people to the campaign that starts after it, at its own address', async () => {
+    const { orgId } = await createSite(env)
+    const today = todayIn(TZ)
+    await createCampaign(env, orgId, { name: 'Everyday', startDate: addDays(today, -30), endMode: 'none' })
+    const fourId = await createCampaign(env, orgId, { name: 'Four days', kind: 'side', templateKey: 'disaster_4', startDate: addDays(today, -4), endDate: addDays(today, -1) })
+    const twelveId = await createCampaign(env, orgId, { name: 'Twelve days', kind: 'side', startDate: today, endDate: addDays(today, 11) })
+    const twelve = await env.admin.selectFrom('pt_campaign').select('slug').where('id', '=', twelveId).executeTakeFirstOrThrow()
+    const four = await env.admin.selectFrom('pt_campaign').select('slug').where('id', '=', fourId).executeTakeFirstOrThrow()
+    const newcomer = await createSubscriber(env, orgId, fourId)
+    const praying = await createSubscriber(env, orgId, fourId)
+    for (const s of [newcomer, praying]) {
+      await addCommitment(env, orgId, s.subscriptionId, fourId, { startsOn: addDays(today, -4), endsOn: addDays(today, -1) })
+    }
+    await addCommitment(env, orgId, praying.subscriptionId, twelveId, { startsOn: today, endsOn: addDays(today, 11) })
+    const ctx = testCtx(env)
+    await closeEndedCampaigns(ctx, ctx.log)
+    await drainJobs(ctx, ctx.log)
+
+    expect(mailsTo(ctx.mails, newcomer.email)[0]!.text).toContain(`Keep praying with Twelve days: `)
+    expect(mailsTo(ctx.mails, newcomer.email)[0]!.text).toContain(`/${twelve.slug}/signup?from=${four.slug}\n`)
+    expect(mailsTo(ctx.mails, praying.email)[0]!.text).toContain('You\'re still praying with Twelve days.')
   })
 })
 

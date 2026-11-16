@@ -3,12 +3,14 @@
 // a button pointing somewhere next, saved on their own (by the parent, through `values()`, when `embedded`).
 import type { CampaignCta, TranslatableText } from '@prayertools/shared/db/schema'
 import { emailT } from '@prayertools/shared/i18n/email'
+import { getTemplate, handOnCampaign } from '@prayertools/shared/setup'
 
 const props = defineProps<{
   campaignId: string
   endMessage: TranslatableText | null
   cta: CampaignCta | null
   side: boolean
+  templateKey: string | null
   languages: string[]
   defaultLanguage: string
   embedded?: boolean
@@ -22,29 +24,39 @@ const ctaLabel = ref<TranslatableText | null>(props.cta?.label ?? null)
 const ctaUrl = ref(props.cta?.url ?? '')
 const canEdit = computed(() => can('pt.messages.write') || can('pt.campaigns.write'))
 
-// A side campaign without its own button invites people to the main campaign;
-// that invitation lives in code and is never saved.
+// Without its own button, a side campaign invites people to the main campaign
+// and a crisis template's campaign to the campaign after it; that invitation
+// lives in code and is never saved.
+const handsOn = computed(() => getTemplate(props.templateKey).cta === 'next_campaign')
+const invites = computed(() => props.side || handsOn.value)
 type ButtonChoice = 'default' | 'own' | 'none'
 const choice = ref<ButtonChoice>(props.cta?.mode === 'none' ? 'none' : props.cta?.url ? 'own' : 'default')
-const choiceItems: { value: ButtonChoice, label: string }[] = [
-  { value: 'default', label: 'Invite them to your main campaign' },
+const choiceItems = computed<{ value: ButtonChoice, label: string }[]>(() => [
+  { value: 'default', label: handsOn.value ? 'Invite them to your next campaign' : 'Invite them to your main campaign' },
   { value: 'own', label: 'Your own button' },
   { value: 'none', label: 'No button' }
-]
-const showOwn = computed(() => !props.side || choice.value === 'own')
-const mainName = computed(() => {
-  const c = site.value?.currentCampaign
-  return c && c.state !== 'between' ? String(c.name) : null
+])
+const showOwn = computed(() => !invites.value || choice.value === 'own')
+const { data: list } = usePtCampaignList({ immediate: invites.value })
+const nextName = computed(() => {
+  const campaigns = list.value?.campaigns ?? []
+  const self = campaigns.find(c => c.id === props.campaignId)
+  return self ? handOnCampaign(self, campaigns)?.name ?? null : null
 })
-const defaultLabel = computed(() => mainName.value ? emailT(props.defaultLanguage, 'thanks.keep_praying', { campaign: mainName.value }) : null)
-const prayingNote = computed(() => mainName.value
-  ? `People who already have prayer times in ${mainName.value} see “${emailT(props.defaultLanguage, 'thanks.still_praying', { campaign: mainName.value })}” instead. The button follows each person's language.`
+const defaultLabel = computed(() => nextName.value ? emailT(props.defaultLanguage, 'thanks.keep_praying', { campaign: nextName.value }) : null)
+const prayingNote = computed(() => nextName.value
+  ? `People who already have prayer times in ${nextName.value} see “${emailT(props.defaultLanguage, 'thanks.still_praying', { campaign: nextName.value })}” instead. The button follows each person's language.`
   : '')
-const ownMissing = computed(() => props.side && choice.value === 'own' && !(ctaUrl.value && Object.values(ctaLabel.value?.values ?? {}).some(Boolean)))
+const noNext = computed(() => {
+  if (!handsOn.value) return 'Your site has no upcoming or running main campaign right now, so no button is shown.'
+  const main = props.side ? ', and your site has no upcoming or running main campaign' : ''
+  return `No published campaign starts after this one yet${main}, so no button is shown. Once you publish the campaign that follows, the button invites people to it.`
+})
+const ownMissing = computed(() => invites.value && choice.value === 'own' && !(ctaUrl.value && Object.values(ctaLabel.value?.values ?? {}).some(Boolean)))
 
 function ctaBody(): CampaignCta | Record<string, unknown> {
-  if (props.side && choice.value === 'none') return { mode: 'none' }
-  if (props.side && choice.value === 'default') return {}
+  if (invites.value && choice.value === 'none') return { mode: 'none' }
+  if (invites.value && choice.value === 'default') return {}
   return ctaUrl.value ? { url: ctaUrl.value, label: ctaLabel.value } : {}
 }
 
@@ -93,7 +105,7 @@ async function save() {
         multiline
       />
       <UFormField
-        v-if="side"
+        v-if="invites"
         label="Button under the message"
       >
         <URadioGroup
@@ -103,7 +115,7 @@ async function save() {
         />
       </UFormField>
       <div
-        v-if="side && choice === 'default'"
+        v-if="invites && choice === 'default'"
         class="rounded-md border border-(--ui-border) bg-(--ui-bg-elevated)/50 p-4 space-y-2"
       >
         <template v-if="defaultLabel">
@@ -126,7 +138,7 @@ async function save() {
           v-else
           class="text-sm text-(--ui-text-muted)"
         >
-          Your site has no upcoming or running main campaign right now, so no button is shown.
+          {{ noNext }}
         </p>
       </div>
       <div

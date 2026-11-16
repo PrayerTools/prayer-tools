@@ -692,7 +692,7 @@ await site({
         intercessors: { people: [[400, 485]], app: 6 }
       },
       {
-        ...base, slug: `${year}-2`, name: '12 days of prayer for Mozambique', template: 'disaster_12', start_date: addDays(today, 3), end_date: addDays(today, 14),
+        ...base, slug: `${year}-2`, name: '12 days of prayer for Mozambique', start_date: addDays(today, 3), end_date: addDays(today, 14),
         subtitle: { en: 'Twelve days of prayer as the response moves from rescue to recovery.' },
         why: { en: 'The cameras leave, the need stays. For twelve days we pray for shelter, water, health and hope as communities begin to rebuild.' },
         content: { own: { title: '12 days of prayer after the cyclone', entries: crisisEntries } },

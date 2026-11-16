@@ -14,14 +14,12 @@ export const PT_LABELS = {
     generic: 'Start from scratch',
     ramadan: 'Ramadan',
     disaster_4: 'Natural disaster — 4 days',
-    disaster_12: 'Natural disaster — 12 days',
     anytime: 'Start anytime'
   } as Record<string, string>,
   templateDescription: {
     generic: 'You choose the dates, goal and rhythm.',
     ramadan: 'About 30 days of daily prayer through the month of Ramadan.',
-    disaster_4: 'A short, urgent campaign after a disaster. Can hand people on to a 12-day campaign.',
-    disaster_12: 'Twelve days of daily prayer after a disaster.',
+    disaster_4: 'A short, urgent campaign after a disaster.',
     anytime: 'No start date. Each person begins at day 1 when they sign up.'
   } as Record<string, string>,
   goalTag: { people: 'Easiest to explain', prayer_time: 'Builds a habit', coverage: 'Big network, big challenge' } as Record<string, string>,
@@ -65,7 +63,6 @@ export const PT_TEMPLATE_ICONS: Record<string, string> = {
   generic: 'i-lucide-sparkles',
   ramadan: 'i-lucide-moon-star',
   disaster_4: 'i-lucide-siren',
-  disaster_12: 'i-lucide-life-buoy',
   anytime: 'i-lucide-play'
 }
 

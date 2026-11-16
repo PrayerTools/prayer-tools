@@ -107,7 +107,10 @@ export function usePtCampaignDraft(opts: PtCampaignDraftOptions = {}) {
     if (opts.relaunch?.() || (d.templateKey === 'generic' && !d.personalTemplateId) || !days || d.setup.start_mode !== 'date' || !d.setup.start_date) return
     d.setup.end_date = addDays(d.setup.start_date, days - 1)
   }
-  watch(() => draft.value.setup.start_date, fillEndDate)
+  // Moving a start that already has an end date is PtSetupForm's job: it keeps the length.
+  watch(() => draft.value.setup.start_date, () => {
+    if (!draft.value.setup.end_date) fillEndDate()
+  })
 
   // The campaign routes' request body. A relaunch without an end date leaves
   // it to the server, which keeps the previous campaign's length.
