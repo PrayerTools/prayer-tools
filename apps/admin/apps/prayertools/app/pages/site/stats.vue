@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { openingCoverageDay } from '@prayertools/shared/coverage'
+import { todayIn } from '@prayertools/shared/dates'
+
 definePageMeta({ middleware: 'auth' })
 
 const { data: site, can } = usePtSite()
@@ -9,8 +12,9 @@ const { data, pending, error } = useFetch<{
   series: { day: string, metric: string, value: number }[]
   dims: Record<string, { key: string, total: number }[]>
   progress: { goal: string, people: number, value: number, target: number | null, percent: number | null } | null
-  coverage: { date: string, percent: number }[] | null
-  campaign: { name: string, start_date: string | null, end_date: string | null, length: string } | null
+  coverage: { date: string, percent: number, from: number, to: number }[] | null
+  coverageSlots: { start: string, slotMinutes: number, timezone: string, slots: number[] } | null
+  campaign: { id: string, name: string, start_date: string | null, end_date: string | null, length: string } | null
   commitments: number
   prayingNow: number
   anonymousApp: number
@@ -44,6 +48,15 @@ const points = computed(() => {
   }
   return out
 })
+
+const coverageToday = computed(() => todayIn(data.value?.coverageSlots?.timezone ?? 'UTC'))
+const coverageDate = ref<string | null>(null)
+const coverageDay = computed(() => data.value?.coverage?.find(d => d.date === coverageDate.value) ?? null)
+// Each campaign opens on its own day; a reload of the same campaign keeps the day chosen.
+watch(() => [data.value?.campaign?.id, data.value?.coverage] as const, ([id], [was] = [undefined, undefined]) => {
+  const days = data.value?.coverage ?? []
+  if (id !== was || !days.some(d => d.date === coverageDate.value)) coverageDate.value = openingCoverageDay(days, coverageToday.value)
+}, { immediate: true })
 
 async function downloadIntercessors() {
   const res = await $fetch.raw<Blob>('/api/pt/export.csv', { responseType: 'blob' })
@@ -194,8 +207,14 @@ const DIM_ICONS: Record<string, string> = { country: 'i-lucide-globe', source: '
           />
           <PtCoverageCalendar
             v-if="data.coverage?.length"
+            v-model:selected="coverageDate"
             :days="data.coverage"
-            :today="new Date().toISOString().slice(0, 10)"
+            :today="coverageToday"
+          />
+          <PtCoverageDay
+            v-if="coverageDay && data.coverageSlots"
+            :day="coverageDay"
+            :grid="data.coverageSlots"
           />
         </div>
       </UCard>

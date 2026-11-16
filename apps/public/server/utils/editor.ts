@@ -118,6 +118,7 @@ export function parseLandingDraft(input: unknown): LandingDraft {
       subtitle: parseText(l.subtitle) ?? undefined,
       why: docs(l.why),
       hidden: Array.isArray(l.hidden) ? (l.hidden as unknown[]).filter((s): s is string => typeof s === 'string') : undefined,
+      order: Array.isArray(l.order) ? (l.order as unknown[]).filter((s): s is string => typeof s === 'string') : undefined,
       custom,
       stories: typeof l.stories === 'boolean' ? l.stories : undefined,
       story_ids: parseStoryIds(l.story_ids)

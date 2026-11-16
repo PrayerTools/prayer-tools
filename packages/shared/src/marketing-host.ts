@@ -49,8 +49,6 @@ const REASON: Record<string, string> = {
 const FRIEND: Record<string, string> = { en: 'friend', es: 'amigo', fr: 'ami', pt: 'amigo', ar: 'صديقي' }
 
 export const MARKETING_AUDIENCES = {
-  current: 'current_campaign',
-  past: 'past_campaigns',
   consented: 'consented_updates'
 } as const
 
@@ -66,7 +64,6 @@ interface SiteInfo {
   defaultLanguage: string
   campaigns: Campaign[]
   current: Campaign | null
-  ended: Campaign[]
   lastEnded: Campaign | null
 }
 
@@ -93,7 +90,6 @@ function siteInfo(tx: Tx, orgId: string): Promise<SiteInfo> {
       defaultLanguage: site.default_language,
       campaigns,
       current: pickCurrentCampaign(campaigns, now)?.campaign ?? null,
-      ended,
       lastEnded: pickCurrentCampaign(ended, now)?.campaign ?? null
     }
   })
@@ -118,10 +114,9 @@ function members(tx: Tx, orgId: string) {
     .where('s.anonymized_at', 'is', null)
 }
 
-async function campaignMembers(tx: Tx, orgId: string, campaignIds: string[]): Promise<Member[]> {
-  if (!campaignIds.length) return []
+async function campaignMembers(tx: Tx, orgId: string, campaignId: string): Promise<Member[]> {
   const rows = await members(tx, orgId)
-    .where(eb => eb.exists(eb.selectFrom('pt_commitment as c').select('c.id').whereRef('c.subscription_id', '=', 's.id').where('c.campaign_id', 'in', campaignIds).where('c.left_at', 'is', null)))
+    .where(eb => eb.exists(eb.selectFrom('pt_commitment as c').select('c.id').whereRef('c.subscription_id', '=', 's.id').where('c.campaign_id', '=', campaignId).where('c.left_at', 'is', null)))
     .execute()
   return rows.map(r => ({ contactId: r.contactId, channelId: r.channelId, address: r.address, language: r.language, joinedAt: new Date(r.joinedAt), firstName: firstNameOf(r.name, r.address) }))
 }
@@ -187,26 +182,7 @@ export const ptMarketingHost = {
 
   async listAudiences(tx: Tx, orgId: string) {
     const info = await siteInfo(tx, orgId)
-    const audiences: { key: string, label: string, description: string, purpose: string }[] = [
-      {
-        key: MARKETING_AUDIENCES.current,
-        label: info.current ? `People in ${info.current.name}` : 'People in the current campaign',
-        description: 'Everyone with prayer times in the site\'s current main campaign.',
-        purpose: PURPOSE_SITE_UPDATES
-      },
-      {
-        key: MARKETING_AUDIENCES.past,
-        label: 'People from past campaigns',
-        description: 'Everyone who prayed in a campaign that has ended — for a relaunch or re-engagement.',
-        purpose: PURPOSE_SITE_UPDATES
-      },
-      {
-        key: MARKETING_AUDIENCES.consented,
-        label: 'Everyone who opted in to updates',
-        description: 'Everyone who agreed to updates from this site, in any campaign.',
-        purpose: PURPOSE_SITE_UPDATES
-      }
-    ]
+    const audiences: { key: string, label: string, description: string, purpose: string }[] = []
     // Newest first: upcoming and running campaigns lead.
     const named = [...info.campaigns].sort((a, b) => (toIsoDate(b.start_date) ?? '').localeCompare(toIsoDate(a.start_date) ?? '') || +new Date(b.created_at) - +new Date(a.created_at))
     for (const c of named) {
@@ -218,6 +194,12 @@ export const ptMarketingHost = {
         purpose: PURPOSE_SITE_UPDATES
       })
     }
+    audiences.push({
+      key: MARKETING_AUDIENCES.consented,
+      label: 'Everyone who opted in to updates',
+      description: 'Everyone who agreed to updates from this site, in any campaign.',
+      purpose: PURPOSE_SITE_UPDATES
+    })
     const waiting = new Set((await tx
       .selectFrom('pt_notify_request')
       .select('campaign_id')
@@ -248,8 +230,6 @@ export const ptMarketingHost = {
 
   async resolveAudience(tx: Tx, orgId: string, key: string): Promise<Member[]> {
     const info = await siteInfo(tx, orgId)
-    if (key === MARKETING_AUDIENCES.current) return await campaignMembers(tx, orgId, info.current ? [info.current.id] : [])
-    if (key === MARKETING_AUDIENCES.past) return await campaignMembers(tx, orgId, info.ended.map(c => c.id))
     if (key === MARKETING_AUDIENCES.consented) return await consentMembers(tx, orgId, PURPOSE_SITE_UPDATES, info.defaultLanguage)
     if (key.startsWith('custom:')) return await consentMembers(tx, orgId, key, info.defaultLanguage)
     if (key.startsWith(WAITING_AUDIENCE_PREFIX)) {
@@ -258,7 +238,7 @@ export const ptMarketingHost = {
     }
     if (key.startsWith(CAMPAIGN_AUDIENCE_PREFIX)) {
       const id = key.slice(CAMPAIGN_AUDIENCE_PREFIX.length)
-      return await campaignMembers(tx, orgId, info.campaigns.some(c => c.id === id) ? [id] : [])
+      return info.campaigns.some(c => c.id === id) ? await campaignMembers(tx, orgId, id) : []
     }
     return []
   },

@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { createError } from 'h3'
 import { defineMcpTool } from '#mcp-layer'
 import { campaignById } from '@prayertools/shared/campaigns'
-import { HIDEABLE_SECTIONS } from '@prayertools/shared/landing'
+import { HIDEABLE_SECTIONS, customSectionKey, defaultLandingOrder, isHideableSection, landingOrder } from '@prayertools/shared/landing'
 import { TEMPLATES } from '@prayertools/shared/setup'
 import { parseText, textIn } from '@prayertools/shared/translatable'
 import type { CampaignBranding, CampaignLanding, LandingCustomSection } from '@prayertools/shared/db/schema'
@@ -40,13 +40,15 @@ const detailFields = {
 const createCampaignTool = defineMcpTool({
   name: 'create_campaign',
   title: 'Create Campaign',
-  description: 'Create a campaign on a site. A site runs one main campaign at a time (main campaign dates can\'t overlap); a side campaign (e.g. Ramadan on a site with an ongoing campaign) runs alongside at its own address and needs start and end dates. Pass relaunch_of to run a past campaign again with its setup, content and look. New campaigns are drafts until published in the admin, except a draft site\'s first main campaign, which goes live with the site.',
+  description: 'Create a campaign on a site. A site runs one main campaign at a time (main campaign dates can\'t overlap); a side campaign (e.g. Ramadan on a site with an ongoing campaign) runs alongside at its own address and needs start and end dates. Pass relaunch_of to run a past campaign again with its setup, content and look; with editions, libraries from a yearly series are swapped for a newer edition (e.g. the 2027 Ramadan guide in place of the 2026 one), otherwise the same libraries are reused. New campaigns are drafts until published in the admin, except a draft site\'s first main campaign, which goes live with the site.',
   appId: SITE_APP,
   scope: 'pt.campaigns.write',
   input: z.object({
     org: orgInput,
     kind: z.enum(['main', 'side']).default('main'),
     relaunch_of: idInput('A past campaign to relaunch.').optional(),
+    editions: z.record(z.string().uuid(), z.string().uuid()).optional()
+      .describe('With relaunch_of: libraries to replace with a newer edition. Each key is a site library id of the past campaign (get_campaign_content) and its value the id of a newer edition of the same series (search_libraries lists series and edition). The site\'s edits to the replaced library stay with that library and are not copied to the new edition.'),
     ...setupFields,
     ...detailFields
   }).strict(),
@@ -56,7 +58,7 @@ const createCampaignTool = defineMcpTool({
     const b: Record<string, unknown> = { ...rest, kind: kind === 'side' ? 'side' : null }
     if (relaunch_of) b.relaunchOf = relaunch_of
     const { campaign } = await ptCreateCampaign(tx, tenant, b)
-    await audit(ctx, tx, 'CREATE', 'pt_campaign', campaign.id, { kind, relaunch_of })
+    await audit(ctx, tx, 'CREATE', 'pt_campaign', campaign.id, { kind, relaunch_of, editions: rest.editions })
     return result(
       `Created ${kind} campaign "${campaign.name}" (${campaign.published_at ? 'live with the site' : 'draft'}). Add its prayer content with add_campaign_content.`,
       { campaign: { id: campaign.id, name: campaign.name, slug: campaign.slug, published: !!campaign.published_at }, adminUrl: adminLink(tenant.orgSlug, `/site/campaigns/${campaign.id}`) }
@@ -173,7 +175,7 @@ const updateCampaignTool = defineMcpTool({
 const getLandingTool = defineMcpTool({
   name: 'get_landing_page',
   title: 'Get Landing Page',
-  description: 'A campaign\'s landing page in one language: the subtitle under the heading, the "why pray" text, the custom sections, which standard sections are hidden, and whether stories show.',
+  description: 'A campaign\'s landing page in one language: the subtitle under the heading, the "why pray" text, the custom sections, which sections are hidden, the order the sections show in, and whether stories show.',
   appId: SITE_APP,
   scope: 'pt.site.read',
   readOnly: true,
@@ -206,7 +208,8 @@ const getLandingTool = defineMcpTool({
       whyUsesTemplateText: !landing.why?.[lang],
       custom,
       hidden: landing.hidden ?? null,
-      hideableSections: HIDEABLE_SECTIONS,
+      hideableSections: [...HIDEABLE_SECTIONS, ...custom.map(s => customSectionKey(s.id))],
+      order: landingOrder(landing.order, custom.map(s => s.id)),
       stories: landing.stories ?? null,
       adminUrl: adminLink(tenant.orgSlug, '/site/landing')
     })
@@ -226,7 +229,7 @@ const sectionInput = z.object({
 const updateLandingTool = defineMcpTool({
   name: 'update_landing_page',
   title: 'Update Landing Page',
-  description: 'Change a campaign\'s landing page in one language. `subtitle` is the sentence under the heading (null removes it in every language). `why` replaces the "why pray" text (null goes back to the template\'s standard text). `custom` replaces the whole list of custom sections, in order: keep a section by passing its id, drop it by leaving it out. `hidden` lists standard sections to hide. Fields you leave out stay as they are.',
+  description: 'Change a campaign\'s landing page in one language. `subtitle` is the sentence under the heading (null removes it in every language). `why` replaces the "why pray" text (null goes back to the template\'s standard text). `custom` replaces the whole list of custom sections: keep a section by passing its id, drop it by leaving it out. `hidden` lists the sections to hide. `order` places the sections after the top one. Fields you leave out stay as they are.',
   appId: SITE_APP,
   scope: 'pt.site.write',
   input: z.object({
@@ -236,7 +239,10 @@ const updateLandingTool = defineMcpTool({
     subtitle: z.string().max(500).nullable().optional().describe('Sentence shown under the heading at the top of the page.'),
     why: blocksInput.nullable().optional(),
     custom: z.array(sectionInput).max(12).optional(),
-    hidden: z.array(z.enum(HIDEABLE_SECTIONS as unknown as [string, ...string[]])).optional(),
+    hidden: z.array(z.string().max(60)).max(40).optional()
+      .describe(`Sections to hide: ${HIDEABLE_SECTIONS.join(', ')}, or custom:<id> for one custom section. "custom" hides every custom section. The top section and signup always show.`),
+    order: z.array(z.string().max(60)).max(40).nullable().optional()
+      .describe(`The sections after the top one, in the order the page shows them: ${defaultLandingOrder([]).join(', ')}, and custom:<id> for each custom section. Pass the whole list from get_landing_page, rearranged; a section left out goes after the sections that precede it by default, which is where a new custom section starts. null goes back to the default order: custom sections after "why", in the order of \`custom\`.`),
     stories: z.boolean().optional().describe('Show intercessors\' stories on the landing page.')
   }).strict(),
   handler: (input, ctx) => run(() => inSite(ctx, input.org, 'pt.site.write', async (tx, tenant) => {
@@ -271,10 +277,15 @@ const updateLandingTool = defineMcpTool({
       }
       landing.custom = custom
     }
+    const customIds = (landing.custom ?? []).map(s => s.id)
+    const placeable = defaultLandingOrder(customIds)
+    const unknown = [...(input.hidden ?? []).filter(s => !isHideableSection(s, customIds)), ...(input.order ?? []).filter(s => !placeable.includes(s))]
+    if (unknown.length) throw createError({ statusCode: 400, statusMessage: `Not a section of this landing page: ${unknown.join(', ')}.` })
     if (input.hidden) landing.hidden = input.hidden
+    if (input.order !== undefined) landing.order = input.order ?? undefined
     if (input.stories !== undefined) landing.stories = input.stories
     await ptUpdateCampaign(tx, tenant, c.id, { landing })
-    await audit(ctx, tx, 'UPDATE', 'pt_campaign', c.id, { landing: Object.keys(input).filter(k => ['subtitle', 'why', 'custom', 'hidden', 'stories'].includes(k)) })
+    await audit(ctx, tx, 'UPDATE', 'pt_campaign', c.id, { landing: Object.keys(input).filter(k => ['subtitle', 'why', 'custom', 'hidden', 'order', 'stories'].includes(k)) })
     return result('Landing page updated.', { ok: true, adminUrl: adminLink(tenant.orgSlug, '/site/landing') })
   }))
 })

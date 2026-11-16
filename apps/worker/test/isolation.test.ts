@@ -70,7 +70,7 @@ async function seedSite(): Promise<string> {
   await createSubscriber(env, orgId, campaign)
   await withOrg(env.admin, orgId, tx => sql`
     INSERT INTO marketing_email (versions, source_language, audiences, status)
-    VALUES (${jsonb({ en: { subject: 'x', content: { type: 'doc' } } })}, 'en', '{current_campaign}', 'draft')
+    VALUES (${jsonb({ en: { subject: 'x', content: { type: 'doc' } } })}, 'en', '{consented_updates}', 'draft')
   `.execute(tx))
   return orgId
 }

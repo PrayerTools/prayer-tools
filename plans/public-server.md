@@ -36,7 +36,7 @@ Host middleware resolves the site from the hostname (`site_domain`), runs inside
 
 ## Landing page
 
-Sections in a fixed order; the section list and defaults live in code, and the site stores only the champion's content, hidden sections and custom sections. Empty sections hide.
+Sections show in the default order below until the champion moves them: every section after the top one, each custom section included, can go up or down. The section list, the default order and other defaults live in code, and the site stores only the champion's content, hidden sections, custom sections and its own order. Empty sections hide.
 
 1. Top: name, image, people count or goal progress, signup button
 2. Why this campaign (champion's text)
