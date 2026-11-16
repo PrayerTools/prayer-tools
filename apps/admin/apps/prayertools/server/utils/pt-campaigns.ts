@@ -12,6 +12,7 @@ import { parseText } from '@prayertools/shared/translatable'
 import { parsePlaceWording } from '@prayertools/shared/place'
 import { jsonb } from '@prayertools/shared/db/json'
 import { campaignById, campaignEditMissing, campaignSeries, loadCampaigns, normalizeCampaign } from '@prayertools/shared/campaigns'
+import { endCampaign, thankYouAudience } from '@prayertools/shared/campaign-end'
 import { goalProgress } from '@prayertools/shared/stats'
 import { campaignEntries, campaignLibraries, contentLength } from '@prayertools/shared/content'
 import { isTemplateWhy } from '@prayertools/shared/i18n/landing'
@@ -251,6 +252,40 @@ export async function ptUpdateCampaign(tx: Transaction<Database>, ctx: TenantCon
   if ('share' in b) patch.share = jsonb(ptShare(b.share))
   if (Object.keys(patch).length) await tx.updateTable('pt_campaign').set({ ...patch, updated_at: new Date() } as never).where('id', '=', id).execute()
   return { ok: true }
+}
+
+// A published campaign that is running can be ended: not a draft, and not one
+// still waiting for its start date.
+async function ptEndableCampaign(tx: Transaction<Database>, id: string) {
+  const c = await campaignById(ptTx(tx), id, { drafts: true })
+  if (!c) ptNotFound('Campaign not found.')
+  if (c.ended_at) return c
+  if (!c.published_at) ptBadRequest('This campaign is a draft, so there is nothing to end.')
+  if (campaignStatus(c) === 'upcoming') ptBadRequest('This campaign has not started yet. Change its dates instead.')
+  return c
+}
+
+// What ending a campaign now would send: how many people get the thank-you
+// email, and whether it goes out at all (only a published site sends it).
+export async function ptEndPreview(tx: Transaction<Database>, id: string) {
+  const c = await ptEndableCampaign(tx, id)
+  const site = await ptSite(tx)
+  const row = await thankYouAudience(ptTx(tx), c.id).select(eb => eb.fn.countAll<string>().as('n')).executeTakeFirst()
+  return { ended: !!c.ended_at, sends: site.status === 'published', recipients: Number(row?.n ?? 0) }
+}
+
+// Ends a running campaign as the worker ends one past its end date, saving
+// `end_message` and `cta` from `b` with it. A second call changes nothing.
+export async function ptEndCampaign(tx: Transaction<Database>, ctx: TenantContext, id: string, b: Record<string, unknown>) {
+  const c = await ptEndableCampaign(tx, id)
+  if (c.ended_at) return { ok: true, ended: false, thankYou: false }
+  const patch: Record<string, unknown> = {}
+  if ('end_message' in b) patch.end_message = b.end_message ? jsonb(parseText(b.end_message)) : null
+  if ('cta' in b) patch.cta = jsonb(ptCta(b.cta))
+  if (Object.keys(patch).length) await tx.updateTable('pt_campaign').set(patch as never).where('id', '=', id).where('ended_at', 'is', null).execute()
+  const res = await endCampaign(ptTx(tx), id)
+  if (res.ended) console.log(JSON.stringify({ ts: new Date().toISOString(), level: 'info', msg: 'campaign.closed', site: ctx.orgId, campaign: id, user: ctx.userId }))
+  return { ok: true, ended: res.ended, thankYou: res.queued }
 }
 
 // Every campaign on the site, newest first, with status, length, commitment

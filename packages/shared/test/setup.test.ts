@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyTemplate, campaignLength, offeredTemplates, campaignStatus, campaignsOverlap, defaultDuration, displayLength, durationOptions, durationRule, overlappingCampaign, pickCurrentCampaign, slotMinutes, suggestCampaignSlug, suggestSideSlug, validateSetup, type CampaignDates } from '../src/setup'
+import { applyTemplate, campaignEndDate, campaignLength, offeredTemplates, campaignStatus, campaignsOverlap, defaultDuration, displayLength, durationOptions, durationRule, overlappingCampaign, pickCurrentCampaign, slotMinutes, suggestCampaignSlug, suggestSideSlug, validateSetup, type CampaignDates } from '../src/setup'
 
 const NY = 'America/New_York'
 
@@ -33,6 +33,19 @@ describe('campaignStatus', () => {
   })
 })
 
+describe('campaignEndDate', () => {
+  it('is the end date, or the day the campaign was ended when that came sooner or it has none', () => {
+    expect(campaignEndDate(c({ end_date: '2026-03-30' }))).toBe('2026-03-30')
+    expect(campaignEndDate(c({ end_mode: 'none', end_date: null }))).toBeNull()
+    // The sweep ends a campaign the day after its end date.
+    expect(campaignEndDate(c({ end_date: '2026-03-30', ended_at: new Date('2026-03-31T05:05:00Z') }))).toBe('2026-03-30')
+    expect(campaignEndDate(c({ end_date: '2026-03-30', ended_at: new Date('2026-03-10T15:00:00Z') }))).toBe('2026-03-10')
+    // 03:00 UTC on 11 March is still 10 March in New York.
+    expect(campaignEndDate(c({ end_mode: 'none', end_date: null, ended_at: '2026-03-11T03:00:00Z' }))).toBe('2026-03-10')
+    expect(campaignEndDate(c({ start_mode: 'join', start_date: null, end_mode: 'days', end_date: null, length_days: 7, ended_at: new Date('2026-03-10T15:00:00Z') }))).toBe('2026-03-10')
+  })
+})
+
 describe('pickCurrentCampaign', () => {
   const now = new Date('2026-06-15T12:00:00Z')
   const past = c({ id: 'past', start_date: '2026-01-01', end_date: '2026-01-30' })
@@ -52,6 +65,16 @@ describe('pickCurrentCampaign', () => {
   it('else the most recently ended one', () => {
     expect(pickCurrentCampaign([older, past], now)).toEqual({ campaign: past, state: 'between' })
     expect(pickCurrentCampaign([], now)).toBeNull()
+  })
+
+  it('a campaign ended by hand is past: the site is between campaigns and its dates are free', () => {
+    const stopped = c({ id: 'stopped', start_date: '2025-01-01', end_mode: 'none', end_date: null, ended_at: new Date('2026-06-10T12:00:00Z') })
+    const early = c({ id: 'early', start_date: '2026-06-01', end_date: '2026-06-30', ended_at: new Date('2026-06-05T12:00:00Z') })
+    expect(campaignStatus(stopped, now)).toBe('ended')
+    expect(campaignStatus(early, now)).toBe('ended')
+    expect(pickCurrentCampaign([past, early, stopped], now)).toEqual({ campaign: stopped, state: 'between' })
+    expect(pickCurrentCampaign([stopped, next], now)).toEqual({ campaign: next, state: 'upcoming' })
+    expect(overlappingCampaign(c({ start_date: '2026-06-20', end_mode: 'none', end_date: null }), null, [stopped, early])).toBeNull()
   })
 
   it('never picks a side campaign', () => {

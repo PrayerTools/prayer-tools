@@ -1,9 +1,10 @@
-// Campaign ends: close date-ended campaigns, finish personal-start commitments and complete
-// subscriptions with nothing left open, queueing each thank-you in the same transaction as the
-// state change so it is queued once.
+// Campaign ends: end campaigns whose end date has passed (`endCampaign`, which the admin's
+// "End campaign" calls too), finish personal-start commitments and complete subscriptions with
+// nothing left open. A thank-you is queued in the same transaction as the state change, so once.
 import { sql } from 'kysely'
 import { forEachOrg } from '@prayertools/shared/db/scope'
 import { enqueue } from '@prayertools/shared/jobs'
+import { endCampaign } from '@prayertools/shared/campaign-end'
 import { contentLengthSql } from '@prayertools/shared/content'
 import { setSubscriptionStatus } from '@prayertools/shared/subscriptions'
 import type { WorkerContext } from '../context'
@@ -21,16 +22,11 @@ export async function closeEndedCampaigns(ctx: WorkerContext, log: Logger): Prom
   let closed = 0
   let queued = 0
   await forEachOrg(ctx.app, groupBy(due.rows, r => r.org_id).keys(), async (tx, orgId) => {
-    const site = await tx.selectFrom('pt_site').select('status').executeTakeFirst()
     for (const { id } of due.rows.filter(r => r.org_id === orgId)) {
-      const updated = await tx.updateTable('pt_campaign').set({ ended_at: now, updated_at: now }).where('id', '=', id).where('ended_at', 'is', null).returning('id').executeTakeFirst()
-      if (!updated) continue
+      const res = await endCampaign(tx, id, now)
+      if (!res.ended) continue
       closed++
-      await tx.updateTable('pt_commitment').set({ next_reminder_utc: null, claimed_at: null }).where('campaign_id', '=', id).execute()
-      if (site?.status === 'published') {
-        const job = await enqueue(tx, 'thank_you', { campaignId: id }, { orgId, referenceType: 'campaign', referenceId: id })
-        if (job) queued++
-      }
+      if (res.queued) queued++
       log.info('campaign.closed', { site: orgId, campaign: id })
     }
   }, (orgId, err) => log.error('campaign.close_failed', { site: orgId, err }))
@@ -39,9 +35,9 @@ export async function closeEndedCampaigns(ctx: WorkerContext, log: Logger): Prom
 
 // A personal-start commitment is finished once the person has gone through
 // the campaign's entries: it is marked and thanked then, whatever else they
-// pray in. A subscription is completed when nothing is left open: every
-// personal-start commitment finished, and every other one past its last day
-// or in an ended campaign. Commitments in campaigns the person left don't count.
+// pray in, unless the campaign has ended (its thank-you covers them). A
+// subscription is completed when nothing is left open: every commitment is
+// finished, past its last day, or in an ended campaign. Those in campaigns the person left don't count.
 export async function completePersonalStart(ctx: WorkerContext, log: Logger): Promise<Record<string, number>> {
   const now = ctx.now()
   const finished = await sql<{ id: string, org_id: string, subscription_id: string, campaign_id: string }>`
@@ -49,7 +45,7 @@ export async function completePersonalStart(ctx: WorkerContext, log: Logger): Pr
     FROM pt_commitment c
     JOIN pt_campaign k ON k.id = c.campaign_id
     JOIN pt_subscription s ON s.id = c.subscription_id
-    WHERE s.status = 'active' AND k.start_mode = 'join' AND k.end_mode = 'days' AND c.finished_at IS NULL AND c.left_at IS NULL
+    WHERE s.status = 'active' AND k.start_mode = 'join' AND k.end_mode = 'days' AND k.ended_at IS NULL AND c.finished_at IS NULL AND c.left_at IS NULL
       AND c.entries_done >= coalesce(k.length_days, nullif(${contentLengthSql(sql.ref('k.id'))}, 0))
   `.execute(ctx.admin)
   let queued = 0
@@ -74,9 +70,10 @@ export async function completePersonalStart(ctx: WorkerContext, log: Logger): Pr
         SELECT 1 FROM pt_commitment c
         JOIN pt_campaign k ON k.id = c.campaign_id
         WHERE c.subscription_id = s.id AND c.left_at IS NULL
+          AND k.ended_at IS NULL
           AND CASE WHEN k.start_mode = 'join'
             THEN c.finished_at IS NULL
-            ELSE k.ended_at IS NULL AND (c.ends_on IS NULL OR c.ends_on >= (${now}::timestamptz AT TIME ZONE c.timezone)::date) END
+            ELSE (c.ends_on IS NULL OR c.ends_on >= (${now}::timestamptz AT TIME ZONE c.timezone)::date) END
       )
   `.execute(ctx.admin)
   let completed = 0

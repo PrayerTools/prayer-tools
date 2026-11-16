@@ -7,6 +7,10 @@ import { jsonb } from '@prayertools/shared/db/json'
 import { suppress } from '@prayertools/shared/email/suppression'
 import { emailHash } from '@prayertools/shared/tokens'
 import { makeText } from '@prayertools/shared/translatable'
+import { endCampaign } from '@prayertools/shared/campaign-end'
+import { peopleCount } from '@prayertools/shared/stats'
+import { refreshReminders, updateCommitment } from '@prayertools/shared/subscriptions'
+import { normalizeCampaign } from '@prayertools/shared/campaigns'
 import { closeEndedCampaigns, completePersonalStart } from '../src/daily/campaigns'
 import { drainJobs } from '../src/jobs/processor'
 import { THANK_YOU_BATCH } from '../src/jobs/thank-you'
@@ -130,6 +134,147 @@ describe('end of a shared-calendar campaign', () => {
     const c = await withOrg(env.admin, orgId, tx => tx.selectFrom('pt_campaign').select('ended_at').where('id', '=', campaignId).executeTakeFirstOrThrow())
     expect(c.ended_at).toBeNull()
     expect(await jobsOf(orgId)).toHaveLength(0)
+  })
+})
+
+describe('a campaign ended by hand', () => {
+  const HOUR = 3600_000
+
+  async function campaignRow(orgId: string, id: string) {
+    return await withOrg(env.admin, orgId, tx => tx.selectFrom('pt_campaign').selectAll().where('id', '=', id).executeTakeFirstOrThrow())
+  }
+  async function commitmentRow(orgId: string, id: string) {
+    return await withOrg(env.admin, orgId, tx => tx.selectFrom('pt_commitment').select(['next_reminder_utc', 'finished_at']).where('id', '=', id).executeTakeFirstOrThrow())
+  }
+
+  it('ends an ongoing campaign, clears its reminders and queues one thank-you; a second call queues nothing more', async () => {
+    const { orgId } = await createSite(env)
+    const today = todayIn(TZ)
+    const campaignId = await createCampaign(env, orgId, { name: 'Everyday', startDate: addDays(today, -40), endMode: 'none' })
+    const other = await createCampaign(env, orgId, { name: 'Ramadan', kind: 'side', startDate: addDays(today, -3), endDate: addDays(today, 10) })
+    const a = await createSubscriber(env, orgId, campaignId)
+    const b = await createSubscriber(env, orgId, campaignId)
+    const cid = await addCommitment(env, orgId, a.subscriptionId, campaignId, { startsOn: addDays(today, -40), next: new Date(Date.now() + HOUR) })
+    await addCommitment(env, orgId, b.subscriptionId, campaignId, { startsOn: addDays(today, -10), next: new Date(Date.now() + HOUR) })
+    const elsewhere = await addCommitment(env, orgId, a.subscriptionId, other, { startsOn: addDays(today, -3), endsOn: addDays(today, 10), next: new Date(Date.now() + HOUR) })
+    const ctx = testCtx(env)
+
+    expect((await closeEndedCampaigns(ctx, ctx.log)).closed).toBe(0)
+    expect((await campaignRow(orgId, campaignId)).ended_at).toBeNull()
+
+    expect(await withOrg(env.app, orgId, tx => endCampaign(tx, campaignId))).toEqual({ ended: true, queued: true })
+    const ended = await campaignRow(orgId, campaignId)
+    expect(ended.ended_at).not.toBeNull()
+    expect(ended.end_mode).toBe('none')
+    expect(ended.end_date).toBeNull()
+    expect((await commitmentRow(orgId, cid)).next_reminder_utc).toBeNull()
+    expect((await commitmentRow(orgId, elsewhere)).next_reminder_utc).not.toBeNull()
+    expect((await jobsOf(orgId)).map(j => j.type)).toEqual(['thank_you'])
+
+    expect(await withOrg(env.app, orgId, tx => endCampaign(tx, campaignId))).toEqual({ ended: false, queued: false })
+    expect((await campaignRow(orgId, campaignId)).ended_at).toEqual(ended.ended_at)
+    expect(await jobsOf(orgId)).toHaveLength(1)
+
+    await drainJobs(ctx, ctx.log)
+    expect(await withOrg(env.app, orgId, tx => endCampaign(tx, campaignId))).toEqual({ ended: false, queued: false })
+    expect(await jobsOf(orgId)).toHaveLength(1)
+    expect(mailsTo(ctx.mails, a.email)).toHaveLength(1)
+    expect(mailsTo(ctx.mails, b.email)).toHaveLength(1)
+    expect(mailsTo(ctx.mails, a.email)[0]!.text).toContain('Everyday has come to an end')
+  })
+
+  it('queues no thank-you while the site is not published', async () => {
+    const { orgId } = await createSite(env, { status: 'draft' })
+    const campaignId = await createCampaign(env, orgId, { startDate: addDays(todayIn(TZ), -5), endMode: 'none' })
+    expect(await withOrg(env.app, orgId, tx => endCampaign(tx, campaignId))).toEqual({ ended: true, queued: false })
+    expect(await jobsOf(orgId)).toHaveLength(0)
+  })
+
+  it('ends a fixed-date campaign early, and the end-date sweep leaves it alone afterwards', async () => {
+    const { orgId } = await createSite(env)
+    const today = todayIn(TZ)
+    const campaignId = await createCampaign(env, orgId, { startDate: addDays(today, -5), endDate: addDays(today, -1) })
+    const early = await createCampaign(env, orgId, { kind: 'side', startDate: addDays(today, -5), endDate: addDays(today, 5) })
+    await withOrg(env.app, orgId, tx => endCampaign(tx, early))
+    const ctx = testCtx(env)
+    expect((await closeEndedCampaigns(ctx, ctx.log)).closed).toBeGreaterThanOrEqual(1)
+    expect((await campaignRow(orgId, campaignId)).ended_at).not.toBeNull()
+    expect((await campaignRow(orgId, early)).end_date).toBe(addDays(today, 5))
+    const jobs = await jobsOf(orgId)
+    expect(jobs.map(j => (j.payload as { campaignId: string }).campaignId).sort()).toEqual([campaignId, early].sort())
+  })
+
+  it('keeps reminders off when the person changes their prayer time or is reactivated afterwards', async () => {
+    const { orgId } = await createSite(env)
+    const today = todayIn(TZ)
+    const campaignId = await createCampaign(env, orgId, { startDate: addDays(today, -40), endMode: 'none' })
+    const running = await createCampaign(env, orgId, { kind: 'side', startDate: addDays(today, -3), endDate: addDays(today, 10) })
+    const person = await createSubscriber(env, orgId, campaignId)
+    const cid = await addCommitment(env, orgId, person.subscriptionId, campaignId, { startsOn: addDays(today, -40), next: new Date(Date.now() + HOUR) })
+    const open = await addCommitment(env, orgId, person.subscriptionId, running, { startsOn: addDays(today, -3), endsOn: addDays(today, 10) })
+    await withOrg(env.app, orgId, tx => endCampaign(tx, campaignId))
+
+    await withOrg(env.app, orgId, async (tx) => {
+      const sub = await tx.selectFrom('pt_subscription').selectAll().where('id', '=', person.subscriptionId).executeTakeFirstOrThrow()
+      await updateCommitment(tx, sub, cid, { time: '09:30' })
+      await refreshReminders(tx, person.subscriptionId)
+    })
+    expect((await commitmentRow(orgId, cid)).next_reminder_utc).toBeNull()
+    expect((await commitmentRow(orgId, open)).next_reminder_utc).not.toBeNull()
+  })
+
+  it('counts the people who were praying on its last day', async () => {
+    const { orgId } = await createSite(env)
+    const today = todayIn(TZ)
+    const campaignId = await createCampaign(env, orgId, { startDate: addDays(today, -200), endMode: 'none' })
+    const dated = await createCampaign(env, orgId, { kind: 'side', startDate: addDays(today, -200), endDate: addDays(today, -100) })
+    const stayed = await createSubscriber(env, orgId, campaignId)
+    const stopped = await createSubscriber(env, orgId, campaignId, { status: 'inactive' })
+    await addCommitment(env, orgId, stayed.subscriptionId, campaignId, { startsOn: addDays(today, -200) })
+    await addCommitment(env, orgId, stopped.subscriptionId, campaignId, { startsOn: addDays(today, -200) })
+    await addCommitment(env, orgId, stayed.subscriptionId, dated, { startsOn: addDays(today, -200), endsOn: addDays(today, -100) })
+    await withOrg(env.app, orgId, tx => endCampaign(tx, campaignId))
+    const ctx = testCtx(env)
+    await closeEndedCampaigns(ctx, ctx.log)
+
+    const later = new Date(Date.now() + 30 * 24 * HOUR)
+    expect(await withOrg(env.app, orgId, async tx => peopleCount(tx, normalizeCampaign(await tx.selectFrom('pt_campaign').selectAll().where('id', '=', campaignId).executeTakeFirstOrThrow()), later))).toBe(1)
+    expect(await withOrg(env.app, orgId, async tx => peopleCount(tx, normalizeCampaign(await tx.selectFrom('pt_campaign').selectAll().where('id', '=', dated).executeTakeFirstOrThrow()), later))).toBe(1)
+  })
+
+  it('a start-anytime campaign thanks people part-way through once, and nobody who had already finished', async () => {
+    const { orgId } = await createSite(env)
+    const today = todayIn(TZ)
+    const campaignId = await createCampaign(env, orgId, { name: 'Seven days', startMode: 'join', endMode: 'days', lengthDays: 7 })
+    const finished = await createSubscriber(env, orgId, campaignId)
+    await addCommitment(env, orgId, finished.subscriptionId, campaignId, { startsOn: addDays(today, -8), entriesDone: 7 })
+    const midway = await createSubscriber(env, orgId, campaignId)
+    const midwayCommitment = await addCommitment(env, orgId, midway.subscriptionId, campaignId, { startsOn: addDays(today, -3), entriesDone: 3, next: new Date(Date.now() + HOUR) })
+    const lastDay = await createSubscriber(env, orgId, campaignId)
+    const lastDayCommitment = await addCommitment(env, orgId, lastDay.subscriptionId, campaignId, { startsOn: addDays(today, -7), entriesDone: 7 })
+    const ctx = testCtx(env)
+    // `finished` is marked and thanked by the sweep; `lastDay` reaches the end only after it has run.
+    await withOrg(env.admin, orgId, tx => tx.updateTable('pt_commitment').set({ entries_done: 6 }).where('id', '=', lastDayCommitment).execute())
+    await completePersonalStart(ctx, ctx.log)
+    await withOrg(env.admin, orgId, tx => tx.updateTable('pt_commitment').set({ entries_done: 7 }).where('id', '=', lastDayCommitment).execute())
+
+    await withOrg(env.app, orgId, tx => endCampaign(tx, campaignId))
+    const after = await completePersonalStart(ctx, ctx.log)
+    expect(after.queued).toBe(0)
+    expect((await jobsOf(orgId)).map(j => j.type).sort()).toEqual(['thank_you', 'thank_you_person'])
+    expect((await commitmentRow(orgId, midwayCommitment)).next_reminder_utc).toBeNull()
+    expect((await commitmentRow(orgId, lastDayCommitment)).finished_at).toBeNull()
+
+    await drainJobs(ctx, ctx.log)
+    expect(mailsTo(ctx.mails, finished.email)).toHaveLength(1)
+    expect(mailsTo(ctx.mails, finished.email)[0]!.text).toContain('You have reached the end of Seven days')
+    expect(mailsTo(ctx.mails, midway.email)).toHaveLength(1)
+    expect(mailsTo(ctx.mails, midway.email)[0]!.text).toContain('Seven days has come to an end')
+    expect(mailsTo(ctx.mails, lastDay.email)).toHaveLength(1)
+    expect(mailsTo(ctx.mails, lastDay.email)[0]!.text).toContain('Seven days has come to an end')
+    const subs = await withOrg(env.admin, orgId, tx => tx.selectFrom('pt_subscription').select(['id', 'status']).execute())
+    expect(subs.map(s => s.status)).toEqual(['completed', 'completed', 'completed'])
+    expect(await withOrg(env.app, orgId, async tx => peopleCount(tx, normalizeCampaign(await tx.selectFrom('pt_campaign').selectAll().where('id', '=', campaignId).executeTakeFirstOrThrow())))).toBe(3)
   })
 })
 

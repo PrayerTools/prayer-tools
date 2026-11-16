@@ -4,7 +4,7 @@ import type { Tx } from '@prayertools/shared/db/scope'
 import { occurrences, entryNumber } from '@prayertools/shared/schedule'
 import { localDateOf } from '@prayertools/shared/dates'
 import { ruleOf, type CampaignRow, type CommitmentRow, type SubscriptionRow } from '@prayertools/shared/subscriptions'
-import { pickCurrentCampaign } from '@prayertools/shared/setup'
+import { campaignStatus, pickCurrentCampaign } from '@prayertools/shared/setup'
 import { campaignSegment, loadCampaigns } from '@prayertools/shared/campaigns'
 import { prayUrl } from '@prayertools/shared/links'
 import { emailT } from '@prayertools/shared/i18n/email'
@@ -23,6 +23,7 @@ async function context(tx: Tx) {
 }
 
 function eventsFor(ctx: SiteContext, sub: SubscriptionRow, c: CommitmentRow, campaign: CampaignRow, env: Awaited<ReturnType<typeof context>>, from: Date, to: Date): IcsEvent[] {
+  if (campaignStatus(campaign, from) === 'ended') return []
   const rule = ruleOf(c)
   const lang = sub.language
   const summary = emailT(lang, 'reminder.subject', { campaign: campaign.name, site: ctx.name })

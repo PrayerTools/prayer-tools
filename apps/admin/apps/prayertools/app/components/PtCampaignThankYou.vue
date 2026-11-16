@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // A campaign's end-of-campaign thank-you: the champion's optional message and
-// a button pointing somewhere next, saved on their own.
+// a button pointing somewhere next, saved on their own (by the parent, through `values()`, when `embedded`).
 import type { CampaignCta, TranslatableText } from '@prayertools/shared/db/schema'
 import { emailT } from '@prayertools/shared/i18n/email'
 
@@ -11,6 +11,7 @@ const props = defineProps<{
   side: boolean
   languages: string[]
   defaultLanguage: string
+  embedded?: boolean
 }>()
 const emit = defineEmits<{ saved: [] }>()
 
@@ -47,6 +48,12 @@ function ctaBody(): CampaignCta | Record<string, unknown> {
   return ctaUrl.value ? { url: ctaUrl.value, label: ctaLabel.value } : {}
 }
 
+defineExpose({
+  values: () => ({ end_message: message.value, cta: ctaBody() }),
+  // "Your own button" is chosen but its text or link is missing.
+  incomplete: ownMissing
+})
+
 const saving = ref(false)
 async function save() {
   saving.value = true
@@ -67,7 +74,10 @@ async function save() {
 
 <template>
   <div class="space-y-5">
-    <p class="text-sm text-muted">
+    <p
+      v-if="!embedded"
+      class="text-sm text-muted"
+    >
       When this campaign ends, everyone in it gets a thank-you email (in personal-start campaigns, each person when
       they reach the last day). You can add a message and a button pointing somewhere next, like your next campaign.
     </p>
@@ -143,7 +153,10 @@ async function save() {
         </UFormField>
       </div>
     </fieldset>
-    <div class="flex items-center gap-2 flex-wrap">
+    <div
+      v-if="!embedded"
+      class="flex items-center gap-2 flex-wrap"
+    >
       <UButton
         v-if="canEdit"
         icon="i-lucide-check"

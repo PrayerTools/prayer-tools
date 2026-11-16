@@ -2,7 +2,7 @@
 import type { Selectable } from 'kysely'
 import type { Tx } from '@prayertools/shared/db/scope'
 import type { CampaignBranding, CampaignShare, PtSiteTable, SiteBranding, TranslatableText } from '@prayertools/shared/db/schema'
-import { campaignLength, campaignStatus, defaultDuration, durationOptions, durationRule, isSideCampaign, pickCurrentCampaign, slotMinutes } from '@prayertools/shared/setup'
+import { campaignEndDate, campaignLength, campaignStatus, defaultDuration, durationOptions, durationRule, isSideCampaign, pickCurrentCampaign, slotMinutes } from '@prayertools/shared/setup'
 import { entryNumber } from '@prayertools/shared/schedule'
 import { todayIn } from '@prayertools/shared/dates'
 import type { CampaignRow } from '@prayertools/shared/subscriptions'
@@ -46,12 +46,12 @@ export function stateOf(data: SiteData, c: CampaignRow): CampaignState {
 export function campaignView(data: SiteData, c: CampaignRow): CampaignView {
   const state = stateOf(data, c)
   const length = campaignLength(c)
+  // The entry of today while it runs, and of its last day once it has ended.
+  const day = state === 'active' ? todayIn(c.timezone) : state === 'upcoming' ? null : campaignEndDate(c)
   let todayEntry = 1
-  if (c.start_mode === 'date' && c.start_date && state === 'active') {
-    todayEntry = Math.max(1, entryNumber(c.start_date, c.cadence, todayIn(c.timezone)))
+  if (c.start_mode === 'date' && c.start_date && day) {
+    todayEntry = Math.max(1, entryNumber(c.start_date, c.cadence, day))
     if (length) todayEntry = Math.min(todayEntry, length)
-  } else if (c.start_mode === 'date' && c.start_date && (state === 'between' || state === 'ended') && length) {
-    todayEntry = length
   }
   return {
     id: c.id,

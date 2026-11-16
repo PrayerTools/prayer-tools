@@ -222,7 +222,7 @@ async function create() {
           >
             These dates overlap {{ clash.name }} ({{ ptCampaignDates(clash) }}).
             <template v-if="clash.start_mode === 'join' || clash.end_mode !== 'date'">
-              It has no end date, so it holds every date from its start until it is ended. A side campaign can run alongside it.
+              It has no end date, so it holds every date from its start until you end it on the Campaigns page. A side campaign can run alongside it.
             </template>
           </p>
           <UButton

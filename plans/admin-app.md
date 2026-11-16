@@ -60,7 +60,7 @@ Keeps what today's flow does behind the scenes: Turnstile and a bad-words check 
 
 - **Site:** name, slug, branding, email identity (from-name, reply-to, logo, signature). When a brand color is chosen, text on it is set to white or dark for contrast, with a warning if the color is too pale to be readable.
 - **Status:** draft → published → archived (see [campaign-setup.md](campaign-setup.md)).
-- **Campaigns:** create, schedule, relaunch (a new campaign on the same site), close. Each campaign has its setup: start, end, goal, cadence, and "track time committed" for people-mobilized campaigns (see [campaign-setup.md](campaign-setup.md)). Past campaigns keep their stats.
+- **Campaigns:** create, schedule, relaunch (a new campaign on the same site), close. "End campaign" on the campaign list ends a running campaign now: its confirmation says what happens, shows the thank-you that will be sent, and asks for the message and call to action when they are missing. Each campaign has its setup: start, end, goal, cadence, and "track time committed" for people-mobilized campaigns (see [campaign-setup.md](campaign-setup.md)). Past campaigns keep their stats.
 - **Languages:** the site's languages and default language, changeable any time. They drive:
   - the public site's language switcher and signup language options;
   - which languages content must exist in — the library catalog shows each library's language coverage, and missing translations can be filled with AI translation;
