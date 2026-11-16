@@ -176,10 +176,49 @@ export function tiptapToHtml(doc: TiptapDoc | null | undefined, o: RenderOptions
   return renderNodes(doc.content, o)
 }
 
+// A link's address as plain text shows it: absolute web, mail and phone links
+// only, without the `mailto:`/`tel:` prefix.
+function textHref(href: unknown): string | null {
+  if (typeof href !== 'string') return null
+  const h = href.trim()
+  if (/^https?:\/\/\S+$/i.test(h)) return h
+  if (/^(mailto|tel):\S+$/i.test(h)) return h.replace(/^(mailto|tel):/i, '')
+  return null
+}
+
+// ` (address)` after a link's words, or nothing when the words already are the address.
+function linkSuffix(words: string, href: string | null): string {
+  if (!href) return ''
+  const bare = (s: string) => s.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '')
+  return bare(words) === bare(href) ? '' : ` (${href})`
+}
+
+// Plain text of a doc, e.g. for the text part of an email: links are written
+// as `words (address)`, images as `[alt]`, videos as their address.
 export function tiptapToText(doc: TiptapDoc | null | undefined, vars?: Record<string, string>): string {
   if (!doc || !Array.isArray(doc.content)) return ''
-  const walk = (nodes: TiptapNode[] | undefined): string => (nodes ?? []).map((n) => {
-    if (n.type === 'text') return fillVars(n.text ?? '', vars)
+  const walk = (nodes: TiptapNode[] | undefined): string => {
+    let out = ''
+    let link = null as { href: string | null, mark: unknown, words: string } | null
+    const closeLink = () => {
+      if (link) out += linkSuffix(link.words, link.href)
+      link = null
+    }
+    for (const n of nodes ?? []) {
+      const mark = n.type === 'text' ? n.marks?.find(m => m.type === 'link')?.attrs?.href : undefined
+      if (link && (n.type !== 'text' || mark !== link.mark)) closeLink()
+      if (n.type === 'text') {
+        const text = fillVars(n.text ?? '', vars)
+        if (mark !== undefined) link = link ? { ...link, words: link.words + text } : { href: textHref(mark), mark, words: text }
+        out += text
+      } else {
+        out += node(n)
+      }
+    }
+    closeLink()
+    return out
+  }
+  const node = (n: TiptapNode): string => {
     if (n.type === 'hardBreak') return '\n'
     if (n.type === 'image' || n.type === 'imageResize') {
       const alt = String(n.attrs?.alt ?? '').trim()
@@ -189,17 +228,17 @@ export function tiptapToText(doc: TiptapDoc | null | undefined, vars?: Record<st
     const inner = walk(n.content)
     if (n.type === 'button') {
       const label = inner.trim() || fillVars(String(n.attrs?.label ?? ''), vars).trim()
-      const href = typeof n.attrs?.href === 'string' ? n.attrs.href : ''
-      return label ? `${label}${href ? `: ${href}` : ''}\n\n` : ''
+      return label ? `${label}${linkSuffix(label, textHref(n.attrs?.href))}\n\n` : ''
     }
     if (n.type === 'verse') {
       const ref = n.attrs?.reference
       return `${inner.trim()}${typeof ref === 'string' && ref ? ` — ${ref}` : ''}\n\n`
     }
     if (['paragraph', 'heading', 'blockquote', 'codeBlock'].includes(n.type)) return `${inner}\n\n`
+    if (['bulletList', 'orderedList', 'taskList'].includes(n.type)) return `${inner}\n`
     if (['listItem', 'taskItem'].includes(n.type)) return `• ${inner.trim()}\n`
     return inner
-  }).join('')
+  }
   return walk(doc.content).replace(/\n{3,}/g, '\n\n').trim()
 }
 
@@ -207,12 +246,13 @@ export function isEmptyDoc(doc: TiptapDoc | null | undefined): boolean {
   return tiptapToText(doc).trim() === '' && !JSON.stringify(doc ?? {}).includes('"image')
 }
 
-export type EmailEditorChange = 'video' | 'button' | 'checklist'
+export type EmailEditorChange = 'video' | 'checklist'
 
-// Content for the site email editor, which has no button, task list or
-// resizable image node: a button becomes a linked paragraph, a task list a
-// bullet list, a resizable image an image. `changes` names what will look
-// different in the email; videos are kept and sent as links.
+// Content for the site email editor, which has no task list or resizable
+// image node and keeps a button's words in its `label`: a task list becomes a
+// bullet list, a resizable image an image, a button with inline content one
+// labelled with its text. `changes` names what will look different in the
+// email; videos are kept and sent as links.
 export function toEmailEditorContent(nodes: TiptapNode[]): { content: TiptapNode[], changes: EmailEditorChange[] } {
   const changes = new Set<EmailEditorChange>()
   const walk = (n: TiptapNode): TiptapNode[] => {
@@ -222,13 +262,8 @@ export function toEmailEditorContent(nodes: TiptapNode[]): { content: TiptapNode
         changes.add('video')
         return [n]
       case 'button': {
-        const href = typeof n.attrs?.href === 'string' ? n.attrs.href : ''
-        const label = String(n.attrs?.label ?? '').trim()
-        const inline = content?.length ? content : label ? [{ type: 'text', text: label }] : []
-        if (!inline.length) return []
-        changes.add('button')
-        const link = { type: 'link', attrs: { href } }
-        return [{ type: 'paragraph', content: href ? inline.map(t => (t.type === 'text' ? { ...t, marks: [...(t.marks ?? []).filter(m => m.type !== 'link'), link] } : t)) : inline }]
+        const label = String(n.attrs?.label ?? '').trim() || (content ?? []).map(t => t.text ?? '').join('').trim()
+        return label ? [{ type: 'button', attrs: { href: n.attrs?.href ?? null, label } }] : []
       }
       case 'taskList':
         changes.add('checklist')

@@ -1,9 +1,10 @@
-// Client registry for content the host can insert into the email editor, such
-// as images or saved blocks from its own library. Each inserter is a toolbar
-// button that either opens the host's picker or lists items in a menu, and
-// hands back Tiptap content to insert at the cursor. With none registered the
-// editor shows no extra buttons. The host calls `registerMarketingInserter`
-// from a Nuxt app plugin.
+// Client registries the host fills from a Nuxt app plugin, both empty by default:
+// - `registerMarketingExtensions`: Tiptap extensions for nodes the host renders
+//   in email that the email editor lacks, so docs holding them open and keep them.
+// - `registerMarketingInserter`: content the host can insert, such as images or
+//   saved blocks from its own library. Each inserter is a toolbar button that
+//   either opens the host's picker or lists items in a menu, and hands back
+//   Tiptap content to insert at the cursor.
 import type { Component } from 'vue'
 import type { Extensions, JSONContent } from '@tiptap/vue-3'
 
@@ -26,8 +27,6 @@ interface MarketingInserterBase {
   icon: string
   /** Ascending toolbar order (default 100). */
   order?: number
-  /** Tiptap extensions for nodes the inserted content may hold, added to the editor. */
-  extensions?: Extensions
 }
 
 export type MarketingInserter = MarketingInserterBase & (
@@ -51,6 +50,17 @@ export function registerMarketingInserter(inserter: MarketingInserter): void {
 
 export function getMarketingInserters(): MarketingInserter[] {
   return [..._inserters].sort((a, b) => (a.order ?? 100) - (b.order ?? 100))
+}
+
+const _extensions = new Map<string, Extensions>()
+
+/** A repeat registration with the same id replaces it. */
+export function registerMarketingExtensions(id: string, extensions: Extensions): void {
+  _extensions.set(id, extensions)
+}
+
+export function getMarketingExtensions(): Extensions {
+  return [..._extensions.values()].flat().filter((e, i, all) => all.findIndex(x => x.name === e.name) === i)
 }
 
 export type MarketingNodeKind = 'textblock' | 'block' | 'inline'

@@ -2,7 +2,7 @@
 import type { Editor, JSONContent } from '@tiptap/vue-3'
 import type { EditorToolbarItem } from '@nuxt/ui'
 import type { MarketingDoc, MarketingVariable } from '../utils/marketing-ui'
-import { getMarketingInserters, marketingFitContent, type MarketingInsert, type MarketingInsertItem, type MarketingInserter } from '../utils/marketing-inserters'
+import { getMarketingExtensions, getMarketingInserters, marketingFitContent, type MarketingInsert, type MarketingInsertItem, type MarketingInserter } from '../utils/marketing-inserters'
 
 const props = withDefaults(defineProps<{
   variables?: MarketingVariable[]
@@ -55,7 +55,7 @@ function insert(editor: Editor, key: string) {
 
 const toast = useToast()
 const inserters = getMarketingInserters()
-const extensions = inserters.flatMap(i => i.extensions ?? []).filter((e, i, all) => all.findIndex(x => x.name === e.name) === i)
+const extensions = getMarketingExtensions()
 const pickerOpen = ref<string | null>(null)
 const menuItems = ref<Record<string, MarketingInsertItem[]>>({})
 let pickerEditor: Editor | null = null
