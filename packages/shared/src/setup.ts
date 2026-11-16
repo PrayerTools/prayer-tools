@@ -36,7 +36,7 @@ export const SETUP_DEFAULTS: SetupAnswers = {
   length_days: null,
   goal: 'people',
   cadence: 'daily',
-  track_time: false
+  track_time: true
 }
 
 export interface CampaignTemplate {

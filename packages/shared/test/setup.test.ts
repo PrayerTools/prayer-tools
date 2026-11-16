@@ -105,7 +105,7 @@ describe('offeredTemplates', () => {
 describe('applyTemplate', () => {
   it('Ramadan: dates from the chosen start, 30 days, daily, people', () => {
     expect(applyTemplate('ramadan', { start_date: '2027-02-08' })).toEqual({
-      start_mode: 'date', start_date: '2027-02-08', end_mode: 'date', end_date: '2027-03-09', length_days: null, goal: 'people', cadence: 'daily', track_time: false
+      start_mode: 'date', start_date: '2027-02-08', end_mode: 'date', end_date: '2027-03-09', length_days: null, goal: 'people', cadence: 'daily', track_time: true
     })
   })
 
@@ -121,7 +121,7 @@ describe('applyTemplate', () => {
 
   it('start anytime: personal start that follows the content, daily or weekly', () => {
     expect(applyTemplate('anytime', { length_days: 10, cadence: 'weekly' })).toEqual({
-      start_mode: 'join', start_date: null, end_mode: 'days', end_date: null, length_days: 10, goal: 'people', cadence: 'weekly', track_time: false
+      start_mode: 'join', start_date: null, end_mode: 'days', end_date: null, length_days: 10, goal: 'people', cadence: 'weekly', track_time: true
     })
   })
 

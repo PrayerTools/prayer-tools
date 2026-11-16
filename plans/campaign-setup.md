@@ -41,7 +41,7 @@ Signup is built around the reminder (Doxa model): the intercessor says when they
 
 | Goal | Days + time | Duration |
 |---|---|---|
-| People mobilized | required | asked only when the champion turns on "track time committed" (off by default); default 15 min |
+| People mobilized | required | asked unless the champion turns off "Ask how long each person will pray" (on by default); default 15 min |
 | Prayer time | required | required, intercessor's choice; default 15 min |
 | 24/7 coverage | required | required, whole slots only; default 15 min, raised to one slot |
 
