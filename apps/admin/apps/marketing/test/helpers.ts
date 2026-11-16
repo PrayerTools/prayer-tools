@@ -141,9 +141,10 @@ export function versions(subject = 'Hello {first_name}', body = 'News from {site
 
 export async function createEmail(env: TestEnv, orgId: string, o: { audiences?: string[], status?: 'draft' | 'scheduled', scheduledAt?: Date, parentId?: string | null } = {}): Promise<string> {
   return await withOrg(env.app, orgId, async (tx) => {
+    const audiences = o.audiences ?? (await tx.selectFrom('pt_campaign').select('id').execute()).map(c => `campaign:${c.id}`)
     const row = await sql<{ id: string }>`
       INSERT INTO marketing_email (versions, source_language, audiences, status, scheduled_at, parent_id)
-      VALUES (${JSON.stringify(versions())}::text::jsonb, 'en', ${`{${(o.audiences ?? ['current_campaign']).join(',')}}`}::text[], ${o.status ?? 'scheduled'}, ${o.scheduledAt ?? new Date(Date.now() - 1000)}, ${o.parentId ?? null})
+      VALUES (${JSON.stringify(versions())}::text::jsonb, 'en', ${`{${audiences.join(',')}}`}::text[], ${o.status ?? 'scheduled'}, ${o.scheduledAt ?? new Date(Date.now() - 1000)}, ${o.parentId ?? null})
       RETURNING id
     `.execute(tx)
     return row.rows[0]!.id
