@@ -181,7 +181,17 @@ export function tiptapToText(doc: TiptapDoc | null | undefined, vars?: Record<st
   const walk = (nodes: TiptapNode[] | undefined): string => (nodes ?? []).map((n) => {
     if (n.type === 'text') return fillVars(n.text ?? '', vars)
     if (n.type === 'hardBreak') return '\n'
+    if (n.type === 'image' || n.type === 'imageResize') {
+      const alt = String(n.attrs?.alt ?? '').trim()
+      return alt ? `[${alt}]\n\n` : ''
+    }
+    if (n.type === 'youtube') return typeof n.attrs?.src === 'string' && n.attrs.src ? `${n.attrs.src}\n\n` : ''
     const inner = walk(n.content)
+    if (n.type === 'button') {
+      const label = inner.trim() || fillVars(String(n.attrs?.label ?? ''), vars).trim()
+      const href = typeof n.attrs?.href === 'string' ? n.attrs.href : ''
+      return label ? `${label}${href ? `: ${href}` : ''}\n\n` : ''
+    }
     if (n.type === 'verse') {
       const ref = n.attrs?.reference
       return `${inner.trim()}${typeof ref === 'string' && ref ? ` — ${ref}` : ''}\n\n`
@@ -195,6 +205,45 @@ export function tiptapToText(doc: TiptapDoc | null | undefined, vars?: Record<st
 
 export function isEmptyDoc(doc: TiptapDoc | null | undefined): boolean {
   return tiptapToText(doc).trim() === '' && !JSON.stringify(doc ?? {}).includes('"image')
+}
+
+export type EmailEditorChange = 'video' | 'button' | 'checklist'
+
+// Content for the site email editor, which has no button, task list or
+// resizable image node: a button becomes a linked paragraph, a task list a
+// bullet list, a resizable image an image. `changes` names what will look
+// different in the email; videos are kept and sent as links.
+export function toEmailEditorContent(nodes: TiptapNode[]): { content: TiptapNode[], changes: EmailEditorChange[] } {
+  const changes = new Set<EmailEditorChange>()
+  const walk = (n: TiptapNode): TiptapNode[] => {
+    const content = n.content?.flatMap(walk)
+    switch (n.type) {
+      case 'youtube':
+        changes.add('video')
+        return [n]
+      case 'button': {
+        const href = typeof n.attrs?.href === 'string' ? n.attrs.href : ''
+        const label = String(n.attrs?.label ?? '').trim()
+        const inline = content?.length ? content : label ? [{ type: 'text', text: label }] : []
+        if (!inline.length) return []
+        changes.add('button')
+        const link = { type: 'link', attrs: { href } }
+        return [{ type: 'paragraph', content: href ? inline.map(t => (t.type === 'text' ? { ...t, marks: [...(t.marks ?? []).filter(m => m.type !== 'link'), link] } : t)) : inline }]
+      }
+      case 'taskList':
+        changes.add('checklist')
+        return [{ type: 'bulletList', content: content ?? [] }]
+      case 'taskItem':
+        return [{ type: 'listItem', content: content ?? [] }]
+      case 'imageResize': {
+        const { src, alt, title, width } = n.attrs ?? {}
+        return [{ type: 'image', attrs: { src, alt, title, ...(width ? { width } : {}) } }]
+      }
+      default:
+        return [content ? { ...n, content } : n]
+    }
+  }
+  return { content: nodes.flatMap(walk), changes: [...changes] }
 }
 
 export function textDoc(text: string): TiptapDoc {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { collectText, escapeHtml, fillVars, isEmptyDoc, mapText, textDoc, tiptapToHtml, tiptapToText } from '../src/tiptap'
+import { collectText, escapeHtml, fillVars, isEmptyDoc, mapText, textDoc, tiptapToHtml, tiptapToText, toEmailEditorContent } from '../src/tiptap'
 import type { TiptapDoc } from '../src/db/schema'
 
 const doc: TiptapDoc = {
@@ -59,6 +59,16 @@ describe('text helpers', () => {
     expect(tiptapToText(doc, { place: 'Beirut' })).toBe('Pray for Beirut\n\nBold and a link\n\nFor God so loved the world — John 3:16\n\n• Families')
   })
 
+  it('plain text shows image alt text, video links and button links', () => {
+    const d: TiptapDoc = { type: 'doc', content: [
+      { type: 'image', attrs: { src: 'https://x/y.png', alt: 'Families praying' } },
+      { type: 'image', attrs: { src: 'https://x/z.png' } },
+      { type: 'youtube', attrs: { src: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' } },
+      { type: 'button', attrs: { href: 'https://example.org/join', label: 'Join {site_name}' } }
+    ] }
+    expect(tiptapToText(d, { site_name: 'Pray Morocco' })).toBe('[Families praying]\n\nhttps://www.youtube.com/watch?v=dQw4w9WgXcQ\n\nJoin Pray Morocco: https://example.org/join')
+  })
+
   it('textDoc splits paragraphs; isEmptyDoc', () => {
     const d = textDoc('One\n\nTwo')
     expect(d.content).toHaveLength(2)
@@ -79,5 +89,30 @@ describe('text helpers', () => {
   it('fillVars leaves unknown placeholders; escapeHtml escapes quotes', () => {
     expect(fillVars('{a} {b}', { a: 'x' })).toBe('x {b}')
     expect(escapeHtml(`<a href="x">'</a>`)).toBe('&lt;a href=&quot;x&quot;&gt;&#039;&lt;/a&gt;')
+  })
+})
+
+describe('toEmailEditorContent', () => {
+  it('keeps nodes the email editor shows and notes videos', () => {
+    const nodes = [
+      ...doc.content!,
+      { type: 'youtube', attrs: { src: 'https://vimeo.com/76979871' } }
+    ]
+    expect(toEmailEditorContent(nodes)).toEqual({ content: nodes, changes: ['video'] })
+  })
+
+  it('turns buttons into links, task lists into bullet lists and resizable images into images', () => {
+    const { content, changes } = toEmailEditorContent([
+      { type: 'button', attrs: { href: 'https://example.org/join', label: 'Join' } },
+      { type: 'button', attrs: { href: '', label: '' } },
+      { type: 'taskList', content: [{ type: 'taskItem', attrs: { checked: true }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Pray' }] }] }] },
+      { type: 'imageResize', attrs: { src: 'https://x/y.png', alt: 'A city', width: 320, containerStyle: 'x' } }
+    ])
+    expect(content).toEqual([
+      { type: 'paragraph', content: [{ type: 'text', text: 'Join', marks: [{ type: 'link', attrs: { href: 'https://example.org/join' } }] }] },
+      { type: 'bulletList', content: [{ type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Pray' }] }] }] },
+      { type: 'image', attrs: { src: 'https://x/y.png', alt: 'A city', title: undefined, width: 320 } }
+    ])
+    expect(changes).toEqual(['button', 'checklist'])
   })
 })

@@ -234,6 +234,7 @@ async function saveTemplate() {
         v-model="current.content"
         :variables="variables"
         :dir="currentDir"
+        :lang="active"
         :disabled="disabled"
       />
     </div>
