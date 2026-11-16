@@ -236,6 +236,8 @@ export interface MyView {
 }
 
 export type PageView =
+  // `sections` are the sections after the hero, in page order: a standard key or `custom:<id>`.
+  // `placeholders` are the ones the admin editor's preview shows as empty.
   | { kind: 'landing', sections: string[], progress: GoalProgressView | null, subtitle: string, why: string, today: { day: number, html: string, title: string } | null, stories: StoryView[], custom: CustomSectionView[], prayingNow: number, form: SignupFormView, placeholders: string[], side: SideCampaignView[] }
   | { kind: 'between', stats: StatsView | null, endMessage: string, next: NextStep | null }
   | { kind: 'archived' }

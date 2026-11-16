@@ -1,8 +1,8 @@
 <script setup lang="ts">
-// One landing page section in the editor: heading, what it shows, a show
-// switch (or "Always shown"), and its fields. Clicking or focusing it selects
-// the section, which the preview mirrors.
-const props = defineProps<{
+// One landing page section in the editor: heading, what it shows, arrows that
+// move it up or down the page, a show switch (or "Always shown"), and its
+// fields. Clicking or focusing it selects the section, which the preview mirrors.
+const props = withDefaults(defineProps<{
   section: string
   title: string
   description?: string
@@ -11,8 +11,24 @@ const props = defineProps<{
   // null for sections that always show.
   shown: boolean | null
   canToggle: boolean
-}>()
-const emit = defineEmits<{ 'select': [], 'update:shown': [value: boolean] }>()
+  // Which ways the section can move; absent for a section that stays in place.
+  move?: { up: boolean, down: boolean }
+  // Whether the fields show, for a section that collapses.
+  open?: boolean
+}>(), { open: undefined })
+const emit = defineEmits<{ 'select': [], 'update:shown': [value: boolean], 'update:open': [value: boolean], 'move': [by: -1 | 1] }>()
+
+const collapsible = computed(() => props.open !== undefined)
+
+// Moving the row can drop keyboard focus, so it returns to the arrow used, or
+// to the other one at the end of the list.
+async function moveBy(by: -1 | 1) {
+  emit('move', by)
+  await nextTick()
+  const row = document.getElementById(`pt-ed-${props.section}`)
+  const arrow = (d: number) => row?.querySelector<HTMLButtonElement>(`[data-pt-move="${d}"]:not(:disabled)`)
+  ;(arrow(by) ?? arrow(-by))?.focus()
+}
 </script>
 
 <template>
@@ -25,6 +41,16 @@ const emit = defineEmits<{ 'select': [], 'update:shown': [value: boolean] }>()
   >
     <template #header>
       <div class="flex items-start gap-3">
+        <UButton
+          v-if="collapsible"
+          size="xs"
+          variant="ghost"
+          color="neutral"
+          :icon="open ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'"
+          :aria-label="open ? 'Collapse' : 'Expand'"
+          :aria-expanded="open"
+          @click="emit('update:open', !open)"
+        />
         <UIcon
           :name="icon"
           class="size-5 shrink-0 mt-0.5"
@@ -47,6 +73,31 @@ const emit = defineEmits<{ 'select': [], 'update:shown': [value: boolean] }>()
           </p>
         </div>
         <slot name="actions" />
+        <div
+          v-if="move"
+          class="flex shrink-0"
+        >
+          <UButton
+            size="xs"
+            variant="ghost"
+            color="neutral"
+            icon="i-lucide-arrow-up"
+            aria-label="Move up"
+            data-pt-move="-1"
+            :disabled="!move.up"
+            @click="moveBy(-1)"
+          />
+          <UButton
+            size="xs"
+            variant="ghost"
+            color="neutral"
+            icon="i-lucide-arrow-down"
+            aria-label="Move down"
+            data-pt-move="1"
+            :disabled="!move.down"
+            @click="moveBy(1)"
+          />
+        </div>
         <UBadge
           v-if="props.shown === null"
           variant="subtle"
@@ -62,12 +113,16 @@ const emit = defineEmits<{ 'select': [], 'update:shown': [value: boolean] }>()
         />
       </div>
     </template>
-    <div
-      v-if="$slots.default"
-      class="space-y-4"
-      :class="{ 'opacity-60': shown === false }"
+    <template
+      v-if="$slots.default && (!collapsible || open)"
+      #default
     >
-      <slot />
-    </div>
+      <div
+        class="space-y-4"
+        :class="{ 'opacity-60': shown === false }"
+      >
+        <slot />
+      </div>
+    </template>
   </UCard>
 </template>

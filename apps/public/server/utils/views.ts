@@ -9,6 +9,7 @@ import { prayingNow } from '@prayertools/shared/stats'
 import { entryDate } from '@prayertools/shared/schedule'
 import { parseLink } from '@prayertools/shared/links'
 import { textIn } from '@prayertools/shared/translatable'
+import { isEmptyDoc } from '@prayertools/shared/tiptap'
 import { videoEmbed } from '@prayertools/shared/video'
 import type { TranslatableText, CampaignLanding, SignupFieldKind } from '@prayertools/shared/db/schema'
 import type { CampaignRow } from '@prayertools/shared/subscriptions'
@@ -206,17 +207,23 @@ async function landingPage(tx: Parameters<typeof loadSiteData>[0], event: H3Even
     const blocks = await contentBlocks(tx, data, ctx.name, campaign, cv.todayEntry, lang, 3)
     if (blocks[0]) today = { day: cv.todayEntry, html: blocks[0].html, title: blocks[0].title }
   }
-  const sections = visibleSections(landing.hidden, templateKey, {
+  // The editor's preview treats a custom section with nothing to see as empty.
+  const blank = ctx.editor
+    ? (landing.custom ?? []).filter(s => !textIn(s.heading, lang, def) && !s.image_url && !videoEmbed(s.video_url) && Object.values(s.body ?? {}).every(isEmptyDoc)).map(s => s.id)
+    : []
+  const withContent = new Set(custom.map(s => s.id).filter(id => !blank.includes(id)))
+  const shown = visibleSections(landing, templateKey, {
     hasStories: landing.stories !== false && stories.length > 0,
-    hasCustom: custom.length > 0,
     hasWhy: !!why,
-    appAvailable: appAvailable()
+    appAvailable: appAvailable(),
+    hasCustom: id => withContent.has(id)
   }).filter(s => s !== 'today' || today)
   // In the admin editor, sections that are switched on but have nothing to
   // show yet appear as placeholders.
-  const placeholders = ctx.editor
-    ? visibleSections(landing.hidden, templateKey, { hasStories: true, hasCustom: true, hasWhy: true, appAvailable: true }).filter(s => !sections.includes(s))
-    : []
+  const sections = ctx.editor
+    ? visibleSections(landing, templateKey, { hasStories: true, hasWhy: true, appAvailable: true, hasCustom: () => true })
+    : shown
+  const placeholders = sections.filter(s => !shown.includes(s))
   return {
     kind: 'landing',
     sections,

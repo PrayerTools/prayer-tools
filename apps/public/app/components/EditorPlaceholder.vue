@@ -1,11 +1,12 @@
 <script setup lang="ts">
 // A landing section that is switched on but has nothing to show yet. Only
 // the admin editor's preview shows it, so the hint is in English like the admin.
-const props = defineProps<{ section: string, title: string }>()
+// `customId` names the custom section it stands for.
+const props = defineProps<{ section: string, title: string, customId?: string }>()
 
 const HINTS: Record<string, string> = {
   why: 'Nothing written yet. Write why people should pray, or hide this section.',
-  custom: 'No custom sections yet. Add a section with a heading, text, image or video and button, or hide this.',
+  custom: 'Nothing to show yet. Give this section a heading, text or a video, or hide it.',
   stories: 'No published stories yet. Once you publish stories from the Stories page they show like the examples below.',
   today: 'Today\'s prayer shows here once the campaign has prayer content for today.',
   app: 'Links to the Prayer.Tools app show here once the app is available.'
@@ -18,7 +19,7 @@ const EXAMPLE_STORIES = [
 </script>
 
 <template>
-  <section :data-pt-section="props.section" class="rounded-xl border-2 border-dashed border-stone-300 bg-stone-100/60 p-6 text-stone-500" dir="ltr">
+  <section :data-pt-section="props.customId ? undefined : props.section" :data-pt-custom="props.customId" class="rounded-xl border-2 border-dashed border-stone-300 bg-stone-100/60 p-6 text-stone-500" dir="ltr">
     <h2 class="text-2xl font-bold text-stone-400">{{ props.title }}</h2>
     <p class="mt-2 text-sm">{{ HINTS[props.section] }}</p>
     <div v-if="props.section === 'stories'" class="mt-4 grid gap-4 sm:grid-cols-2 opacity-70">

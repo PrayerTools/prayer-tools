@@ -1,6 +1,8 @@
 <script setup lang="ts">
-// The landing page editor: fixed sections in a fixed order. The champion
+// The landing page editor: the standard sections and the champion's custom
+// sections, one row each, in the order the page shows them. The champion
 // writes the "why" text and custom sections, hides sections they don't need,
+// moves any section below the top one up or down,
 // and chooses whether stories show and, on a side campaign, which ones. Section headings and standard
 // text can be reworded per language; the preview beside the editor shows
 // unsaved changes. It edits one campaign's landing page, short description
@@ -11,7 +13,7 @@ import { DEFAULT_BRAND_COLOR } from '@prayertools/shared/colors'
 import { heroImage } from '@prayertools/shared/hero-images'
 import { isEmptyDoc } from '@prayertools/shared/tiptap'
 import { isTemplateWhy, templateWhyDoc } from '@prayertools/shared/i18n/landing'
-import { LANDING_STORY_LIMIT } from '@prayertools/shared/landing'
+import { LANDING_STORY_LIMIT, customSectionId, customSectionKey, expandHiddenCustom, isSectionHidden, landingOrder, storedLandingOrder } from '@prayertools/shared/landing'
 import { videoEmbed } from '@prayertools/shared/video'
 import { campaignSegment, campaignUrl } from '@prayertools/shared/campaigns'
 
@@ -64,6 +66,8 @@ const dir = computed(() => meta.value?.languages.find(l => l.code === lang.value
 
 const why = ref<Record<string, Record<string, any> | null>>({})
 const hidden = ref<string[]>([])
+// The champion's own section order; absent while the page uses the default order.
+const order = ref<string[] | undefined>()
 const stories = ref(true)
 const storyIds = ref<string[] | undefined>()
 const custom = ref<CustomSection[]>([])
@@ -75,6 +79,7 @@ watch(source, (src) => {
   if (!s || !src) return
   why.value = withTemplateWhy((src.landing.why ?? {}) as Record<string, TiptapDoc>, src.templateKey, s.site.languages, s.site.default_language)
   hidden.value = [...(src.landing.hidden ?? meta.value?.templates.find(t => t.key === src.templateKey)?.hiddenSections ?? [])]
+  order.value = src.landing.order ? [...src.landing.order] : undefined
   stories.value = src.landing.stories !== false
   storyIds.value = src.landing.story_ids ? [...src.landing.story_ids] : undefined
   custom.value = JSON.parse(JSON.stringify(src.landing.custom ?? []))
@@ -188,20 +193,42 @@ async function saveWording() {
   }
   await refreshStrings()
 }
-const sections = computed(() => (meta.value?.landing.sections ?? []).map(key => ({
-  key,
-  ...ptLandingSectionInfo(key),
-  ...(key === 'stories' && side.value ? { description: 'Stories from people who prayed, ones you choose for this campaign.' } : {}),
-  title: sectionTitle(key),
-  required: !(meta.value?.landing.hideable ?? []).includes(key)
-})))
+const customIds = computed(() => custom.value.map(c => c.id))
+const pageOrder = computed(() => landingOrder(order.value, customIds.value))
+// The rows of the editor: the top section, then the page's order. A custom
+// section's row is `custom:<id>` and carries the section.
+const sections = computed(() => ['top', ...pageOrder.value].map((key, i, all) => {
+  const id = customSectionId(key)
+  const section = id === null ? undefined : custom.value.find(c => c.id === id)
+  return {
+    key,
+    // The id of the row's element and of the selection: 'why', or 'custom-<id>'.
+    target: section ? `custom-${section.id}` : key,
+    custom: section,
+    ...ptLandingSectionInfo(section ? 'custom' : key),
+    ...(key === 'stories' && side.value ? { description: 'Stories from people who prayed, ones you choose for this campaign.' } : {}),
+    title: section ? section.heading.values[site.value?.site.default_language ?? ''] || 'New section' : sectionTitle(key),
+    required: !section && !(meta.value?.landing.hideable ?? []).includes(key),
+    move: key === 'top' || !canWrite.value ? undefined : { up: i > 1, down: i < all.length - 1 }
+  }
+}))
 // The stories section shows only when it is not hidden and the stories flag is on.
 function isShown(key: string) {
-  return !hidden.value.includes(key) && (key !== 'stories' || stories.value)
+  return !isSectionHidden(hidden.value, key) && (key !== 'stories' || stories.value)
 }
 function setShown(key: string, show: boolean) {
-  hidden.value = show ? hidden.value.filter(x => x !== key) : [...new Set([...hidden.value, key])]
+  // A switch on one custom section replaces a stored "every custom section" entry with one entry per section.
+  const current = customSectionId(key) === null ? hidden.value : expandHiddenCustom(hidden.value, customIds.value)
+  hidden.value = show ? current.filter(x => x !== key) : [...new Set([...current, key])]
   if (key === 'stories') stories.value = show
+}
+function moveSection(key: string, by: -1 | 1) {
+  const list = [...pageOrder.value]
+  const i = list.indexOf(key)
+  const j = i + by
+  if (i < 0 || j < 0 || j >= list.length) return
+  ;[list[i], list[j]] = [list[j]!, list[i]!]
+  order.value = storedLandingOrder(list, customIds.value)
 }
 
 const { data: storyData, execute: loadStories } = useFetch<{ stories: Story[] }>('/api/pt/stories', { key: 'pt-stories', immediate: false })
@@ -220,21 +247,19 @@ function chooseStory(id: string, on: boolean) {
   storyIds.value = on ? [...ids, id] : ids
 }
 
+// A new section shows even when every custom section so far is hidden. It
+// takes its default place in the order and opens for editing.
 function addSection() {
   const l = site.value!.site.default_language
   const id = crypto.randomUUID()
+  hidden.value = expandHiddenCustom(hidden.value, customIds.value)
   custom.value.push({ id, heading: { source: l, values: { [l]: '' }, stale: [] }, body: {} })
   openIds.value = [...openIds.value, id]
+  select('custom', id)
+  nextTick(() => document.getElementById(`pt-ed-custom-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
 }
-function toggleOpen(id: string) {
-  openIds.value = openIds.value.includes(id) ? openIds.value.filter(x => x !== id) : [...openIds.value, id]
-}
-function moveSection(i: number, d: number) {
-  const j = i + d
-  if (j < 0 || j >= custom.value.length) return
-  const arr = [...custom.value]
-  ;[arr[i], arr[j]] = [arr[j]!, arr[i]!]
-  custom.value = arr
+function setOpen(id: string, open: boolean) {
+  openIds.value = open ? [...new Set([...openIds.value, id])] : openIds.value.filter(x => x !== id)
 }
 const removeId = ref<string | null>(null)
 const removeOpen = computed({
@@ -242,8 +267,16 @@ const removeOpen = computed({
   set: (v: boolean) => { if (!v) removeId.value = null }
 })
 function removeSection() {
+  const key = customSectionKey(removeId.value!)
   custom.value = custom.value.filter(s => s.id !== removeId.value)
+  hidden.value = hidden.value.filter(x => x !== key)
+  order.value = storedLandingOrder(order.value?.filter(x => x !== key), customIds.value)
   removeId.value = null
+}
+// Kept out of the template, where vue-tsc misreads "//" in an attribute value.
+const LINK_PLACEHOLDER = 'https://'
+function setBody(s: CustomSection, doc: unknown) {
+  s.body = { ...s.body, [lang.value]: doc as CustomSection['body'][string] }
 }
 function clearImage(s: CustomSection) {
   s.image_url = undefined
@@ -285,7 +318,7 @@ async function uploadVideo(e: Event) {
   }
 }
 
-const draft = computed(() => ({ landing: { subtitle: subtitle.value, why: why.value, hidden: hidden.value, stories: stories.value, story_ids: storyIds.value, custom: custom.value }, description: description.value, branding: hero.value, brand: brand.value, strings: wording.value[lang.value] ?? {} }))
+const draft = computed(() => ({ landing: { subtitle: subtitle.value, why: why.value, hidden: hidden.value, order: order.value, stories: stories.value, story_ids: storyIds.value, custom: custom.value }, description: description.value, branding: hero.value, brand: brand.value, strings: wording.value[lang.value] ?? {} }))
 const preview = ref<{ focus: (section: string, id?: string) => void }>()
 
 // The selected section ('why', or 'custom-<id>' for one custom section) stays
@@ -314,7 +347,7 @@ async function save() {
       toast.ok('Translation saved')
       return
     }
-    const landing = { subtitle: subtitle.value, why: why.value, hidden: hidden.value, stories: stories.value, story_ids: storyIds.value, custom: custom.value }
+    const landing = { subtitle: subtitle.value, why: why.value, hidden: hidden.value, order: order.value, stories: stories.value, story_ids: storyIds.value, custom: custom.value }
     await $fetch(`/api/pt/campaigns/${props.campaignId}`, { method: 'PATCH', body: { landing, branding: hero.value, description: description.value } })
     if (brandDirty.value) await $fetch('/api/pt/site', { method: 'PATCH', body: { branding: brand.value } })
     await saveWording()
@@ -388,15 +421,19 @@ async function translateWhy() {
         <PtLandingBox
           v-for="s in sections"
           :key="s.key"
-          :section="s.key"
+          :section="s.target"
           :title="s.title"
           :description="s.description"
           :icon="s.icon"
-          :selected="selected === s.key"
+          :selected="selected === s.target"
           :shown="s.required ? null : isShown(s.key)"
           :can-toggle="canWrite"
-          @select="select(s.key)"
+          :move="s.move"
+          :open="s.custom ? openIds.includes(s.custom.id) : undefined"
+          @select="s.custom ? select('custom', s.custom.id) : select(s.key)"
           @update:shown="(v: boolean) => setShown(s.key, v)"
+          @update:open="(v: boolean) => s.custom && setOpen(s.custom.id, v)"
+          @move="(by: -1 | 1) => moveSection(s.key, by)"
         >
           <template #actions>
             <UButton
@@ -406,6 +443,15 @@ async function translateWhy() {
               icon="i-lucide-languages"
               label="AI translate"
               @click.stop="translateWhy"
+            />
+            <UButton
+              v-if="s.custom && canWrite"
+              size="xs"
+              variant="ghost"
+              color="error"
+              icon="i-lucide-trash-2"
+              aria-label="Remove section"
+              @click="removeId = s.custom.id"
             />
           </template>
           <template #default>
@@ -627,183 +673,119 @@ async function translateWhy() {
               </p>
             </div>
 
-            <div
-              v-else-if="s.key === 'custom'"
-              class="space-y-2"
-            >
-              <div
-                v-for="(c, i) in custom"
-                :id="`pt-ed-custom-${c.id}`"
-                :key="c.id"
-                class="scroll-mt-20 rounded-md border border-(--ui-border) transition-[box-shadow,background-color]"
-                :class="selected === `custom-${c.id}` ? PT_LANDING_SELECTED : ''"
-                @click.stop="select('custom', c.id)"
-                @focusin.stop="select('custom', c.id)"
+            <template v-else-if="s.custom">
+              <PtTranslatableInput
+                v-model="s.custom.heading"
+                :languages="site.site.languages"
+                :default-language="site.site.default_language"
+                label="Heading"
+                :source-locked="!canWrite"
+              />
+              <UFormField :label="site.site.languages.length > 1 ? `Text (${languageName(meta, lang)})` : 'Text'">
+                <PtRichEditor
+                  :model-value="s.custom.body[lang] ?? null"
+                  :dir="dir"
+                  :disabled="!canEditLang"
+                  min-height="8rem"
+                  @update:model-value="setBody(s.custom, $event)"
+                />
+              </UFormField>
+              <UFormField
+                label="Image"
+                description="Optional."
               >
-                <div class="flex items-center gap-2 px-3 py-2">
-                  <UButton
-                    size="xs"
-                    variant="ghost"
-                    color="neutral"
-                    :icon="openIds.includes(c.id) ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'"
-                    :aria-label="openIds.includes(c.id) ? 'Collapse' : 'Expand'"
-                    @click="toggleOpen(c.id)"
-                  />
-                  <span class="flex-1 truncate text-sm font-medium">{{ c.heading.values[site.site.default_language] || 'New section' }}</span>
+                <div class="flex flex-wrap items-center gap-3">
+                  <img
+                    v-if="s.custom.image_url"
+                    :src="s.custom.image_url"
+                    alt=""
+                    class="h-20 rounded-md object-cover"
+                  >
                   <template v-if="canWrite">
                     <UButton
-                      size="xs"
-                      variant="ghost"
-                      color="neutral"
-                      icon="i-lucide-arrow-up"
-                      aria-label="Move up"
-                      :disabled="i === 0"
-                      @click="moveSection(i, -1)"
+                      size="sm"
+                      variant="soft"
+                      icon="i-lucide-image"
+                      :label="s.custom.image_url ? 'Change image' : 'Add image'"
+                      @click="imagePickerFor = s.custom.id"
                     />
                     <UButton
-                      size="xs"
+                      v-if="s.custom.image_url"
+                      size="sm"
                       variant="ghost"
                       color="neutral"
-                      icon="i-lucide-arrow-down"
-                      aria-label="Move down"
-                      :disabled="i === custom.length - 1"
-                      @click="moveSection(i, 1)"
-                    />
-                    <UButton
-                      size="xs"
-                      variant="ghost"
-                      color="error"
-                      icon="i-lucide-trash-2"
-                      aria-label="Remove section"
-                      @click="removeId = c.id"
+                      icon="i-lucide-x"
+                      label="Remove"
+                      @click="clearImage(s.custom)"
                     />
                   </template>
                 </div>
-                <div
-                  v-if="openIds.includes(c.id)"
-                  class="space-y-4 border-t border-(--ui-border) p-3"
-                >
-                  <PtTranslatableInput
-                    v-model="c.heading"
-                    :languages="site.site.languages"
-                    :default-language="site.site.default_language"
-                    label="Heading"
-                    :source-locked="!canWrite"
+              </UFormField>
+              <UFormField
+                label="Video"
+                description="Optional. A YouTube or Vimeo link, or a video file you upload."
+                :error="videoError(s.custom)"
+              >
+                <div class="space-y-2">
+                  <UInput
+                    v-model="s.custom.video_url"
+                    type="url"
+                    placeholder="YouTube or Vimeo link"
+                    class="w-full"
+                    :disabled="!canWrite"
                   />
-                  <UFormField :label="site.site.languages.length > 1 ? `Text (${languageName(meta, lang)})` : 'Text'">
-                    <PtRichEditor
-                      :model-value="c.body[lang] ?? null"
-                      :dir="dir"
-                      :disabled="!canEditLang"
-                      min-height="8rem"
-                      @update:model-value="(v) => { c.body = { ...c.body, [lang]: v as Record<string, any> } }"
+                  <div
+                    v-if="canWrite"
+                    class="flex flex-wrap gap-2"
+                  >
+                    <UButton
+                      size="sm"
+                      variant="soft"
+                      icon="i-lucide-upload"
+                      label="Upload a video"
+                      :loading="uploadingVideo === s.custom.id"
+                      :disabled="!!uploadingVideo"
+                      @click="pickVideo(s.custom.id)"
                     />
-                  </UFormField>
-                  <UFormField
-                    label="Image"
-                    description="Optional."
-                  >
-                    <div class="flex flex-wrap items-center gap-3">
-                      <img
-                        v-if="c.image_url"
-                        :src="c.image_url"
-                        alt=""
-                        class="h-20 rounded-md object-cover"
-                      >
-                      <template v-if="canWrite">
-                        <UButton
-                          size="sm"
-                          variant="soft"
-                          icon="i-lucide-image"
-                          :label="c.image_url ? 'Change image' : 'Add image'"
-                          @click="imagePickerFor = c.id"
-                        />
-                        <UButton
-                          v-if="c.image_url"
-                          size="sm"
-                          variant="ghost"
-                          color="neutral"
-                          icon="i-lucide-x"
-                          label="Remove"
-                          @click="clearImage(c)"
-                        />
-                      </template>
-                    </div>
-                  </UFormField>
-                  <UFormField
-                    label="Video"
-                    description="Optional. A YouTube or Vimeo link, or a video file you upload."
-                    :error="videoError(c)"
-                  >
-                    <div class="space-y-2">
-                      <UInput
-                        v-model="c.video_url"
-                        type="url"
-                        placeholder="YouTube or Vimeo link"
-                        class="w-full"
-                        :disabled="!canWrite"
-                      />
-                      <div
-                        v-if="canWrite"
-                        class="flex flex-wrap gap-2"
-                      >
-                        <UButton
-                          size="sm"
-                          variant="soft"
-                          icon="i-lucide-upload"
-                          label="Upload a video"
-                          :loading="uploadingVideo === c.id"
-                          :disabled="!!uploadingVideo"
-                          @click="pickVideo(c.id)"
-                        />
-                        <UButton
-                          v-if="c.video_url"
-                          size="sm"
-                          variant="ghost"
-                          color="neutral"
-                          icon="i-lucide-x"
-                          label="Remove"
-                          @click="clearVideo(c)"
-                        />
-                      </div>
-                      <p
-                        v-if="canWrite"
-                        class="text-xs text-(--ui-text-muted)"
-                      >
-                        MP4, WebM or MOV up to 100 MB.
-                      </p>
-                    </div>
-                  </UFormField>
-                  <PtTranslatableInput
-                    v-model="c.button_label"
-                    :languages="site.site.languages"
-                    :default-language="site.site.default_language"
-                    label="Button text"
-                    help="Optional. Shown when a link is set."
-                    :source-locked="!canWrite"
-                  />
-                  <UFormField
-                    label="Button link"
-                    description="Web address the button opens."
-                  >
-                    <UInput
-                      v-model="c.button_url"
-                      type="url"
-                      placeholder="https://"
-                      class="w-full"
-                      :disabled="!canWrite"
+                    <UButton
+                      v-if="s.custom.video_url"
+                      size="sm"
+                      variant="ghost"
+                      color="neutral"
+                      icon="i-lucide-x"
+                      label="Remove"
+                      @click="clearVideo(s.custom)"
                     />
-                  </UFormField>
+                  </div>
+                  <p
+                    v-if="canWrite"
+                    class="text-xs text-(--ui-text-muted)"
+                  >
+                    MP4, WebM or MOV up to 100 MB.
+                  </p>
                 </div>
-              </div>
-              <UButton
-                v-if="canWrite"
-                variant="soft"
-                icon="i-lucide-plus"
-                label="Add a section"
-                @click="addSection"
+              </UFormField>
+              <PtTranslatableInput
+                v-model="s.custom.button_label"
+                :languages="site.site.languages"
+                :default-language="site.site.default_language"
+                label="Button text"
+                help="Optional. Shown when a link is set."
+                :source-locked="!canWrite"
               />
-            </div>
+              <UFormField
+                label="Button link"
+                description="Web address the button opens."
+              >
+                <UInput
+                  v-model="s.custom.button_url"
+                  type="url"
+                  :placeholder="LINK_PLACEHOLDER"
+                  class="w-full"
+                  :disabled="!canWrite"
+                />
+              </UFormField>
+            </template>
 
             <div
               v-else-if="s.key === 'stories'"
@@ -898,6 +880,14 @@ async function translateWhy() {
             </ULink>
           </template>
         </PtLandingBox>
+
+        <UButton
+          v-if="canWrite"
+          variant="soft"
+          icon="i-lucide-plus"
+          label="Add a section"
+          @click="addSection"
+        />
 
         <div class="flex justify-end sticky bottom-4">
           <UButton
