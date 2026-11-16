@@ -1,14 +1,16 @@
 <script setup lang="ts">
 // Share, for the campaign chosen in the switcher: its live link, QR code (PNG
-// and SVG), share messages per language with a WhatsApp preview, the share
-// image for link previews, and the Give line. The Embed tab gives the code for
-// the signup widget on other websites.
+// and SVG), share messages per language with a WhatsApp preview, the
+// description and share image for link previews, and the Give line. The Embed
+// tab gives the code for the signup widget on other websites.
 import type { TranslatableText } from '@prayertools/shared/db/schema'
+import { textIn } from '@prayertools/shared/translatable'
 
 definePageMeta({ middleware: 'auth' })
 
 const { data: site, can } = usePtSite()
 const canEditMessages = computed(() => can('pt.messages.write') || can('pt.campaigns.write'))
+const canEditDescription = computed(() => can('pt.campaigns.write') && can('pt.site.write'))
 const { data: meta } = usePtMeta()
 const toast = usePtToast()
 const { id: campaignId, campaign } = usePtCampaign()
@@ -22,7 +24,7 @@ const tab = computed({
   get: () => route.query.tab === 'embed' ? 'embed' : 'link',
   set: v => router.replace({ query: { ...route.query, tab: v } })
 })
-const { data, refresh } = useFetch<{ url: string, siteUrl: string, campaignSegment: string | null, qrPng: string, qrSvg: string, share: { messages?: TranslatableText }, shareImageUrl: string | null, languages: string[], defaultLanguage: string, donateUrl: string }>('/api/pt/share', {
+const { data, refresh } = useFetch<{ url: string, siteUrl: string, campaignSegment: string | null, qrPng: string, qrSvg: string, share: { messages?: TranslatableText }, shareImageUrl: string | null, description: TranslatableText | null, languages: string[], defaultLanguage: string, donateUrl: string }>('/api/pt/share', {
   query: computed(() => ({ campaign: campaignId.value })),
   key: computed(() => `pt-share-${campaignId.value}`),
   immediate: false,
@@ -33,8 +35,10 @@ watch(campaignId, (id) => {
 }, { immediate: true })
 
 const messages = ref<TranslatableText | null>(null)
+const description = ref<TranslatableText | null>(null)
 watch(data, (d) => {
   messages.value = d?.share.messages ?? null
+  description.value = d?.description ?? null
 }, { immediate: true })
 const lang = ref('en')
 watch(data, (d) => {
@@ -45,6 +49,9 @@ const activeDomain = computed(() => site.value?.domains.some(d => d.status === '
 const message = computed(() => messages.value?.values[lang.value] || `Pray with us: ${site.value?.org.name}`)
 const shareText = computed(() => [message.value.trim(), data.value?.url ?? ''].filter(Boolean).join('\n'))
 const whatsapp = computed(() => `https://wa.me/?text=${encodeURIComponent(shareText.value)}`)
+// The link card WhatsApp builds from the page's title, description and image.
+const linkDescription = computed(() => textIn(description.value, lang.value, data.value?.defaultLanguage))
+const linkHost = computed(() => data.value ? new URL(data.value.url).host : '')
 const langItems = computed(() => (site.value?.site.languages ?? []).map(l => ({ label: languageName(meta.value, l), value: l })))
 const langDir = computed(() => meta.value?.languages.find(l => l.code === lang.value)?.dir ?? 'ltr')
 
@@ -80,6 +87,20 @@ async function save() {
     toast.fail(err)
   } finally {
     saving.value = false
+  }
+}
+
+const savingDescription = ref(false)
+async function saveDescription() {
+  savingDescription.value = true
+  try {
+    await $fetch(`/api/pt/campaigns/${campaignId.value}`, { method: 'PATCH', body: { description: description.value } })
+    await refresh()
+    toast.ok('Saved')
+  } catch (err) {
+    toast.fail(err)
+  } finally {
+    savingDescription.value = false
   }
 }
 
@@ -212,6 +233,31 @@ async function setShareImage(url: string | undefined) {
         </UCard>
       </div>
 
+      <UCard v-if="tab === 'link' && canEditDescription">
+        <template #header>
+          <h2 class="font-semibold">
+            Search and link preview
+          </h2>
+        </template>
+        <div class="space-y-3">
+          <PtTranslatableInput
+            v-model="description"
+            :languages="site.site.languages"
+            :default-language="site.site.default_language"
+            label="Search and link-preview description"
+            :help="campaign?.kind === 'side' ? 'Not shown on the page. Search engines and shared links show it for this campaign\'s page.' : 'Not shown on the page. Search engines, shared links and the Prayer.Tools directory show it while this campaign is on the site\'s address.'"
+            multiline
+          />
+          <div class="flex justify-end">
+            <UButton
+              label="Save"
+              :loading="savingDescription"
+              @click="saveDescription"
+            />
+          </div>
+        </div>
+      </UCard>
+
       <UCard v-if="tab === 'link'">
         <template #header>
           <h2 class="font-semibold">
@@ -255,19 +301,37 @@ async function setShareImage(url: string | undefined) {
             </div>
             <div class="rounded-lg bg-[#e5ddd5] dark:bg-neutral-800 p-4">
               <div
-                class="max-w-sm rounded-lg bg-[#dcf8c6] dark:bg-emerald-900 text-neutral-900 dark:text-neutral-100 px-3 py-2 shadow-sm text-sm whitespace-pre-wrap break-words"
+                class="max-w-sm rounded-lg bg-[#dcf8c6] dark:bg-emerald-900 text-neutral-900 dark:text-neutral-100 px-3 py-2 shadow-sm text-sm break-words"
                 :dir="langDir"
               >
-                <div
-                  v-if="data.shareImageUrl"
-                  class="mb-2 overflow-hidden rounded"
-                >
+                <div class="mb-2 overflow-hidden rounded bg-black/5 dark:bg-black/20">
                   <img
+                    v-if="data.shareImageUrl"
                     :src="data.shareImageUrl"
                     alt=""
                     class="w-full h-32 object-cover"
                   >
-                </div>{{ shareText }}
+                  <div class="px-2 py-1.5">
+                    <p class="font-semibold truncate">
+                      {{ site.org.name }}
+                    </p>
+                    <p
+                      v-if="linkDescription"
+                      class="text-xs opacity-70 line-clamp-2"
+                    >
+                      {{ linkDescription }}
+                    </p>
+                    <p
+                      class="text-xs opacity-60"
+                      dir="ltr"
+                    >
+                      {{ linkHost }}
+                    </p>
+                  </div>
+                </div>
+                <p class="whitespace-pre-wrap">
+                  {{ shareText }}
+                </p>
               </div>
             </div>
             <div class="flex flex-wrap gap-2">

@@ -87,7 +87,7 @@ export async function ptLaunchChecklist(tx: Transaction<Database>, campaignId?: 
     },
     {
       key: 'description',
-      label: 'Short description written',
+      label: 'Search and link-preview description written',
       done: hasText(description),
       required: false,
       to: `/site/landing${forCampaign}`
