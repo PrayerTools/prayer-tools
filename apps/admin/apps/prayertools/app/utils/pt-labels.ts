@@ -24,9 +24,9 @@ export const PT_LABELS = {
     anytime: 'No start date. Each person begins at day 1 when they sign up.'
   } as Record<string, string>,
   goalDescription: {
-    people: 'Count how many people commit to pray. Recommended for most campaigns.',
-    prayer_time: 'Aim for an amount of prayer, such as 24 hours of prayer every day.',
-    coverage: 'Fill every moment of the day and night with someone praying, from the start date to the end date.'
+    people: 'Count how many people commit to pray. The easiest goal to picture and share, such as "100 people praying 15 minutes".',
+    prayer_time: 'Aim for an amount of prayer, such as 24 hours of prayer every day. Each person picks a set time to pray, and a plan helps them keep at it.',
+    coverage: 'Fill every moment of the day and night with someone praying, from the start date to the end date. Suits a large network ready for a challenge: every time needs someone, and one cancellation leaves a gap.'
   } as Record<string, string>,
   license: { own: 'Our own content', permission: 'Used with permission', cc_by: 'CC BY', cc_by_sa: 'CC BY-SA', other: 'Other (described)' } as Record<string, string>,
   // The English headings the public page shows (apps/public i18n `landing.*.title`).

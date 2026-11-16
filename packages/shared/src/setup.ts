@@ -8,7 +8,7 @@ import { campaignSlugError } from './paths'
 
 export const START_MODES: readonly StartMode[] = ['date', 'join']
 export const END_MODES: readonly EndMode[] = ['date', 'none', 'days']
-export const GOALS: readonly Goal[] = ['people', 'prayer_time', 'coverage']
+export const GOALS: readonly Goal[] = ['prayer_time', 'people', 'coverage']
 export const CADENCES: readonly Cadence[] = ['daily', 'weekly']
 
 export const FIXED_MAX_DAYS = 50

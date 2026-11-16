@@ -84,9 +84,9 @@ function setDayCount(days: number | null) {
 const startToday = computed(() => ptFormatDate(new Date().toISOString().slice(0, 10)))
 // 24/7 coverage is a grid over the campaign's dates, so it needs both.
 const datedCampaign = computed(() => state.value.start_mode === 'date' && state.value.end_mode === 'date')
-const goalItems = computed(() => (meta.value?.setup.goals ?? ['people', 'prayer_time', 'coverage']).map(g => ({
+const goalItems = computed(() => (meta.value?.setup.goals ?? ['prayer_time', 'people', 'coverage']).map(g => ({
   value: g,
-  label: g === 'people' ? `${PT_LABELS.goal[g]} (recommended)` : PT_LABELS.goal[g],
+  label: PT_LABELS.goal[g],
   description: g === 'coverage' && !datedCampaign.value ? 'Needs a start date and an end date.' : PT_LABELS.goalDescription[g],
   disabled: g === 'coverage' && !datedCampaign.value
 })))

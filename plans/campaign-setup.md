@@ -8,7 +8,7 @@ There are no campaign types. A campaign is described by four setup answers; temp
 |---|---|
 | Start | **on a date** (shared calendar, everyone on the same day) · **when each person joins** (personal start: each intercessor's day 1 is the day they sign up) |
 | End | **on a date** · **no end** · for personal start: **how many days** each person goes through |
-| Goal | **people mobilized** (preselected, recommended) · **prayer time** (e.g. 24 hours of prayer every day) · **24/7 coverage** (needs a start date and an end date) — offered in this order |
+| Goal | **prayer time** (e.g. 24 hours of prayer every day) · **people mobilized** (preselected) · **24/7 coverage** (needs a start date and an end date) — offered in this order |
 | Content cadence | daily · weekly |
 
 ## Length

@@ -22,7 +22,7 @@ const setupFields = {
   end_mode: z.enum(['date', 'none', 'days']).optional().describe('"date": ends on end_date. "none": ongoing. "days": each person goes through length_days (join start only).'),
   end_date: date.nullable().optional(),
   length_days: z.number().int().min(1).max(3650).nullable().optional(),
-  goal: z.enum(['people', 'prayer_time', 'coverage']).optional().describe('"people": people mobilized (recommended). "prayer_time": e.g. 24 hours of prayer every day. "coverage": 24/7, needs start and end dates.'),
+  goal: z.enum(['people', 'prayer_time', 'coverage']).optional().describe('"people": people mobilized. "prayer_time": e.g. 24 hours of prayer every day. "coverage": 24/7, needs start and end dates.'),
   cadence: z.enum(['daily', 'weekly']).optional().describe('How often new prayer content comes.'),
   track_time: z.boolean().optional().describe('For the people goal: also ask how long people pray.')
 }
