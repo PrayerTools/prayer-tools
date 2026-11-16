@@ -4,7 +4,7 @@
 const SECTION_INFO: Record<string, { description: string, icon: string }> = {
   top: { description: 'Heading, subtitle, hero image, people count or goal progress, and the signup button.', icon: 'i-lucide-panel-top' },
   why: { description: 'Your own words about why people should pray.', icon: 'i-lucide-message-square-quote' },
-  custom: { description: 'Extra sections you add, each with a heading, text, image or video, and button.', icon: 'i-lucide-layout-list' },
+  custom: { description: 'A section of your own.', icon: 'i-lucide-layout-list' },
   stories: { description: 'Stories from people who prayed, ones you publish from the Stories page.', icon: 'i-lucide-heart-handshake' },
   how: { description: 'Explains signing up, reminders and praying, written for your campaign\'s setup.', icon: 'i-lucide-list-checks' },
   signup: { description: 'The signup form.', icon: 'i-lucide-user-plus' },

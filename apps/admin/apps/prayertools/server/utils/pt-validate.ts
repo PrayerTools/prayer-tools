@@ -1,7 +1,7 @@
 import type { TranslatableText, LandingCustomSection, CampaignBranding, CampaignLanding, CampaignShare, SiteBranding, SiteEmailIdentity, TiptapDoc } from '@prayertools/shared/db/schema'
 import { parseText } from '@prayertools/shared/translatable'
 import { parseHex } from '@prayertools/shared/colors'
-import { HIDEABLE_SECTIONS, parseStoryIds } from '@prayertools/shared/landing'
+import { isHideableSection, parseStoryIds, storedLandingOrder } from '@prayertools/shared/landing'
 import { videoEmbed } from '@prayertools/shared/video'
 
 const MAX_DOC_BYTES = 200_000
@@ -77,7 +77,6 @@ export function ptLanding(input: unknown): CampaignLanding {
     const d = ptDoc(doc)
     if (d) why[lang] = d
   }
-  const hidden = Array.isArray(l.hidden) ? (l.hidden as unknown[]).filter((s): s is string => typeof s === 'string' && (HIDEABLE_SECTIONS as readonly string[]).includes(s)) : undefined
   const custom: LandingCustomSection[] = []
   for (const raw of Array.isArray(l.custom) ? (l.custom as Record<string, unknown>[]).slice(0, 12) : []) {
     const heading = parseText(raw.heading)
@@ -98,7 +97,9 @@ export function ptLanding(input: unknown): CampaignLanding {
       button_url: url(raw.button_url)
     }) as LandingCustomSection)
   }
-  return clean({ subtitle: parseText(l.subtitle) ?? undefined, why, hidden, custom, stories: typeof l.stories === 'boolean' ? l.stories : undefined, story_ids: parseStoryIds(l.story_ids) })
+  const customIds = custom.map(s => s.id)
+  const hidden = Array.isArray(l.hidden) ? (l.hidden as unknown[]).filter((s): s is string => typeof s === 'string' && isHideableSection(s, customIds)) : undefined
+  return clean({ subtitle: parseText(l.subtitle) ?? undefined, why, hidden, order: storedLandingOrder(l.order, customIds), custom, stories: typeof l.stories === 'boolean' ? l.stories : undefined, story_ids: parseStoryIds(l.story_ids) })
 }
 
 export function ptShare(input: unknown): CampaignShare {
