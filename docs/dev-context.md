@@ -12,7 +12,7 @@ Monorepo for prayer.tools v3 (with orgs). Plans live in `plans/` — they are th
 | `apps/worker` | Background worker (plain TypeScript run by bun). |
 | `scripts/db-setup.ts` | Creates roles `pt2_admin` (BYPASSRLS) / `pt2_app` (RLS) and a database. |
 | `scripts/seed-dev.ts` | Seeds a platform library and three sites (`ramadan-demo` published, `demo-247` published coverage, `draft-site` draft). |
-| `scripts/seed-use-cases.ts` | Seeds a site per use case in `USE_CASES.md` (`pray-france`, `ramadan-morocco`, `pray-mozambique`, `ten-days`, `oakridge-school`, `grace-church`, `sahel-senegal` / `-mali` / `-niger`), with dates relative to the day it runs. Needs `DATABASE_URL` and `PT_SITE_BASE_HOST`; uses the platform libraries already in the database. |
+| `scripts/seed-use-cases.ts` | Seeds a site per use case in `USE_CASES.md` (`pray-france`, `ramadan-morocco`, `pray-mozambique`, `ten-days`, `oakridge-school`, `grace-church`, `sahel-senegal` / `-mali` / `-niger`), with dates relative to the day it runs, and intercessors (`…@example.com`, plus app installs) on every published campaign. Needs `DATABASE_URL`, `APP_DATABASE_URL` and `PT_SITE_BASE_HOST`; uses the platform libraries already in the database. A running worker emails these intercessors their reminders, so point it at Mailpit. |
 
 ## Local environment
 

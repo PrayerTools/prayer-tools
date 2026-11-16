@@ -1,20 +1,28 @@
 // Seeds one or more local sites per use case in USE_CASES.md: an ongoing
 // country site with side campaigns, a yearly Ramadan site, a crisis response,
 // a start-anytime devotional, a school, a church and a mission agency's
-// network of sites. Dates are relative to today, so each campaign is in the
-// state its use case describes on the day the script runs.
-// Idempotent: a site whose address already exists is left as it is.
-// Usage: DATABASE_URL=… PT_SITE_BASE_HOST=… bun run scripts/seed-use-cases.ts
+// network of sites, each campaign with intercessors. Dates are relative to
+// today, so each campaign is in the state its use case describes on the day
+// the script runs.
+// Idempotent: a site whose address already exists is left as it is, and a
+// campaign that already has prayer times gets no more intercessors.
+// Usage: DATABASE_URL=… APP_DATABASE_URL=… PT_SITE_BASE_HOST=… bun run scripts/seed-use-cases.ts
 import { sql } from 'kysely'
 import { createDb } from '@prayertools/shared/db/connect'
 import { withOrg, type Tx } from '@prayertools/shared/db/scope'
 import type { CampaignCta, CampaignKind, Cadence, EndMode, Goal, StartMode, TiptapDoc, TranslatableText } from '@prayertools/shared/db/schema'
 import { CONSENT_WORDING_VERSION, ensureSystemUser, SYSTEM_USER_ID } from '@prayertools/shared/crm'
-import { addDays, todayIn, weekdayOf } from '@prayertools/shared/dates'
+import { addDays, daysBetween, localTimeOf, todayIn, weekdayOf } from '@prayertools/shared/dates'
 import { textDoc } from '@prayertools/shared/tiptap'
 import { jsonb, pgArray } from '@prayertools/shared/db/json'
 import { enableSiteApps } from '@prayertools/shared/site'
-import { suggestedStartDate } from '@prayertools/shared/setup'
+import { campaignStatus, durationOptions, suggestedStartDate } from '@prayertools/shared/setup'
+import { loadCampaigns } from '@prayertools/shared/campaigns'
+import { campaignEntries } from '@prayertools/shared/content'
+import { createWebSignup, insertCommitment, refreshReminders, setSubscriptionStatus, updateCommitment, validateRuleForCampaign, type CampaignRow, type RuleInput, type SubscriptionRow } from '@prayertools/shared/subscriptions'
+import { createAnonymousAccount } from '@prayertools/shared/accounts'
+import { bumpStat, type Metric } from '@prayertools/shared/stats'
+import { shortCode } from '@prayertools/shared/tokens'
 import { heroImagesFor } from '@prayertools/shared/hero-images'
 import type { SitePlaceWording } from '@prayertools/shared/place'
 
@@ -22,7 +30,12 @@ const url = process.env.DATABASE_URL
 if (!url) throw new Error('DATABASE_URL is required')
 const baseHost = process.env.PT_SITE_BASE_HOST
 if (!baseHost) throw new Error('PT_SITE_BASE_HOST is required')
+const appUrl = process.env.APP_DATABASE_URL
+if (!appUrl) throw new Error('APP_DATABASE_URL is required')
 const db = createDb(url)
+// Intercessors sign up on the RLS role, as they do on the public site, so
+// contacts and subscriptions are looked up inside their own site only.
+const app = createDb(appUrl)
 await ensureSystemUser(db)
 
 const owner = await db.selectFrom('users').select('id').where('id', '!=', SYSTEM_USER_ID).orderBy('created', 'asc').executeTakeFirst()
@@ -234,6 +247,17 @@ interface CampaignSeed {
   // Edits week 1 of a followed library, which gives the site its own frozen copy.
   editFirstEntry?: Entry
   stories?: { name: string, body: string }[]
+  intercessors?: IntercessorSeed
+}
+
+interface IntercessorSeed {
+  // Ranges [from, to) of people (see `person`). Ranges shared between
+  // campaigns and sites are the same people praying in several places.
+  people: [number, number][]
+  // App installs: no email, reminders on the phone.
+  app?: number
+  // 24/7 campaigns: the share of the day's slots that recurring prayer times fill.
+  coverage?: number
 }
 
 interface SiteSeed {
@@ -302,7 +326,12 @@ async function addContent(tx: Tx, orgId: string, campaignId: string, c: Campaign
 
 async function site(seed: SiteSeed) {
   const existing = await db.selectFrom('orgs').select('id').where('slug', '=', seed.slug).executeTakeFirst()
-  if (existing) return console.log(`site ${seed.slug} exists`)
+  if (existing) console.log(`site ${seed.slug} exists`)
+  const orgId = existing?.id ?? await createSite(seed)
+  await addIntercessors(seed, orgId)
+}
+
+async function createSite(seed: SiteSeed): Promise<string> {
   const now = new Date()
   const org = await db.insertInto('orgs').values({ slug: seed.slug, name: seed.name, created_at: now, updated_at: now }).returning('id').executeTakeFirstOrThrow()
   await enableSiteApps(db, org.id)
@@ -349,6 +378,216 @@ async function site(seed: SiteSeed) {
     }
   })
   console.log(`seeded site ${seed.slug}: ${siteAddress(seed.slug)}`)
+  return org.id
+}
+
+// ── Intercessors ───────────────────────────────────────────────────────────
+
+const FIRST_NAMES = [
+  'Anna', 'David', 'Maria', 'John', 'Sarah', 'Daniel', 'Ruth', 'Samuel', 'Esther', 'Paul', 'Grace', 'Peter', 'Hannah', 'Mark', 'Lydia', 'Thomas',
+  'Camille', 'Julien', 'Sophie', 'Luc', 'Ana', 'Mateo', 'Lucia', 'Pedro', 'Amina', 'Kwame', 'Ngozi', 'Tunde', 'Mei', 'Jin', 'Priya', 'Arjun',
+  'Leila', 'Karim', 'Nadia', 'Omar', 'Ingrid', 'Lars', 'Freya', 'Jonas', 'Rebecca', 'Caleb', 'Naomi', 'Joel', 'Miriam', 'Isaac', 'Abigail'
+]
+const LAST_NAMES = [
+  'Martin', 'Dubois', 'Smith', 'Johnson', 'Garcia', 'Silva', 'Okafor', 'Mensah', 'Kim', 'Chen', 'Patel', 'Thomas', 'Haddad', 'Nasser', 'Larsen', 'Berg',
+  'Müller', 'Rossi', 'Novak', 'Kowalski', 'Wright', 'Clark', 'Lopez', 'Santos', 'Banda', 'Otieno', 'Tanaka', 'Singh', 'Reyes', 'Fischer', 'Moreau', 'Lambert',
+  'Carter', 'Hughes', 'Tran', 'Nguyen', 'Evans', 'Bauer', 'Costa', 'Petrov', 'Hall'
+]
+const GLOBAL_ZONES = [
+  'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'America/Toronto', 'America/Sao_Paulo', 'America/Bogota',
+  'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Europe/Madrid', 'Africa/Lagos', 'Africa/Nairobi', 'Africa/Johannesburg',
+  'Asia/Dubai', 'Asia/Kolkata', 'Asia/Manila', 'Asia/Seoul', 'Asia/Singapore', 'Australia/Sydney', 'Pacific/Auckland'
+]
+// The school's and the church's people live in one town.
+const LOCAL_ZONES = ['America/Chicago', 'America/Chicago', 'America/Chicago', 'America/Chicago', 'America/Chicago', 'America/Chicago', 'America/New_York', 'America/Denver']
+const LOCAL_PEOPLE: [number, number] = [600, 720]
+
+// A repeatable random number generator, so a campaign gets the same people and times on every run.
+function seeded(key: string): () => number {
+  let a = 2166136261
+  for (const ch of key) a = Math.imul(a ^ ch.charCodeAt(0), 16777619)
+  return () => {
+    a = (a + 0x6D2B79F5) | 0
+    let t = Math.imul(a ^ (a >>> 15), 1 | a)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+const pick = <T>(rng: () => number, items: readonly T[]): T => items[Math.floor(rng() * items.length)]!
+
+// Person number `i`: the same name, address and timezone wherever they pray.
+function person(i: number) {
+  const first = FIRST_NAMES[i % FIRST_NAMES.length]!
+  const last = LAST_NAMES[i % LAST_NAMES.length]!
+  const ascii = (s: string) => s.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  const local = i >= LOCAL_PEOPLE[0] && i < LOCAL_PEOPLE[1]
+  return { name: `${first} ${last}`, email: `${ascii(first)}.${ascii(last)}@example.com`, timezone: pick(seeded(`person/${i}`), local ? LOCAL_ZONES : GLOBAL_ZONES) }
+}
+
+// A quarter-hour time of day, mostly early morning or evening.
+function prayerTime(rng: () => number): string {
+  const r = rng()
+  const hour = r < 0.45 ? 5 + Math.floor(rng() * 4) : r < 0.75 ? 19 + Math.floor(rng() * 4) : Math.floor(rng() * 24)
+  return `${String(hour).padStart(2, '0')}:${pick(rng, ['00', '15', '30', '45'])}`
+}
+
+// The day someone signed up: for an ended campaign mostly in the two weeks
+// before it started and the rest in its first week, in the last two weeks for
+// an upcoming one, any time since signup opened for a running one.
+function joinDay(c: CampaignRow, status: 'upcoming' | 'active' | 'ended', today: string, rng: () => number): string {
+  if (c.start_mode === 'join') return addDays(today, -Math.floor(rng() * 25))
+  const start = c.start_date!
+  if (status === 'ended') return rng() < 0.85 ? addDays(start, -1 - Math.floor(rng() * 14)) : addDays(start, Math.floor(rng() * Math.min(7, daysBetween(start, c.end_date!))))
+  if (status === 'upcoming') return addDays(today, -Math.floor(rng() * 15))
+  return addDays(today, -Math.floor(rng() * (daysBetween(start, today) + 10)))
+}
+
+// Hands out the 96 quarter-hour slots of a 24/7 day (in UTC) one after another
+// until `share` of them are taken, then at random, so later people overlap.
+function slotPlan(share: number, rng: () => number) {
+  const free = Array.from({ length: 96 }, (_, i) => i)
+  for (let i = free.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1))
+    ;[free[i], free[j]] = [free[j]!, free[i]!]
+  }
+  const taken = new Set<number>()
+  return (slots: number): number => {
+    while (free.length && taken.has(free[0]!)) free.shift()
+    const first = taken.size < share * 96 && free.length ? free[0]! : Math.floor(rng() * 96)
+    for (let k = 0; k < slots; k++) taken.add((first + k) % 96)
+    return first
+  }
+}
+
+// One person's prayer time in a campaign, of the kind its goal asks for.
+function prayerRule(c: CampaignRow, timezone: string, rng: () => number, nextSlot: ((slots: number) => number) | null): RuleInput {
+  if (c.goal === 'coverage' && nextSlot) {
+    const duration_min = pick(rng, durationOptions(c).filter(d => d <= 60).flatMap(d => d === 15 ? [d, d, d] : d === 30 ? [d, d] : [d]))
+    const first = nextSlot(duration_min / 15)
+    const at = (day: number) => new Date(Date.parse(`${addDays(c.start_date!, day)}T00:00:00Z`) + first * 15 * 60_000)
+    // One in ten picks specific dates in place of a time every day.
+    if (rng() < 0.1) {
+      const days = daysBetween(c.start_date!, c.end_date!) - 1
+      const picked = [...new Set(Array.from({ length: 6 + Math.floor(rng() * 7) }, () => 1 + Math.floor(rng() * days)))].sort((a, b) => a - b)
+      return { kind: 'dates', time: localTimeOf(at(picked[0]!), timezone), timezone, duration_min, dates: picked.map(d => at(d).toISOString()) }
+    }
+    return { kind: 'recurring', frequency: 'daily', time: localTimeOf(at(0), timezone), timezone, duration_min }
+  }
+  const duration_min = c.goal === 'prayer_time' ? pick(rng, [10, 15, 15, 15, 20, 30, 30, 60]) : rng() < 0.6 ? pick(rng, [10, 15, 15, 20, 30]) : null
+  if (c.cadence === 'weekly' && rng() < 0.55) {
+    const days_of_week = [...new Set(Array.from({ length: 1 + Math.floor(rng() * 3) }, () => Math.floor(rng() * 7)))]
+    return { kind: 'recurring', frequency: 'weekly', days_of_week, time: prayerTime(rng), timezone, duration_min }
+  }
+  return { kind: 'recurring', frequency: 'daily', time: prayerTime(rng), timezone, duration_min }
+}
+
+const instantOn = (day: string, rng: () => number) => new Date(Math.min(Date.parse(`${day}T00:00:00Z`) + Math.floor(rng() * 86_400_000), Date.now() - 60_000))
+
+// Moves the prayer time someone just added back to the day they joined. In a
+// start-anytime campaign it also records how far they have got.
+async function backdateCommitment(tx: Tx, sub: SubscriptionRow, c: CampaignRow, joined: string, joinedAt: Date, entries: number | null, today: string, rng: () => number): Promise<{ id: string, finished: boolean }> {
+  const row = await tx.selectFrom('pt_commitment').select('id').where('subscription_id', '=', sub.id).where('campaign_id', '=', c.id).orderBy('created_at', 'desc').executeTakeFirstOrThrow()
+  let progress = {}
+  let finished = false
+  if (c.start_mode === 'join') {
+    const done = Math.max(0, Math.min(entries ?? 0, daysBetween(joined, today) + 1 - Math.floor(rng() * 4)))
+    const advanced = done ? addDays(today, -Math.floor(rng() * 2)) : null
+    finished = !!entries && done >= entries
+    progress = { entries_done: done, advanced_on: advanced, finished_at: finished ? new Date(`${advanced}T12:00:00Z`) : null }
+  }
+  const starts_on = c.start_mode === 'join' || joined > c.start_date! ? joined : c.start_date!
+  await tx.updateTable('pt_commitment').set({ starts_on, created_at: joinedAt, updated_at: joinedAt, ...progress }).where('id', '=', row.id).execute()
+  return { id: row.id, finished }
+}
+
+async function addIntercessors(seed: SiteSeed, orgId: string) {
+  const today = todayIn(seed.timezone)
+  for (const spec of seed.campaigns(today)) {
+    const plan = spec.intercessors
+    if (!plan) continue
+    const added = await withOrg(app, orgId, async (tx) => {
+      const c = (await loadCampaigns(tx)).find(k => k.slug === spec.slug)
+      if (!c) return null
+      if (await tx.selectFrom('pt_commitment').select('id').where('campaign_id', '=', c.id).limit(1).executeTakeFirst()) return null
+      const status = campaignStatus(c)
+      const rng = seeded(`${seed.slug}/${spec.slug}`)
+      const entries = c.start_mode === 'join' ? await campaignEntries(tx, c) : null
+      const nextSlot = c.goal === 'coverage' ? slotPlan(plan.coverage ?? 0.5, rng) : null
+      const ongoing = c.end_mode === 'none'
+      const stats = new Map<string, number>()
+      const count = (day: string, metric: Metric) => stats.set(`${day} ${metric}`, (stats.get(`${day} ${metric}`) ?? 0) + 1)
+      const referrals: string[] = []
+      let people = 0
+
+      for (const i of plan.people.flatMap(([from, to]) => Array.from({ length: to - from }, (_, k) => from + k))) {
+        const who = person(i)
+        const language = rng() < 0.6 ? seed.languages[0]! : pick(rng, seed.languages)
+        const rule = prayerRule(c, who.timezone, rng, nextSlot)
+        const errors = validateRuleForCampaign(rule, c)
+        if (errors.length) throw new Error(`${seed.slug}/${spec.slug}: invalid prayer time (${errors.join(', ')})`)
+        // A few have not confirmed their address yet; they signed up in the last days.
+        const unconfirmed = status !== 'ended' && rng() < 0.06
+        const joined = unconfirmed ? addDays(today, -Math.floor(rng() * 3)) : joinDay(c, status, today, rng)
+        const joinedAt = instantOn(joined, rng)
+        const res = await createWebSignup(tx, {
+          campaign: c, email: who.email, name: who.name, language, timezone: who.timezone, commitments: [rule],
+          consents: { siteUpdates: rng() < 0.7 },
+          referredBy: referrals.length && rng() < 0.15 ? pick(rng, referrals) : null,
+          preVerified: !unconfirmed,
+          capture: { surface: 'web_signup', source: `${seed.slug}.${baseHost}`, language }
+        })
+        const sub = res.subscription
+        const confirmedAt = new Date(joinedAt.getTime() + 4 * 60_000)
+        if (res.newSubscription) {
+          await tx.updateTable('pt_subscription').set({ created_at: joinedAt, ...(sub.verified_at ? { verified_at: confirmedAt } : {}) }).where('id', '=', sub.id).execute()
+          count(joined, 'signups')
+          if (sub.verified_at) count(joined, 'verifications')
+          if (sub.referred_by) count(joined, 'share_signups')
+          referrals.push(sub.referral_code)
+        } else {
+          await tx.updateTable('pt_subscription').set({
+            created_at: sql`least(created_at, ${joinedAt}::timestamptz)`,
+            ...(sub.verified_at ? { verified_at: sql`least(verified_at, ${confirmedAt}::timestamptz)` } : {})
+          }).where('id', '=', sub.id).execute()
+        }
+        const commitment = await backdateCommitment(tx, sub, c, joined, joinedAt, entries, today, rng)
+        await refreshReminders(tx, sub.id)
+        people++
+        if (commitment.finished) {
+          await setSubscriptionStatus(tx, sub.id, 'completed')
+        } else if (res.newSubscription && sub.verified_at && status !== 'ended') {
+          const r = rng()
+          if (r < 0.04) await setSubscriptionStatus(tx, sub.id, 'unsubscribed')
+          else if (r < 0.08 && ongoing) await setSubscriptionStatus(tx, sub.id, 'inactive')
+          else if (r < 0.13) await updateCommitment(tx, sub, commitment.id, { paused: true })
+        }
+      }
+
+      const site = await tx.selectFrom('pt_site').select('default_language').executeTakeFirstOrThrow()
+      for (let k = 0; k < (plan.app ?? 0); k++) {
+        const timezone = pick(rng, GLOBAL_ZONES)
+        const joined = joinDay(c, status, today, rng)
+        const joinedAt = instantOn(joined, rng)
+        const sub = await tx.insertInto('pt_subscription').values({
+          user_id: await createAnonymousAccount(tx), delivery: 'app', language: site.default_language, timezone,
+          referral_code: shortCode(6), last_activity_at: new Date(), checkin_cycle_started_at: new Date(), created_at: joinedAt
+        }).returningAll().executeTakeFirstOrThrow()
+        await insertCommitment(tx, sub, c, prayerRule(c, timezone, rng, nextSlot))
+        const commitment = await backdateCommitment(tx, sub, c, joined, joinedAt, entries, today, rng)
+        if (commitment.finished) await setSubscriptionStatus(tx, sub.id, 'completed')
+        people++
+      }
+
+      // Signups count on the day each person joined.
+      await tx.deleteFrom('pt_stat_daily').where('campaign_id', '=', c.id).where('metric', 'in', ['signups', 'verifications', 'share_signups']).execute()
+      for (const [key, n] of stats) {
+        const [day, metric] = key.split(' ') as [string, Metric]
+        await bumpStat(tx, c.id, day, metric, n)
+      }
+      return people
+    })
+    if (added !== null) console.log(`  ${seed.slug}/${spec.slug}: ${added} intercessors`)
+  }
 }
 
 const RAMADAN_LIBRARIES = ['Ramadan 2026', 'Ramadan 2025', 'Ramadan 30 days (sample)']
@@ -363,7 +602,7 @@ await site({
     const ramadan = ramadanStart(today)
     return [
       {
-        slug: addDays(today, -30).slice(0, 4), name: 'Pray for France', start_date: addDays(today, -30), end_mode: 'none', goal: 'people', goal_target: 500,
+        slug: addDays(today, -60).slice(0, 4), name: 'Pray for France', start_date: addDays(today, -60), end_mode: 'none', goal: 'people', goal_target: 500,
         place: 'France', place_wording: { fr: { name: 'la France', in: 'en France', of: 'de la France' } }, latitude: 46.6, longitude: 2.4,
         subtitle: { en: 'Pray through France, one region a week.', fr: 'Priez pour la France, une région par semaine.' },
         why: {
@@ -371,7 +610,8 @@ await site({
           fr: 'La plupart des Français n\'ont jamais lu la Bible ni rencontré un disciple de Jésus qui leur ait expliqué l\'Évangile, et beaucoup de villes n\'ont pas d\'église évangélique.\n\nNous prions pour le pays une région à la fois, avec un sujet différent chaque jour, en demandant à Dieu de bâtir son Église et d\'envoyer des ouvriers.'
         },
         content: { own: { title: 'Praying through the regions of France', entries: franceEntries } },
-        stories: [{ name: 'Claire', body: 'I started praying for Brittany because my grandmother was born there. Three months later I am in touch with a church plant in Rennes and our home group prays for them every week.' }]
+        stories: [{ name: 'Claire', body: 'I started praying for Brittany because my grandmother was born there. Three months later I am in touch with a church plant in Rennes and our home group prays for them every week.' }],
+        intercessors: { people: [[0, 120]], app: 9 }
       },
       {
         slug: `floods-${addDays(today, -40).slice(0, 4)}`, name: 'Flood response', template: 'disaster_4', kind: 'side', start_date: addDays(today, -40), end_date: addDays(today, -37), ended: true, goal: 'people',
@@ -379,20 +619,24 @@ await site({
         subtitle: { en: 'Four days of prayer for the towns hit by the floods.', fr: 'Quatre jours de prière pour les villes touchées par les inondations.' },
         end_message: 'Thank you for praying with us through these four days. Churches in the area were able to open their halls and serve hundreds of meals.',
         content: { platform: ['4-Day Crisis'] },
-        stories: [{ name: 'Marc', body: 'Our church hall became a shelter for a week. Knowing people across the country were praying each day kept our volunteers going.' }]
+        stories: [{ name: 'Marc', body: 'Our church hall became a shelter for a week. Knowing people across the country were praying each day kept our volunteers going.' }],
+        // Thirty were already praying in the main campaign.
+        intercessors: { people: [[90, 135]] }
       },
       {
-        slug: `paris-team-${addDays(today, -3).slice(0, 4)}`, name: 'Paris outreach team', kind: 'side', start_date: addDays(today, -3), end_date: addDays(today, 10), goal: 'prayer_time', goal_target: 240,
+        slug: `paris-team-${addDays(today, -3).slice(0, 4)}`, name: 'Paris outreach team', kind: 'side', start_date: addDays(today, -3), end_date: addDays(today, 10), goal: 'prayer_time', goal_target: 480,
         place: 'Paris', latitude: 48.86, longitude: 2.35,
         subtitle: { en: 'Two weeks of prayer while a short-term team serves in Paris.', fr: 'Deux semaines de prière pendant qu\'une équipe sert à Paris.' },
         why: { en: 'A team of twelve is serving alongside a church in the north of Paris for two weeks. Pray with them each day: for open doors, for unity and for the people they meet.' },
-        content: { own: { title: 'Paris team prayer guide', entries: teamEntries } }
+        content: { own: { title: 'Paris team prayer guide', entries: teamEntries } },
+        intercessors: { people: [[20, 32]] }
       },
       {
         slug: `ramadan-${ramadan.slice(0, 4)}`, name: `Ramadan ${ramadan.slice(0, 4)}`, template: 'ramadan', kind: 'side', start_date: ramadan, end_date: addDays(ramadan, 29), goal: 'coverage',
         place: 'France', place_wording: { fr: { name: 'la France', in: 'en France', of: 'de la France' } }, latitude: 46.6, longitude: 2.4, hero: true,
         subtitle: { en: '30 days of 24/7 prayer for Muslims in France.', fr: '30 jours de prière 24h/24 pour les musulmans de France.' },
-        content: { platform: RAMADAN_LIBRARIES }
+        content: { platform: RAMADAN_LIBRARIES },
+        intercessors: { people: [[105, 133]], coverage: 0.3 }
       },
       {
         slug: `election-${addDays(today, 45).slice(0, 4)}`, name: 'Election week of prayer', kind: 'side', draft: true, start_date: addDays(today, 45), end_date: addDays(today, 51), goal: 'people',
@@ -415,13 +659,16 @@ await site({
       {
         ...base, slug: previous.slice(0, 4), name: `Ramadan ${previous.slice(0, 4)}`, start_date: previous, end_date: addDays(previous, 29), ended: true,
         subtitle: { en: '30 days of 24/7 prayer for Morocco during Ramadan.', fr: '30 jours de prière 24h/24 pour le Maroc pendant le Ramadan.', ar: '٣٠ يومًا من الصلاة المتواصلة من أجل المغرب في رمضان.' },
-        end_message: 'Thank you for praying for Morocco through Ramadan. Together we covered the month in prayer. We will run again next year.',
+        end_message: 'Thank you for praying for Morocco through Ramadan. Together we covered most of the month in prayer, day and night. We will run again next year.',
         content: { platform: RAMADAN_LIBRARIES },
-        stories: [{ name: 'Youssef', body: 'I took the 3 a.m. slot for the whole month. It changed how I pray for my own family.' }]
+        stories: [{ name: 'Youssef', body: 'I took the 3 a.m. slot for the whole month. It changed how I pray for my own family.' }],
+        intercessors: { people: [[200, 310]], coverage: 0.97 }
       },
       {
         ...base, slug: next.slice(0, 4), name: `Ramadan ${next.slice(0, 4)}`, start_date: next, end_date: addDays(next, 29), relaunch_of: previous.slice(0, 4),
-        subtitle: { en: '30 days of 24/7 prayer for Morocco during Ramadan.', fr: '30 jours de prière 24h/24 pour le Maroc pendant le Ramadan.', ar: '٣٠ يومًا من الصلاة المتواصلة من أجل المغرب في رمضان.' }
+        subtitle: { en: '30 days of 24/7 prayer for Morocco during Ramadan.', fr: '30 jours de prière 24h/24 pour le Maroc pendant le Ramadan.', ar: '٣٠ يومًا من الصلاة المتواصلة من أجل المغرب في رمضان.' },
+        // Mostly last year's intercessors coming back.
+        intercessors: { people: [[275, 313]], app: 4, coverage: 0.4 }
       }
     ]
   }
@@ -441,13 +688,16 @@ await site({
         why: { en: 'A cyclone has left thousands without homes, clean water or food. Before anything else, we pray.' },
         end_message: 'Thank you for praying through these first four days. The need goes on: join us for twelve more days of prayer.',
         cta: { label: text({ en: 'Join the 12 days of prayer' }), url: `${siteAddress('pray-mozambique')}/${year}-2/signup` },
-        content: { platform: ['4-Day Crisis'] }
+        content: { platform: ['4-Day Crisis'] },
+        intercessors: { people: [[400, 485]], app: 6 }
       },
       {
         ...base, slug: `${year}-2`, name: '12 days of prayer for Mozambique', template: 'disaster_12', start_date: addDays(today, 3), end_date: addDays(today, 14),
         subtitle: { en: 'Twelve days of prayer as the response moves from rescue to recovery.' },
         why: { en: 'The cameras leave, the need stays. For twelve days we pray for shelter, water, health and hope as communities begin to rebuild.' },
-        content: { own: { title: '12 days of prayer after the cyclone', entries: crisisEntries } }
+        content: { own: { title: '12 days of prayer after the cyclone', entries: crisisEntries } },
+        // Those who took the 4-day campaign's call to action, and a few new people.
+        intercessors: { people: [[455, 490]] }
       }
     ]
   }
@@ -460,7 +710,9 @@ await site({
     slug: today.slice(0, 4), name: '10 Days for the Unreached', template: 'anytime', start_mode: 'join', end_mode: 'days', goal: 'people',
     subtitle: { en: 'Ten days of prayer for peoples with no access to the gospel. Start today.' },
     why: { en: 'Billions of people live where there is no church and no one to tell them about Jesus. Start whenever you like: each day for ten days you get one people or place to pray for.' },
-    content: { platform: ['10 Days for the Unreached'] }
+    content: { platform: ['10 Days for the Unreached'] },
+    // Some also pray for France.
+    intercessors: { people: [[100, 120], [500, 540]], app: 12 }
   }]
 })
 
@@ -475,7 +727,8 @@ await site({
       place: 'Oakridge School',
       subtitle: { en: 'Staff and parents praying for our school, every week of the school year.' },
       why: { en: 'We believe God cares about every student, teacher and family at Oakridge. Each week of the school year we send one thing to pray for. It takes five minutes, on your own or with another parent.' },
-      content: { own: { title: 'School year prayer guide', entries: schoolEntries } }
+      content: { own: { title: 'School year prayer guide', entries: schoolEntries } },
+      intercessors: { people: [[600, 646]] }
     }]
   }
 })
@@ -490,7 +743,9 @@ await site({
       slug: start.slice(0, 4), name: 'Praying for our global partners', start_date: start, end_mode: 'none', cadence: 'weekly', goal: 'prayer_time',
       subtitle: { en: 'Together, 24 hours of prayer every day for the people our church has sent.' },
       why: { en: 'Our church supports partners in Peru, Thailand, France and Kenya. Each week we pray for one of them. Tell us how long you pray each day: together we are aiming for 24 hours of prayer every day, at whatever time suits you.' },
-      content: { own: { title: 'Praying for our partners', entries: churchEntries } }
+      content: { own: { title: 'Praying for our partners', entries: churchEntries } },
+      // A few families are also school parents.
+      intercessors: { people: [[640, 704]] }
     }]
   }
 })
@@ -503,13 +758,14 @@ const rhythmLibrary = await ownerLibrary(
   'weekly',
   rhythmEntries
 )
-const AGENCY_SITES: { slug: string, place: string, color: string, latitude: number, longitude: number, teams: string, edit?: Entry }[] = [
-  { slug: 'sahel-senegal', place: 'Senegal', color: '#15803d', latitude: 14.5, longitude: -14.5, teams: 'We have teams in two cities and are asking God for workers for the east of the country.' },
+// Part of the agency's network prays for more than one of its countries.
+const AGENCY_SITES: { slug: string, place: string, color: string, latitude: number, longitude: number, teams: string, people: [number, number], edit?: Entry }[] = [
+  { slug: 'sahel-senegal', place: 'Senegal', color: '#15803d', latitude: 14.5, longitude: -14.5, people: [800, 834], teams: 'We have teams in two cities and are asking God for workers for the east of the country.' },
   {
-    slug: 'sahel-mali', place: 'Mali', color: '#a16207', latitude: 17.6, longitude: -4.0, teams: 'We have one team in the capital and nobody yet in the north.',
+    slug: 'sahel-mali', place: 'Mali', color: '#a16207', latitude: 17.6, longitude: -4.0, people: [820, 841], teams: 'We have one team in the capital and nobody yet in the north.',
     edit: { title: 'Week 1: The church in Mali', intro: 'This week churches across Mali hold their yearly week of prayer. We join them.', verse: V.church, points: ['Thank God for the believers of Mali and for their week of prayer.', 'Pray for pastors travelling between villages to arrive safely.', 'Pray for them to stand firm and to love their neighbours.'] }
   },
-  { slug: 'sahel-niger', place: 'Niger', color: '#c2410c', latitude: 17.6, longitude: 8.1, teams: 'We have no team here yet. Pray with us for the first one.' }
+  { slug: 'sahel-niger', place: 'Niger', color: '#c2410c', latitude: 17.6, longitude: 8.1, people: [828, 837], teams: 'We have no team here yet. Pray with us for the first one.' }
 ]
 for (const a of AGENCY_SITES) {
   await site({
@@ -521,10 +777,12 @@ for (const a of AGENCY_SITES) {
         place: a.place, latitude: a.latitude, longitude: a.longitude,
         subtitle: { en: `A weekly rhythm of prayer for ${a.place}, with Sahel Partners.` },
         why: { en: `Sahel Partners prays for every country of the Sahel, where we have teams and where nobody has gone yet. ${a.teams}\n\nEach week you get one focus for ${a.place}, the same rhythm our whole network prays.` },
-        ...(rhythmLibrary ? { content: { library: rhythmLibrary }, editFirstEntry: a.edit } : {})
+        ...(rhythmLibrary ? { content: { library: rhythmLibrary }, editFirstEntry: a.edit } : {}),
+        intercessors: { people: [a.people] }
       }]
     }
   })
 }
 
+await app.destroy()
 await db.destroy()
