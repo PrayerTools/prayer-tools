@@ -63,7 +63,7 @@ A request sees one org. These features visit sites one at a time; none reads two
   - **Unsubscribe** from that email withdraws updates consent on every chosen site the person belongs to; the consent log records one withdrawal per site. The link names the delivery (never the address) and expires.
   - **Guardrails.** The send confirm names each site and how many people it reaches there. The worker refuses, and marks failed, any site's send whose deliveries outnumber the site's email addresses or reach another site's address. The champion app never offers an audience wider than one site; platform email goes only from the staff org.
   - Variables (`{site name}`, `{campaign name}`, `{past campaign}`, `{site link}`, `{first name}`) are filled in per site at send time.
-- **Deferred:** a combined "all my people" list or dashboard, and with it cross-org reads in tenancy ([nuxtinator#17](https://github.com/corsacca/nuxtinator/issues/17)).
+- **Deferred:** a combined "all my people" list or dashboard, and with it cross-org reads in tenancy ([nuxtinator#17](https://github.com/Nuxtinator/nuxtinator/issues/17)).
 
 ## Nuxtinator upgrades this needs
 

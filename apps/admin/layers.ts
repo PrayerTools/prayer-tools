@@ -1,6 +1,7 @@
 // Which nuxtinator layers the admin app uses. Both nuxt.config.ts (`extends:`)
 // and scripts/sync-layers.ts read this list; the resolved refs are recorded in
-// layers.lock.json.
+// layers.lock.json. With no `version`, a layer resolves to its newest released
+// tag at each `layers:update`.
 //
 // prayer.tools' own layers (the prayer.tools layer and the marketing layer)
 // live in ./apps/<id>/ and are globbed into `extends` by nuxt.config.ts.
@@ -12,14 +13,14 @@
 import type { LayerSpec } from './scripts/lib/resolve'
 
 export const LAYERS: readonly LayerSpec[] = [
-  { id: 'core', pkg: '@nuxtinator/core', repo: 'corsacca/nuxtinator', subdir: 'layers/core', version: '^3.3.0' },
-  { id: 'tenancy', pkg: '@nuxtinator/tenancy', repo: 'corsacca/nuxtinator', subdir: 'layers/tenancy', version: '^3.6.1' },
-  { id: 'social-auth', pkg: '@nuxtinator/social-auth', repo: 'corsacca/nuxtinator', subdir: 'layers/social-auth', version: '^0.5.2' },
-  { id: 'email-mailgun', pkg: '@nuxtinator/email-mailgun', repo: 'corsacca/nuxtinator', subdir: 'layers/email-mailgun', version: '^1.0.2' },
-  { id: 'oauth', pkg: '@nuxtinator/oauth', repo: 'corsacca/nuxtinator', subdir: 'layers/oauth', version: '^1.4.1' },
-  { id: 'mcp', pkg: '@nuxtinator/mcp', repo: 'corsacca/nuxtinator', subdir: 'layers/mcp', version: '^1.6.0' },
-  { id: 'ai', pkg: '@nuxtinator/ai', repo: 'corsacca/nuxtinator', subdir: 'layers/ai', version: '^0.10.0' },
-  { id: 'records', pkg: '@nuxtinator/records', repo: 'corsacca/nuxtinator', subdir: 'layers/records', version: '^0.2.0' },
-  { id: 'crm', pkg: '@nuxtinator/crm', repo: 'corsacca/nuxtinator', subdir: 'layers/apps/crm', version: '^0.5.0' },
-  { id: 'inbox', pkg: '@nuxtinator/inbox', repo: 'corsacca/nuxtinator', subdir: 'layers/apps/inbox', version: '^0.10.0' }
+  { id: 'core', pkg: '@nuxtinator/core', repo: 'Nuxtinator/nuxtinator', subdir: 'layers/core' },
+  { id: 'tenancy', pkg: '@nuxtinator/tenancy', repo: 'Nuxtinator/nuxtinator', subdir: 'layers/tenancy' },
+  { id: 'social-auth', pkg: '@nuxtinator/social-auth', repo: 'Nuxtinator/nuxtinator', subdir: 'layers/social-auth' },
+  { id: 'email-mailgun', pkg: '@nuxtinator/email-mailgun', repo: 'Nuxtinator/nuxtinator', subdir: 'layers/email-mailgun' },
+  { id: 'oauth', pkg: '@nuxtinator/oauth', repo: 'Nuxtinator/nuxtinator', subdir: 'layers/oauth' },
+  { id: 'mcp', pkg: '@nuxtinator/mcp', repo: 'Nuxtinator/nuxtinator', subdir: 'layers/mcp' },
+  { id: 'ai', pkg: '@nuxtinator/ai', repo: 'Nuxtinator/nuxtinator', subdir: 'layers/ai' },
+  { id: 'records', pkg: '@nuxtinator/records', repo: 'Nuxtinator/nuxtinator', subdir: 'layers/records' },
+  { id: 'crm', pkg: '@nuxtinator/crm', repo: 'Nuxtinator/nuxtinator', subdir: 'layers/apps/crm' },
+  { id: 'inbox', pkg: '@nuxtinator/inbox', repo: 'Nuxtinator/nuxtinator', subdir: 'layers/apps/inbox' }
 ]

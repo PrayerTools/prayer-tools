@@ -143,7 +143,7 @@ The champion or the mobilizer:
 - Reminders go out at each person's chosen time, linking to the day's content (never containing it).
 - Watch people signed up, goal progress, prayer activity and "praying now" on the dashboard.
 - The mobilizer sends updates to the campaign's intercessors who consented; reminders keep going regardless.
-- Answer contact messages and stories in the site inbox.
+- Answer contact messages and stories in the site inbox. For one the team can't handle alone (a privacy request, someone at risk, abuse), ask Prayer.Tools for help from the conversation.
 - Publish allowed stories on the landing page. A main campaign's page shows stories from any earlier campaign on the site. A side campaign's page shows the stories from every run of it (Ramadan 2026 → 2027), or the ones the champion picks from anywhere on the site.
 
 ### Close a campaign
@@ -191,4 +191,5 @@ The champion or the mobilizer:
 - Support champions on any site; make another member an owner when one leaves.
 - Publish platform libraries, including holiday content (Ramadan, Chinese New Year and others) and crisis content, and review share requests.
 - Approve or unlist directory sites; handle "Report this campaign".
-- Read stories, handle escalations, retry failed jobs.
+- Read stories and retry failed jobs.
+- Answer help requests: conversations a site team sent to Prayer.Tools from its inbox. Operators are emailed when one comes in, read only those conversations (through support access), and reply to the team; they never read every site's inbox.

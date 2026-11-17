@@ -36,7 +36,7 @@ Admin app, public server, worker and a shared package (domain logic, types, emai
 
 ## Foundations
 
-- **Stack:** Nuxt 4, Nuxt UI 4, Postgres via Kysely. Admin app built on Nuxtinator (`corsacca/nuxtinator`): core + tenancy + the shared CRM, inbox and marketing layers + a prayer.tools layer (see [architecture.md](architecture.md)).
+- **Stack:** Nuxt 4, Nuxt UI 4, Postgres via Kysely. Admin app built on Nuxtinator (`Nuxtinator/nuxtinator`): core + tenancy + the shared CRM, inbox and marketing layers + a prayer.tools layer (see [architecture.md](architecture.md)).
 - **Shared layers:** improvements made for prayer.tools (email sending, deliverability, contact and inbox UI) are made in the Nuxtinator layers, so other Nuxtinator projects get them by bumping a version.
 - **Open source.** Self-hosting is possible for people with hosting and development experience, but not supported.
 - **Borrowed from Doxa campaigns-server** as patterns, not as a codebase: `FOR UPDATE SKIP LOCKED` reminder claim with lease, Postgres job queue, email provider layer with bounce/suppression handling, Tiptap content with AI translation, app inactivity sweep. Doxa's marketing email becomes the Nuxtinator marketing layer (see [architecture.md](architecture.md)).

@@ -1,72 +1,72 @@
 {
   "core": {
     "pkg": "@nuxtinator/core",
-    "version": "^3.3.0",
+    "version": "latest",
     "ref": "@nuxtinator/core@3.5.0",
-    "source": "github:corsacca/nuxtinator/layers/core",
+    "source": "github:Nuxtinator/nuxtinator/layers/core",
     "tagPrefix": "@nuxtinator/core@"
   },
   "tenancy": {
     "pkg": "@nuxtinator/tenancy",
-    "version": "^3.6.1",
+    "version": "latest",
     "ref": "@nuxtinator/tenancy@3.8.0",
-    "source": "github:corsacca/nuxtinator/layers/tenancy",
+    "source": "github:Nuxtinator/nuxtinator/layers/tenancy",
     "tagPrefix": "@nuxtinator/tenancy@"
   },
   "social-auth": {
     "pkg": "@nuxtinator/social-auth",
-    "version": "^0.5.2",
+    "version": "latest",
     "ref": "@nuxtinator/social-auth@0.5.2",
-    "source": "github:corsacca/nuxtinator/layers/social-auth",
+    "source": "github:Nuxtinator/nuxtinator/layers/social-auth",
     "tagPrefix": "@nuxtinator/social-auth@"
   },
   "email-mailgun": {
     "pkg": "@nuxtinator/email-mailgun",
-    "version": "^1.0.2",
+    "version": "latest",
     "ref": "@nuxtinator/email-mailgun@1.0.2",
-    "source": "github:corsacca/nuxtinator/layers/email-mailgun",
+    "source": "github:Nuxtinator/nuxtinator/layers/email-mailgun",
     "tagPrefix": "@nuxtinator/email-mailgun@"
   },
   "oauth": {
     "pkg": "@nuxtinator/oauth",
-    "version": "^1.4.1",
+    "version": "latest",
     "ref": "@nuxtinator/oauth@1.4.1",
-    "source": "github:corsacca/nuxtinator/layers/oauth",
+    "source": "github:Nuxtinator/nuxtinator/layers/oauth",
     "tagPrefix": "@nuxtinator/oauth@"
   },
   "mcp": {
     "pkg": "@nuxtinator/mcp",
-    "version": "^1.6.0",
+    "version": "latest",
     "ref": "@nuxtinator/mcp@1.6.0",
-    "source": "github:corsacca/nuxtinator/layers/mcp",
+    "source": "github:Nuxtinator/nuxtinator/layers/mcp",
     "tagPrefix": "@nuxtinator/mcp@"
   },
   "ai": {
     "pkg": "@nuxtinator/ai",
-    "version": "^0.10.0",
+    "version": "latest",
     "ref": "@nuxtinator/ai@0.10.2",
-    "source": "github:corsacca/nuxtinator/layers/ai",
+    "source": "github:Nuxtinator/nuxtinator/layers/ai",
     "tagPrefix": "@nuxtinator/ai@"
   },
   "records": {
     "pkg": "@nuxtinator/records",
-    "version": "^0.2.0",
+    "version": "latest",
     "ref": "@nuxtinator/records@0.2.0",
-    "source": "github:corsacca/nuxtinator/layers/records",
+    "source": "github:Nuxtinator/nuxtinator/layers/records",
     "tagPrefix": "@nuxtinator/records@"
   },
   "crm": {
     "pkg": "@nuxtinator/crm",
-    "version": "^0.5.0",
+    "version": "latest",
     "ref": "@nuxtinator/crm@0.5.0",
-    "source": "github:corsacca/nuxtinator/layers/apps/crm",
+    "source": "github:Nuxtinator/nuxtinator/layers/apps/crm",
     "tagPrefix": "@nuxtinator/crm@"
   },
   "inbox": {
     "pkg": "@nuxtinator/inbox",
-    "version": "^0.10.0",
+    "version": "latest",
     "ref": "@nuxtinator/inbox@0.11.0",
-    "source": "github:corsacca/nuxtinator/layers/apps/inbox",
+    "source": "github:Nuxtinator/nuxtinator/layers/apps/inbox",
     "tagPrefix": "@nuxtinator/inbox@"
   }
 }
