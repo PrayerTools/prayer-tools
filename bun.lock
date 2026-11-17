@@ -42,7 +42,7 @@
     },
     "apps/admin/_layers/ai": {
       "name": "@nuxtinator/ai",
-      "version": "0.10.0",
+      "version": "0.10.2",
       "dependencies": {
         "tinfoil": "^1.2.1",
       },
@@ -60,7 +60,7 @@
     },
     "apps/admin/_layers/core": {
       "name": "@nuxtinator/core",
-      "version": "3.3.0",
+      "version": "3.5.0",
       "dependencies": {
         "@bradenmacdonald/s3-lite-client": "^1.0.0",
         "@nuxtjs/i18n": "^10.6.0",
@@ -207,7 +207,7 @@
     },
     "apps/admin/_layers/tenancy": {
       "name": "@nuxtinator/tenancy",
-      "version": "3.6.1",
+      "version": "3.8.0",
       "optionalDependencies": {
         "@nuxtinator/core": "*",
       },
