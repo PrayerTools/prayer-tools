@@ -571,6 +571,21 @@ export interface PtNotifyRequestTable {
   notified_campaign_id: string | null
 }
 
+// An inbox conversation a site team member sent to Prayer.Tools; one open
+// request per conversation.
+export interface PtHelpRequestTable {
+  id: Generated<string>
+  org_id: Generated<string>
+  conversation_id: string
+  requested_by: string | null
+  note: string
+  created_at: Timestamp
+  handled_at: NullableTimestamp
+  handled_by: string | null
+  // The operator's answer to the person who asked.
+  reply: string | null
+}
+
 export interface PtEmailLogTable {
   id: Generated<string>
   org_id: Generated<string>
@@ -735,6 +750,7 @@ export interface PtTables {
   pt_checkin: PtCheckinTable
   pt_signup_request: PtSignupRequestTable
   pt_notify_request: PtNotifyRequestTable
+  pt_help_request: PtHelpRequestTable
   pt_email_log: PtEmailLogTable
   pt_prayer_session: PtPrayerSessionTable
   pt_person_total: PtPersonTotalTable
