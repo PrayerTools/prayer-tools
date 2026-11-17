@@ -3,6 +3,7 @@
 // and SVG), share messages per language with a WhatsApp preview, the
 // description and share image for link previews, and the Give line. The Embed
 // tab gives the code for the signup widget on other websites.
+import { languageFlag } from '@prayertools/shared/languages'
 import type { TranslatableText } from '@prayertools/shared/db/schema'
 import { textIn } from '@prayertools/shared/translatable'
 
@@ -52,7 +53,7 @@ const whatsapp = computed(() => `https://wa.me/?text=${encodeURIComponent(shareT
 // The link card WhatsApp builds from the page's title, description and image.
 const linkDescription = computed(() => textIn(description.value, lang.value, data.value?.defaultLanguage))
 const linkHost = computed(() => data.value ? new URL(data.value.url).host : '')
-const langItems = computed(() => (site.value?.site.languages ?? []).map(l => ({ label: languageName(meta.value, l), value: l })))
+const langItems = computed(() => (site.value?.site.languages ?? []).map(l => ({ label: languageName(meta.value, l), value: l, icon: languageFlag(l) })))
 const langDir = computed(() => meta.value?.languages.find(l => l.code === lang.value)?.dir ?? 'ltr')
 
 async function copy(text: string, what = 'Link') {
@@ -295,6 +296,7 @@ async function setShareImage(url: string | undefined) {
                 v-if="langItems.length > 1"
                 v-model="lang"
                 :items="langItems"
+                :icon="languageFlag(lang)"
                 size="sm"
                 class="w-44"
               />

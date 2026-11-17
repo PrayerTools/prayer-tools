@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { SignupFormView } from '~~/shared/view'
 import type { SlotCounts } from '@prayertools/shared/coverage'
+import { languageFlag } from '@prayertools/shared/languages'
 import { browserTimezone, newCommitment, timezones, type CommitmentInput } from '~/utils/commitment'
 
 // `embedded`: inside another website's frame, where this site's cookies are not
@@ -98,7 +99,7 @@ function useOtherEmail() {
   useAccount.value = false
 }
 
-const languageItems = computed(() => site.value.languages.map(l => ({ label: l.native, value: l.code })))
+const languageItems = computed(() => site.value.languages.map(l => ({ label: l.native, value: l.code, icon: languageFlag(l.code) })))
 
 function addCommitment() {
   state.commitments.push(blankCommitment())
@@ -239,7 +240,7 @@ async function submit() {
             <UInput v-model="state.name" autocomplete="given-name" class="w-full" />
           </UFormField>
           <UFormField v-if="languageItems.length > 1" :label="t('signup.language')" name="language">
-            <USelect v-model="state.language" :items="languageItems" class="w-full" />
+            <USelect v-model="state.language" :items="languageItems" :icon="languageFlag(state.language)" class="w-full" />
           </UFormField>
           <UFormField v-for="f in form.fields" :key="f.key" :label="f.kind === 'checkbox' ? undefined : f.label" :name="`field-${f.key}`" :required="f.required">
             <UInput v-if="f.kind === 'text'" v-model="(state.answers[f.key] as string)" :required="f.required" class="w-full" :aria-label="f.label" />

@@ -26,7 +26,7 @@ const ordered = computed(() => {
   return [...(src ? [src] : []), ...props.languages.filter(l => l.code !== draft.value.source_language)]
 })
 
-const sourceItems = computed(() => props.languages.map(l => ({ label: l.label, value: l.code })))
+const sourceItems = computed(() => props.languages.map(l => ({ label: l.label, value: l.code, icon: l.icon })))
 
 // Every site language has a version to edit; empty ones are never sent.
 watch([() => props.languages, () => draft.value.versions], () => {
@@ -179,6 +179,7 @@ async function saveTemplate() {
         <USelect
           v-model="draft.source_language"
           :items="sourceItems"
+          :icon="languages.find(l => l.code === draft.source_language)?.icon"
           :disabled="disabled"
           class="w-full"
         />

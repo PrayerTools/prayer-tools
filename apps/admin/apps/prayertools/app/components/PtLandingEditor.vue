@@ -8,6 +8,7 @@
 // unsaved changes. It edits one campaign's landing page, short description
 // and hero image; section headings, standard text, color and logo are the
 // site's, shared by all campaigns.
+import { languageFlag } from '@prayertools/shared/languages'
 import type { CampaignBranding, CampaignLanding, SiteBranding, TiptapDoc, TranslatableText } from '@prayertools/shared/db/schema'
 import { DEFAULT_BRAND_COLOR } from '@prayertools/shared/colors'
 import { heroImage } from '@prayertools/shared/hero-images'
@@ -401,8 +402,8 @@ async function translateWhy() {
         <USelect
           v-if="site.site.languages.length > 1"
           v-model="lang"
-          :items="site.site.languages.map(l => ({ label: languageName(meta, l), value: l }))"
-          icon="i-lucide-languages"
+          :items="site.site.languages.map(l => ({ label: languageName(meta, l), value: l, icon: languageFlag(l) }))"
+          :icon="languageFlag(lang)"
           class="w-44"
         />
         <UButton

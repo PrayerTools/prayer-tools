@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { languageFlag } from '@prayertools/shared/languages'
+
 const { site } = useSite()
 const { t } = useI18n()
 const route = useRoute()
@@ -13,6 +15,7 @@ function pathFor(code: string): string {
 
 const items = computed(() => site.value.languages.map(l => ({
   label: l.native,
+  icon: languageFlag(l.code),
   to: pathFor(l.code),
   lang: l.code,
   active: l.code === site.value.lang,
@@ -25,7 +28,7 @@ const items = computed(() => site.value.languages.map(l => ({
     <UButton
       color="neutral"
       variant="ghost"
-      icon="i-lucide-languages"
+      :icon="languageFlag(site.lang)"
       :aria-label="t('nav.language')"
       :title="site.languages.find(l => l.code === site.lang)?.native"
       class="text-(--brand-text) hover:bg-white/10"

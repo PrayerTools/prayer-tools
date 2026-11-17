@@ -12,6 +12,7 @@
       "name": "@prayertools/admin",
       "dependencies": {
         "@bradenmacdonald/s3-lite-client": "^1.0.0",
+        "@iconify-json/circle-flags": "^1.2.14",
         "@iconify-json/lucide": "^1.2.104",
         "@iconify-json/simple-icons": "^1.2.80",
         "@nuxt/kit": "^4.0.0",
@@ -254,6 +255,7 @@
     "apps/public": {
       "name": "@prayertools/public",
       "dependencies": {
+        "@iconify-json/circle-flags": "^1.2.14",
         "@iconify-json/lucide": "^1.2.104",
         "@nuxt/ui": "^4.7.0",
         "@nuxtjs/i18n": "^10.4.0",
@@ -505,6 +507,8 @@
     "@humanwhocodes/module-importer": ["@humanwhocodes/module-importer@1.0.1", "", {}, "sha512-bxveV4V8v5Yb4ncFTT3rPSgZBOpCkjfK0y4oVVVJwIuDVBRMDXrPyXRL988i5ap9m9bnyEEjWfm5WkBmtffLfA=="],
 
     "@humanwhocodes/retry": ["@humanwhocodes/retry@0.4.3", "", {}, "sha512-bV0Tgo9K4hfPCek+aMAn81RppFKv2ySDQeMoSZuvTASywNTnVJCArCZE2FWqpvIatKu7VMRLWlR1EazvVhDyhQ=="],
+
+    "@iconify-json/circle-flags": ["@iconify-json/circle-flags@1.2.14", "", { "dependencies": { "@iconify/types": "*" } }, "sha512-svZ6j9ZaHc69eWdO5cY0wiaEo0A9kiiXM8diPx/0JkcBmKhW6Mt5e3OBOSkGBhOOwqV3q6q7DBbDGIwg6Nzz8g=="],
 
     "@iconify-json/lucide": ["@iconify-json/lucide@1.2.146", "", { "dependencies": { "@iconify/types": "*" } }, "sha512-T7qetsZJ682CCVT2X8C5uYEF6G/mtSoPl8F87wvu1LbfeVt4RxdP03NtaAs4RrrAXbWHBLjKrb8cmMtDucoI5g=="],
 

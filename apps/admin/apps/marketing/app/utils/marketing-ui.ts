@@ -1,4 +1,4 @@
-export interface MarketingLanguage { code: string, label: string, dir: 'ltr' | 'rtl' }
+export interface MarketingLanguage { code: string, label: string, dir: 'ltr' | 'rtl', icon?: string }
 export interface MarketingVariable { key: string, label: string }
 export interface MarketingDoc { type: 'doc', content?: unknown[] }
 export interface MarketingVersion { subject: string, preheader?: string, content: MarketingDoc }

@@ -3,6 +3,7 @@
 // language, for the campaign chosen in the switcher. Test emails never
 // contain live personal links. Also push announcements to people who pray
 // with the app.
+import { languageFlag } from '@prayertools/shared/languages'
 import type { TranslatableText } from '@prayertools/shared/db/schema'
 
 definePageMeta({ middleware: 'auth' })
@@ -72,7 +73,8 @@ async function send(kind: string) {
         </div>
         <USelect
           v-model="lang"
-          :items="(site?.site.languages ?? []).map(l => ({ label: languageName(meta, l), value: l }))"
+          :items="(site?.site.languages ?? []).map(l => ({ label: languageName(meta, l), value: l, icon: languageFlag(l) }))"
+          :icon="languageFlag(lang)"
           class="w-44"
         />
       </div>

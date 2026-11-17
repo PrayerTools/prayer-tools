@@ -3,6 +3,8 @@
 // contact's subscription on this site, prayer times, activity, prayer totals
 // and check-ins. Renders nothing outside a site, without pt.intercessors.read, or
 // for a contact with no subscription.
+import { languageFlag } from '@prayertools/shared/languages'
+
 const props = defineProps<{ recordId: string, recordType?: string }>()
 
 const { data: site, can, slug } = usePtSite()
@@ -136,7 +138,8 @@ async function remove() {
           <UFormField label="Language">
             <USelect
               :model-value="data.subscription.language"
-              :items="site.site.languages.map(l => ({ value: l, label: languageName(meta, l) }))"
+              :items="site.site.languages.map(l => ({ value: l, label: languageName(meta, l), icon: languageFlag(l) }))"
+              :icon="languageFlag(data.subscription.language)"
               :disabled="!can('pt.intercessors.write')"
               class="w-44"
               @update:model-value="(v) => patch({ language: v })"

@@ -226,6 +226,8 @@ export interface MarketingLanguage {
   code: string
   label: string
   dir: 'ltr' | 'rtl'
+  // Iconify name shown beside the language in pickers.
+  icon?: string
 }
 
 export interface MarketingSender {

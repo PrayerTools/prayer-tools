@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { FeedbackView, MyConfirmSiteView, MyView, MySiteView, SignInProvidersView } from '~~/shared/view'
+import { languageFlag } from '@prayertools/shared/languages'
 import { timezones, type CommitmentInput } from '~/utils/commitment'
 
 const props = defineProps<{ my: MyView, notice: string | null, continueTo: string | null, confirmSite: MyConfirmSiteView | null, signIn: SignInProvidersView, lang: string, donateUrl: string, feedback: FeedbackView | null }>()
@@ -158,7 +159,7 @@ async function leave() {
 }
 
 function languageItems(s: MySiteView) {
-  return s.languages.map(l => ({ label: l.native, value: l.code }))
+  return s.languages.map(l => ({ label: l.native, value: l.code, icon: languageFlag(l.code) }))
 }
 </script>
 
@@ -273,7 +274,7 @@ function languageItems(s: MySiteView) {
 
           <div class="grid gap-4 sm:grid-cols-2">
             <UFormField v-if="s.languages.length > 1" :label="t('signup.language')" :name="`lang-${s.subscriptionId}`">
-              <USelect :model-value="s.language" :items="languageItems(s)" class="w-full" @update:model-value="v => call(s, 'profile', 'POST', { language: v })" />
+              <USelect :model-value="s.language" :items="languageItems(s)" :icon="languageFlag(s.language)" class="w-full" @update:model-value="v => call(s, 'profile', 'POST', { language: v })" />
             </UFormField>
             <UFormField :label="t('signup.timezone')" :name="`tz-${s.subscriptionId}`">
               <USelectMenu :model-value="s.timezone" :items="tzItems" class="w-full" @update:model-value="v => call(s, 'profile', 'POST', { timezone: v })" />

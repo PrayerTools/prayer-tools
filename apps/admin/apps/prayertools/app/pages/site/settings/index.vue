@@ -3,6 +3,7 @@
 // form, wording, and status (publishing, directory, exports, deleting). The
 // color, logo and hero image are edited on the Landing page.
 // Only values that differ from the code defaults are stored.
+import { languageFlag } from '@prayertools/shared/languages'
 import type { TranslatableText } from '@prayertools/shared/db/schema'
 
 definePageMeta({ middleware: 'auth' })
@@ -515,7 +516,8 @@ watch(tab, (t) => {
             </h2>
             <USelect
               v-model="wordingLangModel"
-              :items="site.site.languages.map(l => ({ label: languageName(meta, l), value: l }))"
+              :items="site.site.languages.map(l => ({ label: languageName(meta, l), value: l, icon: languageFlag(l) }))"
+              :icon="languageFlag(wordingLangModel)"
               class="w-44"
             />
           </div>

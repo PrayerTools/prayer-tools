@@ -5,36 +5,38 @@ export interface Language {
   name: string
   native: string
   dir: 'ltr' | 'rtl'
+  // circle-flags icon shown beside the language in pickers.
+  flag: string
   // bolls.life translation used for Scripture lookups in this language.
   bible?: string
 }
 
 export const LANGUAGES: readonly Language[] = [
-  { code: 'en', name: 'English', native: 'English', dir: 'ltr', bible: 'NIV' },
-  { code: 'es', name: 'Spanish', native: 'Español', dir: 'ltr', bible: 'NVI' },
-  { code: 'fr', name: 'French', native: 'Français', dir: 'ltr', bible: 'LSG' },
-  { code: 'pt', name: 'Portuguese', native: 'Português', dir: 'ltr', bible: 'NVIPT' },
-  { code: 'de', name: 'German', native: 'Deutsch', dir: 'ltr', bible: 'LUT' },
-  { code: 'it', name: 'Italian', native: 'Italiano', dir: 'ltr', bible: 'NR06' },
-  { code: 'nl', name: 'Dutch', native: 'Nederlands', dir: 'ltr', bible: 'HSV' },
-  { code: 'ro', name: 'Romanian', native: 'Română', dir: 'ltr', bible: 'RMNN' },
-  { code: 'ru', name: 'Russian', native: 'Русский', dir: 'ltr', bible: 'SYNOD' },
-  { code: 'uk', name: 'Ukrainian', native: 'Українська', dir: 'ltr', bible: 'UBIO' },
-  { code: 'tr', name: 'Turkish', native: 'Türkçe', dir: 'ltr', bible: 'TCL02' },
-  { code: 'ar', name: 'Arabic', native: 'العربية', dir: 'rtl', bible: 'SVD' },
-  { code: 'fa', name: 'Persian', native: 'فارسی', dir: 'rtl', bible: 'TPV' },
-  { code: 'ur', name: 'Urdu', native: 'اردو', dir: 'rtl' },
-  { code: 'hi', name: 'Hindi', native: 'हिन्दी', dir: 'ltr', bible: 'HHBD' },
-  { code: 'bn', name: 'Bengali', native: 'বাংলা', dir: 'ltr' },
-  { code: 'ne', name: 'Nepali', native: 'नेपाली', dir: 'ltr' },
-  { code: 'id', name: 'Indonesian', native: 'Bahasa Indonesia', dir: 'ltr', bible: 'TB' },
-  { code: 'sw', name: 'Swahili', native: 'Kiswahili', dir: 'ltr', bible: 'SUV' },
-  { code: 'am', name: 'Amharic', native: 'አማርኛ', dir: 'ltr' },
-  { code: 'zh-hans', name: 'Chinese (Simplified)', native: '简体中文', dir: 'ltr', bible: 'CUNPSS' },
-  { code: 'zh-hant', name: 'Chinese (Traditional)', native: '繁體中文', dir: 'ltr', bible: 'CUNP' },
-  { code: 'ko', name: 'Korean', native: '한국어', dir: 'ltr', bible: 'KRV' },
-  { code: 'ja', name: 'Japanese', native: '日本語', dir: 'ltr', bible: 'JC' },
-  { code: 'vi', name: 'Vietnamese', native: 'Tiếng Việt', dir: 'ltr', bible: 'VI1934' }
+  { code: 'en', name: 'English', native: 'English', flag: 'lang-en', dir: 'ltr', bible: 'NIV' },
+  { code: 'es', name: 'Spanish', native: 'Español', flag: 'lang-es', dir: 'ltr', bible: 'NVI' },
+  { code: 'fr', name: 'French', native: 'Français', flag: 'lang-fr', dir: 'ltr', bible: 'LSG' },
+  { code: 'pt', name: 'Portuguese', native: 'Português', flag: 'lang-pt', dir: 'ltr', bible: 'NVIPT' },
+  { code: 'de', name: 'German', native: 'Deutsch', flag: 'lang-de', dir: 'ltr', bible: 'LUT' },
+  { code: 'it', name: 'Italian', native: 'Italiano', flag: 'lang-it', dir: 'ltr', bible: 'NR06' },
+  { code: 'nl', name: 'Dutch', native: 'Nederlands', flag: 'lang-nl', dir: 'ltr', bible: 'HSV' },
+  { code: 'ro', name: 'Romanian', native: 'Română', flag: 'lang-ro', dir: 'ltr', bible: 'RMNN' },
+  { code: 'ru', name: 'Russian', native: 'Русский', flag: 'lang-ru', dir: 'ltr', bible: 'SYNOD' },
+  { code: 'uk', name: 'Ukrainian', native: 'Українська', flag: 'lang-uk', dir: 'ltr', bible: 'UBIO' },
+  { code: 'tr', name: 'Turkish', native: 'Türkçe', flag: 'lang-tr', dir: 'ltr', bible: 'TCL02' },
+  { code: 'ar', name: 'Arabic', native: 'العربية', flag: 'lang-ar', dir: 'rtl', bible: 'SVD' },
+  { code: 'fa', name: 'Persian', native: 'فارسی', flag: 'lang-fa', dir: 'rtl', bible: 'TPV' },
+  { code: 'ur', name: 'Urdu', native: 'اردو', flag: 'lang-ur', dir: 'rtl' },
+  { code: 'hi', name: 'Hindi', native: 'हिन्दी', flag: 'lang-hi', dir: 'ltr', bible: 'HHBD' },
+  { code: 'bn', name: 'Bengali', native: 'বাংলা', flag: 'lang-bn', dir: 'ltr' },
+  { code: 'ne', name: 'Nepali', native: 'नेपाली', flag: 'lang-ne', dir: 'ltr' },
+  { code: 'id', name: 'Indonesian', native: 'Bahasa Indonesia', flag: 'lang-id', dir: 'ltr', bible: 'TB' },
+  { code: 'sw', name: 'Swahili', native: 'Kiswahili', flag: 'lang-sw', dir: 'ltr', bible: 'SUV' },
+  { code: 'am', name: 'Amharic', native: 'አማርኛ', flag: 'lang-am', dir: 'ltr' },
+  { code: 'zh-hans', name: 'Chinese (Simplified)', native: '简体中文', flag: 'cn', dir: 'ltr', bible: 'CUNPSS' },
+  { code: 'zh-hant', name: 'Chinese (Traditional)', native: '繁體中文', flag: 'tw', dir: 'ltr', bible: 'CUNP' },
+  { code: 'ko', name: 'Korean', native: '한국어', flag: 'lang-ko', dir: 'ltr', bible: 'KRV' },
+  { code: 'ja', name: 'Japanese', native: '日本語', flag: 'lang-ja', dir: 'ltr', bible: 'JC' },
+  { code: 'vi', name: 'Vietnamese', native: 'Tiếng Việt', flag: 'lang-vi', dir: 'ltr', bible: 'VI1934' }
 ]
 
 // Languages the public site's interface and emails are translated into. A site
@@ -45,6 +47,12 @@ const BY_CODE = new Map(LANGUAGES.map(l => [l.code, l]))
 
 export function getLanguage(code: string | null | undefined): Language | undefined {
   return code ? BY_CODE.get(code) : undefined
+}
+
+// Iconify name of the language's flag, for item icons in Nuxt UI menus.
+export function languageFlag(code: string | null | undefined): string {
+  const flag = code ? BY_CODE.get(code)?.flag : undefined
+  return flag ? `i-circle-flags-${flag}` : 'i-lucide-languages'
 }
 
 export function isLanguage(code: unknown): code is string {

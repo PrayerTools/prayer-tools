@@ -7,7 +7,7 @@ import { listUserOrgs, withOrgContext, withOrgScope, type TenantContext } from '
 import { getMarketingHost } from '../../lib/registry'
 import { parseVersions } from '../../lib/render'
 import { jsonb, textArray, uuidArray } from '../../lib/db'
-import type { EmailVersions, MarketingDb, MarketingHost, MarketingTx } from '../../lib/types'
+import type { EmailVersions, MarketingDb, MarketingHost, MarketingLanguage, MarketingTx } from '../../lib/types'
 
 export type MarketingPerm = 'marketing.access' | 'marketing.send'
 
@@ -155,7 +155,7 @@ export async function marketingRequireSites(userId: string, orgIds: unknown): Pr
 // Languages across the chosen sites (union, in first-seen order).
 export async function marketingSitesLanguages(orgIds: string[]) {
   const host = marketingHost()
-  const seen = new Map<string, { code: string, label: string, dir: 'ltr' | 'rtl' }>()
+  const seen = new Map<string, MarketingLanguage>()
   const perSite: Record<string, { languages: string[], defaultLanguage: string }> = {}
   for (const orgId of orgIds) {
     const l = await marketingInOrg(orgId, tx => host.languages(tx, orgId))

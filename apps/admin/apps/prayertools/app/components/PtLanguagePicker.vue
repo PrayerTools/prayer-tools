@@ -1,6 +1,8 @@
 <script setup lang="ts">
 // The languages a site runs in and its default. The languages the public site
 // is translated into are always listed; others can be added for content only.
+import { languageFlag } from '@prayertools/shared/languages'
+
 const languages = defineModel<string[]>({ required: true })
 const defaultLanguage = defineModel<string>('default', { required: true })
 defineProps<{ disabled?: boolean }>()
@@ -26,7 +28,7 @@ const rows = computed(() => [...uiLanguages.value, ...extras.value].map(code => 
 
 const addItems = computed(() => (meta.value?.languages ?? [])
   .filter(l => !uiLanguages.value.includes(l.code) && !extras.value.includes(l.code))
-  .map(l => ({ label: `${l.name} — ${l.native}`, value: l.code })))
+  .map(l => ({ label: `${l.name} — ${l.native}`, value: l.code, icon: languageFlag(l.code) })))
 
 function toggle(code: string, on: boolean) {
   if (on && !languages.value.includes(code)) languages.value = [...languages.value, code]
@@ -63,6 +65,10 @@ watch(adding, (code) => {
         @click="!disabled && !r.isDefault && toggle(r.code, !r.selected)"
         @keydown.space.prevent="!disabled && !r.isDefault && toggle(r.code, !r.selected)"
       >
+        <UIcon
+          :name="languageFlag(r.code)"
+          class="size-5 shrink-0"
+        />
         <UCheckbox
           :model-value="r.selected"
           :disabled="disabled || r.isDefault"

@@ -2,6 +2,8 @@
 // The embed code for one campaign in one language, with the live widget in a
 // frame. The default language and the current campaign are left out of the
 // code, so the widget follows the site's default and its next campaign.
+import { languageFlag } from '@prayertools/shared/languages'
+
 const props = defineProps<{
   siteUrl: string
   campaignSegment: string | null
@@ -18,7 +20,7 @@ const lang = ref(props.defaultLanguage)
 watch(() => props.defaultLanguage, (l) => {
   lang.value = l
 })
-const langItems = computed(() => props.languages.map(l => ({ label: languageName(meta.value, l), value: l })))
+const langItems = computed(() => props.languages.map(l => ({ label: languageName(meta.value, l), value: l, icon: languageFlag(l) })))
 
 const langSegment = computed(() => lang.value === props.defaultLanguage ? null : lang.value)
 const snippet = computed(() => {
@@ -66,6 +68,7 @@ async function copy() {
           <USelect
             v-model="lang"
             :items="langItems"
+            :icon="languageFlag(lang)"
             class="w-44"
           />
         </UFormField>

@@ -12,6 +12,7 @@
     "smoke": "bun run scripts/smoke.ts"
   },
   "dependencies": {
+    "@iconify-json/circle-flags": "^1.2.14",
     "@iconify-json/lucide": "^1.2.104",
     "@nuxt/ui": "^4.7.0",
     "@nuxtjs/i18n": "^10.4.0",

@@ -12,7 +12,7 @@ import { suppressedAmong } from './email/suppression'
 import { layout, loadSiteMailContext, type SiteMailContext } from './email/templates'
 import { sendMail } from './email/transport'
 import { emailT } from './i18n/email'
-import { getLanguage } from './languages'
+import { getLanguage, languageFlag } from './languages'
 import { toIsoDate } from './dates'
 import { campaignStatus, pickCurrentCampaign } from './setup'
 import { loadCampaigns } from './campaigns'
@@ -248,7 +248,7 @@ export const ptMarketingHost = {
     return {
       languages: info.languages.map((code) => {
         const l = getLanguage(code)
-        return { code, label: l ? (l.native === l.name ? l.name : `${l.name} · ${l.native}`) : code, dir: l?.dir ?? 'ltr' as const }
+        return { code, label: l ? (l.native === l.name ? l.name : `${l.name} · ${l.native}`) : code, dir: l?.dir ?? 'ltr' as const, icon: languageFlag(code) }
       }),
       defaultLanguage: info.defaultLanguage
     }

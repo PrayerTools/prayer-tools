@@ -2,6 +2,8 @@
 // A library: its details, the entry grid (days × languages) and the draft
 // editor. Drafts reach sites only when the library is published; sites that
 // edited their copy are never changed.
+import { languageFlag } from '@prayertools/shared/languages'
+
 definePageMeta({ middleware: 'auth', tenantExempt: true })
 
 const route = useRoute()
@@ -291,7 +293,7 @@ async function deleteLibrary() {
           >
             <USelect
               v-model="addLanguage"
-              :items="(meta?.languages ?? []).filter(l => !languages.includes(l.code)).map(l => ({ value: l.code, label: l.name }))"
+              :items="(meta?.languages ?? []).filter(l => !languages.includes(l.code)).map(l => ({ value: l.code, label: l.name, icon: languageFlag(l.code) }))"
               placeholder="Add a language"
               class="w-44"
             />

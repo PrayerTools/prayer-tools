@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ManageCampaignView, ManageView } from '~~/shared/view'
+import { languageFlag } from '@prayertools/shared/languages'
 import { timezones, type CommitmentInput } from '~/utils/commitment'
 
 const props = defineProps<{ manage: ManageView | null, signedInAs: string | null }>()
@@ -16,7 +17,7 @@ const leaving = ref<{ id: string, name: string } | null>(null)
 const profile = reactive({ name: props.manage?.name ?? '', language: props.manage?.language ?? site.value.lang, timezone: props.manage?.timezone ?? 'UTC' })
 const tzItems = timezones()
 const signupOpen = computed(() => site.value.status !== 'archived' && (site.value.campaign?.state === 'active' || site.value.campaign?.state === 'upcoming'))
-const languageItems = computed(() => site.value.languages.map(l => ({ label: l.native, value: l.code })))
+const languageItems = computed(() => site.value.languages.map(l => ({ label: l.native, value: l.code, icon: languageFlag(l.code) })))
 // A personal-start campaign holds one prayer time per person, which carries their progress.
 const canAdd = (c: ManageCampaignView) => c.state !== 'ended' && props.manage?.status !== 'unsubscribed' && !(c.personal && c.commitments.length)
 
@@ -134,7 +135,7 @@ async function deleteData() {
             </template>
           </UFormField>
           <UFormField v-if="languageItems.length > 1" :label="t('signup.language')" name="m-language">
-            <USelect v-model="profile.language" :items="languageItems" class="w-full" />
+            <USelect v-model="profile.language" :items="languageItems" :icon="languageFlag(profile.language)" class="w-full" />
           </UFormField>
           <UFormField :label="t('signup.timezone')" name="m-timezone" :help="t('manage.timezone_help')">
             <USelectMenu v-model="profile.timezone" :items="tzItems" class="w-full" />
