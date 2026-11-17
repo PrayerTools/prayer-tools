@@ -1,17 +1,24 @@
 {
   "core": {
     "pkg": "@nuxtinator/core",
-    "version": "latest",
-    "ref": "@nuxtinator/core@3.5.0",
+    "version": "^4",
+    "ref": "@nuxtinator/core@4.0.0",
     "source": "github:Nuxtinator/nuxtinator/layers/core",
     "tagPrefix": "@nuxtinator/core@"
   },
   "tenancy": {
     "pkg": "@nuxtinator/tenancy",
     "version": "latest",
-    "ref": "@nuxtinator/tenancy@3.8.0",
+    "ref": "@nuxtinator/tenancy@3.9.0",
     "source": "github:Nuxtinator/nuxtinator/layers/tenancy",
     "tagPrefix": "@nuxtinator/tenancy@"
+  },
+  "mail": {
+    "pkg": "@nuxtinator/mail",
+    "version": "latest",
+    "ref": "@nuxtinator/mail@1.0.0",
+    "source": "github:Nuxtinator/nuxtinator/layers/mail",
+    "tagPrefix": "@nuxtinator/mail@"
   },
   "social-auth": {
     "pkg": "@nuxtinator/social-auth",
@@ -19,13 +26,6 @@
     "ref": "@nuxtinator/social-auth@0.5.2",
     "source": "github:Nuxtinator/nuxtinator/layers/social-auth",
     "tagPrefix": "@nuxtinator/social-auth@"
-  },
-  "email-mailgun": {
-    "pkg": "@nuxtinator/email-mailgun",
-    "version": "latest",
-    "ref": "@nuxtinator/email-mailgun@1.0.2",
-    "source": "github:Nuxtinator/nuxtinator/layers/email-mailgun",
-    "tagPrefix": "@nuxtinator/email-mailgun@"
   },
   "oauth": {
     "pkg": "@nuxtinator/oauth",
@@ -58,14 +58,14 @@
   "crm": {
     "pkg": "@nuxtinator/crm",
     "version": "latest",
-    "ref": "@nuxtinator/crm@0.5.0",
+    "ref": "@nuxtinator/crm@0.6.0",
     "source": "github:Nuxtinator/nuxtinator/layers/apps/crm",
     "tagPrefix": "@nuxtinator/crm@"
   },
   "inbox": {
     "pkg": "@nuxtinator/inbox",
-    "version": "latest",
-    "ref": "@nuxtinator/inbox@0.11.1",
+    "version": "^1",
+    "ref": "@nuxtinator/inbox@1.0.0",
     "source": "github:Nuxtinator/nuxtinator/layers/apps/inbox",
     "tagPrefix": "@nuxtinator/inbox@"
   }

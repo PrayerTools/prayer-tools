@@ -6,21 +6,21 @@
 // prayer.tools' own layers (the prayer.tools layer and the marketing layer)
 // live in ./apps/<id>/ and are globbed into `extends` by nuxt.config.ts.
 //
-// Load order: core, tenancy (its multi-mode kernel overrides core's),
-// social-auth, email backend, oauth, mcp, ai, records (the record kernel crm
+// Load order: core, tenancy (its multi-mode kernel overrides core's), the
+// mail kernel, social-auth, oauth, mcp, ai, records (the record kernel crm
 // builds on), crm, inbox.
 
 import type { LayerSpec } from './scripts/lib/resolve'
 
 export const LAYERS: readonly LayerSpec[] = [
-  { id: 'core', pkg: '@nuxtinator/core', repo: 'Nuxtinator/nuxtinator', subdir: 'layers/core' },
+  { id: 'core', pkg: '@nuxtinator/core', repo: 'Nuxtinator/nuxtinator', subdir: 'layers/core', version: '^4' },
   { id: 'tenancy', pkg: '@nuxtinator/tenancy', repo: 'Nuxtinator/nuxtinator', subdir: 'layers/tenancy' },
+  { id: 'mail', pkg: '@nuxtinator/mail', repo: 'Nuxtinator/nuxtinator', subdir: 'layers/mail' },
   { id: 'social-auth', pkg: '@nuxtinator/social-auth', repo: 'Nuxtinator/nuxtinator', subdir: 'layers/social-auth' },
-  { id: 'email-mailgun', pkg: '@nuxtinator/email-mailgun', repo: 'Nuxtinator/nuxtinator', subdir: 'layers/email-mailgun' },
   { id: 'oauth', pkg: '@nuxtinator/oauth', repo: 'Nuxtinator/nuxtinator', subdir: 'layers/oauth' },
   { id: 'mcp', pkg: '@nuxtinator/mcp', repo: 'Nuxtinator/nuxtinator', subdir: 'layers/mcp' },
   { id: 'ai', pkg: '@nuxtinator/ai', repo: 'Nuxtinator/nuxtinator', subdir: 'layers/ai' },
   { id: 'records', pkg: '@nuxtinator/records', repo: 'Nuxtinator/nuxtinator', subdir: 'layers/records' },
   { id: 'crm', pkg: '@nuxtinator/crm', repo: 'Nuxtinator/nuxtinator', subdir: 'layers/apps/crm' },
-  { id: 'inbox', pkg: '@nuxtinator/inbox', repo: 'Nuxtinator/nuxtinator', subdir: 'layers/apps/inbox' }
+  { id: 'inbox', pkg: '@nuxtinator/inbox', repo: 'Nuxtinator/nuxtinator', subdir: 'layers/apps/inbox', version: '^1' }
 ]

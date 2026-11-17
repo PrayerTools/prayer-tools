@@ -61,7 +61,7 @@
     },
     "apps/admin/_layers/core": {
       "name": "@nuxtinator/core",
-      "version": "3.5.0",
+      "version": "4.0.0",
       "dependencies": {
         "@bradenmacdonald/s3-lite-client": "^1.0.0",
         "@nuxtjs/i18n": "^10.6.0",
@@ -75,6 +75,9 @@
         "@types/bcrypt": "^6.0.0",
         "@types/jsonwebtoken": "^9.0.10",
         "@types/semver": "^7.5.0",
+      },
+      "optionalDependencies": {
+        "@nuxtinator/mail": "*",
       },
       "peerDependencies": {
         "@iconify-json/lucide": "^1.0.0",
@@ -91,7 +94,7 @@
     },
     "apps/admin/_layers/crm": {
       "name": "@nuxtinator/crm",
-      "version": "0.5.0",
+      "version": "0.6.0",
       "optionalDependencies": {
         "@nuxtinator/core": "*",
         "@nuxtinator/records": "*",
@@ -105,28 +108,12 @@
         "zod": "^4.1.8",
       },
     },
-    "apps/admin/_layers/email-mailgun": {
-      "name": "@nuxtinator/email-mailgun",
-      "version": "1.0.2",
-      "dependencies": {
-        "nodemailer": "^10.1.0",
-      },
-      "optionalDependencies": {
-        "@nuxtinator/core": "*",
-      },
-      "peerDependencies": {
-        "@nuxt/kit": "^4.0.0",
-        "h3": "^1.0.0",
-        "nuxt": "^4.0.0",
-      },
-    },
     "apps/admin/_layers/inbox": {
       "name": "@nuxtinator/inbox",
-      "version": "0.11.1",
+      "version": "1.0.0",
       "dependencies": {
         "croner": "^10.0.1",
         "dompurify": "^3.4.13",
-        "nodemailer": "^10.1.0",
         "sanitize-html": "^2.17.7",
       },
       "devDependencies": {
@@ -136,6 +123,7 @@
         "@nuxtinator/ai": "*",
         "@nuxtinator/core": "*",
         "@nuxtinator/crm": "*",
+        "@nuxtinator/mail": "*",
         "@nuxtinator/records": "*",
       },
       "peerDependencies": {
@@ -145,6 +133,17 @@
         "nuxt": "^4.0.0",
         "vue": "^3.0.0",
         "zod": "^4.1.8",
+      },
+    },
+    "apps/admin/_layers/mail": {
+      "name": "@nuxtinator/mail",
+      "version": "1.0.0",
+      "dependencies": {
+        "nodemailer": "^10.1.0",
+        "postal-mime": "^4.2.1",
+      },
+      "peerDependencies": {
+        "kysely": "^0.28.0",
       },
     },
     "apps/admin/_layers/mcp": {
@@ -225,7 +224,7 @@
     },
     "apps/admin/_layers/tenancy": {
       "name": "@nuxtinator/tenancy",
-      "version": "3.8.0",
+      "version": "3.9.0",
       "optionalDependencies": {
         "@nuxtinator/core": "*",
       },
@@ -694,9 +693,9 @@
 
     "@nuxtinator/crm": ["@nuxtinator/crm@workspace:apps/admin/_layers/crm"],
 
-    "@nuxtinator/email-mailgun": ["@nuxtinator/email-mailgun@workspace:apps/admin/_layers/email-mailgun"],
-
     "@nuxtinator/inbox": ["@nuxtinator/inbox@workspace:apps/admin/_layers/inbox"],
+
+    "@nuxtinator/mail": ["@nuxtinator/mail@workspace:apps/admin/_layers/mail"],
 
     "@nuxtinator/mcp": ["@nuxtinator/mcp@workspace:apps/admin/_layers/mcp"],
 
@@ -2165,6 +2164,8 @@
     "pluralize": ["pluralize@8.0.0", "", {}, "sha512-Nc3IT5yHzflTfbjgqWcCPpo7DaKy4FnpB0l/zCAW0Tc7jxAiuqSxHasntB3D7887LSrA93kDJ9IXovxJYxyLCA=="],
 
     "pngjs": ["pngjs@5.0.0", "", {}, "sha512-40QW5YalBNfQo5yRYmiw7Yz6TKKVr3h6970B2YE+3fQpsWcrbj1PzJgxeJ19DRQjhMbKPIuMY8rFaXc8moolVw=="],
+
+    "postal-mime": ["postal-mime@4.2.1", "", {}, "sha512-uFQnu6TPJe5IGzj3ZIjzAYCk7qnVYM3KFvo0JpRFftJKtxJcUSMgTaWsIXDakTKfN71fUULhjNNVbNonim5f0Q=="],
 
     "postcss": ["postcss@8.5.31", "", { "dependencies": { "nanoid": "^3.3.20", "picocolors": "^1.1.1", "source-map-js": "^1.2.2" } }, "sha512-YUbWYCgErwnMAVkjUnYa+KlMBzGpHwiIt/DE7f0G33AuX2LH9UcTk6KgWxd3zRU+pN3u/C+Xl3EnMLM4Hea7Sg=="],
 
