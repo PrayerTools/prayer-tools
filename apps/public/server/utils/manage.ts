@@ -115,7 +115,7 @@ export async function manageView(tx: Tx, ctx: SiteContext, sub: SubscriptionRow,
     referralCode: sub.referral_code,
     campaigns: manageCampaigns(campaigns, await commitmentsOf(tx, sub.id, campaigns), siteDefaultDuration),
     consents: await consentList(tx, email?.channelId ?? null, lang, fallback),
-    icsUrl: `${ctx.canonicalOrigin.replace(/^https?:/, 'webcal:')}/ics/${personalToken(ctx.orgId, sub.id)}.ics`,
+    icsUrl: `${ctx.canonicalOrigin}/ics/${personalToken(ctx.orgId, sub.id)}.ics`,
     prayUrl: prayUrl(ctx.canonicalOrigin, null, null, lang === fallback ? null : lang, ctx.orgId, sub.id)
   }
 }

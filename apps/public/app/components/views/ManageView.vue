@@ -4,7 +4,7 @@ import { languageFlag } from '@prayertools/shared/languages'
 import { timezones, type CommitmentInput } from '~/utils/commitment'
 
 const props = defineProps<{ manage: ManageView | null, signedInAs: string | null }>()
-const { site, link, st } = useSite()
+const { site, link, st, date } = useSite()
 const { t } = useI18n()
 const route = useRoute()
 const toast = useToast()
@@ -18,6 +18,16 @@ const profile = reactive({ name: props.manage?.name ?? '', language: props.manag
 const tzItems = timezones()
 const signupOpen = computed(() => site.value.status !== 'archived' && (site.value.campaign?.state === 'active' || site.value.campaign?.state === 'upcoming'))
 const languageItems = computed(() => site.value.languages.map(l => ({ label: l.native, value: l.code, icon: languageFlag(l.code) })))
+const confirmed = computed(() => route.query.confirmed === '1')
+const sharePrompt = ref(false)
+const prayNote = computed(() => site.value.campaign?.state === 'upcoming' && site.value.campaign.startDate ? t('landing.starts_on', { date: date(site.value.campaign.startDate) }) : t('landing.pray_today'))
+const showPray = computed(() => site.value.status !== 'archived' && (site.value.campaign?.state === 'active' || site.value.campaign?.state === 'upcoming'))
+const topLinkCount = computed(() => 1 + (showPray.value ? 1 : 0) + (props.manage ? 1 : 0))
+
+onMounted(() => {
+  if (confirmed.value && site.value.settings.sharePrompts) setTimeout(() => (sharePrompt.value = true), 1200)
+  dropQueryParams('confirmed')
+})
 // A personal-start campaign holds one prayer time per person, which carries their progress.
 const canAdd = (c: ManageCampaignView) => c.state !== 'ended' && props.manage?.status !== 'unsubscribed' && !(c.personal && c.commitments.length)
 
@@ -68,6 +78,36 @@ async function deleteData() {
 
 <template>
   <div class="max-w-3xl mx-auto px-4 py-10 space-y-10">
+    <div class="space-y-4">
+      <UAlert v-if="confirmed" color="success" variant="soft" icon="i-lucide-badge-check" :title="t('pray.confirmed_title')" :description="t('pray.confirmed_body')" role="status" />
+      <div class="grid gap-3" :class="topLinkCount === 3 ? 'sm:grid-cols-3' : topLinkCount === 2 ? 'sm:grid-cols-2' : ''">
+        <NuxtLink :to="link()" class="group flex items-center gap-4 rounded-xl bg-white border border-stone-200 p-4 hover:border-primary transition-colors">
+          <UIcon name="i-lucide-house" class="size-8 shrink-0 text-primary" />
+          <span class="min-w-0">
+            <span class="block font-semibold truncate">{{ site.campaign?.name ?? site.name }}</span>
+            <span class="block text-sm text-stone-600">{{ t('manage.home_link') }}</span>
+          </span>
+          <UIcon name="i-lucide-arrow-right" class="size-5 ms-auto shrink-0 text-stone-400 group-hover:text-primary rtl:rotate-180" />
+        </NuxtLink>
+        <NuxtLink v-if="showPray" :to="link('pray')" class="group flex items-center gap-4 rounded-xl bg-white border border-stone-200 p-4 hover:border-primary transition-colors">
+          <UIcon name="i-lucide-book-open" class="size-8 shrink-0 text-primary" />
+          <span class="min-w-0">
+            <span class="block font-semibold">{{ t('nav.pray') }}</span>
+            <span class="block text-sm text-stone-600">{{ prayNote }}</span>
+          </span>
+          <UIcon name="i-lucide-arrow-right" class="size-5 ms-auto shrink-0 text-stone-400 group-hover:text-primary rtl:rotate-180" />
+        </NuxtLink>
+        <a v-if="manage" :href="manage.icsUrl" class="group flex items-center gap-4 rounded-xl bg-white border border-stone-200 p-4 hover:border-primary transition-colors">
+          <UIcon name="i-lucide-calendar-plus" class="size-8 shrink-0 text-primary" />
+          <span class="min-w-0">
+            <span class="block font-semibold">{{ t('manage.calendar_link') }}</span>
+            <span class="block text-sm text-stone-600">{{ t('manage.subscribe_calendar') }}</span>
+          </span>
+          <UIcon name="i-lucide-arrow-right" class="size-5 ms-auto shrink-0 text-stone-400 group-hover:text-primary rtl:rotate-180" />
+        </a>
+      </div>
+    </div>
+
     <h1 class="text-3xl font-bold">{{ t('manage.title') }}</h1>
 
     <div v-if="!manage" class="space-y-4">
@@ -121,7 +161,7 @@ async function deleteData() {
           />
         </section>
         <p class="text-sm">
-          <UButton variant="link" icon="i-lucide-calendar-sync" :href="manage.icsUrl" external :label="t('manage.subscribe_calendar')" />
+          <UButton variant="link" icon="i-lucide-calendar-plus" :href="manage.icsUrl" external :label="t('manage.subscribe_calendar')" />
         </p>
       </section>
 
@@ -183,5 +223,6 @@ async function deleteData() {
         {{ t('manage.all_campaigns') }} <a :href="site.myUrl" class="underline">{{ t('footer.my') }}</a>
       </p>
     </template>
+    <SharePrompt v-model:open="sharePrompt" :title="t('share.prompt_title')" :description="t('share.prompt_body')" />
   </div>
 </template>

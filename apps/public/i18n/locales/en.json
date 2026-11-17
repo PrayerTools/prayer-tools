@@ -274,6 +274,7 @@
     "share_link": "Share a story"
   },
   "manage": {
+    "home_link": "Campaign home page",
     "title": "Your prayer times",
     "intro": "Signed in as {email} for {site}.",
     "signed_out": "Open the link from one of our emails to manage your prayer times here, or use My prayer to see all your campaigns.",
@@ -294,7 +295,8 @@
     "removed": "Prayer time removed",
     "add_time": "Add a prayer time",
     "add_to_calendar": "Add to calendar",
-    "subscribe_calendar": "Subscribe to your prayer times in your calendar",
+    "calendar_link": "Calendar",
+    "subscribe_calendar": "Add your prayer times in your calendar",
     "profile": "Your details",
     "timezone_help": "Changing your time zone keeps your reminders at the same local time.",
     "email_prefs": "Email preferences",

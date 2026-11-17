@@ -271,6 +271,7 @@
     "share_link": "Partager un témoignage"
   },
   "manage": {
+    "home_link": "Page d'accueil de la campagne",
     "title": "Vos moments de prière",
     "intro": "Connecté en tant que {email} pour {site}.",
     "signed_out": "Ouvrez le lien de l'un de nos e-mails pour gérer ici vos moments de prière, ou utilisez Ma prière pour voir toutes vos campagnes.",
@@ -291,7 +292,8 @@
     "removed": "Moment de prière retiré",
     "add_time": "Ajouter un moment de prière",
     "add_to_calendar": "Ajouter au calendrier",
-    "subscribe_calendar": "S'abonner à vos moments de prière dans votre calendrier",
+    "calendar_link": "Calendrier",
+    "subscribe_calendar": "Ajoutez vos moments de prière à votre calendrier",
     "profile": "Vos informations",
     "timezone_help": "Si vous changez de fuseau horaire, vos rappels restent à la même heure locale.",
     "email_prefs": "Préférences e-mail",

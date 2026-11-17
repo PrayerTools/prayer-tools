@@ -1,5 +1,5 @@
-// Calendar feeds for a subscription: the webcal feed of upcoming prayer
-// times and a one-off file per commitment. Runs inside the site's org.
+// Calendar files for a subscription: all its prayer times over the next year,
+// or one commitment's. Runs inside the site's org.
 import type { Tx } from '@prayertools/shared/db/scope'
 import { occurrences, entryNumber } from '@prayertools/shared/schedule'
 import { localDateOf } from '@prayertools/shared/dates'
@@ -11,8 +11,7 @@ import { emailT } from '@prayertools/shared/i18n/email'
 import { buildCalendar, type IcsEvent } from '../lib/ics'
 import type { SiteContext } from './site-context'
 
-const FEED_DAYS = 60
-const MAX_EVENTS = 500
+const CALENDAR_DAYS = 365
 
 async function context(tx: Tx) {
   const site = await tx.selectFrom('pt_site').select(['default_language', 'settings']).executeTakeFirstOrThrow()
@@ -45,7 +44,7 @@ function eventsFor(ctx: SiteContext, sub: SubscriptionRow, c: CommitmentRow, cam
 export async function subscriptionFeed(tx: Tx, ctx: SiteContext, sub: SubscriptionRow): Promise<string> {
   const env = await context(tx)
   const now = new Date()
-  const to = new Date(now.getTime() + FEED_DAYS * 86_400_000)
+  const to = new Date(now.getTime() + CALENDAR_DAYS * 86_400_000)
   const events: IcsEvent[] = []
   if (sub.status === 'active') {
     const rows = await tx.selectFrom('pt_commitment').selectAll().where('subscription_id', '=', sub.id).where('paused', '=', false).where('left_at', 'is', null).execute()
@@ -55,7 +54,7 @@ export async function subscriptionFeed(tx: Tx, ctx: SiteContext, sub: Subscripti
     }
   }
   events.sort((a, b) => a.start.getTime() - b.start.getTime())
-  return buildCalendar(ctx.name, events.slice(0, MAX_EVENTS), now)
+  return buildCalendar(ctx.name, events, now)
 }
 
 export async function commitmentIcs(tx: Tx, ctx: SiteContext, sub: SubscriptionRow, commitmentId: string): Promise<string | null> {
@@ -65,6 +64,6 @@ export async function commitmentIcs(tx: Tx, ctx: SiteContext, sub: SubscriptionR
   const campaign = env.campaigns.find(x => x.id === c.campaign_id)
   if (!campaign) return null
   const now = new Date()
-  const to = new Date(now.getTime() + 90 * 86_400_000)
-  return buildCalendar(ctx.name, eventsFor(ctx, sub, c, campaign, env, now, to).slice(0, 120), now)
+  const to = new Date(now.getTime() + CALENDAR_DAYS * 86_400_000)
+  return buildCalendar(ctx.name, eventsFor(ctx, sub, c, campaign, env, now, to), now)
 }

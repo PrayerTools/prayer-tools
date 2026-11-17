@@ -5,12 +5,13 @@
 // rotates every manage link at once. Manage tokens expire, with a "send me a
 // fresh link" fallback on the page.
 import { platformConfig } from './config'
+import { createHmac, timingSafeEqual } from 'node:crypto'
 import { signJson, verifySignedJson } from './tokens'
 
 export const MANAGE_TOKEN_DAYS = 400
 
 interface LinkPayload {
-  t: 'm' | 'u' | 'p' | 'c' | 'l'
+  t: 'm' | 'u' | 'c' | 'l'
   s: string
   o: string
   k?: string
@@ -41,9 +42,29 @@ export function leaveToken(orgId: string, subscriptionId: string, campaignId: st
 
 // Identifies the person on prayer-content pages opened from a reminder, so
 // praying from those links counts as activity. Carried in the URL fragment,
-// which never reaches the server or the cache.
+// which never reaches the server or the cache. Kept short for reminder texts:
+// `<subscription id>.<signature>`, base64url; the site is signed but not carried.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+function personalSignature(orgId: string, id: Buffer): Buffer {
+  return createHmac('sha256', secret()).update(`p:${orgId}:`).update(id).digest().subarray(0, 16)
+}
+
 export function personalToken(orgId: string, subscriptionId: string): string {
-  return signJson({ t: 'p', s: subscriptionId, o: orgId } satisfies LinkPayload, secret())
+  if (!UUID_RE.test(subscriptionId)) throw new Error('personal token needs a subscription uuid')
+  const id = Buffer.from(subscriptionId.replace(/-/g, ''), 'hex')
+  return `${id.toString('base64url')}.${personalSignature(orgId, id).toString('base64url')}`
+}
+
+// The subscription a personal token names on this site, or null.
+export function parsePersonalToken(token: string | null | undefined, orgId: string): string | null {
+  const [idPart, sigPart, extra] = (token ?? '').split('.')
+  if (!idPart || !sigPart || extra !== undefined) return null
+  const id = Buffer.from(idPart, 'base64url')
+  const sig = Buffer.from(sigPart, 'base64url')
+  if (id.length !== 16 || sig.length !== 16 || !timingSafeEqual(sig, personalSignature(orgId, id))) return null
+  const hex = id.toString('hex')
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
 }
 
 // Manage-session cookie value, set after a manage token is exchanged.

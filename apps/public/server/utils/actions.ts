@@ -8,7 +8,6 @@ import { createWebSignup, leaveCampaign, recordActivity, setSubscriptionStatus, 
 import { findContactByEmail, primaryEmailOf } from '@prayertools/shared/crm'
 import { recordEvent } from '@prayertools/shared/stats'
 import { sitePath } from '@prayertools/shared/paths'
-import { campaignStatus } from '@prayertools/shared/setup'
 import { campaignSegment } from '@prayertools/shared/campaigns'
 import { confirmNotify } from '@prayertools/shared/notify-requests'
 import { unsubscribeEverywhere } from '@prayertools/shared/unsubscribe-all'
@@ -23,6 +22,7 @@ import { grantPlatformNews, staffOrgId } from './staff'
 import { prepareWelcomeMail } from './welcome'
 import { loadSiteData, stateOf } from './site-data'
 import { takeSignupRequest } from './signup-request'
+import { sessionUserId, startAccountSession } from './account-session'
 
 // Renders another page path in place of the requested one.
 export function rewriteView(event: H3Event, path: string, status = 200): void {
@@ -37,6 +37,11 @@ export async function exchangeManageLink(event: H3Event, ctx: SiteContext, token
   if (!sub || sub.manage_version !== link.version) return
   setManageCookie(event, ctx.orgId, sub.id, sub.manage_version)
   return sendRedirect(event, '/manage', 302)
+}
+
+// Opening a link emailed to the address proves the person holds it, as a sign-in link does.
+async function signInSubscriber(event: H3Event, userId: string | null): Promise<void> {
+  if (userId && (await sessionUserId(event)) !== userId) await startAccountSession(event, userId)
 }
 
 // Consent confirmed by opening a signup's email link.
@@ -57,9 +62,7 @@ export async function verifyLink(event: H3Event, ctx: SiteContext, token: string
     if (firstTime) await recordEvent(tx, { campaignId: latest?.campaign_id ?? null, type: 'campaign_signup_verified', meta: { subscription_id: sub.id } })
     const welcome = firstTime ? await prepareWelcomeMail(tx, ctx.orgId, sub) : null
     const campaign = data.campaigns.find(c => c.id === latest?.campaign_id)
-    const joined = campaign
-      ? { slug: campaignSegment(campaign, data.current?.campaign.id), upcoming: campaignStatus(campaign) === 'upcoming' }
-      : null
+    const joined = campaign ? { slug: campaignSegment(campaign, data.current?.campaign.id) } : null
     // News from Prayer.Tools asked for at signup, now that the address is verified.
     let news: { email: string, name: string | null } | null = null
     if (sub.platform_news_requested_at && email && sub.contact_id) {
@@ -72,6 +75,7 @@ export async function verifyLink(event: H3Event, ctx: SiteContext, token: string
   if (!result) return
   const { sub } = result
   setManageCookie(event, ctx.orgId, sub.id, sub.manage_version)
+  await signInSubscriber(event, sub.user_id)
   if (result.news) background(event, grantPlatformNews(result.news.email, result.news.name, signupCapture(event, ctx, sub.language)))
   if (result.firstTime) {
     background(event, deliver(result.welcome))
@@ -83,9 +87,8 @@ export async function verifyLink(event: H3Event, ctx: SiteContext, token: string
       metadata: { subscription_id: sub.id }
     })
   }
-  // Subscribers land on the campaign they just joined: its prayer page, or its
-  // signup page when it has not started yet and has nothing to pray.
-  const path = sitePath({ lang: sub.language, defaultLang: result.defaultLanguage, campaignSlug: result.joined?.slug, page: result.joined?.upcoming ? 'signup' : 'pray' })
+  // Subscribers land on their prayer times, in the campaign they just joined.
+  const path = sitePath({ lang: sub.language, defaultLang: result.defaultLanguage, campaignSlug: result.joined?.slug, page: 'manage' })
   return sendRedirect(event, `${path}?confirmed=1`, 302)
 }
 
@@ -109,16 +112,16 @@ export async function addTimesLink(event: H3Event, ctx: SiteContext, token: stri
       sub: res.subscription,
       welcome: await prepareWelcomeMail(tx, ctx.orgId, res.subscription),
       defaultLanguage: data.site.default_language,
-      slug: campaignSegment(campaign, data.current?.campaign.id),
-      upcoming: state === 'upcoming'
+      slug: campaignSegment(campaign, data.current?.campaign.id)
     }
   })
   if (!result) return sendRedirect(event, '/notice/link_invalid', 302)
   const { sub } = result
   setManageCookie(event, ctx.orgId, sub.id, sub.manage_version)
+  await signInSubscriber(event, sub.user_id)
   if (result.news) background(event, grantPlatformNews(result.news.email, result.news.name, signupCapture(event, ctx, sub.language)))
   background(event, deliver(result.welcome))
-  const path = sitePath({ lang: sub.language, defaultLang: result.defaultLanguage, campaignSlug: result.slug, page: result.upcoming ? 'signup' : 'pray' })
+  const path = sitePath({ lang: sub.language, defaultLang: result.defaultLanguage, campaignSlug: result.slug, page: 'manage' })
   return sendRedirect(event, `${path}?confirmed=1`, 302)
 }
 

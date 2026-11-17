@@ -8,7 +8,7 @@ import type { SessionSource } from '@prayertools/shared/db/schema'
 import { bumpStat } from '@prayertools/shared/stats'
 import { todayIn } from '@prayertools/shared/dates'
 import { recordActivity } from '@prayertools/shared/subscriptions'
-import { parseLink } from '@prayertools/shared/links'
+import { parsePersonalToken } from '@prayertools/shared/links'
 import type { H3Event } from 'h3'
 import { managedSubscription } from './manage'
 
@@ -91,9 +91,9 @@ export async function markAmen(tx: Tx, id: string): Promise<boolean> {
 // The subscriber a pray-page request belongs to: the personal token from a
 // reminder link, else the manage cookie set when they confirmed or managed.
 export async function prayingSubscription(tx: Tx, event: H3Event, orgId: string, token: unknown): Promise<string | null> {
-  const link = typeof token === 'string' ? parseLink(token, 'p') : null
-  if (link && link.orgId === orgId) {
-    const sub = await tx.selectFrom('pt_subscription').select('id').where('id', '=', link.subscriptionId).where('anonymized_at', 'is', null).executeTakeFirst()
+  const subscriptionId = typeof token === 'string' ? parsePersonalToken(token, orgId) : null
+  if (subscriptionId) {
+    const sub = await tx.selectFrom('pt_subscription').select('id').where('id', '=', subscriptionId).where('anonymized_at', 'is', null).executeTakeFirst()
     if (sub) return sub.id
   }
   return (await managedSubscription(tx, event, orgId))?.id ?? null

@@ -271,6 +271,7 @@
     "share_link": "Comparte un testimonio"
   },
   "manage": {
+    "home_link": "Página de inicio de la campaña",
     "title": "Tus horarios de oración",
     "intro": "Sesión iniciada como {email} en {site}.",
     "signed_out": "Abre el enlace de uno de nuestros correos para administrar aquí tus horarios de oración, o usa Mi oración para ver todas tus campañas.",
@@ -291,7 +292,8 @@
     "removed": "Horario de oración eliminado",
     "add_time": "Agregar un horario de oración",
     "add_to_calendar": "Agregar al calendario",
-    "subscribe_calendar": "Suscríbete a tus horarios de oración en tu calendario",
+    "calendar_link": "Calendario",
+    "subscribe_calendar": "Añade tus horarios de oración a tu calendario",
     "profile": "Tus datos",
     "timezone_help": "Si cambias tu zona horaria, tus recordatorios se mantienen a la misma hora local.",
     "email_prefs": "Preferencias de correo",
