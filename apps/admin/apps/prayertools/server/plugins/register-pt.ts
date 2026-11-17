@@ -67,6 +67,7 @@ export default defineNitroPlugin(() => {
   registerAdminSection({ appId: 'pt', title: 'Libraries', path: '/admin/pt/libraries', icon: 'i-lucide-library', order: 22 })
   registerAdminSection({ appId: 'pt', title: 'Stories', path: '/admin/pt/stories', icon: 'i-lucide-heart-handshake', order: 23 })
   registerAdminSection({ appId: 'pt', title: 'Reports', path: '/admin/pt/reports', icon: 'i-lucide-flag', order: 24 })
+  registerAdminSection({ appId: 'pt', title: 'Help requests', path: '/admin/pt/help-requests', icon: 'i-lucide-life-buoy', order: 24.5 })
   registerAdminSection({ appId: 'pt', title: 'Jobs', path: '/admin/pt/jobs', icon: 'i-lucide-list-restart', order: 25 })
   registerAdminSection({ appId: 'pt', title: 'Exports', path: '/admin/pt/exports', icon: 'i-lucide-file-down', order: 26 })
 

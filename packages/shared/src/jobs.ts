@@ -14,6 +14,7 @@ export type JobType =
   | 'domain_alert'
   | 'export'
   | 'push_announcement'
+  | 'help_request_alert'
 
 export interface EnqueueOptions {
   orgId?: string | null
