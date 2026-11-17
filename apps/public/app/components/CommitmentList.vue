@@ -2,7 +2,7 @@
 // A person's prayer times with edit / pause / remove, and adding a new one.
 // The parent performs the API calls.
 import type { CommitmentView } from '~~/shared/view'
-import { describeRule, formatMinutes, newCommitment, type CommitmentInput } from '~/utils/commitment'
+import { describeRule, formatMinutes, formatTime, newCommitment, weekdayList, type CommitmentInput } from '~/utils/commitment'
 
 const props = defineProps<{
   commitments: CommitmentView[]
@@ -45,49 +45,77 @@ function save() {
   adding.value = false
 }
 
-function dateList(c: CommitmentView): string {
-  const fmt = new Intl.DateTimeFormat(props.lang, { dateStyle: 'medium', timeStyle: 'short', timeZone: c.timezone })
-  return c.dates.map(d => fmt.format(new Date(d))).join(', ')
+function dateList(c: CommitmentView): string[] {
+  const fmt = new Intl.DateTimeFormat(props.lang, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: c.timezone })
+  return c.dates.map(d => fmt.format(new Date(d)))
+}
+
+function days(c: CommitmentView): string {
+  return c.frequency === 'daily' ? t('commitment.daily') : weekdayList(c.daysOfWeek, props.lang)
+}
+
+function details(c: CommitmentView): string {
+  return [c.durationMin ? formatMinutes(c.durationMin, props.lang) : null, c.timezone].filter(Boolean).join(' · ')
+}
+
+function menu(c: CommitmentView) {
+  return [
+    [
+      { label: c.paused ? t('manage.resume') : t('manage.pause'), icon: c.paused ? 'i-lucide-play' : 'i-lucide-pause', onSelect: () => emit('pause', c.id, !c.paused) },
+      ...(props.icsBase ? [{ label: t('manage.add_to_calendar'), icon: 'i-lucide-calendar-plus', to: `${props.icsBase}/${c.id}.ics`, external: true }] : [])
+    ],
+    [{ label: t('manage.remove'), icon: 'i-lucide-trash-2', color: 'error' as const, onSelect: () => emit('remove', c.id) }]
+  ]
 }
 </script>
 
 <template>
-  <div class="space-y-3">
-    <p v-if="!commitments.length" class="text-stone-600">{{ t('manage.no_times') }}</p>
-    <ul class="space-y-3">
-      <li v-for="c in commitments" :key="c.id" class="rounded-lg border border-stone-200 bg-white p-4 space-y-3">
-        <div class="flex flex-wrap items-start gap-2">
-          <div class="me-auto">
-            <p class="font-medium">{{ describeRule(c, lang, t) }}</p>
-            <p class="text-sm text-stone-600">
-              {{ c.timezone }}<template v-if="c.durationMin"> · {{ formatMinutes(c.durationMin, lang) }}</template>
+  <div>
+    <p v-if="!commitments.length && !adding" class="py-4 text-stone-600">{{ t('manage.no_times') }}</p>
+    <ul>
+      <li v-for="c in commitments" :key="c.id" class="py-4 space-y-4 border-stone-200 not-first:border-t">
+        <div class="flex flex-wrap items-start gap-x-4 gap-y-3">
+          <p v-if="c.kind === 'recurring'" class="w-28 shrink-0 text-2xl font-semibold leading-8 tabular-nums" :class="c.paused && 'text-stone-500'">
+            {{ formatTime(c.time, lang) }}
+          </p>
+          <div class="min-w-0 flex-1 basis-40">
+            <p class="flex flex-wrap items-center gap-2 font-medium leading-8">
+              {{ c.kind === 'recurring' ? days(c) : describeRule(c, lang, t) }}
+              <UBadge v-if="c.paused" color="warning" variant="soft" size="sm" icon="i-lucide-pause" :label="t('manage.paused')" />
             </p>
-            <p v-if="c.kind === 'dates'" class="text-sm text-stone-600">{{ dateList(c) }}</p>
+            <p class="text-sm text-stone-600">{{ details(c) }}</p>
           </div>
-          <UBadge v-if="c.paused" color="warning" variant="soft" :label="t('manage.paused')" />
+          <div v-if="!c.campaignEnded && editing !== c.id" class="flex items-center gap-1 ms-auto">
+            <UButton v-if="c.kind === 'recurring'" size="sm" variant="outline" color="neutral" icon="i-lucide-pencil" :label="t('manage.change')" @click="startEdit(c)" />
+            <UDropdownMenu :items="menu(c)" :content="{ align: 'end' }">
+              <UButton size="sm" variant="ghost" color="neutral" icon="i-lucide-ellipsis" :aria-label="t('manage.more_actions')" :title="t('manage.more_actions')" />
+            </UDropdownMenu>
+          </div>
         </div>
-        <div v-if="editing === c.id" class="space-y-3">
+        <ul v-if="c.kind === 'dates' && c.dates.length" class="flex flex-wrap gap-1.5">
+          <li v-for="d in dateList(c)" :key="d" class="rounded-md bg-[color-mix(in_srgb,currentColor_6%,transparent)] px-2 py-0.5 text-sm tabular-nums">{{ d }}</li>
+        </ul>
+        <div v-if="editing === c.id" class="space-y-4 rounded-lg bg-[color-mix(in_srgb,currentColor_4%,transparent)] p-4">
           <CommitmentFields v-model="draft" :duration-rule="durationRule" :durations="durations" :id-prefix="`e-${c.id}`" :lang="lang" />
           <div class="flex gap-2">
             <UButton :loading="busy" :label="t('common.save')" @click="save" />
             <UButton variant="ghost" color="neutral" :label="t('common.cancel')" @click="editing = null" />
           </div>
         </div>
-        <div v-else-if="!c.campaignEnded" class="flex flex-wrap gap-2">
-          <UButton v-if="c.kind === 'recurring'" size="sm" variant="outline" icon="i-lucide-pencil" :label="t('manage.change')" @click="startEdit(c)" />
-          <UButton size="sm" variant="outline" :icon="c.paused ? 'i-lucide-play' : 'i-lucide-pause'" :label="c.paused ? t('manage.resume') : t('manage.pause')" @click="emit('pause', c.id, !c.paused)" />
-          <UButton size="sm" variant="outline" color="error" icon="i-lucide-trash-2" :label="t('manage.remove')" @click="emit('remove', c.id)" />
-          <UButton v-if="icsBase" size="sm" variant="ghost" color="neutral" icon="i-lucide-calendar-plus" :label="t('manage.add_to_calendar')" :href="`${icsBase}/${c.id}.ics`" external />
-        </div>
       </li>
     </ul>
-    <div v-if="adding" class="rounded-lg border border-stone-200 bg-white p-4 space-y-3">
+    <div v-if="adding" class="space-y-4 border-stone-200 py-4" :class="commitments.length > 0 && 'border-t'">
       <CommitmentFields v-model="draft" :duration-rule="durationRule" :durations="durations" id-prefix="new" :lang="lang" />
       <div class="flex gap-2">
         <UButton :loading="busy" :label="t('manage.add_time')" @click="save" />
         <UButton variant="ghost" color="neutral" :label="t('common.cancel')" @click="adding = false" />
       </div>
     </div>
-    <UButton v-else-if="canAdd" variant="outline" icon="i-lucide-plus" :label="t('manage.add_time')" @click="startAdd" />
+    <div v-else-if="canAdd || $slots.end" class="flex flex-wrap items-center gap-2 border-stone-200 py-3" :class="commitments.length > 0 && 'border-t'">
+      <UButton v-if="canAdd" variant="ghost" icon="i-lucide-plus" class="-ms-2.5" :label="t('manage.add_time')" @click="startAdd" />
+      <div v-if="$slots.end" class="ms-auto">
+        <slot name="end" />
+      </div>
+    </div>
   </div>
 </template>

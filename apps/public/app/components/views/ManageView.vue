@@ -22,7 +22,7 @@ const confirmed = computed(() => route.query.confirmed === '1')
 const sharePrompt = ref(false)
 const prayNote = computed(() => site.value.campaign?.state === 'upcoming' && site.value.campaign.startDate ? t('landing.starts_on', { date: date(site.value.campaign.startDate) }) : t('landing.pray_today'))
 const showPray = computed(() => site.value.status !== 'archived' && (site.value.campaign?.state === 'active' || site.value.campaign?.state === 'upcoming'))
-const topLinkCount = computed(() => 1 + (showPray.value ? 1 : 0) + (props.manage ? 1 : 0))
+const campaigns = computed(() => [...(props.manage?.campaigns ?? [])].sort((a, b) => Number(a.state === 'ended') - Number(b.state === 'ended')))
 
 onMounted(() => {
   if (confirmed.value && site.value.settings.sharePrompts) setTimeout(() => (sharePrompt.value = true), 1200)
@@ -77,65 +77,61 @@ async function deleteData() {
 </script>
 
 <template>
-  <div class="max-w-3xl mx-auto px-4 py-10 space-y-10">
-    <div class="space-y-4">
-      <UAlert v-if="confirmed" color="success" variant="soft" icon="i-lucide-badge-check" :title="t('pray.confirmed_title')" :description="t('pray.confirmed_body')" role="status" />
-      <div class="grid gap-3" :class="topLinkCount === 3 ? 'sm:grid-cols-3' : topLinkCount === 2 ? 'sm:grid-cols-2' : ''">
-        <NuxtLink :to="link()" class="group flex items-center gap-4 rounded-xl bg-white border border-stone-200 p-4 hover:border-primary transition-colors">
-          <UIcon name="i-lucide-house" class="size-8 shrink-0 text-primary" />
-          <span class="min-w-0">
-            <span class="block font-semibold truncate">{{ site.campaign?.name ?? site.name }}</span>
-            <span class="block text-sm text-stone-600">{{ t('manage.home_link') }}</span>
-          </span>
-          <UIcon name="i-lucide-arrow-right" class="size-5 ms-auto shrink-0 text-stone-400 group-hover:text-primary rtl:rotate-180" />
-        </NuxtLink>
-        <NuxtLink v-if="showPray" :to="link('pray')" class="group flex items-center gap-4 rounded-xl bg-white border border-stone-200 p-4 hover:border-primary transition-colors">
-          <UIcon name="i-lucide-book-open" class="size-8 shrink-0 text-primary" />
-          <span class="min-w-0">
-            <span class="block font-semibold">{{ t('nav.pray') }}</span>
-            <span class="block text-sm text-stone-600">{{ prayNote }}</span>
-          </span>
-          <UIcon name="i-lucide-arrow-right" class="size-5 ms-auto shrink-0 text-stone-400 group-hover:text-primary rtl:rotate-180" />
-        </NuxtLink>
-        <a v-if="manage" :href="manage.icsUrl" class="group flex items-center gap-4 rounded-xl bg-white border border-stone-200 p-4 hover:border-primary transition-colors">
-          <UIcon name="i-lucide-calendar-plus" class="size-8 shrink-0 text-primary" />
-          <span class="min-w-0">
-            <span class="block font-semibold">{{ t('manage.calendar_link') }}</span>
-            <span class="block text-sm text-stone-600">{{ t('manage.subscribe_calendar') }}</span>
-          </span>
-          <UIcon name="i-lucide-arrow-right" class="size-5 ms-auto shrink-0 text-stone-400 group-hover:text-primary rtl:rotate-180" />
-        </a>
+  <div>
+    <div class="border-b border-stone-200 bg-white">
+      <div class="max-w-5xl mx-auto px-4 py-8 sm:py-10 space-y-5">
+        <UAlert v-if="confirmed" color="success" variant="soft" icon="i-lucide-badge-check" :title="t('pray.confirmed_title')" :description="t('pray.confirmed_body')" role="status" />
+        <div class="flex flex-wrap items-end justify-between gap-x-8 gap-y-5">
+          <div class="min-w-0 space-y-2">
+            <h1 class="text-3xl sm:text-4xl font-bold tracking-tight text-balance">{{ t('manage.title') }}</h1>
+            <p v-if="manage" class="text-stone-600">{{ t('manage.intro', { email: manage.email ?? '', site: site.name }) }}</p>
+          </div>
+          <div v-if="showPray" class="flex flex-col items-start gap-1.5 sm:items-end">
+            <UButton :to="link('pray')" size="lg" icon="i-lucide-book-open" trailing-icon="i-lucide-arrow-right" :ui="{ trailingIcon: 'rtl:rotate-180' }" :label="t('nav.pray')" />
+            <span class="text-sm text-stone-600">{{ prayNote }}</span>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+          <NuxtLink :to="link()" class="inline-flex items-center gap-1.5 font-medium text-primary underline-offset-4 hover:underline">
+            <UIcon name="i-lucide-house" class="size-4 shrink-0" />{{ site.campaign?.name ?? site.name }} · {{ t('manage.home_link') }}
+          </NuxtLink>
+          <a v-if="manage" :href="manage.icsUrl" class="inline-flex items-center gap-1.5 font-medium text-primary underline-offset-4 hover:underline">
+            <UIcon name="i-lucide-calendar-plus" class="size-4 shrink-0" />{{ t('manage.subscribe_calendar') }}
+          </a>
+        </div>
       </div>
     </div>
 
-    <h1 class="text-3xl font-bold">{{ t('manage.title') }}</h1>
-
-    <div v-if="!manage" class="space-y-4">
-      <p class="text-stone-700">{{ signedInAs ? t('manage.signed_in_empty', { email: signedInAs, site: site.name }) : t('manage.signed_out') }}</p>
-      <div class="flex flex-wrap gap-2">
-        <UButton v-if="signedInAs && signupOpen" :to="link('signup')" :label="st('landing.signup.title')" />
-        <UButton :href="site.myUrl" external :variant="signedInAs && signupOpen ? 'outline' : 'solid'" :label="t('footer.my')" />
+    <div v-if="!manage" class="max-w-5xl mx-auto px-4 py-8 sm:py-10">
+      <div class="max-w-2xl rounded-xl border border-stone-200 bg-white p-5 sm:p-6 space-y-4">
+        <p class="text-stone-700">{{ signedInAs ? t('manage.signed_in_empty', { email: signedInAs, site: site.name }) : t('manage.signed_out') }}</p>
+        <div class="flex flex-wrap gap-2">
+          <UButton v-if="signedInAs && signupOpen" :to="link('signup')" :label="st('landing.signup.title')" />
+          <UButton :href="site.myUrl" external :variant="signedInAs && signupOpen ? 'outline' : 'solid'" :label="t('footer.my')" />
+        </div>
       </div>
     </div>
 
-    <template v-else>
-      <p class="text-stone-700">{{ t('manage.intro', { email: manage.email ?? '', site: site.name }) }}</p>
-      <UAlert v-if="!manage.verified" color="warning" variant="soft" icon="i-lucide-mail" :title="t('manage.unverified')" />
-      <UAlert
-        v-if="manage.status === 'unsubscribed'"
-        color="neutral"
-        variant="soft"
-        icon="i-lucide-bell-off"
-        :title="t('manage.status_unsubscribed')"
-        :actions="[{ label: t('manage.resubscribe'), onClick: () => setStatus('active') }]"
-      />
-      <UAlert v-else-if="manage.status === 'inactive'" color="warning" variant="soft" :title="t('manage.status_inactive')" :actions="[{ label: t('manage.resubscribe'), onClick: () => setStatus('active') }]" />
-
-      <section aria-labelledby="times-title" class="space-y-4">
-        <h2 id="times-title" class="text-xl font-semibold">{{ t('manage.times') }}</h2>
-        <p v-if="!manage.campaigns.length" class="text-stone-600">{{ t('manage.no_times') }}</p>
-        <section v-for="c in manage.campaigns" :key="c.id" :aria-labelledby="`campaign-${c.id}`" class="space-y-3">
-          <h3 :id="`campaign-${c.id}`" class="font-semibold">{{ c.name }}</h3>
+    <div v-else class="max-w-5xl mx-auto px-4 py-8 sm:py-10 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <section aria-labelledby="times-title" class="space-y-6">
+        <h2 id="times-title" class="sr-only">{{ t('manage.times') }}</h2>
+        <div v-if="!manage.verified || manage.status !== 'active'" class="space-y-3">
+          <UAlert v-if="!manage.verified" color="warning" variant="soft" icon="i-lucide-mail" :title="t('manage.unverified')" />
+          <UAlert
+            v-if="manage.status === 'unsubscribed'"
+            color="neutral"
+            variant="soft"
+            icon="i-lucide-bell-off"
+            :title="t('manage.status_unsubscribed')"
+            :actions="[{ label: t('manage.resubscribe'), onClick: () => setStatus('active') }]"
+          />
+          <UAlert v-else-if="manage.status === 'inactive'" color="warning" variant="soft" icon="i-lucide-bell-off" :title="t('manage.status_inactive')" :actions="[{ label: t('manage.resubscribe'), onClick: () => setStatus('active') }]" />
+        </div>
+        <p v-if="!campaigns.length" class="rounded-xl border border-stone-200 bg-white p-5 text-stone-600">{{ t('manage.no_times') }}</p>
+        <SectionCard v-for="c in campaigns" :key="c.id" :title="c.name" :title-id="`campaign-${c.id}`" :level="3" :muted="c.state === 'ended'">
+          <template v-if="c.state === 'ended'" #badge>
+            <UBadge color="neutral" variant="soft" size="sm" :label="t('manage.ended')" />
+          </template>
           <CommitmentList
             :commitments="c.commitments"
             :duration-rule="c.durationRule"
@@ -149,61 +145,60 @@ async function deleteData() {
             @update="update"
             @pause="pause"
             @remove="remove"
-          />
-          <UButton
-            v-if="c.state !== 'ended' && c.commitments.length"
-            size="sm"
-            variant="link"
-            color="neutral"
-            icon="i-lucide-log-out"
-            :label="t('manage.leave', { campaign: c.name })"
-            @click="askLeave(c)"
-          />
-        </section>
-        <p class="text-sm">
-          <UButton variant="link" icon="i-lucide-calendar-plus" :href="manage.icsUrl" external :label="t('manage.subscribe_calendar')" />
-        </p>
-      </section>
-
-      <section aria-labelledby="profile-title" class="space-y-4">
-        <h2 id="profile-title" class="text-xl font-semibold">{{ t('manage.profile') }}</h2>
-        <div class="grid gap-4 sm:grid-cols-2">
-          <UFormField :label="t('signup.name')" name="m-name">
-            <UInput v-model="profile.name" autocomplete="name" :disabled="manage.accountLinked" class="w-full" />
-            <template v-if="manage.accountLinked" #help>
-              {{ t('manage.name_on_my') }} <a :href="site.myUrl" class="underline">{{ t('footer.my') }}</a>
+          >
+            <template v-if="c.state !== 'ended' && c.commitments.length" #end>
+              <UButton size="sm" variant="link" color="neutral" icon="i-lucide-log-out" :label="t('manage.leave', { campaign: c.name })" @click="askLeave(c)" />
             </template>
-          </UFormField>
-          <UFormField v-if="languageItems.length > 1" :label="t('signup.language')" name="m-language">
-            <USelect v-model="profile.language" :items="languageItems" :icon="languageFlag(profile.language)" class="w-full" />
-          </UFormField>
-          <UFormField :label="t('signup.timezone')" name="m-timezone" :help="t('manage.timezone_help')">
-            <USelectMenu v-model="profile.timezone" :items="tzItems" class="w-full" />
-          </UFormField>
-        </div>
-        <UButton :loading="busy" :label="t('common.save')" @click="saveProfile" />
+          </CommitmentList>
+        </SectionCard>
       </section>
 
-      <section aria-labelledby="consent-title" class="space-y-3">
-        <h2 id="consent-title" class="text-xl font-semibold">{{ t('manage.email_prefs') }}</h2>
-        <USwitch
-          v-for="c in manage.consents"
-          :key="c.key"
-          :model-value="c.granted"
-          :label="c.label || t('consent.site_updates', { site: site.name })"
-          @update:model-value="v => setConsent(c.key, !!v)"
-        />
-        <p class="text-xs text-stone-500">{{ t('manage.reminders_separate') }}</p>
-      </section>
+      <aside class="space-y-6">
+        <SectionCard :title="t('manage.profile')" title-id="profile-title">
+          <div class="space-y-5 py-5">
+            <UFormField :label="t('signup.name')" name="m-name">
+              <UInput v-model="profile.name" autocomplete="name" :disabled="manage.accountLinked" class="w-full" />
+              <template v-if="manage.accountLinked" #help>
+                {{ t('manage.name_on_my') }} <a :href="site.myUrl" class="underline">{{ t('footer.my') }}</a>
+              </template>
+            </UFormField>
+            <UFormField v-if="languageItems.length > 1" :label="t('signup.language')" name="m-language">
+              <USelect v-model="profile.language" :items="languageItems" :icon="languageFlag(profile.language)" class="w-full" />
+            </UFormField>
+            <UFormField :label="t('signup.timezone')" name="m-timezone" :help="t('manage.timezone_help')">
+              <USelectMenu v-model="profile.timezone" :items="tzItems" class="w-full" />
+            </UFormField>
+          </div>
+          <template #footer>
+            <UButton :loading="busy" :label="t('common.save')" @click="saveProfile" />
+          </template>
+        </SectionCard>
 
-      <section aria-labelledby="data-title" class="space-y-3">
-        <h2 id="data-title" class="text-xl font-semibold">{{ t('manage.your_data') }}</h2>
-        <div class="flex flex-wrap gap-2">
-          <UButton variant="outline" icon="i-lucide-download" href="/api/manage/export" external :label="t('manage.download')" />
-          <UButton v-if="manage.status !== 'unsubscribed'" variant="outline" color="neutral" icon="i-lucide-bell-off" :label="t('manage.unsubscribe')" @click="setStatus('unsubscribed')" />
-          <UButton variant="outline" color="error" icon="i-lucide-trash-2" :label="t('manage.delete')" @click="confirmDelete = true" />
-        </div>
-      </section>
+        <SectionCard :title="t('manage.email_prefs')" title-id="consent-title">
+          <div class="space-y-3 py-5">
+            <USwitch
+              v-for="c in manage.consents"
+              :key="c.key"
+              :model-value="c.granted"
+              :label="c.label || t('consent.site_updates', { site: site.name })"
+              @update:model-value="v => setConsent(c.key, !!v)"
+            />
+            <p class="text-sm text-stone-600">{{ t('manage.reminders_separate') }}</p>
+          </div>
+        </SectionCard>
+
+        <SectionCard :title="t('manage.your_data')" title-id="data-title">
+          <div class="flex flex-col items-start gap-1 py-4">
+            <UButton variant="ghost" color="neutral" icon="i-lucide-download" href="/api/manage/export" external class="-ms-2.5" :label="t('manage.download')" />
+            <UButton v-if="manage.status !== 'unsubscribed'" variant="ghost" color="neutral" icon="i-lucide-bell-off" class="-ms-2.5" :label="t('manage.unsubscribe')" @click="setStatus('unsubscribed')" />
+            <UButton variant="ghost" color="error" icon="i-lucide-trash-2" class="-ms-2.5" :label="t('manage.delete')" @click="confirmDelete = true" />
+          </div>
+        </SectionCard>
+
+        <p class="px-1 text-sm text-stone-600">
+          {{ t('manage.all_campaigns') }} <a :href="site.myUrl" class="font-medium underline underline-offset-4">{{ t('footer.my') }}</a>
+        </p>
+      </aside>
 
       <UModal v-model:open="leaveOpen" :title="t('manage.leave_confirm_title', { campaign: leaving?.name ?? '' })" :description="t('manage.leave_confirm_body', { campaign: leaving?.name ?? '', site: site.name })">
         <template #footer>
@@ -218,11 +213,7 @@ async function deleteData() {
           <UButton variant="ghost" color="neutral" :label="t('common.cancel')" @click="confirmDelete = false" />
         </template>
       </UModal>
-
-      <p class="text-sm border-t border-stone-200 pt-6">
-        {{ t('manage.all_campaigns') }} <a :href="site.myUrl" class="underline">{{ t('footer.my') }}</a>
-      </p>
-    </template>
+    </div>
     <SharePrompt v-model:open="sharePrompt" :title="t('share.prompt_title')" :description="t('share.prompt_body')" />
   </div>
 </template>

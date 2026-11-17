@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import type { ViewResponse, SiteView } from '~~/shared/view'
 import { SITE_KEY } from '~/composables/useSite'
+import { brandColor, brandForeground } from '@prayertools/shared/colors'
+
+// Button fill and its text for each color mode; main.css and dark-theme.css pick the pair for the mode.
+function brandPrimaryVars(color: string): string {
+  const light = brandForeground(color)
+  const dark = brandForeground(color, '#202c3a')
+  return `--brand-primary:${light};--brand-on-primary:${brandColor(light).textColor};--brand-primary-dark:${dark};--brand-on-primary-dark:${brandColor(dark).textColor}`
+}
 
 const route = useRoute()
 const event = import.meta.server ? useRequestEvent() : null
@@ -26,7 +34,7 @@ useHead(() => {
   }
   const s = v.site
   return {
-    htmlAttrs: { lang: s.lang, dir: s.dir, style: `--brand:${s.brand.color};--brand-text:${s.brand.text};--ui-text-inverted:${s.brand.text}` },
+    htmlAttrs: { lang: s.lang, dir: s.dir, style: `--brand:${s.brand.color};--brand-text:${s.brand.text};${brandPrimaryVars(s.brand.color)}` },
     link: v.canonical && v.cache === 'shared' ? [{ rel: 'canonical', href: v.canonical }] : [],
     meta: [
       { name: 'description', content: s.description },

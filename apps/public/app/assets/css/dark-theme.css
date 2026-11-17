@@ -13,6 +13,11 @@
   --ui-border-muted: #304155;
   --ui-border-accented: #647892;
 }
+/* `:root.dark` outranks main.css's `:root`, which loads after this file. */
+:root.dark {
+  --ui-primary: var(--brand-primary-dark, var(--brand));
+  --ui-text-inverted: var(--brand-on-primary-dark, var(--ui-color-neutral-900));
+}
 .dark body { background: #141c26; color: #e2e8f0; }
 .dark :is(.bg-white, .bg-stone-50, .bg-stone-100) { background-color: #202c3a; }
 .dark :is(.bg-stone-200) { background-color: #405269; }

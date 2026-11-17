@@ -32,21 +32,23 @@ export function timezones(): string[] {
   return ['UTC']
 }
 
+// "Monday, Wednesday and Friday" for a list of weekdays (0 = Sunday).
+export function weekdayList(days: number[], lang: string): string {
+  const fmt = new Intl.DateTimeFormat(lang, { weekday: 'long', timeZone: 'UTC' })
+  const names = days.slice().sort().map(d => fmt.format(new Date(Date.UTC(2024, 0, 7 + d))))
+  try {
+    return new Intl.ListFormat(lang, { type: 'conjunction' }).format(names)
+  } catch {
+    return names.join(', ')
+  }
+}
+
 // "Daily at 07:00" style summary of a rule.
 export function describeRule(c: { kind?: string, frequency: string | null, daysOfWeek?: number[], days_of_week?: number[], time: string, dates?: string[] }, lang: string, t: (k: string, p?: Record<string, unknown>) => string): string {
   const time = formatTime(c.time, lang)
   if (c.kind === 'dates') return t('commitment.dates_summary', { n: c.dates?.length ?? 0 })
   if (c.frequency === 'daily') return t('commitment.daily_at', { time })
-  const days = (c.daysOfWeek ?? c.days_of_week ?? []).slice().sort()
-  const fmt = new Intl.DateTimeFormat(lang, { weekday: 'long', timeZone: 'UTC' })
-  const names = days.map(d => fmt.format(new Date(Date.UTC(2024, 0, 7 + d))))
-  let list = names.join(', ')
-  try {
-    list = new Intl.ListFormat(lang, { type: 'conjunction' }).format(names)
-  } catch {
-    // ListFormat unavailable
-  }
-  return t('commitment.weekly_at', { days: list, time })
+  return t('commitment.weekly_at', { days: weekdayList(c.daysOfWeek ?? c.days_of_week ?? [], lang), time })
 }
 
 export function formatTime(hhmm: string, lang: string): string {
