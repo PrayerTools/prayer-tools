@@ -1,6 +1,6 @@
 # prayer.tools v3 — with orgs
 
-Implementation of the plans in [plans/](plans/): each site is a Nuxtinator org; the admin app is Nuxtinator (core, tenancy, email-mailgun, oauth, mcp, ai, crm, inbox) plus a prayer.tools layer and a marketing layer; the public server and the worker are separate processes on the same Postgres. The mobile app is not part of this repo.
+Implementation of the plans in [plans/](plans/): each site is a Nuxtinator org; the admin app is Nuxtinator (core, tenancy, email-mailgun, oauth, mcp, ai, records, crm, inbox) plus a prayer.tools layer and a marketing layer; the public server and the worker are separate processes on the same Postgres. The mobile app is not part of this repo.
 
 ## Layout
 

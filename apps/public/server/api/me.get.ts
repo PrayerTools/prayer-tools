@@ -20,7 +20,7 @@ export default defineEventHandler(async (event) => {
     const sub = await managedSubscription(tx, event, ctx.orgId)
     if (!sub) return { referral_code: null, email: signedIn?.email ?? null, name: signedIn?.name ?? null, account: signedIn, campaigns: [], admin }
     const email = sub.contact_id ? await primaryEmailOf(tx, sub.contact_id) : null
-    const contact = sub.contact_id ? await tx.selectFrom('crm_records').select('name').where('id', '=', sub.contact_id).executeTakeFirst() : null
+    const contact = sub.contact_id ? await tx.selectFrom('records_entries').select('name').where('id', '=', sub.contact_id).executeTakeFirst() : null
     const campaigns = sub.status === 'active'
       ? (await tx.selectFrom('pt_commitment').select('campaign_id').distinct().where('subscription_id', '=', sub.id).execute()).map(r => r.campaign_id)
       : []

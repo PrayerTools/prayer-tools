@@ -104,7 +104,7 @@ function firstNameOf(name: string | null | undefined, address: string): string |
 function members(tx: Tx, orgId: string) {
   return tx
     .selectFrom('pt_subscription as s')
-    .innerJoin('crm_records as r', 'r.id', 's.contact_id')
+    .innerJoin('records_entries as r', 'r.id', 's.contact_id')
     .innerJoin('crm_contact_channels as cc', 'cc.record_id', 'r.id')
     .innerJoin('crm_channels as ch', 'ch.id', 'cc.channel_id')
     .select(['r.id as contactId', 'ch.id as channelId', 'ch.value as address', 's.language as language', 's.created_at as joinedAt', 'r.name as name'])
@@ -126,7 +126,7 @@ async function campaignMembers(tx: Tx, orgId: string, campaignId: string): Promi
 async function waitingMembers(tx: Tx, orgId: string, campaignId: string): Promise<Member[]> {
   const rows = await tx
     .selectFrom('pt_notify_request as n')
-    .innerJoin('crm_records as r', 'r.id', 'n.contact_id')
+    .innerJoin('records_entries as r', 'r.id', 'n.contact_id')
     .innerJoin('crm_contact_channels as cc', 'cc.record_id', 'r.id')
     .innerJoin('crm_channels as ch', 'ch.id', 'cc.channel_id')
     .distinctOn('r.id')
@@ -148,7 +148,7 @@ async function consentMembers(tx: Tx, orgId: string, purpose: string, defaultLan
     .selectFrom('crm_channel_consents as k')
     .innerJoin('crm_channels as ch', 'ch.id', 'k.channel_id')
     .innerJoin('crm_contact_channels as cc', 'cc.channel_id', 'ch.id')
-    .innerJoin('crm_records as r', 'r.id', 'cc.record_id')
+    .innerJoin('records_entries as r', 'r.id', 'cc.record_id')
     .leftJoin('pt_subscription as s', 's.contact_id', 'r.id')
     .select(['r.id as contactId', 'ch.id as channelId', 'ch.value as address', 's.language as language', 's.created_at as subCreated', 'r.created_at as contactCreated', 'r.name as name'])
     .where('k.org_id', '=', orgId)

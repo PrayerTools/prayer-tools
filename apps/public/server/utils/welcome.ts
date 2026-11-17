@@ -16,7 +16,7 @@ export async function prepareWelcomeMail(tx: Tx, orgId: string, sub: Subscriptio
   if (!email) return null
   const site = await tx.selectFrom('pt_site').select(['languages', 'default_language']).executeTakeFirstOrThrow()
   const lang = site.languages.includes(sub.language) ? sub.language : site.default_language
-  const contact = await tx.selectFrom('crm_records').select('name').where('id', '=', sub.contact_id).executeTakeFirst()
+  const contact = await tx.selectFrom('records_entries').select('name').where('id', '=', sub.contact_id).executeTakeFirst()
   const commitments = await tx.selectFrom('pt_commitment').selectAll().where('subscription_id', '=', sub.id).where('left_at', 'is', null).orderBy('created_at').execute()
   const campaigns = await loadCampaigns(tx)
   const campaign = campaigns.find(c => c.id === commitments.at(-1)?.campaign_id) ?? pickCurrentCampaign(campaigns)?.campaign

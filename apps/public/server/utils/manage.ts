@@ -101,7 +101,7 @@ function manageCampaigns(campaigns: CampaignRow[], commitments: CommitmentView[]
 }
 
 export async function manageView(tx: Tx, ctx: SiteContext, sub: SubscriptionRow, campaigns: CampaignRow[], siteDefaultDuration: number, lang: string, fallback: string): Promise<ManageView> {
-  const contact = sub.contact_id ? await tx.selectFrom('crm_records').select(['name']).where('id', '=', sub.contact_id).executeTakeFirst() : null
+  const contact = sub.contact_id ? await tx.selectFrom('records_entries').select(['name']).where('id', '=', sub.contact_id).executeTakeFirst() : null
   const email = sub.contact_id ? await primaryEmailOf(tx, sub.contact_id) : null
   return {
     subscriptionId: sub.id,

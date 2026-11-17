@@ -82,10 +82,10 @@ export async function updateProfile(tx: Tx, sub: SubscriptionRow, input: { name?
   }
   if (sub.contact_id) {
     const name = typeof input.name === 'string' && !sub.user_id ? input.name.trim().slice(0, 200) : null
-    const contact = await tx.selectFrom('crm_records').select(['data']).where('id', '=', sub.contact_id).executeTakeFirst()
+    const contact = await tx.selectFrom('records_entries').select(['data']).where('id', '=', sub.contact_id).executeTakeFirst()
     if (contact) {
       const data = { ...(contact.data as Record<string, unknown>), ...(patch.language ? { pt_language: patch.language } : {}) }
-      await tx.updateTable('crm_records').set({ ...(name ? { name } : {}), data: jsonb(data), updated_at: new Date() }).where('id', '=', sub.contact_id).execute()
+      await tx.updateTable('records_entries').set({ ...(name ? { name } : {}), data: jsonb(data), updated_at: new Date() }).where('id', '=', sub.contact_id).execute()
     }
   }
 }

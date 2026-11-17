@@ -18,7 +18,7 @@ export default definePtHandler('pt.intercessors.export', async (event, tx, ctx) 
   const fields = await tx.selectFrom('pt_signup_field').select(['key', 'label']).orderBy('position').execute()
   const options = await tx.selectFrom('pt_consent_option').select(['key']).orderBy('position').execute()
   const rows = await tx.selectFrom('pt_subscription as s')
-    .innerJoin('crm_records as r', 'r.id', 's.contact_id')
+    .innerJoin('records_entries as r', 'r.id', 's.contact_id')
     .select([
       's.id', 's.status', 's.language', 's.timezone', 's.created_at', 's.verified_at', 'r.name', 'r.data',
       sql<string | null>`(select ch.value from crm_contact_channels cc join crm_channels ch on ch.id = cc.channel_id where cc.record_id = r.id and ch.channel_type = 'email' order by cc.is_primary desc limit 1)`.as('email'),

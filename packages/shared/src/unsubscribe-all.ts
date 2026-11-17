@@ -33,7 +33,7 @@ export async function unsubscribeInSite(tx: Tx, userId: string, capture: Consent
     if (sub.platform_news_requested_at && !remindersOnly) await tx.updateTable('pt_subscription').set({ platform_news_requested_at: null }).where('id', '=', sub.id).execute()
   }
   if (remindersOnly) return
-  const contacts = await tx.selectFrom('crm_records').select('id').where('user_id', '=', userId).where('record_type', '=', 'contacts').execute()
+  const contacts = await tx.selectFrom('records_entries').select('id').where('user_id', '=', userId).where('record_type', '=', 'contacts').execute()
   const contactIds = [...new Set([...contacts.map(c => c.id), ...subs.flatMap(s => s.contact_id ? [s.contact_id] : [])])]
   if (!contactIds.length) return
   const granted = await tx

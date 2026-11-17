@@ -1,9 +1,9 @@
 // Adds the prayer.tools panel to CRM contact pages.
-import { registerCrmDetailPanel } from '#crm'
+import { registerRecordsDetailPanel } from '#records'
 import PtSubscriptionPanel from '../components/PtSubscriptionPanel.vue'
 
 export default defineNuxtPlugin(() => {
-  registerCrmDetailPanel({
+  registerRecordsDetailPanel({
     id: 'pt-subscription',
     recordTypes: ['contacts'],
     component: PtSubscriptionPanel,

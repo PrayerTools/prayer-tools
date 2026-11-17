@@ -8,7 +8,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     CREATE TABLE pt_notify_request (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       org_id uuid NOT NULL DEFAULT current_org_id() REFERENCES orgs(id) ON DELETE CASCADE,
-      contact_id uuid NOT NULL REFERENCES crm_records(id) ON DELETE CASCADE,
+      contact_id uuid NOT NULL REFERENCES records_entries(id) ON DELETE CASCADE,
       campaign_id uuid NOT NULL REFERENCES pt_campaign(id) ON DELETE CASCADE,
       language text NOT NULL,
       token_hash text UNIQUE,

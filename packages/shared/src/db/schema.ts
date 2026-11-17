@@ -940,12 +940,12 @@ export interface LayerTables {
   sessions: SessionsTable
   orgs: OrgsTable
   memberships: MembershipsTable
-  crm_records: CrmRecordsTable
+  records_entries: CrmRecordsTable
   crm_channels: CrmChannelsTable
   crm_contact_channels: CrmContactChannelsTable
   crm_channel_consents: CrmChannelConsentsTable
   crm_consent_events: CrmConsentEventsTable
-  crm_record_activity: CrmRecordActivityTable
+  records_activity: CrmRecordActivityTable
   inbox_conversations: InboxConversationsTable
   inbox_messages: InboxMessagesTable
   notifications: NotificationsTable

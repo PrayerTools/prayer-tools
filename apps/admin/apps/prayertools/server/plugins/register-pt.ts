@@ -5,7 +5,8 @@ import { configureApp, registerApp } from '#core/server/utils/app-registry'
 import { registerRailItem } from '#core/server/utils/rail-registry'
 import { registerAdminSection } from '#core/server/utils/admin-section-registry'
 import { registerShareTable } from '#core/server/utils/share-registry'
-import { getRegisteredRecordType, registerCrmConsentPurpose, registerCrmRecordType } from '#crm/server'
+import { registerCrmConsentPurpose } from '#crm/server'
+import { getRegisteredRecordType, registerRecordType } from '#records/server'
 import { registerAiFeature } from '#ai/server'
 import { registerScope } from '#oauth/scopes'
 import { PT_LIBRARY_SHARE, PT_OPERATOR_LIBRARIES, PT_PERMISSIONS, PT_PERMISSION_META, PT_PERSONAL_PERMISSIONS, PT_STATIC_ROLES } from '../../app/utils/pt-permissions'
@@ -31,6 +32,8 @@ export default defineNitroPlugin(() => {
   configureApp('crm', { defaultStatus: 'host_controlled' })
   configureApp('inbox', { order: 60, defaultStatus: 'host_controlled' })
   configureApp('marketing', { title: 'Email', order: 70 })
+  // Sites use the record kernel only through CRM contacts; its own app (items, tasks) stays off.
+  configureApp('records', { defaultStatus: 'disabled' })
   // The champion's own library (templates, images, blocks) and multi-site
   // sends, the same from every site.
   registerPermissions([PT_LIBRARY_SHARE], { [PT_LIBRARY_SHARE]: { title: 'Share library items', description: 'Share your libraries, templates, images and blocks with named people.' } })
@@ -71,11 +74,11 @@ export default defineNitroPlugin(() => {
   const contacts = getRegisteredRecordType('contacts')
   if (contacts) {
     const { assigned_to, nickname, gender, ...fields } = contacts.fields
-    registerCrmRecordType({ ...contacts, fields })
+    registerRecordType({ ...contacts, fields })
   }
 
   // Site owners hold the admin role; the CRM's schema builder and permissions matrix stay hidden from them.
-  withholdFromAdmin(['crm.schema.manage'])
+  withholdFromAdmin(['records.schema.manage'])
 
   registerCrmConsentPurpose('site_updates', { title: 'Updates from this site', description: 'Campaign news and relaunch invitations from this site.' })
   registerCrmConsentPurpose('platform_news', { title: 'News from Prayer.Tools', description: 'Platform news, held in the staff org.' })

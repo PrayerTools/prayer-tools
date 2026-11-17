@@ -259,7 +259,7 @@ describe('notify me when signed in', () => {
   async function requestsOf(orgId: string, email: string) {
     return await withOrg(env.admin, orgId, tx => tx
       .selectFrom('pt_notify_request as n')
-      .innerJoin('crm_records as r', 'r.id', 'n.contact_id')
+      .innerJoin('records_entries as r', 'r.id', 'n.contact_id')
       .innerJoin('crm_contact_channels as cc', 'cc.record_id', 'n.contact_id')
       .innerJoin('crm_channels as ch', 'ch.id', 'cc.channel_id')
       .leftJoin('crm_channel_consents as k', join => join.onRef('k.channel_id', '=', 'ch.id').on('k.purpose', '=', PURPOSE_SITE_UPDATES))

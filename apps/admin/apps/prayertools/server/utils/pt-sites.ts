@@ -126,7 +126,7 @@ export async function ptAddChampionToStaffCrm(userId: string): Promise<void> {
   await withOrg(db as never, staffOrgId, async (tx) => {
     const { contactId } = await upsertContact(tx, { email, name: account.display_name, data: { pt_role: 'champion' }, source: 'site creation', actorLabel: 'prayer.tools' })
     await linkContactToAccount(tx, contactId, account)
-    await tx.insertInto('crm_record_field_entries' as never).values({ record_id: contactId, field_key: 'tags', payload: jsonb({ value: 'champion' }), normalized_value: 'champion' } as never)
+    await tx.insertInto('records_field_entries' as never).values({ record_id: contactId, field_key: 'tags', payload: jsonb({ value: 'champion' }), normalized_value: 'champion' } as never)
       .onConflict(oc => oc.doNothing()).execute()
   })
 }

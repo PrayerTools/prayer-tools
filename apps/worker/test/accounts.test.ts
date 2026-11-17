@@ -25,7 +25,7 @@ async function signUp(orgId: string, campaignId: string, email: string) {
 
 async function contactOf(orgId: string, contactId: string) {
   return await withOrg(env.app, orgId, async tx => ({
-    row: await tx.selectFrom('crm_records').select(['name', 'user_id']).where('id', '=', contactId).executeTakeFirstOrThrow(),
+    row: await tx.selectFrom('records_entries').select(['name', 'user_id']).where('id', '=', contactId).executeTakeFirstOrThrow(),
     email: await primaryEmailOf(tx, contactId)
   }))
 }
@@ -170,7 +170,7 @@ describe('accounts', () => {
     expect(await env.admin.transaction().execute(tx => deleteAccountIfUnused(tx, account.id))).toBe(false)
     await withOrg(env.admin, orgId, async (tx) => {
       await tx.deleteFrom('pt_subscription').where('id', '=', sub.subscriptionId).execute()
-      await tx.updateTable('crm_records').set({ user_id: null }).where('id', '=', sub.contactId).execute()
+      await tx.updateTable('records_entries').set({ user_id: null }).where('id', '=', sub.contactId).execute()
     })
     await env.admin.insertInto('memberships').values({ user_id: account.id, org_id: orgId }).execute()
     expect(await env.admin.transaction().execute(tx => deleteAccountIfUnused(tx, account.id))).toBe(false)
@@ -226,7 +226,7 @@ describe('accounts', () => {
       ['app', id => env.admin.insertInto('pt_user_device').values({ user_id: id, credential_hash: uid() }).execute()],
       ['admin_sign_in', id => env.admin.updateTable('users').set({ password: 'hash' }).where('id', '=', id).execute()],
       ['admin_sign_in', id => sql`UPDATE user_identities SET refresh_token_enc = 'enc' WHERE user_id = ${id} AND provider = 'apple'`.execute(env.admin)],
-      ['records', id => withOrg(env.admin, orgId, tx => tx.insertInto('crm_records').values({ record_type: 'contacts', name: 'Boaz', created_by: id }).execute())]
+      ['records', id => withOrg(env.admin, orgId, tx => tx.insertInto('records_entries').values({ record_type: 'contacts', name: 'Boaz', created_by: id }).execute())]
     ]
     for (const [reason, use] of cases) {
       const userId = await socialAccount()

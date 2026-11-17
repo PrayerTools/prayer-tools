@@ -44,7 +44,7 @@ async function newsChannels(tx: Tx, userId: string, email: string | null): Promi
     .where('c.status', '=', 'opt_in')
     .where(eb => eb.or([
       eb('c.channel_id', 'in', eb.selectFrom('crm_contact_channels as cc')
-        .innerJoin('crm_records as r', 'r.id', 'cc.record_id')
+        .innerJoin('records_entries as r', 'r.id', 'cc.record_id')
         .select('cc.channel_id')
         .where('r.user_id', '=', userId)),
       ...(email ? [eb('ch.normalized_value', '=', normalizeEmail(email).normalized)] : [])

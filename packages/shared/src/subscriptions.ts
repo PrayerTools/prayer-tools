@@ -381,7 +381,7 @@ export async function recordActivity(tx: Tx, subscriptionId: string): Promise<vo
 export async function personData(tx: Tx, subscriptionId: string) {
   const sub = await tx.selectFrom('pt_subscription').selectAll().where('id', '=', subscriptionId).executeTakeFirst()
   if (!sub) return null
-  const contact = sub.contact_id ? await tx.selectFrom('crm_records').select(['name', 'data', 'created_at']).where('id', '=', sub.contact_id).executeTakeFirst() : null
+  const contact = sub.contact_id ? await tx.selectFrom('records_entries').select(['name', 'data', 'created_at']).where('id', '=', sub.contact_id).executeTakeFirst() : null
   const email = sub.contact_id ? await primaryEmailOf(tx, sub.contact_id) : null
   const commitments = await tx
     .selectFrom('pt_commitment as c')
@@ -416,7 +416,7 @@ export async function deleteSubscriptionData(tx: Tx, subscriptionId: string): Pr
   await tx.deleteFrom('pt_subscription').where('id', '=', subscriptionId).execute()
   if (sub.contact_id) {
     const channels = await tx.selectFrom('crm_contact_channels').select('channel_id').where('record_id', '=', sub.contact_id).execute()
-    await tx.deleteFrom('crm_records').where('id', '=', sub.contact_id).execute()
+    await tx.deleteFrom('records_entries').where('id', '=', sub.contact_id).execute()
     for (const ch of channels) await deleteChannelIfUnused(tx, ch.channel_id)
   }
 }
@@ -438,10 +438,10 @@ export async function anonymizeSubscription(tx: Tx, subscriptionId: string, now:
       await tx.updateTable('crm_consent_events').set({ channel_value: ANONYMIZED_NAME, ip: null, user_agent: null }).where('channel_id', '=', ch.channel_id).execute()
       await deleteChannelIfUnused(tx, ch.channel_id)
     }
-    await sql`DELETE FROM crm_record_field_entries WHERE record_id = ${sub.contact_id}`.execute(tx)
-    await tx.updateTable('crm_record_activity').set({ old_value: null, new_value: null }).where('record_id', '=', sub.contact_id).execute()
+    await sql`DELETE FROM records_field_entries WHERE record_id = ${sub.contact_id}`.execute(tx)
+    await tx.updateTable('records_activity').set({ old_value: null, new_value: null }).where('record_id', '=', sub.contact_id).execute()
     await tx
-      .updateTable('crm_records')
+      .updateTable('records_entries')
       .set({ name: ANONYMIZED_NAME, data: sql`'{}'::jsonb`, user_id: null, updated_at: now })
       .where('id', '=', sub.contact_id)
       .execute()

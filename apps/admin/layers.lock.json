@@ -48,17 +48,24 @@
     "source": "github:corsacca/nuxtinator/layers/ai",
     "tagPrefix": "@nuxtinator/ai@"
   },
+  "records": {
+    "pkg": "@nuxtinator/records",
+    "version": "^0.2.0",
+    "ref": "@nuxtinator/records@0.2.0",
+    "source": "github:corsacca/nuxtinator/layers/records",
+    "tagPrefix": "@nuxtinator/records@"
+  },
   "crm": {
     "pkg": "@nuxtinator/crm",
-    "version": "^0.4.1",
-    "ref": "@nuxtinator/crm@0.4.1",
+    "version": "^0.5.0",
+    "ref": "@nuxtinator/crm@0.5.0",
     "source": "github:corsacca/nuxtinator/layers/apps/crm",
     "tagPrefix": "@nuxtinator/crm@"
   },
   "inbox": {
     "pkg": "@nuxtinator/inbox",
-    "version": "^0.8.0",
-    "ref": "@nuxtinator/inbox@0.8.0",
+    "version": "^0.10.0",
+    "ref": "@nuxtinator/inbox@0.10.0",
     "source": "github:corsacca/nuxtinator/layers/apps/inbox",
     "tagPrefix": "@nuxtinator/inbox@"
   }

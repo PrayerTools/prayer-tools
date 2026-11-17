@@ -113,7 +113,7 @@ export async function syncContactFromAccount(tx: Tx, contactId: string, account:
   if (account.display_name) {
     await setContactName(tx, contactId, account.display_name)
   } else {
-    const contact = await tx.selectFrom('crm_records').select('name').where('id', '=', contactId).executeTakeFirst()
+    const contact = await tx.selectFrom('records_entries').select('name').where('id', '=', contactId).executeTakeFirst()
     const email = await primaryEmailOf(tx, contactId)
     const name = contact?.name.trim() ?? ''
     if (name && name !== email?.email.split('@')[0]) {
@@ -136,14 +136,14 @@ export async function linkSubscriptionToAccount(tx: Tx, subscriptionId: string, 
 export async function linkContactToAccount(tx: Tx, contactId: string, account: Account): Promise<void> {
   // One linked contact per account in a site: another contact holding the link keeps it.
   const holder = await tx
-    .selectFrom('crm_records')
+    .selectFrom('records_entries')
     .select('id')
     .where('user_id', '=', account.id)
     .where('record_type', '=', 'contacts')
-    .where('org_id', '=', eb => eb.selectFrom('crm_records as c').select('c.org_id').where('c.id', '=', contactId))
+    .where('org_id', '=', eb => eb.selectFrom('records_entries as c').select('c.org_id').where('c.id', '=', contactId))
     .executeTakeFirst()
   if (holder && holder.id !== contactId) return
-  if (!holder) await tx.updateTable('crm_records').set({ user_id: account.id }).where('id', '=', contactId).execute()
+  if (!holder) await tx.updateTable('records_entries').set({ user_id: account.id }).where('id', '=', contactId).execute()
   await syncContactFromAccount(tx, contactId, account)
 }
 
@@ -152,7 +152,7 @@ export async function linkContactToAccount(tx: Tx, contactId: string, account: A
 export async function syncAccountContacts(db: Db, orgIds: Iterable<string>, account: Account): Promise<void> {
   for (const orgId of new Set(orgIds)) {
     await withOrg(db, orgId, async (tx) => {
-      const contacts = await tx.selectFrom('crm_records').select('id').where('user_id', '=', account.id).execute()
+      const contacts = await tx.selectFrom('records_entries').select('id').where('user_id', '=', account.id).execute()
       for (const c of contacts) await syncContactFromAccount(tx, c.id, account)
     })
   }
@@ -164,7 +164,7 @@ export async function accountOrgIds(admin: Db, userId: string): Promise<string[]
   const rows = await sql<{ org_id: string }>`
     SELECT org_id::text AS org_id FROM pt_subscription WHERE user_id = ${userId}
     UNION
-    SELECT org_id::text AS org_id FROM crm_records WHERE user_id = ${userId}
+    SELECT org_id::text AS org_id FROM records_entries WHERE user_id = ${userId}
   `.execute(admin)
   return rows.rows.map(r => r.org_id)
 }
@@ -198,7 +198,7 @@ export async function deleteAccountOnRequest(db: Db, userId: string): Promise<{ 
       FROM users u WHERE u.id = ${userId}
     `.execute(db)).rows
   } catch (err) {
-    // A record it created in a site's CRM (`crm_records.created_by`) keeps it.
+    // A record it created in a site's CRM (`records_entries.created_by`) keeps it.
     if ((err as { code?: string }).code !== '23503') throw err
     return { deleted: false, reason: 'records' }
   }
@@ -218,7 +218,7 @@ export async function deleteAccountIfUnused(tx: Tx, userId: string): Promise<boo
     DELETE FROM users u
     WHERE u.id = ${userId} AND NOT ${accountInUse}
       AND NOT EXISTS (SELECT 1 FROM pt_subscription s WHERE s.user_id = u.id)
-      AND NOT EXISTS (SELECT 1 FROM crm_records r WHERE r.user_id = u.id)
+      AND NOT EXISTS (SELECT 1 FROM records_entries r WHERE r.user_id = u.id)
       AND NOT EXISTS (SELECT 1 FROM user_identities i WHERE i.user_id = u.id)
       AND NOT EXISTS (SELECT 1 FROM sessions se WHERE se.user_id = u.id AND se.expires_at > now())
     RETURNING u.id

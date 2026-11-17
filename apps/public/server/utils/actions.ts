@@ -64,7 +64,7 @@ export async function verifyLink(event: H3Event, ctx: SiteContext, token: string
     let news: { email: string, name: string | null } | null = null
     if (sub.platform_news_requested_at && email && sub.contact_id) {
       await tx.updateTable('pt_subscription').set({ platform_news_requested_at: null }).where('id', '=', sub.id).execute()
-      const contact = await tx.selectFrom('crm_records').select('name').where('id', '=', sub.contact_id).executeTakeFirst()
+      const contact = await tx.selectFrom('records_entries').select('name').where('id', '=', sub.contact_id).executeTakeFirst()
       news = { email: email.email, name: contact?.name ?? null }
     }
     return { sub, defaultLanguage: data.site.default_language, campaignId: latest?.campaign_id ?? null, email: email?.email ?? null, firstTime, welcome, joined, news }

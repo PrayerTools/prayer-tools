@@ -24,7 +24,7 @@ export default definePtHandler('pt.intercessors.write', async (event, tx) => {
     await refreshReminders(ptTx(tx), id)
   }
   if (typeof b.name === 'string' && b.name.trim() && sub.contact_id) {
-    await tx.updateTable('crm_records').set({ name: b.name.trim().slice(0, 200), updated_at: new Date() }).where('id', '=', sub.contact_id).execute()
+    await tx.updateTable('records_entries').set({ name: b.name.trim().slice(0, 200), updated_at: new Date() }).where('id', '=', sub.contact_id).execute()
   }
   return { ok: true }
 })

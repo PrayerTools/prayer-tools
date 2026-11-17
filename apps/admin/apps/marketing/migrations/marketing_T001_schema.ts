@@ -98,7 +98,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       org_id uuid NOT NULL DEFAULT current_org_id() REFERENCES orgs(id) ON DELETE CASCADE,
       email_id uuid NOT NULL REFERENCES marketing_email(id) ON DELETE CASCADE,
-      contact_id uuid REFERENCES crm_records(id) ON DELETE SET NULL,
+      contact_id uuid REFERENCES records_entries(id) ON DELETE SET NULL,
       channel_id uuid REFERENCES crm_channels(id) ON DELETE SET NULL,
       address text,
       first_name text,

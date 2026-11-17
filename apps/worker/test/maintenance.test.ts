@@ -41,7 +41,7 @@ describe('data retention', () => {
 
     const after = await withOrg(env.admin, orgId, async tx => ({
       sub: await tx.selectFrom('pt_subscription').selectAll().where('id', '=', old.subscriptionId).executeTakeFirstOrThrow(),
-      contact: await tx.selectFrom('crm_records').selectAll().where('id', '=', old.contactId).executeTakeFirstOrThrow(),
+      contact: await tx.selectFrom('records_entries').selectAll().where('id', '=', old.contactId).executeTakeFirstOrThrow(),
       channels: await tx.selectFrom('crm_contact_channels').select('id').where('record_id', '=', old.contactId).execute(),
       address: await tx.selectFrom('crm_channels').select('id').where('normalized_value', '=', old.email).execute(),
       commitments: await tx.selectFrom('pt_commitment').select('id').where('subscription_id', '=', old.subscriptionId).execute(),

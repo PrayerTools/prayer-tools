@@ -134,7 +134,7 @@ describe('subscription housekeeping', () => {
     expect(await sub(orgId, old.subscriptionId)).toBeUndefined()
     expect(await sub(orgId, fresh.subscriptionId)).toBeDefined()
     expect(await sub(orgId, verified.subscriptionId)).toBeDefined()
-    const contact = await withOrg(env.admin, orgId, tx => tx.selectFrom('crm_records').select('id').where('id', '=', old.contactId).executeTakeFirst())
+    const contact = await withOrg(env.admin, orgId, tx => tx.selectFrom('records_entries').select('id').where('id', '=', old.contactId).executeTakeFirst())
     expect(contact).toBeUndefined()
     const stats = await withOrg(env.admin, orgId, tx => tx.selectFrom('pt_stat_daily').select(['metric', 'value']).where('metric', '=', 'signups').execute())
     expect(stats.reduce((n, r) => n + Number(r.value), 0)).toBe(3)

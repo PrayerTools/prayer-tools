@@ -98,7 +98,7 @@ export async function deleteUnusedAccounts(ctx: WorkerContext): Promise<number> 
     SELECT u.id::text AS id FROM users u
     WHERE u.created < ${graceCutoff}::timestamptz AND NOT ${accountInUse}
       AND NOT EXISTS (SELECT 1 FROM pt_subscription s WHERE s.user_id = u.id)
-      AND NOT EXISTS (SELECT 1 FROM crm_records r WHERE r.user_id = u.id)
+      AND NOT EXISTS (SELECT 1 FROM records_entries r WHERE r.user_id = u.id)
       AND NOT EXISTS (SELECT 1 FROM user_identities i WHERE i.user_id = u.id)
       AND NOT EXISTS (SELECT 1 FROM sessions se WHERE se.user_id = u.id AND se.expires_at > now())
     LIMIT ${BATCH}

@@ -19,7 +19,7 @@ export async function syncLinkedContacts(ctx: WorkerContext, log: Logger): Promi
   while (!ctx.stopping()) {
     const due = await sql<{ id: string, org_id: string, user_id: string }>`
       SELECT r.id::text AS id, r.org_id::text AS org_id, r.user_id::text AS user_id
-      FROM crm_records r JOIN users u ON u.id = r.user_id
+      FROM records_entries r JOIN users u ON u.id = r.user_id
       WHERE r.id > ${after}::uuid
         AND ((btrim(u.display_name) <> '' AND r.name <> left(btrim(u.display_name), 200))
           OR (u.email IS NOT NULL AND NOT EXISTS (

@@ -3,7 +3,7 @@
 import type { Transaction } from 'kysely'
 import type { Database } from '#core/server/database/schema'
 import type { TenantContext } from '#tenant/server'
-import { createField } from '#crm/server'
+import { createField } from '#records/server'
 import { parseText, textIn } from '@prayertools/shared/translatable'
 import { jsonb } from '@prayertools/shared/db/json'
 

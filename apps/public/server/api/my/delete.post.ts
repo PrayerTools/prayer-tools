@@ -20,10 +20,10 @@ export default defineEventHandler(async (event) => {
   // Contacts without a subscription here (the staff org's News from Prayer.Tools).
   for (const orgId of orgIds) {
     await withOrg(useDb(), orgId, async (tx) => {
-      const contacts = await tx.selectFrom('crm_records').select('id').where('user_id', '=', userId).execute()
+      const contacts = await tx.selectFrom('records_entries').select('id').where('user_id', '=', userId).execute()
       for (const c of contacts) {
         const channels = await tx.selectFrom('crm_contact_channels').select('channel_id').where('record_id', '=', c.id).execute()
-        await tx.deleteFrom('crm_records').where('id', '=', c.id).execute()
+        await tx.deleteFrom('records_entries').where('id', '=', c.id).execute()
         for (const ch of channels) await deleteChannelIfUnused(tx, ch.channel_id)
       }
     })

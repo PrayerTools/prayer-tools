@@ -6,7 +6,8 @@
 // live in ./apps/<id>/ and are globbed into `extends` by nuxt.config.ts.
 //
 // Load order: core, tenancy (its multi-mode kernel overrides core's),
-// social-auth, email backend, oauth, mcp, ai, crm, inbox.
+// social-auth, email backend, oauth, mcp, ai, records (the record kernel crm
+// builds on), crm, inbox.
 
 import type { LayerSpec } from './scripts/lib/resolve'
 
@@ -18,6 +19,7 @@ export const LAYERS: readonly LayerSpec[] = [
   { id: 'oauth', pkg: '@nuxtinator/oauth', repo: 'corsacca/nuxtinator', subdir: 'layers/oauth', version: '^1.4.1' },
   { id: 'mcp', pkg: '@nuxtinator/mcp', repo: 'corsacca/nuxtinator', subdir: 'layers/mcp', version: '^1.6.0' },
   { id: 'ai', pkg: '@nuxtinator/ai', repo: 'corsacca/nuxtinator', subdir: 'layers/ai', version: '^0.10.0' },
-  { id: 'crm', pkg: '@nuxtinator/crm', repo: 'corsacca/nuxtinator', subdir: 'layers/apps/crm', version: '^0.4.1' },
-  { id: 'inbox', pkg: '@nuxtinator/inbox', repo: 'corsacca/nuxtinator', subdir: 'layers/apps/inbox', version: '^0.8.0' }
+  { id: 'records', pkg: '@nuxtinator/records', repo: 'corsacca/nuxtinator', subdir: 'layers/records', version: '^0.2.0' },
+  { id: 'crm', pkg: '@nuxtinator/crm', repo: 'corsacca/nuxtinator', subdir: 'layers/apps/crm', version: '^0.5.0' },
+  { id: 'inbox', pkg: '@nuxtinator/inbox', repo: 'corsacca/nuxtinator', subdir: 'layers/apps/inbox', version: '^0.10.0' }
 ]

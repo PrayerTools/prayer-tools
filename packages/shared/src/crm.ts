@@ -68,7 +68,7 @@ export async function findContactByEmail(tx: Tx, email: string): Promise<{ conta
   const row = await tx
     .selectFrom('crm_channels as ch')
     .innerJoin('crm_contact_channels as cc', 'cc.channel_id', 'ch.id')
-    .innerJoin('crm_records as r', 'r.id', 'cc.record_id')
+    .innerJoin('records_entries as r', 'r.id', 'cc.record_id')
     .select(['r.id as contactId', 'ch.id as channelId'])
     .where('ch.channel_type', '=', 'email')
     .where('ch.normalized_value', '=', normalized)
@@ -80,7 +80,7 @@ export async function findContactByEmail(tx: Tx, email: string): Promise<{ conta
 
 async function activity(tx: Tx, recordId: string, action: string, opts: { note?: string, fieldKey?: string, old?: unknown, new?: unknown, label?: string } = {}) {
   await tx
-    .insertInto('crm_record_activity')
+    .insertInto('records_activity')
     .values({
       record_id: recordId,
       actor_user_id: null,
@@ -109,7 +109,7 @@ export async function upsertContact(tx: Tx, input: UpsertContactInput): Promise<
   const channel = await claimEmailChannel(tx, input.email)
   const existing = await tx
     .selectFrom('crm_contact_channels as cc')
-    .innerJoin('crm_records as r', 'r.id', 'cc.record_id')
+    .innerJoin('records_entries as r', 'r.id', 'cc.record_id')
     .select(['r.id', 'r.name', 'r.data'])
     .where('cc.channel_id', '=', channel.id)
     .where('r.record_type', '=', 'contacts')
@@ -119,7 +119,7 @@ export async function upsertContact(tx: Tx, input: UpsertContactInput): Promise<
   if (existing) {
     const data = { ...(existing.data as Record<string, unknown> ?? {}), ...(input.data ?? {}) }
     await tx
-      .updateTable('crm_records')
+      .updateTable('records_entries')
       .set({
         ...(name && !existing.name.trim() ? { name } : {}),
         data: sql`${JSON.stringify(data)}::text::jsonb`,
@@ -130,7 +130,7 @@ export async function upsertContact(tx: Tx, input: UpsertContactInput): Promise<
     return { contactId: existing.id, channelId: channel.id, created: false, verified: channel.verified }
   }
   const record = await tx
-    .insertInto('crm_records')
+    .insertInto('records_entries')
     .values({
       record_type: 'contacts',
       name: name || channel.normalized_value.split('@')[0]!,
@@ -260,9 +260,9 @@ export const ACCOUNT_ACTOR_LABEL = 'Their account'
 
 export async function setContactName(tx: Tx, contactId: string, name: string): Promise<boolean> {
   const next = name.trim().slice(0, 200)
-  const row = await tx.selectFrom('crm_records').select('name').where('id', '=', contactId).executeTakeFirst()
+  const row = await tx.selectFrom('records_entries').select('name').where('id', '=', contactId).executeTakeFirst()
   if (!next || !row || row.name === next) return false
-  await tx.updateTable('crm_records').set({ name: next, updated_at: new Date() }).where('id', '=', contactId).execute()
+  await tx.updateTable('records_entries').set({ name: next, updated_at: new Date() }).where('id', '=', contactId).execute()
   await activity(tx, contactId, 'field_changed', { fieldKey: 'name', old: row.name, new: next, label: ACCOUNT_ACTOR_LABEL })
   return true
 }

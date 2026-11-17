@@ -435,7 +435,7 @@ for (const org of [ramadan, beirut, await orgId('staff')]) {
     await tx.deleteFrom('inbox_conversations').where('channel_id', 'in', ids).execute()
     if (contacts.length) {
       await tx.deleteFrom('pt_subscription').where('contact_id', 'in', contacts.map(c => c.record_id)).execute()
-      await tx.deleteFrom('crm_records').where('id', 'in', contacts.map(c => c.record_id)).execute()
+      await tx.deleteFrom('records_entries').where('id', 'in', contacts.map(c => c.record_id)).execute()
     }
     await tx.deleteFrom('crm_channels').where('id', 'in', ids).execute()
   })

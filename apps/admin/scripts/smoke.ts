@@ -114,7 +114,7 @@ const ownerId = (await sql`select id from users where email = ${`owner-${run}@ex
 check('last owner cannot leave', (await api(owner, 'DELETE', `/api/o/${slugA}/members/${ownerId}`, undefined, slugA)).status === 409)
 
 const field = await api(owner, 'POST', '/api/pt/signup-fields', { kind: 'text', label: { source: 'en', values: { en: 'Your church' } } }, slugA)
-check('signup question created with CRM field', field.status === 200 && (await sql`select 1 from crm_record_fields where field_key = 'pt_your_church' and org_id = ${a.json.id}`).length === 1, field.json)
+check('signup question created with CRM field', field.status === 200 && (await sql`select 1 from records_fields where field_key = 'pt_your_church' and org_id = ${a.json.id}`).length === 1, field.json)
 
 const exported = await fetch(`${base}/api/pt/export.csv`, { headers: { cookie: owner, 'x-active-org': slugA } })
 check('export CSV downloads and is logged', exported.ok && (await sql`select 1 from pt_export_log where org_id = ${a.json.id}`).length === 1)

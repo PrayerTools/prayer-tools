@@ -3,7 +3,7 @@
 // account without an address for an app install), and everything that
 // pointed at the intercessor points at the user: subscriptions, prayer
 // sessions, app devices (`pt_user_device`), and each site's CRM contact
-// (`crm_records.user_id`, from crm_011). The My prayer token and session
+// (`records_entries.user_id`, from crm_011). The My prayer token and session
 // tables give way to `pt_auth_code` and `pt_account_session`.
 // Person scope (`app.current_intercessor`) now holds a user id.
 import { type Kysely, sql } from 'kysely'
@@ -59,28 +59,28 @@ export async function up(db: Kysely<unknown>): Promise<void> {
   // Contacts of verified subscriptions, then the staff org's platform-news
   // contact whose verified address is a verified account's.
   await sql`
-    UPDATE crm_records r SET user_id = s.user_id
+    UPDATE records_entries r SET user_id = s.user_id
     FROM pt_subscription s
     WHERE s.contact_id = r.id AND s.user_id IS NOT NULL AND s.verified_at IS NOT NULL AND r.user_id IS NULL
   `.execute(db)
   await sql`
-    UPDATE crm_records r SET user_id = x.user_id
+    UPDATE records_entries r SET user_id = x.user_id
     FROM (
       SELECT DISTINCT ON (r2.id) r2.id AS record_id, u.id AS user_id
-      FROM crm_records r2
+      FROM records_entries r2
       JOIN crm_contact_channels cc ON cc.record_id = r2.id
       JOIN crm_channels ch ON ch.id = cc.channel_id AND ch.channel_type = 'email' AND ch.verified
       JOIN users u ON lower(u.email) = ch.normalized_value AND u.verified
       WHERE r2.record_type = 'contacts' AND r2.user_id IS NULL
         AND r2.org_id = (SELECT id FROM orgs WHERE slug = 'staff')
-        AND NOT EXISTS (SELECT 1 FROM crm_records o WHERE o.org_id = r2.org_id AND o.record_type = 'contacts' AND o.user_id = u.id)
+        AND NOT EXISTS (SELECT 1 FROM records_entries o WHERE o.org_id = r2.org_id AND o.record_type = 'contacts' AND o.user_id = u.id)
       ORDER BY r2.id, cc.is_primary DESC
     ) x
     WHERE r.id = x.record_id
   `.execute(db)
   await sql`
     UPDATE users u SET display_name = left(r.name, 200)
-    FROM crm_records r
+    FROM records_entries r
     WHERE r.user_id = u.id AND u.display_name = '' AND r.name <> 'Anonymized' AND r.name <> split_part(coalesce(u.email, ''), '@', 1)
   `.execute(db)
 
@@ -182,7 +182,7 @@ export async function down(db: Kysely<unknown>): Promise<void> {
   await sql`DROP POLICY person_read ON pt_commitment`.execute(db)
   await sql`DROP POLICY person_read ON pt_subscription`.execute(db)
 
-  await sql`UPDATE crm_records SET user_id = NULL WHERE user_id IS NOT NULL`.execute(db)
+  await sql`UPDATE records_entries SET user_id = NULL WHERE user_id IS NOT NULL`.execute(db)
 
   await sql`ALTER INDEX pt_user_device_user_idx RENAME TO pt_intercessor_device_intercessor_idx`.execute(db)
   await sql`ALTER TABLE pt_user_device DROP CONSTRAINT pt_user_device_user_id_fkey`.execute(db)
