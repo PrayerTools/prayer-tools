@@ -18,7 +18,7 @@ interface CoverageData {
 
 const { data } = await useFetch<CoverageData>('/api/coverage.json', { query: { campaign: site.value.campaign?.id }, server: false })
 const selectedDay = ref<string | null>(null)
-const useLocal = ref(false)
+const useLocal = ref(true)
 const localTz = ref('UTC')
 const picks = ref<string[]>([])
 
