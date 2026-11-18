@@ -182,15 +182,20 @@ function onJoined(verify: boolean) {
             <p class="whitespace-pre-line text-stone-800">{{ st('landing.how.body', { site: site.name }) }}</p>
           </section>
 
-          <section v-else-if="s.key === 'today' && page.today" aria-labelledby="today-title" data-pt-section="today">
-            <h2 id="today-title" class="text-2xl font-bold mb-1">{{ st('landing.today.title') }}</h2>
-            <p class="text-sm text-stone-600 mb-4">{{ t(campaign?.cadence === 'weekly' ? 'pray.week' : 'pray.day', { n: num(page.today.day) }) }}</p>
-            <div class="relative max-h-80 overflow-hidden">
-              <!-- eslint-disable-next-line vue/no-v-html -->
-              <div class="pt-content" v-html="page.today.html" />
-              <div class="absolute inset-x-0 bottom-0 h-20 bg-linear-to-t from-[#fafaf9]" />
+          <section v-else-if="s.key === 'today' && page.today" aria-labelledby="today-title" class="space-y-4" data-pt-section="today">
+            <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+              <h2 id="today-title" class="text-2xl font-bold">{{ st('landing.today.title') }}</h2>
+              <p class="text-sm text-stone-600">{{ t(campaign?.cadence === 'weekly' ? 'pray.week' : 'pray.day', { n: num(page.today.day) }) }}</p>
             </div>
-            <UButton :to="link('pray')" class="mt-4" :label="t('landing.continue_praying')" trailing-icon="i-lucide-arrow-right" />
+            <div class="rounded-xl border border-stone-200 bg-white shadow-[0_1px_3px_rgb(28_25_23/0.05)]">
+              <div class="max-h-96 overflow-hidden px-5 pt-6 pb-6 sm:px-8 sm:pt-8 [mask-image:linear-gradient(to_bottom,#000_calc(100%_-_4rem),transparent)]">
+                <!-- eslint-disable-next-line vue/no-v-html -->
+                <div class="pt-content pt-flush" v-html="page.today.html" />
+              </div>
+              <div class="flex justify-center border-t border-stone-200 px-5 py-5 sm:px-8">
+                <UButton :to="link('pray')" size="lg" :label="t('landing.continue_praying')" trailing-icon="i-lucide-arrow-right" :ui="{ trailingIcon: 'rtl:rotate-180' }" class="w-full justify-center sm:w-auto" />
+              </div>
+            </div>
           </section>
 
           <section v-else-if="s.key === 'share'" aria-labelledby="share-title" class="space-y-3" data-pt-section="share">
