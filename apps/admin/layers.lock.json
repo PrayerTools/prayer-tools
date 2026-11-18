@@ -2,7 +2,7 @@
   "core": {
     "pkg": "@nuxtinator/core",
     "version": "^4",
-    "ref": "@nuxtinator/core@4.0.0",
+    "ref": "@nuxtinator/core@4.0.1",
     "source": "github:Nuxtinator/nuxtinator/layers/core",
     "tagPrefix": "@nuxtinator/core@"
   },
@@ -16,7 +16,7 @@
   "mail": {
     "pkg": "@nuxtinator/mail",
     "version": "latest",
-    "ref": "@nuxtinator/mail@1.0.0",
+    "ref": "@nuxtinator/mail@1.0.1",
     "source": "github:Nuxtinator/nuxtinator/layers/mail",
     "tagPrefix": "@nuxtinator/mail@"
   },
