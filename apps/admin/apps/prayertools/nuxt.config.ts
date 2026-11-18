@@ -7,6 +7,8 @@ import { fileURLToPath } from 'node:url'
 export default defineNuxtConfig({
   modules: [fileURLToPath(new URL('./modules/pt-mcp.ts', import.meta.url))],
 
+  css: [fileURLToPath(new URL('./app/assets/pt-editor.css', import.meta.url))],
+
   runtimeConfig: {
     public: {
       // Both library areas are shared across sites. Keep their bare URLs while

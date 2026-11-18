@@ -27,6 +27,16 @@
 .dark .pt-content blockquote { color: #cbd5e1; border-color: #647892; }
 .dark .pt-content blockquote.verse { background: #263545; }
 .dark .pt-content .verse-ref { color: #b8c5d4; }
+.dark .pt-content :is(th, td) { border-color: #405269; }
+.dark .pt-content th { background: #263545; }
+.dark .pt-content figure.audio figcaption { color: #b8c5d4; }
+.dark .pt-content mark:not(.pt-mark) { background: #574d00; background: oklch(0.42 0.1 103); }
+.dark .pt-color { color: inherit; }
+.dark .pt-mark { background: #3f4a5a; }
+@supports (color: oklch(from red l c h)) {
+  .dark .pt-color { color: oklch(from var(--pt-color) max(l, 0.72) c h); }
+  .dark .pt-mark { background: oklch(from var(--pt-mark) min(l, 0.42) min(c, 0.1) h); }
+}
 .dark .home-page { background: #141c26; color: #e2e8f0; }
 .dark .home-page #home-how { color: #f8fafc; }
 .dark .home-page .feature-card { background: #202c3a; border-color: #405269; }

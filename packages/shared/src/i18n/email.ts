@@ -84,7 +84,8 @@ const en: EmailStrings = {
   'contact.body': 'Thank you for writing to {site}. The team will reply to this address.',
   'story.subject': 'Thank you for sharing your story',
   'story.body': 'Thank you for sharing what God is doing. The {site} team has received your story.',
-  'test.banner': 'This is a test email. Links in it do not change anyone\'s settings.'
+  'test.banner': 'This is a test email. Links in it do not change anyone\'s settings.',
+  'content.listen': 'Listen'
 }
 
 const es: EmailStrings = {
@@ -169,7 +170,8 @@ const es: EmailStrings = {
   'contact.body': 'Gracias por escribir a {site}. El equipo responderá a esta dirección.',
   'story.subject': 'Gracias por compartir tu historia',
   'story.body': 'Gracias por compartir lo que Dios está haciendo. El equipo de {site} recibió tu historia.',
-  'test.banner': 'Este es un correo de prueba. Sus enlaces no cambian la configuración de nadie.'
+  'test.banner': 'Este es un correo de prueba. Sus enlaces no cambian la configuración de nadie.',
+  'content.listen': 'Escuchar'
 }
 
 const fr: EmailStrings = {
@@ -254,7 +256,8 @@ const fr: EmailStrings = {
   'contact.body': 'Merci d\'avoir écrit à {site}. L\'équipe répondra à cette adresse.',
   'story.subject': 'Merci d\'avoir partagé votre témoignage',
   'story.body': 'Merci de partager ce que Dieu fait. L\'équipe de {site} a reçu votre témoignage.',
-  'test.banner': 'Ceci est un e-mail de test. Ses liens ne modifient les réglages de personne.'
+  'test.banner': 'Ceci est un e-mail de test. Ses liens ne modifient les réglages de personne.',
+  'content.listen': 'Écouter'
 }
 
 const pt: EmailStrings = {
@@ -339,7 +342,8 @@ const pt: EmailStrings = {
   'contact.body': 'Obrigado por escrever para {site}. A equipe responderá a este endereço.',
   'story.subject': 'Obrigado por compartilhar sua história',
   'story.body': 'Obrigado por compartilhar o que Deus está fazendo. A equipe de {site} recebeu sua história.',
-  'test.banner': 'Este é um e-mail de teste. Os links nele não mudam as configurações de ninguém.'
+  'test.banner': 'Este é um e-mail de teste. Os links nele não mudam as configurações de ninguém.',
+  'content.listen': 'Ouvir'
 }
 
 const ar: EmailStrings = {
@@ -424,7 +428,8 @@ const ar: EmailStrings = {
   'contact.body': 'شكراً لمراسلتك {site}. سيرد الفريق على هذا العنوان.',
   'story.subject': 'شكراً لمشاركة قصتك',
   'story.body': 'شكراً لمشاركتك ما يفعله الله. استلم فريق {site} قصتك.',
-  'test.banner': 'هذه رسالة تجريبية. الروابط فيها لا تغيّر إعدادات أحد.'
+  'test.banner': 'هذه رسالة تجريبية. الروابط فيها لا تغيّر إعدادات أحد.',
+  'content.listen': 'استمع'
 }
 
 export const EMAIL_STRINGS: Record<string, EmailStrings> = { en, es, fr, pt, ar }

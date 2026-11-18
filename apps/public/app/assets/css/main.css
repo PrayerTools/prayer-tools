@@ -48,6 +48,29 @@ html:has(.public-campaign) { scroll-padding-top: 3.75rem; }
 .pt-content p.button a { display: inline-block; background: var(--brand); color: var(--brand-text); padding: 0.6em 1.4em; border-radius: 0.5rem; text-decoration: none; font-weight: 600; }
 .pt-content .video { position: relative; padding-top: 56.25%; margin: 1em 0; }
 .pt-content .video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; border-radius: 0.5rem; }
+.pt-content :is(sup, sub) { line-height: 0; }
+/* Stored text and highlight colors keep their hue at a lightness that reads on this theme. */
+.pt-content mark:not(.pt-mark) { background: #fef08a; color: inherit; }
+.pt-color { color: var(--pt-color); }
+.pt-mark { background: var(--pt-mark); color: inherit; }
+@supports (color: oklch(from red l c h)) {
+  .pt-color { color: oklch(from var(--pt-color) min(l, 0.55) c h); }
+  .pt-mark { background: oklch(from var(--pt-mark) max(l, 0.9) min(c, 0.1) h); }
+}
+.pt-content .table-scroll { overflow-x: auto; margin: 1em 0; }
+.pt-content table { width: 100%; border-collapse: collapse; font-size: 1rem; line-height: 1.5; }
+.pt-content :is(th, td) { padding: 0.5em 0.75em; border: 1px solid #d6d3d1; vertical-align: top; text-align: start; }
+.pt-content th { background: #f5f5f4; font-weight: 600; }
+.pt-content :is(th, td) > :last-child { margin-bottom: 0; }
+.pt-content figure.audio { margin: 1em 0; }
+.pt-content figure.audio figcaption { margin-bottom: 0.25em; font-size: 0.875rem; color: #57534e; }
+.pt-content figure.audio audio { width: 100%; }
+/* Columns stack on phones and sit side by side, at their stored shares, on wider screens. */
+.pt-content .columns { display: grid; gap: 1.5rem; margin: 1em 0; }
+@media (min-width: 40rem) { .pt-content .columns { grid-template-columns: var(--pt-columns); } }
+.pt-content .column { min-width: 0; }
+.pt-content .column > :first-child { margin-top: 0; }
+.pt-content .column > :last-child { margin-bottom: 0; }
 
 /* Admin landing-page editor preview: sections are click targets. */
 .pt-editor [data-pt-section], .pt-editor [data-pt-custom] { cursor: pointer; outline: 2px dashed transparent; outline-offset: -4px; }

@@ -131,8 +131,11 @@ export default defineNuxtConfig({
     optimizeDeps: {
       include: [
         '@tiptap/core', '@tiptap/vue-3', '@tiptap/vue-3/menus', '@tiptap/starter-kit', '@tiptap/pm/state', '@tiptap/pm/view',
-        '@tiptap/pm/model', '@tiptap/extension-code', '@tiptap/extension-horizontal-rule', '@tiptap/extension-image',
+        '@tiptap/pm/model', '@tiptap/pm/transform', '@tiptap/pm/commands', '@tiptap/pm/keymap', '@tiptap/pm/history',
+        '@tiptap/pm/dropcursor', '@tiptap/pm/gapcursor', '@tiptap/pm/schema-list', '@tiptap/extension-code', '@tiptap/extension-horizontal-rule', '@tiptap/extension-image',
         '@tiptap/extension-mention', '@tiptap/extension-placeholder', '@tiptap/extension-drag-handle-vue-3',
+        '@tiptap/extension-table', '@tiptap/pm/tables', '@tiptap/extension-text-style', '@tiptap/extension-highlight',
+        '@tiptap/extension-superscript', '@tiptap/extension-subscript',
         '@tiptap/markdown', '@tiptap/suggestion', 'dompurify', 'date-fns-tz', 'qrcode'
       ]
     },

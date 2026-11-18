@@ -1,7 +1,7 @@
 // Uploads: personal-library images resized for slow connections (a large and
-// a small WebP) and landing-section videos stored as uploaded, kept in object
-// storage, or on local disk under `.data/uploads` when S3 isn't configured
-// (development).
+// a small WebP), and landing-section videos and prayer-content audio stored as
+// uploaded, kept in object storage, or on local disk under `.data/uploads`
+// when S3 isn't configured (development).
 import { access, mkdir, writeFile, readFile } from 'node:fs/promises'
 import { join, normalize } from 'node:path'
 import { createHash, randomBytes } from 'node:crypto'
@@ -106,4 +106,23 @@ export async function ptStoreVideo(input: Buffer, contentType: string): Promise<
   const ext = PT_VIDEO_TYPES[contentType]
   if (!ext) ptBadRequest('Upload an MP4, WebM or MOV video.')
   return await store(input, `video.${ext}`, contentType, 'pt-videos')
+}
+
+// Audio formats by extension: the type a file is stored and served as, and
+// the types browsers send for it.
+export const PT_AUDIO_FORMATS: Record<string, { type: string, sent: string[] }> = {
+  mp3: { type: 'audio/mpeg', sent: ['audio/mpeg', 'audio/mp3'] },
+  m4a: { type: 'audio/mp4', sent: ['audio/mp4', 'audio/x-m4a', 'audio/m4a'] },
+  ogg: { type: 'audio/ogg', sent: ['audio/ogg', 'application/ogg'] },
+  wav: { type: 'audio/wav', sent: ['audio/wav', 'audio/x-wav', 'audio/wave', 'audio/vnd.wave'] }
+}
+
+// A file sent without a usable type is recognised by its name's extension.
+export async function ptStoreAudio(input: Buffer, contentType: string, fileName = ''): Promise<{ key: string, url: string }> {
+  const named = fileName.split('.').pop()?.toLowerCase() ?? ''
+  const untyped = !contentType || contentType === 'application/octet-stream'
+  const ext = Object.keys(PT_AUDIO_FORMATS).find(e => PT_AUDIO_FORMATS[e]!.sent.includes(contentType))
+    ?? (untyped && named in PT_AUDIO_FORMATS ? named : null)
+  if (!ext) ptBadRequest('Upload an MP3, M4A, OGG or WAV file.')
+  return await store(input, `audio.${ext}`, PT_AUDIO_FORMATS[ext]!.type, 'pt-audio')
 }

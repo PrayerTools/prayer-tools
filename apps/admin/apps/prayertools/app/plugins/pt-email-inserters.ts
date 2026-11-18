@@ -1,22 +1,21 @@
-// Lets the site email editor hold every node the shared renderer sends in
-// email (verses, videos, buttons, alignment), and adds images and blocks from
-// the personal library to it.
+// Lets the site email editor hold every node and mark prayer content can hold
+// (verses, videos, audio, buttons, tables, columns, colors, alignment), which
+// the shared renderer sends in email, and adds images and blocks from the
+// personal library to it.
 import { registerMarketingExtensions, registerMarketingInserter } from '#marketing'
 import { toEmailEditorContent, type EmailEditorChange } from '@prayertools/shared/tiptap'
 import type { TiptapDoc } from '@prayertools/shared/db/schema'
 import PtImagePicker from '../components/PtImagePicker.vue'
-import { PtVerse } from '../utils/pt-verse'
-import { PtVideo } from '../utils/pt-video'
-import { PtButton } from '../utils/pt-button'
-import { PtTextAlign } from '../utils/pt-text-align'
+import { ptContentExtensions } from '../utils/pt-content-extensions'
 
 const NOTES: Record<EmailEditorChange, string> = {
   video: 'Videos show as a link in the email.',
+  audio: 'Audio shows as a link in the email.',
   checklist: 'Checklists show as bullet lists.'
 }
 
 export default defineNuxtPlugin(() => {
-  registerMarketingExtensions('pt', [PtVerse, PtVideo, PtButton, PtTextAlign])
+  registerMarketingExtensions('pt', ptContentExtensions)
   registerMarketingInserter({
     id: 'pt-image',
     label: 'Image',

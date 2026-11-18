@@ -30,7 +30,7 @@ export const idInput = (what: string) => z.string().uuid().describe(what)
 const inline = z.string().max(20_000)
 const align = z.enum(['center', 'right', 'justify']).optional()
 
-export const blockInput = z.discriminatedUnion('type', [
+const leafBlocks = [
   z.object({ type: z.literal('paragraph'), text: inline, align }).strict(),
   z.object({ type: z.literal('heading'), level: z.number().int().min(1).max(6).default(2), text: inline, align }).strict(),
   z.object({ type: z.literal('list'), ordered: z.boolean().optional(), items: z.array(inline).min(1).max(100) }).strict(),
@@ -41,14 +41,29 @@ export const blockInput = z.discriminatedUnion('type', [
     src: z.string().url().optional().describe('Image URL. Use assetId for an image from list_images instead.'),
     assetId: z.string().uuid().optional().describe('An image from list_images; its alt text is used when alt is left out.'),
     alt: z.string().max(500).optional(),
-    width: z.number().int().positive().max(4000).optional()
+    width: z.number().int().positive().max(4000).optional(),
+    href: z.string().max(2000).optional().describe('Where clicking the image goes, e.g. a map link.')
   }).strict(),
   z.object({ type: z.literal('video'), url: z.string().url() }).strict(),
+  z.object({ type: z.literal('audio'), src: z.string().url(), title: z.string().max(200).optional() }).strict(),
+  z.object({ type: z.literal('table'), rows: z.array(z.array(inline).min(1).max(20)).min(1).max(200), header: z.boolean().optional() }).strict(),
   z.object({ type: z.literal('button'), label: z.string().min(1).max(120), url: z.string().max(2000) }).strict(),
   z.object({ type: z.literal('divider') }).strict()
+] as const
+
+const leafBlockInput = z.discriminatedUnion('type', [...leafBlocks])
+
+export const blockInput = z.discriminatedUnion('type', [
+  ...leafBlocks,
+  z.object({
+    type: z.literal('columns'),
+    columns: z.array(z.array(leafBlockInput).max(100)).min(2).max(3),
+    widths: z.array(z.number().positive().max(100)).min(2).max(3).optional()
+  }).strict()
 ])
 
 export type BlockInput = z.input<typeof blockInput>
+type LeafBlockInput = z.input<typeof leafBlockInput>
 
 export const blocksInput = z.array(blockInput).max(300).describe(CONTENT_BLOCKS_HELP)
 
@@ -83,19 +98,23 @@ export function adminLink(orgSlug: string | null, path: string): string {
 // Blocks to a Tiptap doc. Image blocks naming an assetId take that image's
 // URL (and alt text, unless given) from the caller's image library.
 export async function blocksDoc(userId: string, lang: string, blocks: BlockInput[]): Promise<TiptapDoc> {
-  const ids = [...new Set(blocks.flatMap(b => b.type === 'image' && b.assetId && !b.src ? [b.assetId] : []))]
+  const leaves = blocks.flatMap(b => b.type === 'columns' ? b.columns.flat() : [b])
+  const ids = [...new Set(leaves.flatMap(b => b.type === 'image' && b.assetId && !b.src ? [b.assetId] : []))]
   const assets = ids.length
     ? await ptAdminDb().selectFrom('pt_personal_asset').select(['id', 'url', 'alt']).where('owner_user_id', '=', userId).where('id', 'in', ids).execute()
     : []
-  const resolved: ContentBlock[] = blocks.map((b, i) => {
+  const resolve = (b: LeafBlockInput, at: string): ContentBlock => {
     if (b.type === 'heading') return { ...b, level: b.level ?? 2 }
     if (b.type !== 'image') return b
     const asset = b.assetId ? assets.find(a => a.id === b.assetId) : undefined
-    if (b.assetId && !b.src && !asset) throw new ContentBlocksError(`blocks[${i}]: image ${b.assetId} is not in your image library`)
+    if (b.assetId && !b.src && !asset) throw new ContentBlocksError(`${at}: image ${b.assetId} is not in your image library`)
     const src = b.src ?? asset?.url ?? ''
     const alt = b.alt ?? (asset ? textIn(asset.alt as TranslatableText, lang) : '')
-    return { type: 'image', src, alt, ...(b.width ? { width: b.width } : {}) }
-  })
+    return { type: 'image', src, alt, ...(b.width ? { width: b.width } : {}), ...(b.href ? { href: b.href } : {}) }
+  }
+  const resolved: ContentBlock[] = blocks.map((b, i) => b.type === 'columns'
+    ? { type: 'columns', columns: b.columns.map((col, ci) => col.map((c, j) => resolve(c, `blocks[${i}].columns[${ci}][${j}]`))), ...(b.widths ? { widths: b.widths } : {}) }
+    : resolve(b, `blocks[${i}]`))
   return blocksToDoc(resolved)
 }
 

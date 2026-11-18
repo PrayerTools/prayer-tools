@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { collectText, escapeHtml, fillVars, isEmptyDoc, mapText, textDoc, tiptapToHtml, tiptapToText, toEmailEditorContent } from '../src/tiptap'
-import type { TiptapDoc } from '../src/db/schema'
+import type { TiptapDoc, TiptapNode } from '../src/db/schema'
 
 const doc: TiptapDoc = {
   type: 'doc',
@@ -139,5 +139,118 @@ describe('toEmailEditorContent', () => {
       { type: 'image', attrs: { src: 'https://x/y.png', alt: 'A city', title: undefined, width: 320 } }
     ])
     expect(changes).toEqual(['checklist'])
+  })
+})
+
+describe('tables, audio, linked images and columns', () => {
+  const p = (text: string): TiptapNode => ({ type: 'paragraph', content: [{ type: 'text', text }] })
+  const table: TiptapNode = { type: 'table', content: [
+    { type: 'tableRow', content: [
+      { type: 'tableHeader', attrs: { colspan: 1, rowspan: 1, colwidth: null }, content: [p('Day')] },
+      { type: 'tableHeader', attrs: { colspan: 1, rowspan: 1, colwidth: [120] }, content: [p('Focus')] }
+    ] },
+    { type: 'tableRow', content: [
+      { type: 'tableCell', attrs: { colspan: 2, rowspan: 1, colwidth: null }, content: [p('Families'), p('Leaders')] }
+    ] }
+  ] }
+  const audio = (attrs: Record<string, unknown>): TiptapDoc => ({ type: 'doc', content: [{ type: 'audio', attrs }] })
+  const image = (href: unknown): TiptapDoc => ({ type: 'doc', content: [{ type: 'image', attrs: { src: 'https://cdn.example.org/map.webp', alt: 'Map of Rabat', href } }] })
+  const columns = (widths: unknown): TiptapDoc => ({ type: 'doc', content: [{ type: 'columns', attrs: { widths }, content: [
+    { type: 'column', content: [{ type: 'image', attrs: { src: 'https://cdn.example.org/map.webp', alt: 'Map' } }] },
+    { type: 'column', content: [p('Pray for Rabat')] }
+  ] }] })
+
+  it('renders a table for the web in a scrolling wrapper', () => {
+    expect(tiptapToHtml({ type: 'doc', content: [table] })).toBe(
+      '<div class="table-scroll"><table><tbody><tr><th><p>Day</p></th><th><p>Focus</p></th></tr><tr><td colspan="2"><p>Families</p><p>Leaders</p></td></tr></tbody></table></div>'
+    )
+  })
+
+  it('renders a table for email with inline styles and tight cell paragraphs', () => {
+    const html = tiptapToHtml({ type: 'doc', content: [table] }, { mode: 'email' })
+    expect(html).toMatch(/^<table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;[^"]*"><tbody><tr><th style="[^"]*background:#f4f4f5;[^"]*"><p style="margin:0;">Day<\/p><\/th>/)
+    expect(html).toMatch(/<td colspan="2" style="border:1px solid #d4d4d8;[^"]*"><p style="margin:0 0 8px;">Families<\/p><p style="margin:0;">Leaders<\/p><\/td>/)
+  })
+
+  it('renders audio as a player on the web and as a Listen link in email', () => {
+    const titled = audio({ src: 'https://cdn.example.org/pray.mp3', title: 'Morning prayer' })
+    expect(tiptapToHtml(titled)).toBe('<figure class="audio"><figcaption>Morning prayer</figcaption><audio controls preload="none" src="https://cdn.example.org/pray.mp3" aria-label="Morning prayer"></audio></figure>')
+    expect(tiptapToHtml(titled, { mode: 'email', lang: 'es', color: '#2f6f5e' })).toBe(
+      '<p style="margin:0 0 16px;font-size:16px;line-height:1.6;"><a href="https://cdn.example.org/pray.mp3" style="color:#2f6f5e;text-decoration:underline;font-weight:600;">▶ Escuchar: Morning prayer</a></p>'
+    )
+    expect(tiptapToHtml(audio({ src: '/uploads/a.ogg', title: null }), { mode: 'email' })).toContain('>▶ Listen</a>')
+    expect(tiptapToHtml(audio({ src: '/uploads/a.ogg', title: null }))).toBe('<figure class="audio"><audio controls preload="none" src="/uploads/a.ogg"></audio></figure>')
+    expect(tiptapToHtml(audio({ src: 'javascript:alert(1)' }))).toBe('')
+    expect(tiptapToHtml(audio({ src: '//evil.example/a.mp3' }))).toBe('')
+  })
+
+  it('wraps a linked image in its link, in web and email', () => {
+    expect(tiptapToHtml(image('https://maps.google.com/?q=Rabat&z=5'))).toBe(
+      '<a href="https://maps.google.com/?q=Rabat&amp;z=5" target="_blank" rel="noopener"><img src="https://cdn.example.org/map.webp" alt="Map of Rabat" loading="lazy" /></a>'
+    )
+    expect(tiptapToHtml(image('https://maps.google.com/'), { mode: 'email' })).toMatch(/^<a href="https:\/\/maps.google.com\/" target="_blank" rel="noopener"><img [^>]*style="max-width:100%;[^"]*" \/><\/a>$/)
+    expect(tiptapToHtml(image('javascript:alert(1)'))).toBe('<img src="https://cdn.example.org/map.webp" alt="Map of Rabat" loading="lazy" />')
+    expect(tiptapToHtml(image(null))).toBe('<img src="https://cdn.example.org/map.webp" alt="Map of Rabat" loading="lazy" />')
+  })
+
+  it('renders columns as a grid at their shares on the web', () => {
+    expect(tiptapToHtml(columns([33, 67]))).toBe(
+      '<div class="columns" style="--pt-columns:33fr 67fr;"><div class="column"><img src="https://cdn.example.org/map.webp" alt="Map" loading="lazy" /></div><div class="column"><p>Pray for Rabat</p></div></div>'
+    )
+    expect(tiptapToHtml(columns(null))).toContain('style="--pt-columns:1fr 1fr;"')
+    expect(tiptapToHtml(columns([1, 2, 3]))).toContain('style="--pt-columns:1fr 1fr;"')
+    expect(tiptapToHtml(columns(['50%', 50]))).toContain('style="--pt-columns:1fr 1fr;"')
+  })
+
+  it('renders email columns as inline blocks that stack when the email is narrow', () => {
+    const html = tiptapToHtml(columns([33, 67]), { mode: 'email' })
+    expect(html).toMatch(/^<div><div style="display:inline-block;vertical-align:top;width:100%;[^"]*max-width:174px;margin-right:16px;"><img /)
+    expect(html).toContain('max-width:353px;"><p style="margin:0 0 16px;')
+    expect(tiptapToHtml(columns(null), { mode: 'email', lang: 'ar' })).toContain('max-width:264px;margin-left:16px;')
+  })
+
+  it('renders highlight colors and super- and subscript in email', () => {
+    const marked: TiptapDoc = { type: 'doc', content: [{ type: 'paragraph', content: [
+      { type: 'text', text: '16', marks: [{ type: 'superscript' }] },
+      { type: 'text', text: 'H' },
+      { type: 'text', text: '2', marks: [{ type: 'subscript' }] },
+      { type: 'text', text: 'O', marks: [{ type: 'highlight', attrs: { color: '#fde68a' } }] },
+      { type: 'text', text: '!', marks: [{ type: 'highlight' }] }
+    ] }] }
+    expect(tiptapToHtml(marked, { mode: 'email' })).toContain('<sup>16</sup>H<sub>2</sub><span style="background-color:#fde68a;">O</span><span style="background-color:#fef08a;">!</span>')
+  })
+
+  it('renders text and highlight colors as CSS variables on the web and inline in email', () => {
+    const colored: TiptapDoc = { type: 'doc', content: [{ type: 'paragraph', content: [
+      { type: 'text', text: 'red', marks: [{ type: 'textStyle', attrs: { color: '#cf2e2e' } }] },
+      { type: 'text', text: 'marked', marks: [{ type: 'highlight', attrs: { color: 'rgb(255, 217, 102)' } }] },
+      { type: 'text', text: 'plain', marks: [{ type: 'highlight' }] },
+      { type: 'text', text: 'bad', marks: [{ type: 'highlight', attrs: { color: 'var(--x)' } }] }
+    ] }] }
+    expect(tiptapToHtml(colored)).toBe('<p><span class="pt-color" style="--pt-color:#cf2e2e;">red</span><mark class="pt-mark" style="--pt-mark:rgb(255, 217, 102);">marked</mark><mark>plain</mark><mark>bad</mark></p>')
+    expect(tiptapToHtml(colored, { mode: 'email' })).toContain('<span style="color:#cf2e2e;">red</span><span style="background-color:rgb(255, 217, 102);">marked</span>')
+  })
+
+  it('writes plain text for tables, audio, linked images and columns', () => {
+    const d: TiptapDoc = { type: 'doc', content: [
+      table,
+      ...audio({ src: 'https://cdn.example.org/pray.mp3', title: 'Morning prayer' }).content!,
+      ...audio({ src: 'https://cdn.example.org/b.mp3' }).content!,
+      ...image('https://maps.google.com/').content!,
+      ...columns(null).content!
+    ] }
+    expect(tiptapToText(d)).toBe([
+      'Day | Focus\nFamilies Leaders',
+      'Morning prayer (https://cdn.example.org/pray.mp3)',
+      'https://cdn.example.org/b.mp3',
+      '[Map of Rabat] (https://maps.google.com/)',
+      '[Map]',
+      'Pray for Rabat'
+    ].join('\n\n'))
+  })
+
+  it('keeps audio, tables and columns for the email editor and notes audio', () => {
+    const nodes = [table, ...audio({ src: 'https://cdn.example.org/pray.mp3' }).content!, ...columns([33, 67]).content!]
+    expect(toEmailEditorContent(nodes)).toEqual({ content: nodes, changes: ['audio'] })
   })
 })

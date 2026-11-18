@@ -282,7 +282,7 @@ export const ptMarketingHost = {
   async renderContent(tx: Tx, orgId: string, doc: TiptapDoc, opts: { lang: string, vars: Record<string, string> }) {
     const info = await siteInfo(tx, orgId)
     return {
-      html: tiptapToHtml(doc, { mode: 'email', vars: opts.vars, color: info.mail.color }),
+      html: tiptapToHtml(doc, { mode: 'email', vars: opts.vars, color: info.mail.color, lang: opts.lang }),
       text: tiptapToText(doc, opts.vars)
     }
   },

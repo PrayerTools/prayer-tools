@@ -90,3 +90,68 @@ describe('inline markup', () => {
     expect(serializeInline(parseInline(text))).toBe(text)
   })
 })
+
+describe('tables, audio, linked images and columns', () => {
+  const p = (text: string) => ({ type: 'paragraph', content: [{ type: 'text', text }] })
+  const cell = (type: string, text: string) => ({ type, attrs: { colspan: 1, rowspan: 1, colwidth: null }, content: [p(text)] })
+  const doc: TiptapDoc = { type: 'doc', content: [
+    { type: 'table', content: [
+      { type: 'tableRow', content: [cell('tableHeader', 'Day'), cell('tableHeader', 'Focus')] },
+      { type: 'tableRow', content: [cell('tableCell', '1'), cell('tableCell', '**Families**')] }
+    ] },
+    { type: 'audio', attrs: { src: 'https://cdn.example.org/pray.mp3', title: 'Morning prayer' } },
+    { type: 'image', attrs: { src: 'https://cdn.example.org/map.webp', alt: 'Map of Rabat', title: null, href: 'https://maps.google.com/?q=Rabat' } },
+    { type: 'columns', attrs: { widths: [33, 67] }, content: [
+      { type: 'column', content: [{ type: 'image', attrs: { src: 'https://cdn.example.org/map.webp', alt: 'Map', title: null, href: null } }] },
+      { type: 'column', content: [{ type: 'heading', attrs: { level: 3 }, content: [{ type: 'text', text: 'Rabat' }] }, p('Pray for the city')] }
+    ] }
+  ] }
+
+  it('reads them into blocks that write back exactly', () => {
+    const { blocks, exact } = docToBlocks(doc)
+    expect(blocks).toEqual([
+      { type: 'table', header: true, rows: [['Day', 'Focus'], ['1', '\\*\\*Families\\*\\*']] },
+      { type: 'audio', src: 'https://cdn.example.org/pray.mp3', title: 'Morning prayer' },
+      { type: 'image', src: 'https://cdn.example.org/map.webp', alt: 'Map of Rabat', href: 'https://maps.google.com/?q=Rabat' },
+      { type: 'columns', widths: [33, 67], columns: [
+        [{ type: 'image', src: 'https://cdn.example.org/map.webp', alt: 'Map' }],
+        [{ type: 'heading', level: 3, text: 'Rabat' }, { type: 'paragraph', text: 'Pray for the city' }]
+      ] }
+    ])
+    expect(exact).toBe(true)
+    expect(tiptapToHtml(blocksToDoc(blocks))).toBe(tiptapToHtml(doc))
+  })
+
+  it('pads short table rows and leaves empty columns a paragraph', () => {
+    const out = blocksToDoc([
+      { type: 'table', rows: [['a', 'b'], ['c']] },
+      { type: 'columns', columns: [[{ type: 'paragraph', text: 'x' }], []] }
+    ])
+    expect(out.content![0]!.content![1]!.content).toEqual([
+      { type: 'tableCell', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'c' }] }] },
+      { type: 'tableCell', content: [{ type: 'paragraph' }] }
+    ])
+    expect(out.content![1]!.content![1]).toEqual({ type: 'column', content: [{ type: 'paragraph' }] })
+  })
+
+  it('flags merged cells and nested columns as inexact, reading nested columns as their blocks', () => {
+    const merged: TiptapDoc = { type: 'doc', content: [{ type: 'table', content: [{ type: 'tableRow', content: [{ ...cell('tableCell', 'wide'), attrs: { colspan: 2 } }] }] }] }
+    expect(docToBlocks(merged).exact).toBe(false)
+    const nested: TiptapDoc = { type: 'doc', content: [{ type: 'columns', content: [
+      { type: 'column', content: [{ type: 'columns', content: [{ type: 'column', content: [p('a')] }, { type: 'column', content: [p('b')] }] }] },
+      { type: 'column', content: [p('c')] }
+    ] }] }
+    const read = docToBlocks(nested)
+    expect(read.exact).toBe(false)
+    expect(read.blocks).toEqual([{ type: 'columns', columns: [[{ type: 'paragraph', text: 'a' }, { type: 'paragraph', text: 'b' }], [{ type: 'paragraph', text: 'c' }]] }])
+  })
+
+  it('rejects columns that are nested, too few or badly sized, and audio without a web src', () => {
+    const col = [{ type: 'paragraph', text: 'x' }] as ContentBlock[]
+    expect(() => blocksToDoc([{ type: 'columns', columns: [col] }])).toThrow(/blocks\[0\]: columns needs 2 or 3 columns/)
+    expect(() => blocksToDoc([{ type: 'columns', columns: [col, col], widths: [100] }])).toThrow(/widths needs a positive number/)
+    expect(() => blocksToDoc([{ type: 'columns', columns: [[{ type: 'columns', columns: [col, col] }], col] }])).toThrow(/blocks\[0\]\.columns\[0\]\[0\]: columns can't hold more columns/)
+    expect(() => blocksToDoc([{ type: 'audio', src: 'javascript:alert(1)' }])).toThrow(/audio needs/)
+    expect(() => blocksToDoc([{ type: 'image', src: 'https://x.org/a.png', alt: 'a', href: 'javascript:alert(1)' }])).toThrow(/href/)
+  })
+})

@@ -1,4 +1,4 @@
-// Prayer content as a flat list of blocks, the shape AI clients read and write
+// Prayer content as a list of blocks, the shape AI clients read and write
 // over MCP, converted to and from the Tiptap JSON the editor and renderer use.
 // Inline text uses a small markup: **bold**, *italic*, ~~strike~~, `code`,
 // [label](https://…), a newline for a line break, and a backslash to escape
@@ -13,13 +13,16 @@ export type ContentBlock =
   | { type: 'list', ordered?: boolean, items: string[] }
   | { type: 'quote', text: string }
   | { type: 'verse', reference: string, translation?: string, text: string }
-  | { type: 'image', src: string, alt: string, width?: number }
+  | { type: 'image', src: string, alt: string, width?: number, href?: string }
   | { type: 'video', url: string }
+  | { type: 'audio', src: string, title?: string }
+  | { type: 'table', rows: string[][], header?: boolean }
+  | { type: 'columns', columns: ContentBlock[][], widths?: number[] }
   | { type: 'button', label: string, url: string }
   | { type: 'divider' }
 
 export const BLOCKS_FORMAT_HELP = [
-  'Content is a list of blocks: paragraph {text, align?}, heading {level 1-6, text}, list {ordered?, items: string[]}, quote {text}, verse {reference, translation?, text}, image {src, alt, width?}, video {url: YouTube or Vimeo}, button {label, url}, divider.',
+  'Content is a list of blocks: paragraph {text, align?}, heading {level 1-6, text}, list {ordered?, items: string[]}, quote {text}, verse {reference, translation?, text}, image {src, alt, width?, href?: where clicking the image goes}, video {url: YouTube or Vimeo}, audio {src: an audio file URL, title?}, table {rows: a list of rows, each a list of cell texts; header?: true when the first row is a header}, columns {columns: 2 or 3 lists of blocks shown side by side (no columns inside), widths?: each column\'s share, e.g. [33, 67]}, button {label, url}, divider.',
   'Text uses **bold**, *italic*, ~~strike~~, `code` and [label](https://…); a blank line starts a new paragraph, a single newline is a line break, and a backslash escapes * ~ ` [ ] \\.',
   'Put Scripture in verse blocks with its reference and translation, quoted exactly, never paraphrased.'
 ].join(' ')
@@ -213,9 +216,18 @@ function need(cond: unknown, message: string): asserts cond {
 }
 
 export function blocksToDoc(blocks: ContentBlock[]): TiptapDoc {
+  return { type: 'doc', content: blockNodes(blocks, 'blocks', false) }
+}
+
+function validWidths(widths: unknown, count: number): widths is number[] {
+  return Array.isArray(widths) && widths.length === count && widths.every(w => typeof w === 'number' && Number.isFinite(w) && w > 0)
+}
+
+// `path` names the list in error messages; `nested` is true inside a column.
+function blockNodes(blocks: ContentBlock[], path: string, nested: boolean): TiptapNode[] {
   const content: TiptapNode[] = []
   blocks.forEach((b, i) => {
-    const at = `blocks[${i}]`
+    const at = `${path}[${i}]`
     switch (b.type) {
       case 'paragraph':
         need(typeof b.text === 'string', `${at}: a paragraph needs text`)
@@ -250,11 +262,41 @@ export function blocksToDoc(blocks: ContentBlock[]): TiptapDoc {
       case 'image':
         need(typeof b.src === 'string' && /^(https?:\/\/|\/)/.test(b.src), `${at}: an image needs an https src`)
         need(typeof b.alt === 'string' && b.alt.trim(), `${at}: describe the image in alt for people who can't see it`)
-        content.push({ type: 'image', attrs: { src: b.src, alt: b.alt.trim(), ...(b.width ? { width: Math.round(b.width) } : {}) } })
+        need(b.href === undefined || (typeof b.href === 'string' && /^(https?:\/\/|\/|mailto:)/.test(b.href)), `${at}: an image's href needs to be a web address`)
+        content.push({ type: 'image', attrs: { src: b.src, alt: b.alt.trim(), ...(b.width ? { width: Math.round(b.width) } : {}), ...(b.href ? { href: b.href } : {}) } })
         break
       case 'video':
         need(typeof b.url === 'string' && /^https?:\/\//.test(b.url), `${at}: a video needs a YouTube or Vimeo url`)
         content.push({ type: 'youtube', attrs: { src: b.url } })
+        break
+      case 'audio':
+        need(typeof b.src === 'string' && /^(https?:\/\/|\/)/.test(b.src), `${at}: audio needs the https src of an audio file`)
+        content.push({ type: 'audio', attrs: { src: b.src, title: b.title?.trim() || null } })
+        break
+      case 'table': {
+        need(Array.isArray(b.rows) && b.rows.length && b.rows.every(r => Array.isArray(r) && r.length), `${at}: a table needs rows, each a list of cells`)
+        const width = Math.max(...b.rows.map(r => r.length))
+        content.push({
+          type: 'table',
+          content: b.rows.map((r, ri) => ({
+            type: 'tableRow',
+            content: Array.from({ length: width }, (_, ci) => ({ type: b.header && ri === 0 ? 'tableHeader' : 'tableCell', content: paragraphs(String(r[ci] ?? '')) }))
+          }))
+        })
+        break
+      }
+      case 'columns':
+        need(!nested, `${at}: columns can't hold more columns`)
+        need(Array.isArray(b.columns) && b.columns.length >= 2 && b.columns.length <= 3 && b.columns.every(Array.isArray), `${at}: columns needs 2 or 3 columns, each a list of blocks`)
+        need(b.widths === undefined || validWidths(b.widths, b.columns.length), `${at}: widths needs a positive number for each column`)
+        content.push({
+          type: 'columns',
+          attrs: { widths: b.widths ?? null },
+          content: b.columns.map((col, ci) => {
+            const inner = blockNodes(col, `${at}.columns[${ci}]`, true)
+            return { type: 'column', content: inner.length ? inner : [{ type: 'paragraph' }] }
+          })
+        })
         break
       case 'button':
         need(typeof b.label === 'string' && b.label.trim(), `${at}: a button needs a label`)
@@ -268,7 +310,7 @@ export function blocksToDoc(blocks: ContentBlock[]): TiptapDoc {
         throw new ContentBlocksError(`${at}: unknown block type "${(b as { type?: unknown }).type}"`)
     }
   })
-  return { type: 'doc', content }
+  return content
 }
 
 function align(n: TiptapNode): BlockAlign | undefined {
@@ -280,7 +322,9 @@ function blockText(nodes: TiptapNode[] | undefined): string {
   return (nodes ?? []).map(n => n.type === 'paragraph' || n.type === 'heading' ? serializeInline(n.content) : blockText(n.content)).join('\n\n')
 }
 
-function toBlocks(nodes: TiptapNode[] | undefined): ContentBlock[] {
+// `nested` is true inside a column, where columns can't be written back and
+// are read as their blocks in order.
+function toBlocks(nodes: TiptapNode[] | undefined, nested = false): ContentBlock[] {
   const out: ContentBlock[] = []
   for (const n of nodes ?? []) {
     switch (n.type) {
@@ -306,12 +350,40 @@ function toBlocks(nodes: TiptapNode[] | undefined): ContentBlock[] {
       case 'image':
       case 'imageResize': {
         const width = Number(n.attrs?.width)
-        out.push({ type: 'image', src: String(n.attrs?.src ?? ''), alt: String(n.attrs?.alt ?? ''), ...(Number.isFinite(width) && width > 0 ? { width: Math.round(width) } : {}) })
+        const href = n.attrs?.href
+        out.push({
+          type: 'image',
+          src: String(n.attrs?.src ?? ''),
+          alt: String(n.attrs?.alt ?? ''),
+          ...(Number.isFinite(width) && width > 0 ? { width: Math.round(width) } : {}),
+          ...(typeof href === 'string' && href ? { href } : {})
+        })
         break
       }
       case 'youtube':
         out.push({ type: 'video', url: String(n.attrs?.src ?? '') })
         break
+      case 'audio': {
+        const title = n.attrs?.title
+        out.push({ type: 'audio', src: String(n.attrs?.src ?? ''), ...(typeof title === 'string' && title ? { title } : {}) })
+        break
+      }
+      case 'table': {
+        const rows = (n.content ?? []).map(r => (r.content ?? []).map(c => blockText(c.content)))
+        const first = n.content?.[0]?.content ?? []
+        out.push({ type: 'table', rows, ...(first.length && first.every(c => c.type === 'tableHeader') ? { header: true } : {}) })
+        break
+      }
+      case 'columns': {
+        const cols = (n.content ?? []).filter(c => c.type === 'column')
+        if (nested || cols.length < 2 || cols.length > 3) {
+          out.push(...cols.flatMap(c => toBlocks(c.content, true)))
+          break
+        }
+        const widths = n.attrs?.widths
+        out.push({ type: 'columns', columns: cols.map(c => toBlocks(c.content, true)), ...(validWidths(widths, cols.length) ? { widths } : {}) })
+        break
+      }
       case 'button':
         out.push({ type: 'button', label: String(n.attrs?.label ?? '') || serializeInline(n.content), url: String(n.attrs?.href ?? '') })
         break
@@ -322,7 +394,7 @@ function toBlocks(nodes: TiptapNode[] | undefined): ContentBlock[] {
         out.push({ type: 'paragraph', text: serializeInline(n.content) })
         break
       default:
-        out.push(...toBlocks(n.content))
+        out.push(...toBlocks(n.content, nested))
     }
   }
   return out
@@ -334,10 +406,16 @@ const KEPT_ATTRS: Record<string, string[]> = {
   paragraph: ['textAlign'],
   orderedList: ['start'],
   verse: ['reference', 'translation'],
-  image: ['src', 'alt', 'width'],
+  image: ['src', 'alt', 'width', 'href'],
   youtube: ['src'],
+  audio: ['src', 'title'],
+  columns: ['widths'],
+  tableCell: ['colspan', 'rowspan'],
+  tableHeader: ['colspan', 'rowspan'],
   button: ['href', 'label']
 }
+
+const NUMERIC_ATTRS = ['level', 'width', 'start', 'colspan', 'rowspan']
 
 function normalize(nodes: TiptapNode[] | undefined): unknown[] {
   const out: Record<string, unknown>[] = []
@@ -360,10 +438,12 @@ function normalize(nodes: TiptapNode[] | undefined): unknown[] {
       const v = n.attrs?.[k]
       if (v === null || v === undefined || v === '') continue
       if (k === 'textAlign' && !ALIGNS.includes(String(v))) continue
-      if (k === 'level' || k === 'width' || k === 'start') attrs[k] = Number(v)
+      if (NUMERIC_ATTRS.includes(k)) attrs[k] = Number(v)
       else attrs[k] = v
     }
     if (n.type === 'orderedList' && attrs.start === 1) delete attrs.start
+    if (attrs.colspan === 1) delete attrs.colspan
+    if (attrs.rowspan === 1) delete attrs.rowspan
     out.push({ type: n.type, attrs, content: normalize(n.content) })
   }
   return out
