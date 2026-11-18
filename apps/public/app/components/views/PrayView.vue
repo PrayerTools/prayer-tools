@@ -6,7 +6,12 @@ const { site, link, st, num } = useSite()
 const { t } = useI18n()
 const route = useRoute()
 
-useHead({ title: () => `${t('pray.day', { n: props.page.day })} · ${site.value.name}` })
+const weekly = computed(() => site.value.campaign?.cadence === 'weekly')
+const entryTitle = computed(() => props.page.personal && props.page.length
+  ? t(weekly.value ? 'pray.week_of' : 'pray.day_of', { n: num(props.page.day), total: num(props.page.length) })
+  : t(weekly.value ? 'pray.week' : 'pray.day', { n: num(props.page.day) }))
+
+useHead({ title: () => `${entryTitle.value} · ${site.value.name}` })
 
 const joined = computed(() => route.query.joined === '1')
 const needsVerify = computed(() => route.query.verify === '1')
@@ -25,11 +30,12 @@ const groupSent = ref(false)
 interface Position { current: number, movedToday: boolean, entries: number | null, finished: boolean }
 const position = ref<Position | null>(null)
 const positionChecked = ref(false)
-const weekly = computed(() => site.value.campaign?.cadence === 'weekly')
 const nextOpensLater = computed(() => {
   const p = position.value
   return !!p && p.movedToday && !p.finished && props.page.day === p.current - 1
 })
+const showPersonalSignup = computed(() => props.page.personal && positionChecked.value && !position.value)
+const showReminders = computed(() => !joined.value && !props.page.personal)
 
 // The entry `/pray` shows a recognised subscriber: the one they are on, or
 // the one they already prayed today.
@@ -179,62 +185,94 @@ async function sendGroup() {
 </script>
 
 <template>
-  <article class="max-w-3xl mx-auto px-4 py-8 space-y-6">
-    <UAlert v-if="joined && needsVerify" color="warning" variant="soft" icon="i-lucide-mail" :title="t('pray.check_email_title')" :description="t('pray.check_email_body')" role="status" />
-    <UAlert v-else-if="joined" color="success" variant="soft" icon="i-lucide-check" :title="st('signup.success')" role="status" />
-    <UAlert v-if="confirmed" color="success" variant="soft" icon="i-lucide-badge-check" :title="t('pray.confirmed_title')" :description="t('pray.confirmed_body')" role="status" />
-
-    <header class="space-y-1">
-      <p v-if="site.campaign" class="text-sm text-stone-600">{{ site.campaign.name }}</p>
-      <h1 class="text-3xl font-bold">{{ page.personal && page.length ? t('pray.day_of', { n: num(page.day), total: num(page.length) }) : t('pray.day', { n: num(page.day) }) }}</h1>
-      <UProgress v-if="position?.entries" :model-value="Math.min(position.current - 1, position.entries)" :max="position.entries" size="sm" class="max-w-xs" />
-      <p v-if="page.dateLabel" class="text-stone-600">{{ page.dateLabel }}</p>
-      <p v-if="prayingNow > 1 && site.settings.showPrayingNow" class="text-sm text-stone-700" aria-live="polite">
-        {{ t('pray.praying_now', { n: num(prayingNow) }, prayingNow) }}
-      </p>
-    </header>
-
-    <p v-if="!page.blocks.length" class="text-stone-700">{{ t('pray.no_content') }}</p>
-    <section v-for="(b, i) in page.blocks" :key="i" class="space-y-3">
-      <h2 v-if="page.blocks.length > 1" class="text-sm font-semibold uppercase tracking-wide text-stone-500">{{ b.title }}</h2>
-      <!-- eslint-disable-next-line vue/no-v-html -->
-      <div class="pt-content" v-html="b.html" />
-    </section>
-
-    <div class="rounded-2xl bg-white border border-stone-200 p-5 space-y-4">
-      <UButton v-if="!amened" size="xl" block icon="i-lucide-heart-handshake" :label="t('pray.amen')" @click="amen" />
-      <UAlert v-else color="success" variant="soft" icon="i-lucide-heart" :title="t('pray.amen_thanks')" role="status" />
-      <div>
-        <UButton variant="link" color="neutral" icon="i-lucide-users" :label="t('pray.group_question')" :aria-expanded="groupOpen" @click="groupOpen = !groupOpen" />
-        <form v-if="groupOpen && !groupSent" class="flex flex-wrap items-end gap-3 mt-2" @submit.prevent="sendGroup">
-          <UFormField :label="t('pray.group_count')" name="group-count">
-            <UInputNumber v-model="groupCount" :min="2" :max="10000" class="w-36" />
-          </UFormField>
-          <UButton type="submit" variant="outline" :label="t('pray.group_submit')" />
-        </form>
-        <p v-if="groupSent" class="text-sm text-stone-700 mt-2" role="status">{{ t('pray.group_thanks') }}</p>
+  <article>
+    <div class="border-b border-stone-200 bg-white">
+      <div class="max-w-3xl mx-auto px-4 py-8 sm:py-10 space-y-5">
+        <UAlert v-if="joined && needsVerify" color="warning" variant="soft" icon="i-lucide-mail" :title="t('pray.check_email_title')" :description="t('pray.check_email_body')" role="status" />
+        <UAlert v-else-if="joined" color="success" variant="soft" icon="i-lucide-check" :title="st('signup.success')" role="status" />
+        <UAlert v-if="confirmed" color="success" variant="soft" icon="i-lucide-badge-check" :title="t('pray.confirmed_title')" :description="t('pray.confirmed_body')" role="status" />
+        <div class="flex flex-wrap items-end justify-between gap-x-8 gap-y-5">
+          <header class="min-w-0 space-y-2">
+            <h1 class="text-3xl sm:text-4xl font-bold tracking-tight text-balance">{{ entryTitle }}</h1>
+            <p v-if="page.dateLabel" class="text-stone-600">{{ page.dateLabel }}</p>
+            <UProgress v-if="position?.entries" :model-value="Math.min(position.current - 1, position.entries)" :max="position.entries" size="sm" class="w-56 max-w-full pt-1" />
+          </header>
+          <nav v-if="page.prev || page.next || nextOpensLater" class="flex flex-wrap items-center gap-x-4 gap-y-2" :aria-label="t('pray.nav')">
+            <UButton v-if="page.prev" :to="link('pray', [page.prev])" variant="outline" color="neutral" icon="i-lucide-arrow-left" :ui="{ leadingIcon: 'rtl:rotate-180' }" :label="t(weekly ? 'pray.previous_week' : 'pray.previous')" />
+            <UButton v-if="page.next" :to="link('pray', [page.next])" variant="outline" color="neutral" trailing-icon="i-lucide-arrow-right" :ui="{ trailingIcon: 'rtl:rotate-180' }" :label="t(weekly ? 'pray.next_week' : 'pray.next')" />
+            <p v-else-if="nextOpensLater" class="inline-flex items-center gap-1.5 text-sm text-stone-600" role="status">
+              <UIcon name="i-lucide-clock" class="size-4 shrink-0" />{{ t(weekly ? 'pray.opens_next_week' : 'pray.opens_tomorrow', { n: num(position!.current) }) }}
+            </p>
+          </nav>
+        </div>
+        <div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+          <NuxtLink v-if="site.campaign" :to="link()" class="inline-flex items-center gap-1.5 font-medium text-primary underline-offset-4 hover:underline">
+            <UIcon name="i-lucide-house" class="size-4 shrink-0" />{{ site.campaign.name }} · {{ t('manage.home_link') }}
+          </NuxtLink>
+          <p v-if="prayingNow > 1 && site.settings.showPrayingNow" class="inline-flex items-center gap-2 text-stone-600 tabular-nums" aria-live="polite">
+            <span class="size-2 shrink-0 rounded-full bg-success" aria-hidden="true" />{{ t('pray.praying_now', { n: num(prayingNow) }, prayingNow) }}
+          </p>
+        </div>
       </div>
     </div>
 
-    <p v-if="nextOpensLater" class="text-stone-700" role="status">{{ t(weekly ? 'pray.opens_next_week' : 'pray.opens_tomorrow', { n: num(position!.current) }) }}</p>
-    <div v-if="page.personal && positionChecked && !position" class="rounded-2xl bg-white border border-stone-200 p-5 space-y-3">
-      <h2 class="text-lg font-semibold">{{ t('pray.personal_signup_title') }}</h2>
-      <p class="text-stone-700">{{ t('pray.personal_signup_body') }}</p>
-      <UButton :to="link('signup')" :label="t('pray.personal_signup')" />
-      <p class="text-sm text-stone-600">{{ t('pray.personal_signed_up') }}</p>
+    <div class="max-w-3xl mx-auto px-4 py-8 sm:py-10 space-y-6">
+      <div class="rounded-xl border border-stone-200 bg-white shadow-[0_1px_3px_rgb(28_25_23/0.05)]">
+        <p v-if="!page.blocks.length" class="px-5 py-6 sm:px-8 text-stone-700">{{ t('pray.no_content') }}</p>
+        <section v-for="(b, i) in page.blocks" :key="i" :aria-labelledby="page.blocks.length > 1 ? `block-${i}` : undefined" :class="i > 0 && 'border-t border-stone-200'">
+          <header v-if="page.blocks.length > 1" class="flex min-h-14 items-center border-b border-stone-200 px-5 py-3 sm:px-8">
+            <h2 :id="`block-${i}`" class="text-base font-semibold tracking-tight">{{ b.title }}</h2>
+          </header>
+          <!-- eslint-disable-next-line vue/no-v-html -->
+          <div class="pt-content pt-flush px-5 py-6 sm:px-8 sm:py-8" v-html="b.html" />
+        </section>
+        <footer class="flex flex-col items-center gap-2 border-t border-stone-200 px-5 py-5 sm:px-8">
+          <Transition mode="out-in" enter-active-class="transition duration-300 ease-out motion-reduce:transition-none" enter-from-class="opacity-0 scale-95">
+            <UButton v-if="!amened" key="amen" size="xl" icon="i-lucide-heart-handshake" :label="t('pray.amen')" class="w-full justify-center sm:w-auto" @click="amen" />
+            <div v-else key="thanks" class="flex flex-wrap items-center justify-center gap-x-6 gap-y-3" role="status">
+              <p class="inline-flex items-center gap-3 font-semibold">
+                <span class="grid size-10 shrink-0 place-items-center rounded-full bg-success/10 text-success"><UIcon name="i-lucide-heart" class="size-5" /></span>
+                {{ t('pray.amen_thanks') }}
+              </p>
+              <UButton v-if="page.next" :to="link('pray', [page.next])" variant="outline" color="neutral" trailing-icon="i-lucide-arrow-right" :ui="{ trailingIcon: 'rtl:rotate-180' }" :label="t(weekly ? 'pray.next_week' : 'pray.next')" />
+            </div>
+          </Transition>
+          <div class="flex flex-col items-center">
+            <UButton variant="ghost" color="neutral" icon="i-lucide-users" :label="t('pray.group_question')" :aria-expanded="groupOpen" @click="groupOpen = !groupOpen" />
+            <form v-if="groupOpen && !groupSent" class="mt-2" @submit.prevent="sendGroup">
+              <UFormField :label="t('pray.group_count')" name="group-count">
+                <div class="flex items-center gap-3">
+                  <UInputNumber v-model="groupCount" :min="2" :max="10000" class="w-36" />
+                  <UButton type="submit" variant="outline" :label="t('pray.group_submit')" />
+                </div>
+              </UFormField>
+            </form>
+            <p v-if="groupSent" class="text-sm text-stone-700 mt-2" role="status">{{ t('pray.group_thanks') }}</p>
+          </div>
+        </footer>
+      </div>
+
+      <aside class="grid gap-6 sm:grid-cols-2">
+        <SectionCard v-if="showPersonalSignup" :title="t('pray.personal_signup_title')" title-id="personal-signup-title">
+          <div class="space-y-3 py-5">
+            <p class="text-stone-700">{{ t('pray.personal_signup_body') }}</p>
+            <UButton :to="link('signup')" :label="t('pray.personal_signup')" />
+            <p class="text-sm text-stone-600">{{ t('pray.personal_signed_up') }}</p>
+          </div>
+        </SectionCard>
+        <SectionCard v-else-if="showReminders" :title="t('pray.get_reminders')" title-id="reminders-title">
+          <div class="space-y-4 py-5">
+            <p class="text-stone-700">{{ st('landing.signup.intro', { site: site.name }) }}</p>
+            <UButton :to="link('signup')" variant="outline" icon="i-lucide-bell" :label="st(site.campaign?.goal === 'coverage' ? 'landing.signup.button' : 'landing.signup.title')" />
+          </div>
+        </SectionCard>
+        <SectionCard :title="t('share.invite')" title-id="share-title" :class="!showPersonalSignup && !showReminders && 'sm:col-span-2'">
+          <div class="py-4">
+            <ShareButton size="md" variant="soft" />
+          </div>
+        </SectionCard>
+      </aside>
     </div>
-
-    <nav class="flex justify-between gap-4" :aria-label="t('pray.nav')">
-      <UButton v-if="page.prev" :to="link('pray', [page.prev])" variant="outline" icon="i-lucide-arrow-left" :label="t('pray.previous')" class="rtl:[&_svg]:rotate-180" />
-      <span v-else />
-      <UButton v-if="page.next" :to="link('pray', [page.next])" variant="outline" trailing-icon="i-lucide-arrow-right" :label="t('pray.next')" class="rtl:[&_svg]:rotate-180" />
-    </nav>
-
-    <section class="space-y-3 border-t border-stone-200 pt-6" aria-labelledby="pray-share">
-      <h2 id="pray-share" class="text-lg font-semibold">{{ t('share.invite') }}</h2>
-      <ShareButton size="md" variant="soft" />
-      <p v-if="!joined" class="text-sm"><NuxtLink :to="link('signup')" class="underline">{{ t('pray.get_reminders') }}</NuxtLink></p>
-    </section>
 
     <UModal v-model:open="verifyPrompt" :title="t('pray.verify_prompt_title')" :description="signupEmail ? t('pray.verify_prompt_body_email', { email: signupEmail }) : t('pray.verify_prompt_body')">
       <template #body>

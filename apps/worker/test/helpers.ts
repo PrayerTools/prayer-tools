@@ -8,7 +8,7 @@ import { jsonb } from '@prayertools/shared/db/json'
 import { ensureSystemUser } from '@prayertools/shared/crm'
 import { createWebSignup } from '@prayertools/shared/subscriptions'
 import type { OutgoingMail } from '@prayertools/shared/email/mail'
-import type { CampaignCta, EndMode, Goal, StartMode, SubscriptionStatus, TranslatableText } from '@prayertools/shared/db/schema'
+import type { Cadence, CampaignCta, EndMode, Goal, StartMode, SubscriptionStatus, TranslatableText } from '@prayertools/shared/db/schema'
 import { createContext, type WorkerContext } from '../src/context'
 import { createLogger, type Fields } from '../src/log'
 
@@ -98,6 +98,7 @@ export interface CampaignOpts {
   endDate?: string | null
   lengthDays?: number | null
   goal?: Goal
+  cadence?: Cadence
   timezone?: string
   endMessage?: TranslatableText
   cta?: CampaignCta
@@ -119,7 +120,7 @@ export async function createCampaign(env: TestEnv, orgId: string, o: CampaignOpt
     end_date: o.endMode === 'none' || o.endMode === 'days' ? null : (o.endDate ?? '2026-01-20'),
     length_days: o.lengthDays ?? null,
     goal: o.goal ?? 'people',
-    cadence: 'daily',
+    cadence: o.cadence ?? 'daily',
     timezone: o.timezone ?? 'America/New_York',
     end_message: o.endMessage ? jsonb(o.endMessage) : null,
     cta: jsonb(o.cta ?? {}),

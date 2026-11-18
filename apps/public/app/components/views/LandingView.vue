@@ -184,7 +184,7 @@ function onJoined(verify: boolean) {
 
           <section v-else-if="s.key === 'today' && page.today" aria-labelledby="today-title" data-pt-section="today">
             <h2 id="today-title" class="text-2xl font-bold mb-1">{{ st('landing.today.title') }}</h2>
-            <p class="text-sm text-stone-600 mb-4">{{ t('pray.day', { n: num(page.today.day) }) }}</p>
+            <p class="text-sm text-stone-600 mb-4">{{ t(campaign?.cadence === 'weekly' ? 'pray.week' : 'pray.day', { n: num(page.today.day) }) }}</p>
             <div class="relative max-h-80 overflow-hidden">
               <!-- eslint-disable-next-line vue/no-v-html -->
               <div class="pt-content" v-html="page.today.html" />

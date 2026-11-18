@@ -39,6 +39,10 @@ html:has(.public-campaign) { scroll-padding-top: 3.75rem; }
 .pt-content hr { border: 0; border-top: 1px solid #e7e5e4; margin: 2em 0; }
 .pt-content blockquote.verse { border-inline-start: 4px solid var(--brand); background: #f5f5f4; padding: 0.75em 1em; border-radius: 0.375rem; margin: 1em 0; }
 .pt-content .verse-ref { display: block; font-size: 0.875rem; color: #57534e; font-style: normal; margin-top: 0.5em; }
+.pt-content ::selection { background: color-mix(in srgb, var(--brand) 24%, transparent); }
+/* Content that fills a padded card: the card's padding sets the outer spacing. */
+.pt-content.pt-flush > :first-child { margin-top: 0; }
+.pt-content.pt-flush > :last-child { margin-bottom: 0; }
 
 :focus-visible { outline: 3px solid var(--brand-foreground, var(--brand)); outline-offset: 2px; }
 .pt-content p.button a { display: inline-block; background: var(--brand); color: var(--brand-text); padding: 0.6em 1.4em; border-radius: 0.5rem; text-decoration: none; font-weight: 600; }

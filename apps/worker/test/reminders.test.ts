@@ -67,6 +67,20 @@ describe('reminder sweep', () => {
     expect(log[0]!.sent_at.toISOString()).toBe('2026-03-07T12:00:30.000Z')
   })
 
+  it('labels a weekly campaign\'s entry as a week', async () => {
+    const { orgId } = await createSite(env)
+    const campaignId = await createCampaign(env, orgId, { startDate: '2026-03-01', endDate: '2026-04-30', cadence: 'weekly' })
+    const { email, subscriptionId } = await createSubscriber(env, orgId, campaignId)
+    await addCommitment(env, orgId, subscriptionId, campaignId, { startsOn: '2026-03-01', endsOn: '2026-04-30', next: new Date('2026-03-15T11:00:00Z') })
+    const ctx = testCtx(env)
+
+    ctx.setNow(new Date('2026-03-15T11:00:30Z'))
+    await runReminderSweep(ctx, ctx.log)
+    const [mail] = mailsTo(ctx.mails, email)
+    expect(mail!.text).toContain('Week 3')
+    expect(mail!.text).not.toContain('Day 3')
+  })
+
   it('never sends the same day twice (dedupe on pt_reminder_sent)', async () => {
     const { orgId } = await createSite(env)
     const campaignId = await createCampaign(env, orgId, { startDate: '2026-03-01', endDate: '2026-03-20' })

@@ -209,6 +209,7 @@ async function prepare(tx: Tx, claimed: Claimed, now: Date, mailCtx: Map<string,
   const current = isSideCampaign(campaign) ? null : pickCurrentCampaign(await loadCampaigns(tx))?.campaign.id
   const rendered = reminderEmail(ctx, lang, {
     campaignName: campaign.name,
+    cadence: campaign.cadence,
     day,
     minutes: c.duration_min,
     prayUrl: prayUrl(ctx.siteUrl, campaignSegment(campaign, current), day, lang === site.default_language ? null : lang, claimed.org_id, sub.id),

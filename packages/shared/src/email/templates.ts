@@ -4,7 +4,7 @@
 import { brandColor } from '../colors'
 import { platformConfig, platformOrigin } from '../config'
 import type { Tx } from '../db/scope'
-import type { SiteBranding, SiteEmailIdentity } from '../db/schema'
+import type { Cadence, SiteBranding, SiteEmailIdentity } from '../db/schema'
 import { emailT } from '../i18n/email'
 import { languageDir } from '../languages'
 import { siteUrlFor } from '../site'
@@ -240,6 +240,7 @@ export function welcomeEmail(ctx: SiteMailContext, lang: string, d: WelcomeDetai
 
 export interface ReminderDetails {
   campaignName: string
+  cadence: Cadence
   day: number | null
   minutes: number | null
   prayUrl: string
@@ -252,7 +253,7 @@ export interface ReminderDetails {
 export function reminderEmail(ctx: SiteMailContext, lang: string, d: ReminderDetails, opts: { test?: boolean } = {}): Rendered {
   const vars = { site: ctx.siteName, campaign: d.campaignName }
   const meta = [
-    d.day ? emailT(lang, 'reminder.day', { day: d.day }) : null,
+    d.day ? emailT(lang, d.cadence === 'weekly' ? 'reminder.week' : 'reminder.day', { day: d.day }) : null,
     d.minutes ? emailT(lang, 'reminder.duration', { minutes: d.minutes }) : null
   ].filter(Boolean).join(' · ')
   const body = heading(emailT(lang, 'reminder.heading'))
