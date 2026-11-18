@@ -103,7 +103,6 @@
     "day_of": "Day {n} of {total}",
     "praying_now": "{n} person praying now | {n} people praying now",
     "no_content": "The prayer guide for this day is not available yet.",
-    "credit": "Content: {credit}",
     "amen": "Amen — I prayed",
     "amen_thanks": "Thank you for praying!",
     "group_question": "Praying as a group? Tell us how many",
@@ -132,10 +131,6 @@
     "verify_prompt_body_email": "We sent a confirmation link to {email}. Click it to confirm your address — your prayer reminders only start once you do.",
     "verify_prompt_spam": "Can't find it? It can take a few minutes to arrive. Check your spam or promotions folder too.",
     "verify_prompt_ok": "OK, I'll check my email"
-  },
-  "license": {
-    "permission": "Used with permission",
-    "other": "See source for license"
   },
   "share": {
     "button": "Share",

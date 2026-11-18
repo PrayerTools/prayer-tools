@@ -95,8 +95,6 @@ export interface GoalProgressView {
 export interface ContentBlockView {
   title: string
   html: string
-  credit: string | null
-  license: string | null
 }
 
 export interface StatsView {

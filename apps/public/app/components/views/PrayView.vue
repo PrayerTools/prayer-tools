@@ -47,13 +47,6 @@ async function lookupPosition(): Promise<Position | null> {
   }
 }
 
-const LICENSES: Record<string, string> = { cc_by: 'CC BY 4.0', cc_by_sa: 'CC BY-SA 4.0' }
-
-function licenseLabel(l: string | null): string {
-  if (!l || l === 'own') return ''
-  return LICENSES[l] ?? t(`license.${l}`)
-}
-
 // Prayer session: a client id, pinged every 30 s while the page is visible.
 // The personal token from a reminder link rides in the URL fragment, so the
 // page itself stays shared and cacheable.
@@ -206,9 +199,6 @@ async function sendGroup() {
       <h2 v-if="page.blocks.length > 1" class="text-sm font-semibold uppercase tracking-wide text-stone-500">{{ b.title }}</h2>
       <!-- eslint-disable-next-line vue/no-v-html -->
       <div class="pt-content" v-html="b.html" />
-      <p v-if="b.credit || licenseLabel(b.license)" class="text-xs text-stone-500">
-        {{ [b.credit ? t('pray.credit', { credit: b.credit }) : '', licenseLabel(b.license)].filter(Boolean).join(' · ') }}
-      </p>
     </section>
 
     <div class="rounded-2xl bg-white border border-stone-200 p-5 space-y-4">

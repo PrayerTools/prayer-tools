@@ -33,7 +33,7 @@ export async function contentBlocks(tx: Tx, data: SiteData, siteName: string, c:
   const blocks = await dayContent(tx, c.id, day, lang, data.site.default_language)
   return blocks.map((b) => {
     const doc: TiptapDoc = maxNodes ? { type: 'doc', content: (b.doc.content ?? []).slice(0, maxNodes) } : b.doc
-    return { title: b.title, html: tiptapToHtml(doc, { mode: 'web', vars }), credit: b.credit, license: b.license }
+    return { title: b.title, html: tiptapToHtml(doc, { mode: 'web', vars }) }
   })
 }
 

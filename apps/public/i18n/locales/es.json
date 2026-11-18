@@ -100,7 +100,6 @@
     "day_of": "Día {n} de {total}",
     "praying_now": "{n} persona orando ahora | {n} personas orando ahora",
     "no_content": "La guía de oración de este día aún no está disponible.",
-    "credit": "Contenido: {credit}",
     "amen": "Amén — oré",
     "amen_thanks": "¡Gracias por orar!",
     "group_question": "¿Oran en grupo? Dinos cuántos son",
@@ -129,10 +128,6 @@
     "verify_prompt_body_email": "Enviamos un enlace de confirmación a {email}. Haz clic en él para confirmar tu dirección; tus recordatorios de oración solo comenzarán cuando lo hagas.",
     "verify_prompt_spam": "¿No lo encuentras? Puede tardar unos minutos en llegar. Revisa también tu carpeta de spam o de promociones.",
     "verify_prompt_ok": "De acuerdo, revisaré mi correo"
-  },
-  "license": {
-    "permission": "Usado con permiso",
-    "other": "Consulta la fuente para ver la licencia"
   },
   "share": {
     "button": "Compartir",
