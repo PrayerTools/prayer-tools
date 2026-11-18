@@ -12,7 +12,7 @@
     "apps/cli"
   ],
   "scripts": {
-    "setup": "bun install && bun run --cwd apps/admin sync-layers && bun install",
+    "setup": "bun run --cwd apps/admin sync-layers && bun install",
     "dev:admin": "bun run --cwd apps/admin dev",
     "dev:public": "bun run --cwd apps/public dev",
     "dev:worker": "bun run --cwd apps/worker dev",
