@@ -3,7 +3,7 @@
 // sites starts from one.
 import { sql } from 'kysely'
 import type { Tx } from './db/scope'
-import type { CampaignBranding, CampaignCta, CampaignLanding, PersonalTemplateSetup, TranslatableText } from './db/schema'
+import type { CampaignBranding, CampaignCta, CampaignEmailText, CampaignLanding, PersonalTemplateSetup, TranslatableText } from './db/schema'
 import { jsonb, pgArray } from './db/json'
 import { daysBetween, toIsoDate } from './dates'
 
@@ -15,6 +15,7 @@ export interface PersonalTemplateContent {
   description: TranslatableText | null
   end_message: TranslatableText | null
   cta: CampaignCta
+  email_text: CampaignEmailText
   library_ids: string[]
 }
 
@@ -26,7 +27,7 @@ export interface PersonalTemplate extends PersonalTemplateContent {
 
 // Read inside the campaign's site: its setup answers without dates (a dated
 // campaign keeps its length in days), landing page, hero image, end message,
-// call to action, and the libraries its content comes from. Content written
+// call to action, email text, and the libraries its content comes from. Content written
 // for the site stays on the site.
 export async function templateFromCampaign(tx: Tx, campaignId: string): Promise<PersonalTemplateContent | null> {
   const c = await tx.selectFrom('pt_campaign').selectAll().where('id', '=', campaignId).executeTakeFirst()
@@ -54,6 +55,7 @@ export async function templateFromCampaign(tx: Tx, campaignId: string): Promise<
     description: c.description,
     end_message: c.end_message,
     cta: c.cta,
+    email_text: c.email_text,
     library_ids: [...new Set(libs.map(l => l.library_id!))]
   }
 }
@@ -67,6 +69,7 @@ function templateValues(content: PersonalTemplateContent) {
     description: content.description ? jsonb(content.description) : null,
     end_message: content.end_message ? jsonb(content.end_message) : null,
     cta: jsonb(content.cta),
+    email_text: jsonb(content.email_text),
     library_ids: pgArray(content.library_ids, 'uuid')
   }
 }
@@ -92,7 +95,7 @@ export async function replacePersonalTemplate(tx: Tx, id: string, content: Perso
 // personal-app transaction.
 export async function readPersonalTemplate(tx: Tx, id: string): Promise<PersonalTemplate | null> {
   const row = await tx.selectFrom('pt_personal_template')
-    .select(['id', 'owner_user_id', 'name', 'template_key', 'setup', 'landing', 'branding', 'description', 'end_message', 'cta', 'library_ids'])
+    .select(['id', 'owner_user_id', 'name', 'template_key', 'setup', 'landing', 'branding', 'description', 'end_message', 'cta', 'email_text', 'library_ids'])
     .where('id', '=', id).executeTakeFirst()
   return row ?? null
 }

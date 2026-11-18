@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // One campaign: its numbers, setup answers, address, place and people group,
-// and end-of-campaign message. Opening it makes it the campaign the other campaign pages edit.
+// end-of-campaign message and its own text in welcome and reminder emails.
+// Opening it makes it the campaign the other campaign pages edit.
 import type { PtCampaign } from '../../../utils/pt-campaign-ui'
 
 definePageMeta({ middleware: 'auth' })
@@ -363,6 +364,15 @@ async function remove() {
       />
     </UCard>
 
+    <PtCampaignEmailText
+      :key="data.campaign.id"
+      :campaign-id="data.campaign.id"
+      :email-text="data.campaign.email_text"
+      :languages="site.site.languages"
+      :default-language="site.site.default_language"
+      @saved="refresh"
+    />
+
     <UModal
       v-model:open="confirmDelete"
       title="Delete this campaign?"
@@ -393,7 +403,7 @@ async function remove() {
         <div class="space-y-4">
           <UFormField v-if="!saveTemplate.replaceId">
             <template #label>
-              Template name <InfoTip text="Keeps this campaign's answers, landing page, hero image, end-of-campaign message, call to action and libraries in your library. New campaigns on any of your sites can start from it." />
+              Template name <InfoTip text="Keeps this campaign's answers, landing page, hero image, end-of-campaign message, call to action, email text and libraries in your library. New campaigns on any of your sites can start from it." />
             </template>
             <UInput
               v-model="saveTemplate.name"

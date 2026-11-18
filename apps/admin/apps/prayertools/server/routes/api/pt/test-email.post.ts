@@ -30,10 +30,10 @@ export default definePtHandler('pt.email.send', async (event, tx, ctx) => {
     case 'welcome': {
       const minutes = campaignRow && durationRule(campaignRow.goal, campaignRow.track_time) === 'hidden' ? null : site.settings_merged.default_duration_min
       const times = prayerTimeLines([{ kind: 'recurring', frequency: 'daily', days_of_week: [], time: '07:00', timezone: campaignRow?.timezone ?? 'UTC', duration_min: minutes, dates: [] }], lang)
-      rendered = welcomeEmail(mail, lang, { campaignName, name: null, startsOn: null, times, prayUrl: dead, calendarUrl: dead, shareUrl: dead, manageUrl: dead, unsubscribeUrl: dead }, opts)
+      rendered = welcomeEmail(mail, lang, { campaignName, name: null, startsOn: null, times, prayUrl: dead, calendarUrl: dead, shareUrl: dead, manageUrl: dead, unsubscribeUrl: dead, emailText: campaignRow?.email_text ?? null }, opts)
       break
     }
-    case 'reminder': rendered = reminderEmail(mail, lang, { campaignName, cadence: campaignRow?.cadence ?? 'daily', day: 3, minutes: site.settings_merged.default_duration_min, prayUrl: dead, manageUrl: dead, unsubscribeUrl: dead, leaveUrl: dead }, opts); break
+    case 'reminder': rendered = reminderEmail(mail, lang, { campaignName, cadence: campaignRow?.cadence ?? 'daily', day: 3, minutes: site.settings_merged.default_duration_min, prayUrl: dead, manageUrl: dead, unsubscribeUrl: dead, leaveUrl: dead, emailText: campaignRow?.email_text ?? null }, opts); break
     case 'checkin': rendered = checkinEmail(mail, lang, { yes: dead, sometimes: dead, no: dead, manageUrl: dead, unsubscribeUrl: dead }, opts); break
     case 'thanks': {
       const main = campaignRow ? nextStepCampaign(campaignRow, await loadCampaigns(ptTx(tx))) : null

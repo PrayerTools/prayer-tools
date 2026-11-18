@@ -215,7 +215,8 @@ async function prepare(tx: Tx, claimed: Claimed, now: Date, mailCtx: Map<string,
     prayUrl: prayUrl(ctx.siteUrl, campaignSegment(campaign, current), day, lang === site.default_language ? null : lang, claimed.org_id, sub.id),
     manageUrl: links.manageUrl,
     unsubscribeUrl: links.unsubscribeUrl,
-    leaveUrl: leave
+    leaveUrl: leave,
+    emailText: campaign.email_text
   })
   const sent: EmailLogEntry = { subscriptionId: sub.id, kind: 'reminder', subject: rendered.subject, campaignId: campaign.id, day, sentAt: now }
   // A mail client's one-click unsubscribe on a reminder leaves only its campaign.

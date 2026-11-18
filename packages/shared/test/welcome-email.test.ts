@@ -15,7 +15,8 @@ const details = {
   calendarUrl: 'https://beirut.prayer.tools/ics/x.ics',
   shareUrl: 'https://beirut.prayer.tools/?r=abc123',
   manageUrl: 'https://beirut.prayer.tools/m/x',
-  unsubscribeUrl: 'https://beirut.prayer.tools/u/x'
+  unsubscribeUrl: 'https://beirut.prayer.tools/u/x',
+  emailText: null
 }
 
 describe('prayerTimeLines', () => {

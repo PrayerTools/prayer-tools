@@ -75,8 +75,9 @@ export function campaignUrl(siteUrl: string, c: { id: string, slug: string }, cu
 }
 
 // Campaign fields `pt.messages.write` covers as well as `pt.campaigns.write`:
-// the share message and image, and the end-of-campaign message and call to action.
-export const CAMPAIGN_MESSAGE_FIELDS = ['share', 'share_image_url', 'end_message', 'cta']
+// the share message and image, the end-of-campaign message and call to action,
+// and the campaign's own text in its welcome and reminder emails.
+export const CAMPAIGN_MESSAGE_FIELDS = ['share', 'share_image_url', 'end_message', 'cta', 'email_text']
 // Landing page fields, which also need `pt.site.write`.
 const CAMPAIGN_LANDING_FIELDS = ['landing', 'description', 'branding']
 
