@@ -6,7 +6,7 @@ Monorepo for prayer.tools v3 (with orgs). Plans live in `plans/` — they are th
 
 | Path | What |
 |---|---|
-| `packages/shared` | `@prayertools/shared`: DB types (`src/db/schema.ts`), connections and RLS scopes (`src/db/connect.ts`, `src/db/scope.ts`, `src/db/json.ts`), domain logic (setup, schedule, coverage, content, subscriptions, stats, links, crm/inbox adapters, email transport and templates, i18n for email, statinator, cloudflare, turnstile, rate limit). Import as `@prayertools/shared/<file>` e.g. `@prayertools/shared/db/scope`. |
+| `packages/shared` | `@prayertools/shared`: DB types (`src/db/schema.ts`), connections and RLS scopes (`src/db/connect.ts`, `src/db/scope.ts`, `src/db/json.ts`), domain logic (setup, schedule, coverage, content, subscriptions, stats, links, crm/inbox adapters, mail streams on the mail kernel and email templates, i18n for email, statinator, cloudflare, turnstile, rate limit). Import as `@prayertools/shared/<file>` e.g. `@prayertools/shared/db/scope`. |
 | `apps/admin` | Nuxtinator host (SPA) on port **2480** (`NUXT_PORT`). Layers fetched into `_layers/` (never edit), or loaded from a local Nuxtinator checkout when `NUXTINATOR_SOURCE_DIR` is set. prayer.tools' own layers in `apps/admin/apps/*`. Owns ALL migrations (`apps/admin/apps/prayertools/migrations/pt_T001_schema.ts`). |
 | `apps/public` | Public server (Nuxt SSR) on port **3480** (`--port 3480`): site domains, `api.` host, `go.` host, `/my`. |
 | `apps/worker` | Background worker (plain TypeScript run by bun). |
@@ -20,7 +20,7 @@ Monorepo for prayer.tools v3 (with orgs). Plans live in `plans/` — they are th
   - Admin role URL: `postgres://pt2_admin:dev@localhost:5432/<db>` (BYPASSRLS; migrations, worker sweeps)
   - App role URL: `postgres://pt2_app:dev@localhost:5432/<db>` (RLS enforced; admin requests, public server)
 - Migrations run when the admin app boots; `scripts/migrate.ts` runs the same set standalone (the test suites use it), loading layer migrations from `NUXTINATOR_SOURCE_DIR` when set.
-- Mailpit: SMTP localhost:1025, UI http://localhost:8025 (`MAIL_PROVIDER=smtp`).
+- Mailpit: SMTP localhost:1025, UI http://localhost:8025 (`MAIL_TRANSPORT=smtp`, `MAIL_DOMAIN=mail.localhost` in the admin app and the worker; the public server gets `MAIL_OUTBOX_PUBLIC_KEY` from Admin → Email).
 - Sites in dev: `http://<slug>.localhost:3480`; platform host (My prayer) `http://localhost:3480/my`; API `http://api.localhost:3480`; go host `http://go.localhost:3480`. (`PT_SITE_BASE_HOST=localhost:3480`.) Browsers refuse `localhost` as a cookie domain, so there sites get the My prayer sign-in by hand-off. To try the sign-in shared across subdomain sites, use `PT_SITE_BASE_HOST=lvh.me:3480` and `PT_SITE_SCHEME=http` in every app, and start the public server with `--host 127.0.0.1` (`lvh.me` and its subdomains resolve to 127.0.0.1).
 
 ## RLS and scopes
@@ -30,7 +30,7 @@ Monorepo for prayer.tools v3 (with orgs). Plans live in `plans/` — they are th
 - One site per transaction, always. Work that covers several sites (Your sites, multi-site sends) visits each site in turn with `withOrgScope(orgId, …)` / `listUserOrgs(userId, { permission, appId })` from `#tenant/server` (or `forEachOrg` in the worker). No policy admits another org's rows; `apps/worker/test/isolation.test.ts` checks it.
 - User-owned tables (`pt_personal_asset`, `pt_personal_block`, `marketing_template`, `marketing_parent`): policy `user_isolation` on `app.current_user`. Their handlers run in the `library` personal app: `withUserContext(event, { appId: PT_LIBRARY_APP }, …)` from `#core/server/utils/personal-apps`.
   - Shared library items (`pt_personal_asset`, `pt_personal_block`, `pt_personal_template`, `marketing_template`) have core share tables (`<table>_shares`, from `createShareTable`) and the policies `user_read` / `user_insert` / `user_update` / `user_delete` in place of `user_isolation`: the owner reads and writes, people it is shared with read it, editors update it, and only the owner inserts, deletes or shares. `pt_library` (global, filtered in code) has `pt_library_shares`; inside a site transaction, check it with `pt_library_shares_has_member(library, user)`.
-- Global tables (no RLS): `orgs`, `memberships`, `users`, `sessions`, `pt_user_device`, `pt_auth_code`, `pt_suppression`, `pt_library*`. Always filter them explicitly.
+- Global tables (no RLS): `orgs`, `memberships`, `users`, `sessions`, `pt_user_device`, `pt_auth_code`, `pt_library*`, and the mail kernel's `mail_*` tables. Always filter them explicitly.
 - Tables with an `org_id` but no RLS, because they are read before the site is known or across sites by design; each is always filtered by `org_id` (or its own key) in code. `apps/worker/test/isolation.test.ts` holds this exact list, so a new `org_id` table without RLS fails the test:
   - `pt_site_domain` — the public server resolves a request's host to its site before any org is set.
   - `pt_legacy_key` — old links resolve to their site before any org is set.

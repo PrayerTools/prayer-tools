@@ -4,6 +4,7 @@ import { platformConfig, platformOrigin } from '@prayertools/shared/config'
 import { button, layout, paragraph, type Rendered, type SiteMailContext } from '@prayertools/shared/email/templates'
 import { subdomainUrl } from '@prayertools/shared/site'
 import { escapeHtml } from '@prayertools/shared/tiptap'
+import { PT_STREAMS } from '@prayertools/shared/email/mail'
 import { JobError, requireString, type JobContext } from './registry'
 
 export function domainAlertEmail(siteName: string, domain: string, fallbackUrl: string): Rendered {
@@ -49,7 +50,7 @@ export async function domainAlertJob(ctx: JobContext, payload: Record<string, un
   const rendered = domainAlertEmail(org.name, domain, subdomainUrl(org.slug))
   for (const { email } of owners) {
     if (sent.has(email)) continue
-    await ctx.sendMail({ stream: 'transactional', to: email, fromName: 'Prayer.Tools', fromLocal: 'noreply', subject: rendered.subject, html: rendered.html, text: rendered.text, meta: { org_id: orgId, kind: 'domain_alert' }, tags: ['domain_alert'] })
+    await ctx.sendMail({ stream: PT_STREAMS.platform.id, orgId, to: email, fromName: 'Prayer.Tools', fromLocal: 'noreply', subject: rendered.subject, html: rendered.html, text: rendered.text })
     sent.add(email)
     await ctx.saveProgress({ sent: [...sent] })
   }

@@ -251,8 +251,15 @@ export interface MarketingMail {
   text: string
   // RFC 8058 one-click endpoint, sent as List-Unsubscribe + List-Unsubscribe-Post.
   unsubscribeUrl: string | null
-  meta: Record<string, string>
+  // The site sending it.
+  orgId: string
+  // The delivery row, echoed back on the provider's events for this message.
+  ref?: string
 }
+
+// `suppressed`: the address is on the suppression list, so nothing was sent.
+// Any other outcome throws, with `retryable: false` when a retry can't help.
+export type MarketingSendResult = { status: 'sent', id: string | null } | { status: 'suppressed' }
 
 export interface ConsentWithdrawal {
   source: string
@@ -282,15 +289,15 @@ export interface MarketingHost {
   wrap(tx: HostTx, orgId: string, lang: string, body: { html: string, text: string }, opts: { unsubscribeUrl: string | null, test: boolean }): Promise<{ html: string, text: string }>
   sender(tx: HostTx, orgId: string): Promise<MarketingSender>
 
-  // Lowercased addresses on the global suppression list.
-  suppressedAmong(tx: HostTx, addresses: string[]): Promise<Set<string>>
+  // Lowercased addresses the org may not mail.
+  suppressedAmong(tx: HostTx, orgId: string, addresses: string[]): Promise<Set<string>>
   // Channel ids opted into `purpose`. Defaults to the CRM consent state.
   consentedAmong?(tx: HostTx, channelIds: string[], purpose: string): Promise<Set<string>>
   // The org's email channel for an address, if any.
   findChannel?(tx: HostTx, orgId: string, address: string): Promise<string | null>
   withdrawConsent(tx: HostTx, channelId: string, purpose: string, capture: ConsentWithdrawal): Promise<boolean>
 
-  send(mail: MarketingMail): Promise<{ id: string | null }>
+  send(mail: MarketingMail): Promise<MarketingSendResult>
 
   // Marketing complaints recorded for the org since `since`.
   complaintCount(tx: HostTx, orgId: string, since: Date): Promise<number>

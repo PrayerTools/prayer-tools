@@ -22,7 +22,7 @@ export default defineTenantHandler({ appId: 'site' }, async (tx, ctx) => {
     brand: brandColor((site.branding as { color?: string })?.color),
     domains,
     directory: directory ?? null,
-    inboxAddress: await siteInboxAddress(tx as never, ctx.orgSlug),
+    inboxAddress: await siteInboxAddress(tx as never, ctx.orgId, ctx.orgSlug),
     currentCampaign: current ? { ...current.campaign, state: current.state } : null,
     campaignCount: campaigns.length,
     roles: ctx.roles,

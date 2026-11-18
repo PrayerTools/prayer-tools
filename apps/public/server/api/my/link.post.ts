@@ -5,11 +5,10 @@ import { normalizeEmail } from '@prayertools/shared/crm'
 import { accountByEmail } from '@prayertools/shared/accounts'
 import { issueAuthCode, safeReturnPath, SIGN_IN_MINUTES } from '@prayertools/shared/auth-codes'
 import { myPrayerEmail } from '@prayertools/shared/email/templates'
-import { sendMail } from '@prayertools/shared/email/transport'
-import { isSuppressed } from '@prayertools/shared/email/suppression'
 import { platformOrigin } from '@prayertools/shared/config'
 import { useDb } from '../../utils/db'
 import { background, limit, readJson, str } from '../../utils/request'
+import { queueAccountMail } from '../../utils/mail'
 import { UI_LANGUAGES } from '../../utils/site-data'
 
 export default defineEventHandler(async (event) => {
@@ -22,10 +21,10 @@ export default defineEventHandler(async (event) => {
   if (valid) {
     const db = useDb()
     const account = await accountByEmail(db, normalized)
-    if (account?.email && !(await isSuppressed(db, account.email))) {
+    if (account?.email) {
       const code = await issueAuthCode(db, { userId: account.id, purpose: 'sign_in', ttlMs: SIGN_IN_MINUTES * 60_000, returnTo: next.startsWith('/my') ? next : '/my' })
       const mail = myPrayerEmail(lang, `${platformOrigin()}/my/login/${code}`, 0, SIGN_IN_MINUTES)
-      background(event, sendMail({ stream: 'transactional', to: account.email, fromName: 'Prayer.Tools', fromLocal: 'my', subject: mail.subject, html: mail.html, text: mail.text, tags: ['my_link'] }))
+      background(event, queueAccountMail({ stream: 'confirmations', to: account.email, rendered: mail }))
     }
   }
   return { ok: true }

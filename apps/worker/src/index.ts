@@ -124,6 +124,9 @@ async function main(): Promise<void> {
   }
 
   log.info('worker.started', { scheduled: SCHEDULED_JOBS.map(j => `${j.name}@${j.cron}`) })
+  // The mail outbox: everything the public server and the admin app queue.
+  ctx.mail.startSweeping()
+  void ctx.mail.runOutboxSweep().catch(err => log.error('mail.sweep_failed', { err }))
   const stops = [
     every(REMINDER_INTERVAL_MS, 2_000, reminderTick),
     every(JOB_INTERVAL_MS, 3_000, jobTick),

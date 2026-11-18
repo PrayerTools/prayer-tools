@@ -12,7 +12,7 @@ import { MISSES_BEFORE_WEEKLY, positionOf } from '@prayertools/shared/progress'
 import { primaryEmailOf } from '@prayertools/shared/crm'
 import { isSuppressed } from '@prayertools/shared/email/suppression'
 import { loadSiteMailContext, reminderEmail, type SiteMailContext } from '@prayertools/shared/email/templates'
-import type { OutgoingMail } from '@prayertools/shared/email/transport'
+import type { OutgoingMail } from '@prayertools/shared/email/mail'
 import { logEmails, type EmailLogEntry } from '@prayertools/shared/email/log'
 import { leaveUrl, prayUrl } from '@prayertools/shared/links'
 import type { WorkerContext } from './context'
@@ -180,7 +180,7 @@ async function prepare(tx: Tx, claimed: Claimed, now: Date, mailCtx: Map<string,
     await advance(tx, c.id, occurrence, null)
     return { outcome: 'no_email' }
   }
-  if (await isSuppressed(tx, email.email)) {
+  if (await isSuppressed(tx, email.email, claimed.org_id)) {
     await advance(tx, c.id, occurrence, next)
     return { outcome: 'suppressed' }
   }
@@ -218,7 +218,7 @@ async function prepare(tx: Tx, claimed: Claimed, now: Date, mailCtx: Map<string,
   })
   const sent: EmailLogEntry = { subscriptionId: sub.id, kind: 'reminder', subject: rendered.subject, campaignId: campaign.id, day, sentAt: now }
   // A mail client's one-click unsubscribe on a reminder leaves only its campaign.
-  return { outcome: 'send', prepared: { mail: siteMail(ctx, email.email, rendered, 'reminder', leave), sent, localDate, next } }
+  return { outcome: 'send', prepared: { mail: siteMail(ctx, email.email, rendered, leave), sent, localDate, next } }
 }
 
 async function handleOne(ctx: WorkerContext, claimed: Claimed, now: Date, mailCtx: Map<string, Promise<SiteMailContext>>, log: Logger): Promise<Outcome> {
@@ -226,7 +226,11 @@ async function handleOne(ctx: WorkerContext, claimed: Claimed, now: Date, mailCt
   if (step.outcome !== 'send') return step.outcome
   const { mail, sent, localDate, next } = step.prepared
   try {
-    await ctx.sendMail(mail)
+    const res = await ctx.sendMail(mail)
+    if (res.status === 'suppressed') {
+      await withOrg(ctx.app, claimed.org_id, tx => advance(tx, claimed.id, claimed.next_reminder_utc, next))
+      return 'suppressed'
+    }
   } catch (err) {
     // Release the day so the retry after the lease expires can send it.
     await withOrg(ctx.app, claimed.org_id, tx => tx.deleteFrom('pt_reminder_sent').where('commitment_id', '=', claimed.id).where('local_date', '=', localDate).execute())

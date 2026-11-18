@@ -5,21 +5,26 @@
 import { randomBytes, randomUUID } from 'node:crypto'
 import { sql } from 'kysely'
 import { platformConfig } from './config'
+import { ptMail } from './email/mail'
 import type { Tx } from './db/scope'
 import { escapeHtml } from './tiptap'
 
-// The site's inbox address, where replies to its email reach an inbox thread:
-// the inbox's contact-address setting when the site set one, else
-// `<slug>@<inbox domain>` when every site shares the inbound domain. Runs
-// inside the site's org.
-export async function siteInboxAddress(tx: Tx, slug: string): Promise<string | null> {
+// The site's inbox address, where replies to its email reach an inbox thread.
+// It follows the inbox layer's rule: the domain the mail kernel resolves for
+// the site's inbox stream (its own receiving domain, else the host's), with
+// the inbox's contact local part, or `<slug>@<domain>` on the host's domain
+// under slug addresses. Null while no domain can receive. Runs inside the
+// site's org.
+export async function siteInboxAddress(tx: Tx, orgId: string, slug: string): Promise<string | null> {
+  const sender = await (await ptMail()).resolveSender('inbox', orgId)
+  if (!sender) return null
+  const domain = sender.domain.toLowerCase()
+  if (sender.domainOrgId === null && platformConfig().inbox.slugAddresses) return `${slug}@${domain}`
   const row = await sql<{ value: unknown }>`
-    select value from core_settings where namespace = 'inbox' and key = 'contact_address'
+    select value from core_settings where namespace = 'inbox' and key = 'contact_local'
   `.execute(tx)
-  const set = typeof row.rows[0]?.value === 'string' ? (row.rows[0].value as string).trim().toLowerCase() : ''
-  if (set) return set
-  const { domain, slugAddresses } = platformConfig().inbox
-  return slugAddresses && domain ? `${slug}@${domain}` : null
+  const local = typeof row.rows[0]?.value === 'string' ? (row.rows[0].value as string).trim().toLowerCase() : ''
+  return `${local || 'contact'}@${domain}`
 }
 
 export interface InboundThreadInput {

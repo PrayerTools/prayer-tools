@@ -245,6 +245,7 @@ interface Outcome {
   providerId?: string | null
   error?: string
   retryable?: boolean
+  skip?: string
 }
 
 async function sendDue(admin: MarketingDb, app: MarketingDb, host: MarketingHost, now: Date, limit: number, result: ProcessResult, log: Log): Promise<void> {
@@ -398,7 +399,7 @@ async function claimBatch(host: MarketingHost, tx: MarketingTx, orgId: string, e
     const ok = host.consentedAmong ? await host.consentedAmong(tx, ids, purpose) : await defaultConsentedAmong(tx, ids, purpose)
     for (const r of rows) if (r.purpose === purpose && r.channel_id && !ok.has(r.channel_id) && !skip.has(r.id)) skip.set(r.id, 'no_consent')
   }
-  const suppressed = await host.suppressedAmong(tx, rows.filter(r => r.address).map(r => r.address!.trim().toLowerCase()))
+  const suppressed = await host.suppressedAmong(tx, orgId, rows.filter(r => r.address).map(r => r.address!.trim().toLowerCase()))
   for (const r of rows) if (r.address && suppressed.has(r.address.trim().toLowerCase()) && !skip.has(r.id)) skip.set(r.id, 'suppressed')
   for (const [id, reason] of skip) {
     await tx.updateTable('marketing_delivery').set({ status: 'skipped', skip_reason: reason, claimed_at: null, address: null, first_name: null }).where('id', '=', id).execute()
@@ -427,7 +428,8 @@ async function claimBatch(host: MarketingHost, tx: MarketingTx, orgId: string, e
         html: rendered.html,
         text: rendered.text,
         unsubscribeUrl: urls.oneClick,
-        meta: { org_id: orgId, kind: 'marketing', email_id: emailId }
+        orgId,
+        ref: r.id
       }
     })
   }
@@ -442,7 +444,9 @@ async function sendAll(host: MarketingHost, items: Claimed[], concurrency = 4): 
       const item = items[i++]!
       try {
         const res = await host.send(item.mail)
-        out.push({ id: item.id, attempts: item.attempts, providerId: res.id })
+        out.push(res.status === 'suppressed'
+          ? { id: item.id, attempts: item.attempts, skip: 'suppressed' }
+          : { id: item.id, attempts: item.attempts, providerId: res.id })
       } catch (err) {
         const retryable = (err as { retryable?: boolean }).retryable !== false
         out.push({ id: item.id, attempts: item.attempts, error: String((err as Error)?.message ?? err).slice(0, 500), retryable })
@@ -455,7 +459,9 @@ async function sendAll(host: MarketingHost, items: Claimed[], concurrency = 4): 
 
 async function recordOutcomes(tx: MarketingTx, emailId: string, outcomes: Outcome[], now: Date): Promise<void> {
   for (const o of outcomes) {
-    if (!o.error) {
+    if (o.skip) {
+      await tx.updateTable('marketing_delivery').set({ status: 'skipped', skip_reason: o.skip, claimed_at: null, address: null, first_name: null }).where('id', '=', o.id).execute()
+    } else if (!o.error) {
       await tx.updateTable('marketing_delivery').set({ status: 'sent', sent_at: now, provider_id: o.providerId ?? null, claimed_at: null, error: null, address: null, first_name: null }).where('id', '=', o.id).execute()
     } else if (o.retryable && o.attempts < MAX_ATTEMPTS) {
       await tx.updateTable('marketing_delivery').set({ claimed_at: null, error: o.error }).where('id', '=', o.id).execute()

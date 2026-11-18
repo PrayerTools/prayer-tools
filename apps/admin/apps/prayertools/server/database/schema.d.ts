@@ -7,7 +7,6 @@ declare global {
   interface NuxtinatorDatabaseTables {
     pt_user_device: PtTables['pt_user_device']
     pt_auth_code: PtTables['pt_auth_code']
-    pt_suppression: PtTables['pt_suppression']
     pt_job: PtTables['pt_job']
     pt_site_domain: PtTables['pt_site_domain']
     pt_directory_entry: PtTables['pt_directory_entry']

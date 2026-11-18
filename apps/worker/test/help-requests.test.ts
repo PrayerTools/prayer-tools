@@ -183,7 +183,7 @@ describe('operator alert', () => {
 
     const ctx = testCtx(env)
     await drainJobs(ctx, ctx.log)
-    const ours = ctx.mails.filter(m => (m.tags ?? []).includes('help_request_alert'))
+    const ours = ctx.mails.filter(m => m.subject.startsWith('Help request from'))
     expect(ours.map(m => m.to)).toEqual(expect.arrayContaining([op1.email, op2.email]))
     expect(ours.map(m => m.to)).not.toContain(ana.email)
     const mail = ours.find(m => m.to === op1.email)!

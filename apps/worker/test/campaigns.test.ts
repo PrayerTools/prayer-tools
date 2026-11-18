@@ -1,3 +1,4 @@
+import { sql } from 'kysely'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { withOrg } from '@prayertools/shared/db/scope'
 import { campaignSeries } from '@prayertools/shared/campaigns'
@@ -72,7 +73,7 @@ describe('end of a shared-calendar campaign', () => {
       expect(mail.text).toContain('You prayed 3 times, for 30 minutes in all.')
       expect(mail.text).toContain('See you next year!')
       expect(mail.text).toContain('Join the next one: https://example.org/next')
-      expect(mail.meta).toEqual({ org_id: orgId, kind: 'thank_you' })
+      expect(mail).toMatchObject({ stream: 'site', orgId })
       const frMail = mailsTo(ctx.mails, fr.email)[0]!
       expect(frMail.subject).toContain('Merci')
       expect(frMail.text).toContain('À l\'année prochaine !')
@@ -80,7 +81,7 @@ describe('end of a shared-calendar campaign', () => {
       expect(done[0]!.status).toBe('completed')
       expect(done[0]!.result).toMatchObject({ sent: 3, skipped: 1 })
     } finally {
-      await env.admin.deleteFrom('pt_suppression').where('address_hash', '=', emailHash(suppressed.email)).execute()
+      await sql`delete from mail_suppressions where address_hash = ${emailHash(suppressed.email)}`.execute(env.admin)
     }
   })
 
@@ -101,7 +102,7 @@ describe('end of a shared-calendar campaign', () => {
         calls++
         if (calls === THANK_YOU_BATCH + 3) throw new Error('provider hiccup')
         sent.push(m.to)
-        return { id: null }
+        return { status: 'queued' as const, outboxId: 'test' }
       }
     })
     await closeEndedCampaigns(ctx, ctx.log)

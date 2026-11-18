@@ -16,8 +16,8 @@ export default defineConfig({
       PT_SECRET: 'test-secret',
       PT_SITE_BASE_HOST: 'localhost:3380',
       PT_ADMIN_URL: 'http://localhost:2380',
-      MAIL_PROVIDER: 'log',
-      INBOX_DOMAIN: 'inbox.test',
+      MAIL_TRANSPORT: 'log',
+      NUXT_SECRET_ENCRYPTION_KEY: '0f'.repeat(32),
       INBOX_SLUG_ADDRESSES: 'true'
     }
   }

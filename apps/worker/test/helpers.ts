@@ -7,7 +7,7 @@ import { withOrg, type Db } from '@prayertools/shared/db/scope'
 import { jsonb } from '@prayertools/shared/db/json'
 import { ensureSystemUser } from '@prayertools/shared/crm'
 import { createWebSignup } from '@prayertools/shared/subscriptions'
-import type { OutgoingMail } from '@prayertools/shared/email/transport'
+import type { OutgoingMail } from '@prayertools/shared/email/mail'
 import type { CampaignCta, EndMode, Goal, StartMode, SubscriptionStatus, TranslatableText } from '@prayertools/shared/db/schema'
 import { createContext, type WorkerContext } from '../src/context'
 import { createLogger, type Fields } from '../src/log'
@@ -44,7 +44,7 @@ export function testCtx(env: TestEnv, overrides: Partial<WorkerContext> = {}): T
     log: createLogger({}, line => logs.push(line), 'debug'),
     sendMail: async (m) => {
       mails.push(m)
-      return { id: null }
+      return { status: 'queued' as const, outboxId: 'test' }
     },
     push: null,
     now: () => now ?? new Date(),

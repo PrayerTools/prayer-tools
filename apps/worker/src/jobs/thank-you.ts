@@ -2,7 +2,7 @@
 // cursor plus the ids sent in the current batch, so a retry never sends twice.
 import { withOrg, type Tx } from '@prayertools/shared/db/scope'
 import { primaryEmailOf } from '@prayertools/shared/crm'
-import { suppressedAmong } from '@prayertools/shared/email/suppression'
+import { isSuppressed, suppressedAmong } from '@prayertools/shared/email/suppression'
 import { logEmails, type EmailLogEntry } from '@prayertools/shared/email/log'
 import { loadSiteMailContext, thankYouEmail, type SiteMailContext } from '@prayertools/shared/email/templates'
 import { emailT } from '@prayertools/shared/i18n/email'
@@ -111,7 +111,7 @@ async function thankYou(ctx: JobContext, payload: Record<string, unknown>) {
         const e = s.contact_id ? await primaryEmailOf(tx, s.contact_id) : null
         if (e) emails.set(s.id, e.email)
       }
-      const suppressed = await suppressedAmong(tx, [...emails.values()])
+      const suppressed = await suppressedAmong(tx, [...emails.values()], orgId)
       const totals = await totalsFor(tx, campaignId, subs.map(s => s.id))
       const praying = base.main ? await prayingIn(tx, base.main.id, subs.map(s => s.id)) : new Set<string>()
       return { ...base, subs, emails, suppressed, totals, praying }
@@ -125,7 +125,7 @@ async function thankYou(ctx: JobContext, payload: Record<string, unknown>) {
       const to = batch.emails.get(sub.id)
       if (!to || batch.suppressed.has(to.trim().toLowerCase())) return 'skipped'
       const { rendered, links } = renderFor(batch.mctx, batch.site, batch.campaign, batch.main, sub, batch.totals.get(sub.id), false, batch.praying.has(sub.id))
-      await ctx.sendMail(siteMail(batch.mctx, to, rendered, 'thank_you', links.unsubscribeUrl))
+      await ctx.sendMail(siteMail(batch.mctx, to, rendered, links.unsubscribeUrl))
       done.add(sub.id)
       sentLog.push({ subscriptionId: sub.id, kind: 'thank_you', subject: rendered.subject, campaignId })
       return 'sent'
@@ -200,7 +200,7 @@ async function thankYouPerson(ctx: JobContext, payload: Record<string, unknown>)
     if (!kept) return null
     const totals = await totalsFor(tx, campaignId, [sub.id])
     const email = sub.delivery === 'email' && sub.verified_at && sub.contact_id ? await primaryEmailOf(tx, sub.contact_id) : null
-    const suppressed = email ? (await suppressedAmong(tx, [email.email])).size > 0 : false
+    const suppressed = email ? await isSuppressed(tx, email.email, orgId) : false
     const pushIds = sub.delivery === 'app' && sub.user_id
       ? (await tx.selectFrom('pt_user_device').select('push_id').where('user_id', '=', sub.user_id).where('push_id', 'is not', null).execute()).map(d => d.push_id!)
       : []
@@ -212,7 +212,7 @@ async function thankYouPerson(ctx: JobContext, payload: Record<string, unknown>)
   let pushed = 0
   if (work.email && !done.email_done) {
     const { rendered, links } = renderFor(work.mctx, work.site, work.campaign, work.main, work.sub, work.totals.get(work.sub.id), true, work.praying)
-    await ctx.sendMail(siteMail(work.mctx, work.email, rendered, 'thank_you', links.unsubscribeUrl))
+    await ctx.sendMail(siteMail(work.mctx, work.email, rendered, links.unsubscribeUrl))
     await ctx.saveProgress({ ...done, email_done: true })
     await withOrg(ctx.app, orgId, tx => logEmails(tx, [{ subscriptionId: work.sub.id, kind: 'thank_you', subject: rendered.subject, campaignId }]))
     sent = 1

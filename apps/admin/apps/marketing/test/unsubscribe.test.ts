@@ -101,7 +101,7 @@ describe('unsubscribe', () => {
     await processMarketing({ adminDb: env.admin, appDb: env.app, host, log: () => {} })
     const mine = host.mails.filter(m => m.to === email)
     expect(mine).toHaveLength(1)
-    expect(mine[0]!.meta.org_id).toBe(s2.orgId)
+    expect(mine[0]!.orgId).toBe(s2.orgId)
 
     const token = tokenOf(mine[0]!.unsubscribeUrl)
     const info = await describeUnsubscribe(host, env.app as never, token)

@@ -106,15 +106,6 @@ export interface PtAccountSessionTable {
   ip: string | null
 }
 
-export interface PtSuppressionTable {
-  id: Generated<string>
-  address_hash: string
-  reason: 'hard_bounce' | 'complaint'
-  detail: string | null
-  source: string | null
-  created_at: Timestamp
-}
-
 export interface PtJobTable {
   id: Generated<string>
   type: string
@@ -724,7 +715,6 @@ export interface PtTables {
   pt_user_device: PtUserDeviceTable
   pt_auth_code: PtAuthCodeTable
   pt_account_session: PtAccountSessionTable
-  pt_suppression: PtSuppressionTable
   pt_job: PtJobTable
   pt_site_domain: PtSiteDomainTable
   pt_directory_entry: PtDirectoryEntryTable

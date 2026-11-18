@@ -1,4 +1,5 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { sql } from 'kysely'
 import { withOrg } from '@prayertools/shared/db/scope'
 import { suppress } from '@prayertools/shared/email/suppression'
 import { emailHash } from '@prayertools/shared/tokens'
@@ -37,17 +38,17 @@ describe('reminder sweep', () => {
     expect(first.outcomes.sent).toBe(1)
     const m1 = mailsTo(ctx.mails, email)
     expect(m1).toHaveLength(1)
-    expect(m1[0]!.stream).toBe('transactional')
+    expect(m1[0]!.stream).toBe('site')
     expect(m1[0]!.replyTo).toBe('champion@test.example')
-    expect(m1[0]!.meta).toEqual({ org_id: orgId, kind: 'reminder' })
+    expect(m1[0]!.orgId).toBe(orgId)
     expect(m1[0]!.text).toContain('/pray/7')
     expect(m1[0]!.text).toContain('Day 7')
     expect(m1[0]!.text).toContain('15 minutes')
     // One-click unsubscribe leaves this campaign; the footer also offers the whole-site unsubscribe.
-    const leave = m1[0]!.unsubscribeUrl!.split('/l/')[1]
+    const leave = m1[0]!.unsubscribeUrl!.split('/l/')[1]!
     expect(parseLink(leave, 'l')).toMatchObject({ subscriptionId, orgId, campaignId })
     expect(m1[0]!.text).toContain(`Stop reminders for this campaign: ${m1[0]!.unsubscribeUrl}`)
-    const unsub = m1[0]!.text.match(/Unsubscribe: \S+\/u\/(\S+)/)![1]
+    const unsub = m1[0]!.text!.match(/Unsubscribe: \S+\/u\/(\S+)/)![1]
     expect(parseLink(unsub, 'u')).toMatchObject({ subscriptionId, orgId })
     // EST 07:00 (UTC-5) → EDT 07:00 (UTC-4) the next morning.
     let c = await commitmentRow(orgId, id)
@@ -95,7 +96,7 @@ describe('reminder sweep', () => {
     const slowSend = (mails: unknown[]) => async (m: unknown) => {
       await new Promise(r => setTimeout(r, 5))
       mails.push(m)
-      return { id: null }
+      return { status: 'queued' as const, outboxId: 'test' }
     }
     const a: { to: string }[] = []
     const b: { to: string }[] = []
@@ -124,7 +125,7 @@ describe('reminder sweep', () => {
       expect(mailsTo(ctx.mails, email)).toHaveLength(0)
       expect((await commitmentRow(orgId, id)).next_reminder_utc?.toISOString()).toBe('2026-03-06T12:00:00.000Z')
     } finally {
-      await env.admin.deleteFrom('pt_suppression').where('address_hash', '=', emailHash(email)).execute()
+      await sql`delete from mail_suppressions where address_hash = ${emailHash(email)}`.execute(env.admin)
     }
   })
 

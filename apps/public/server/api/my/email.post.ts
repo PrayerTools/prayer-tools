@@ -7,11 +7,10 @@ import { normalizeEmail } from '@prayertools/shared/crm'
 import { accountByEmail, accountById } from '@prayertools/shared/accounts'
 import { EMAIL_CHANGE_MINUTES, EMAIL_UNDO_DAYS, issueAuthCode } from '@prayertools/shared/auth-codes'
 import { emailChangeEmail, emailChangeNoticeEmail } from '@prayertools/shared/email/templates'
-import { sendMail } from '@prayertools/shared/email/transport'
-import { isSuppressed } from '@prayertools/shared/email/suppression'
 import { platformOrigin } from '@prayertools/shared/config'
 import { useDb } from '../../utils/db'
 import { background, limit, readJson, str } from '../../utils/request'
+import { queueAccountMail } from '../../utils/mail'
 import { UI_LANGUAGES } from '../../utils/site-data'
 import { requireSessionUser } from '../../utils/account-session'
 import { EMAIL_CHANGE_SIGN_IN_MINUTES, signedInWithin } from '../../utils/account-links'
@@ -28,15 +27,15 @@ export default defineEventHandler(async (event) => {
   const lang = UI_LANGUAGES.includes(str(body.language, 10)) ? str(body.language, 10) : 'en'
   const db = useDb()
   const holder = await accountByEmail(db, normalized)
-  if (!holder && !(await isSuppressed(db, normalized))) {
+  if (!holder) {
     const code = await issueAuthCode(db, { userId, purpose: 'email_change', email: normalized, ttlMs: EMAIL_CHANGE_MINUTES * 60_000 })
     const mail = emailChangeEmail(lang, `${platformOrigin()}/my/email/${code}`, EMAIL_CHANGE_MINUTES)
-    background(event, sendMail({ stream: 'transactional', to: normalized, fromName: 'Prayer.Tools', fromLocal: 'my', subject: mail.subject, html: mail.html, text: mail.text, tags: ['email_change'] }))
+    background(event, queueAccountMail({ stream: 'confirmations', to: normalized, rendered: mail }))
     const current = (await accountById(db, userId))?.email
     if (current && current !== normalized) {
       const undo = await issueAuthCode(db, { userId, purpose: 'email_undo', email: current, ttlMs: EMAIL_UNDO_DAYS * 86_400_000 })
       const notice = emailChangeNoticeEmail(lang, `${platformOrigin()}/my/email-undo/${undo}`, normalized, EMAIL_UNDO_DAYS)
-      background(event, sendMail({ stream: 'transactional', to: current, fromName: 'Prayer.Tools', fromLocal: 'my', subject: notice.subject, html: notice.html, text: notice.text, tags: ['email_change_notice'] }))
+      background(event, queueAccountMail({ stream: 'platform', to: current, rendered: notice }))
     }
   }
   return { ok: true }

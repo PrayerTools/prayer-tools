@@ -4,6 +4,7 @@
 import { platformConfig, platformOrigin } from '@prayertools/shared/config'
 import { button, layout, paragraph, type Rendered, type SiteMailContext } from '@prayertools/shared/email/templates'
 import { escapeHtml } from '@prayertools/shared/tiptap'
+import { PT_STREAMS } from '@prayertools/shared/email/mail'
 import { requireString, type JobContext } from './registry'
 
 export function helpRequestEmail(d: { siteName: string, siteSlug: string, askedBy: string, note: string }): Rendered {
@@ -40,7 +41,7 @@ export async function helpRequestAlertJob(ctx: JobContext, payload: Record<strin
   const rendered = helpRequestEmail({ siteName: request.name, siteSlug: request.slug, askedBy: request.display_name || request.email || 'A team member', note: request.note })
   for (const { email } of operators) {
     if (sent.has(email)) continue
-    await ctx.sendMail({ stream: 'transactional', to: email, fromName: 'Prayer.Tools', fromLocal: 'noreply', subject: rendered.subject, html: rendered.html, text: rendered.text, meta: { org_id: request.org_id, kind: 'help_request_alert' }, tags: ['help_request_alert'] })
+    await ctx.sendMail({ stream: PT_STREAMS.platform.id, orgId: request.org_id, to: email, fromName: 'Prayer.Tools', fromLocal: 'noreply', subject: rendered.subject, html: rendered.html, text: rendered.text })
     sent.add(email)
     await ctx.saveProgress({ sent: [...sent] })
   }

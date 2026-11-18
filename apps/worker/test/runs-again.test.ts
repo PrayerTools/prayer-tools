@@ -108,7 +108,7 @@ describe('notify me when a campaign runs again', () => {
     const ctx = testCtx(env, {
       sendMail: async () => {
         if (fail) throw new Error('smtp down')
-        return { id: null }
+        return { status: 'queued' as const, outboxId: 'test' }
       }
     })
     expect(await announceRunsAgain(ctx, ctx.log)).toEqual({ sent: 0, skipped: 2, failed: 1 })

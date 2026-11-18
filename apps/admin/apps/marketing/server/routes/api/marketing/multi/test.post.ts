@@ -15,7 +15,7 @@ export default defineMarketingUserHandler(async (event, _tx, userId) => {
     const rendered = await renderEmail(host, tx, site!.id, { versions: input.versions, source_language: input.sourceLanguage }, lang,
       { contactId: null, channelId: null, address: user.email, language: lang, firstName }, { unsubscribeUrl: urls.page, test: true })
     const sender = await host.sender(tx, site!.id)
-    await host.send({
+    const sent = await host.send({
       to: user.email,
       fromName: sender.fromName,
       fromLocal: sender.fromLocal,
@@ -24,8 +24,9 @@ export default defineMarketingUserHandler(async (event, _tx, userId) => {
       html: rendered.html,
       text: rendered.text,
       unsubscribeUrl: null,
-      meta: { org_id: site!.id, kind: 'marketing_test' }
+      orgId: site!.id
     })
+    if (sent.status === 'suppressed') throw createError({ statusCode: 422, statusMessage: 'Your address is on the suppression list after a bounce or spam report, so the test wasn\'t sent. A host admin can clear it under Admin → Email → Suppressions.' })
   })
   return { to: user.email }
 })

@@ -9,6 +9,7 @@ import { ensureSystemUser } from '@prayertools/shared/crm'
 import { createWebSignup } from '@prayertools/shared/subscriptions'
 import { emailHash } from '@prayertools/shared/tokens'
 import { ptMarketingHost } from '@prayertools/shared/marketing-host'
+import { createPtMail, providePtMail } from '@prayertools/shared/email/mail'
 import type { EmailVersions, MarketingHost, MarketingMail } from '../lib/types'
 
 export interface TestEnv {
@@ -20,13 +21,35 @@ export interface TestEnv {
 }
 
 export function testEnv(): TestEnv {
+  const admin = createDb(process.env.DATABASE_URL!, { max: 5 })
+  const mail = createPtMail({ db: admin, secretKey: process.env.NUXT_SECRET_ENCRYPTION_KEY })
+  providePtMail(async () => mail)
   return {
-    admin: createDb(process.env.DATABASE_URL!, { max: 5 }),
+    admin,
     app: createDb(process.env.APP_DATABASE_URL!, { max: 10 }),
     orgs: [],
     emails: [],
     users: []
   }
+}
+
+// A host domain that sends and receives, routed to the inbox stream, so a
+// site's inbox address resolves to `<slug>@inbox.test`.
+export async function useInboxDomain(env: TestEnv): Promise<void> {
+  await sql`
+    with account as (
+      insert into mail_accounts (source, label)
+      select 'ui', 'test inbox' where not exists (select 1 from mail_domains where domain = 'inbox.test')
+      returning id
+    ), domain as (
+      insert into mail_domains (domain, ownership_status, send_status, receive_status, setup_mode, send_account_id, receive_account_id)
+      select 'inbox.test', 'verified', 'verified', 'verified', 'manual', id, id from account
+      returning id
+    )
+    insert into mail_stream_routes (org_id, stream, domain_id)
+    select null, 'inbox', id from domain
+    on conflict do nothing
+  `.execute(env.admin)
 }
 
 export function uid(): string {
@@ -45,7 +68,7 @@ export function captureHost(overrides: Partial<MarketingHost> = {}): MarketingHo
     ...(ptMarketingHost satisfies MarketingHost),
     send: async (m: MarketingMail) => {
       mails.push(m)
-      return { id: `msg-${mails.length}` }
+      return { status: 'sent' as const, id: `msg-${mails.length}` }
     },
     ...overrides,
     mails
@@ -175,7 +198,7 @@ export async function cleanup(env: TestEnv): Promise<void> {
   if (env.orgs.length) await env.admin.deleteFrom('orgs').where('id', 'in', env.orgs).execute()
   if (env.emails.length) {
     await env.admin.deleteFrom('users').where(eb => eb.fn('lower', ['email']), 'in', env.emails.map(e => e.toLowerCase())).execute()
-    await env.admin.deleteFrom('pt_suppression').where('address_hash', 'in', env.emails.map(e => emailHash(e))).execute()
+    await sql`delete from mail_suppressions where address_hash = any(${env.emails.map(e => emailHash(e))}::text[])`.execute(env.admin)
   }
   if (env.users.length) await env.admin.deleteFrom('users').where('id', 'in', env.users).execute()
   env.orgs = []

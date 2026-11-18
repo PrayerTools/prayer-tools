@@ -47,7 +47,7 @@ export async function loadSiteMailContext(tx: Tx, orgId: string): Promise<SiteMa
     fromName: identity.from_name || org.name,
     fromLocal: identity.from_local || org.slug,
     // A reply-to the site chose, else the site's inbox.
-    replyTo: identity.reply_to || await siteInboxAddress(tx, org.slug),
+    replyTo: identity.reply_to || await siteInboxAddress(tx, orgId, org.slug),
     signature,
     defaultLanguage: site.default_language
   }

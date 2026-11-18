@@ -50,7 +50,7 @@ describe('email check-ins', () => {
     expect(rows.map(r => r.kind)).toEqual(['checkin'])
     const mail = mailsTo(ctx.mails, p.email)[0]!
     expect(mail.subject).toBe(`Are you still praying with Test ${(await env.admin.selectFrom('orgs').select('slug').where('id', '=', p.orgId).executeTakeFirstOrThrow()).slug}?`)
-    const token = mail.text.match(/\/checkin\/([^/\s]+)\/yes/)![1]!
+    const token = mail.text!.match(/\/checkin\/([^/\s]+)\/yes/)![1]!
     expect(rows[0]!.token_hash).toBe(hashToken(token))
     expect(mail.text).toContain(`/checkin/${token}/sometimes`)
     expect(mail.text).toContain(`/checkin/${token}/no`)

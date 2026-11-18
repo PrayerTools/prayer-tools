@@ -1,7 +1,8 @@
 // "Send me a test email": any email the site sends, in any site language, to
 // the signed-in team member. Test emails never contain live personal links.
 import { db } from '#core/server/utils/database'
-import { sendMail } from '@prayertools/shared/email/transport'
+import { enqueueMail } from '#core/server/utils/mail'
+import { PT_STREAMS } from '@prayertools/shared/email/mail'
 import { acknowledgementEmail, checkinEmail, loadSiteMailContext, manageLinkEmail, prayerTimeLines, reminderEmail, thankYouEmail, verificationEmail, welcomeEmail } from '@prayertools/shared/email/templates'
 import { textIn } from '@prayertools/shared/translatable'
 import { durationRule, pickCurrentCampaign } from '@prayertools/shared/setup'
@@ -53,16 +54,16 @@ export default definePtHandler('pt.email.send', async (event, tx, ctx) => {
     case 'story': rendered = acknowledgementEmail(mail, lang, 'story'); break
     default: ptBadRequest('Unknown email.')
   }
-  await sendMail({
-    stream: 'transactional',
+  await enqueueMail(tx, {
+    stream: PT_STREAMS.site.id,
+    orgId: ctx.orgId,
     to,
     fromName: mail.fromName,
     fromLocal: mail.fromLocal,
-    replyTo: mail.replyTo,
+    replyTo: mail.replyTo ?? undefined,
     subject: `[Test] ${rendered.subject}`,
     html: rendered.html,
-    text: rendered.text,
-    meta: { org_id: ctx.orgId, kind: 'test' }
+    text: rendered.text
   })
   return { sentTo: user.email }
 })

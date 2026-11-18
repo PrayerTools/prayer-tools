@@ -5,7 +5,7 @@ import { suppress } from '@prayertools/shared/email/suppression'
 import { materialize, processMarketing } from '../lib/deliver'
 import { asUser } from '../lib/db'
 import { scheduleParent } from '../lib/multi'
-import { addPerson, captureHost, cleanup, closeEnv, createEmail, createSite, createUser, deliveries, emailRow, testEnv, versions, type TestEnv } from './helpers'
+import { addPerson, captureHost, cleanup, closeEnv, createEmail, createSite, createUser, deliveries, emailRow, testEnv, useInboxDomain, versions, type TestEnv } from './helpers'
 
 let env: TestEnv
 beforeAll(() => {
@@ -55,7 +55,8 @@ describe('single-site send', () => {
     expect(mail.html).toContain('A short note')
     expect(mail.unsubscribeUrl).toMatch(/^http:\/\/localhost:2380\/api\/marketing\/unsubscribe\?token=/)
     expect(mail.html).toContain('http://localhost:2380/marketing/unsubscribe/')
-    expect(mail.meta).toMatchObject({ org_id: site.orgId, kind: 'marketing', email_id: emailId })
+    expect(mail.orgId).toBe(site.orgId)
+    expect(mail.ref).toBeTruthy()
     expect(mail.fromLocal).toBe(site.slug)
     expect(host.mails.find(m => m.to === fr.email)!.subject).toBe('Bonjour Jean')
 
@@ -179,10 +180,10 @@ describe('multi-site send', () => {
     const res = await run(host)
     expect(res.resolvedParents).toBe(1)
     expect(host.mails.filter(m => m.to === shared)).toHaveLength(1)
-    expect(host.mails.find(m => m.to === shared)!.meta.org_id).toBe(s2.orgId)
+    expect(host.mails.find(m => m.to === shared)!.orgId).toBe(s2.orgId)
     expect(host.mails.find(m => m.to === shared)!.text).toContain('Second site')
     expect(host.mails.filter(m => m.to === only1.email)).toHaveLength(1)
-    expect(host.mails.find(m => m.to === only1.email)!.meta.org_id).toBe(s1.orgId)
+    expect(host.mails.find(m => m.to === only1.email)!.orgId).toBe(s1.orgId)
     expect(host.mails.filter(m => m.to === only3.email)).toHaveLength(1)
     expect(host.mails).toHaveLength(3)
 
@@ -214,7 +215,7 @@ describe('multi-site send', () => {
 
     const host = captureHost()
     await run(host)
-    expect(host.mails.map(m => [m.to, m.meta.org_id]).sort()).toEqual([[p1.email, s1.orgId], [p2.email, s2.orgId]].sort())
+    expect(host.mails.map(m => [m.to, m.orgId]).sort()).toEqual([[p1.email, s1.orgId], [p2.email, s2.orgId]].sort())
     expect(host.mails.find(m => m.to === outside.email)).toBeUndefined()
   })
 })
@@ -254,8 +255,32 @@ describe('recipient check', () => {
   })
 })
 
+describe('suppressions', () => {
+  it('lets a complaint on another site leave this site\'s mail alone', async () => {
+    const site = await createSite(env)
+    const other = await createSite(env)
+    const p = await addPerson(env, site)
+    await suppress(env.admin, p.email, 'complaint', null, 'test', other.orgId)
+    await createEmail(env, site.orgId)
+    const host = captureHost()
+    await run(host)
+    expect(host.mails.map(m => m.to)).toEqual([p.email])
+  })
+
+  it('skips a delivery the mail kernel finds suppressed at send time', async () => {
+    const site = await createSite(env)
+    const p = await addPerson(env, site)
+    const emailId = await createEmail(env, site.orgId)
+    await run(captureHost({ send: async () => ({ status: 'suppressed' as const }) }))
+    const rows = await deliveries(env, site.orgId, emailId)
+    expect(rows.find(r => r.channel_id === p.channelId)).toMatchObject({ status: 'skipped', skip_reason: 'suppressed' })
+    expect(await emailRow(env, site.orgId, emailId)).toMatchObject({ sent: 0, skipped: 1, failed: 0 })
+  })
+})
+
 describe('reply-to', () => {
   it('goes to the site\'s inbox when the site sets none', async () => {
+    await useInboxDomain(env)
     const site = await createSite(env)
     await withOrg(env.app, site.orgId, tx => tx.updateTable('pt_site').set({ email_identity: sql`'{}'::jsonb` }).execute())
     await addPerson(env, site)

@@ -85,7 +85,7 @@ export async function collectRecipients(host: MarketingHost, tx: MarketingTx, or
     if (purpose) out.eligible.push({ ...m, purpose })
     else out.noConsent.push({ ...m, purpose: ps[0]! })
   }
-  const suppressed = await host.suppressedAmong(tx, out.eligible.map(c => c.address.trim().toLowerCase()))
+  const suppressed = await host.suppressedAmong(tx, orgId, out.eligible.map(c => c.address.trim().toLowerCase()))
   if (suppressed.size) {
     out.suppressed = out.eligible.filter(c => suppressed.has(c.address.trim().toLowerCase()))
     out.eligible = out.eligible.filter(c => !suppressed.has(c.address.trim().toLowerCase()))

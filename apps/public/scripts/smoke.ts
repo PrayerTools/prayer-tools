@@ -1,5 +1,6 @@
 // End-to-end smoke test against the running public dev server, Mailpit (8025)
-// and the seeded dev database. Creates its own test people
+// and the seeded dev database. The public server only queues mail, so the
+// worker (or the admin app) must be running to send it. Creates its own test people
 // (smoke+<run>@example.com) and removes them at the end.
 // Usage (from apps/public): bun run scripts/smoke.ts
 // Env: PT_SECRET and APP_DATABASE_URL (read from .env), ADMIN_DATABASE_URL (the
@@ -65,7 +66,7 @@ function cookieOf(res: Res, name: string): string {
   return c ? c.split(';')[0]! : ''
 }
 
-async function mailTo(address: string, pattern: RegExp, tries = 20): Promise<{ subject: string, match: string } | null> {
+async function mailTo(address: string, pattern: RegExp, tries = 80): Promise<{ subject: string, match: string } | null> {
   for (let i = 0; i < tries; i++) {
     const list = await (await fetch(`http://localhost:8025/api/v1/search?query=${encodeURIComponent(`to:${address}`)}`)).json() as { messages: { ID: string, Subject: string }[] }
     for (const m of list.messages ?? []) {
@@ -305,7 +306,7 @@ let mailSince = Date.now()
 // A link of this kind sent to the address since the last request this
 // section made, and not used yet.
 async function freshLink(address: string, pattern: RegExp): Promise<string | null> {
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 80; i++) {
     const list = await (await fetch(`http://localhost:8025/api/v1/search?query=${encodeURIComponent(`to:${address}`)}`)).json() as { messages: { ID: string, Created: string }[] }
     for (const m of list.messages ?? []) {
       if (new Date(m.Created).getTime() < mailSince) continue

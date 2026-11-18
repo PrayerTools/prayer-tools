@@ -35,7 +35,7 @@ export async function checkinEmailJob(ctx: JobContext, payload: Record<string, u
     if (kind === 'manual' ? sub.status === 'unsubscribed' : sub.status !== 'active') return { skipped: 'status' }
     const email = sub.contact_id ? await primaryEmailOf(tx, sub.contact_id) : null
     if (!email) return { skipped: 'no_email' }
-    if (await isSuppressed(tx, email.email)) return { skipped: 'suppressed' }
+    if (await isSuppressed(tx, email.email, orgId)) return { skipped: 'suppressed' }
     const site = await siteRow(tx)
     if (!site) return { skipped: 'no_site' }
 
@@ -49,7 +49,7 @@ export async function checkinEmailJob(ctx: JobContext, payload: Record<string, u
     const lang = personLanguage(sub.language, site)
     const links = personLinks(mctx, sub)
     const rendered = checkinEmail(mctx, lang, { ...checkinUrls(mctx.siteUrl, token), ...links }, { reminder: kind === 'reminder' })
-    await ctx.sendMail(siteMail(mctx, email.email, rendered, 'checkin', links.unsubscribeUrl))
+    await ctx.sendMail(siteMail(mctx, email.email, rendered, links.unsubscribeUrl))
     await logEmails(tx, [{ subscriptionId: sub.id, kind: 'checkin', subject: rendered.subject, sentAt: ctx.now() }])
     await ctx.saveProgress({ sent: true, checkin_id: row.id })
     return { checkin_id: row.id }

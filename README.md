@@ -1,6 +1,6 @@
 # prayer.tools v3 — with orgs
 
-Implementation of the plans in [plans/](plans/): each site is a Nuxtinator org; the admin app is Nuxtinator (core, tenancy, email-mailgun, oauth, mcp, ai, records, crm, inbox) plus a prayer.tools layer and a marketing layer; the public server and the worker are separate processes on the same Postgres. The mobile app is not part of this repo.
+Implementation of the plans in [plans/](plans/): each site is a Nuxtinator org; the admin app is Nuxtinator (core, tenancy, mail, social-auth, oauth, mcp, ai, records, crm, inbox) plus a prayer.tools layer and a marketing layer; the public server and the worker are separate processes on the same Postgres. The mobile app is not part of this repo.
 
 ## Layout
 
@@ -62,15 +62,28 @@ ADMIN_URL=http://localhost:2480 DATABASE_URL=… PUBLIC_URL=http://localhost:348
 
 ## Deployment
 
-One image per process: `apps/<app>/Dockerfile`, built with the repo root as context. The public and worker images install only their own workspace's dependencies; the public image ships just the Nitro `.output` on Node. Two DB URLs everywhere (`DATABASE_URL` BYPASSRLS, `APP_DATABASE_URL` RLS); the public server only needs the RLS one. PgBouncer in transaction mode is supported (`prepare: false`, GUCs are `SET LOCAL`). Behind a proxy, set `PT_TRUST_PROXY=true` on the public server so it reads the visitor's host and address from the forwarded headers; without it those headers are ignored.
+One image per process: `apps/<app>/Dockerfile`, built with the repo root as context. The public and worker images install only their own workspace's dependencies, plus the mail kernel fetched at the tag `layers.lock.json` pins; the public image ships just the Nitro `.output` on Node. Two DB URLs everywhere (`DATABASE_URL` BYPASSRLS, `APP_DATABASE_URL` RLS); the public server only needs the RLS one. PgBouncer in transaction mode is supported (`prepare: false`, GUCs are `SET LOCAL`). Behind a proxy, set `PT_TRUST_PROXY=true` on the public server so it reads the visitor's host and address from the forwarded headers; without it those headers are ignored.
+
+## Mail
+
+All mail goes through Nuxtinator's mail kernel (`@nuxtinator/mail`). Provider accounts, domains, the domain each stream sends from, and suppressions are managed on the admin app's **Admin → Email**; a site can send from its own domain once it proves it owns it. prayer.tools' streams are defined once in `@prayertools/shared/email/mail`:
+
+| Stream | Carries |
+|---|---|
+| `confirmations` | links the person just asked for (verification, manage links, sign-in links, address changes); reaches even a suppressed address |
+| `site` | a site's mail to its intercessors: reminders, welcomes, check-ins, thank-yous |
+| `marketing` | site marketing, delivered from the marketing layer's own queue |
+| `platform` | Prayer.Tools' notices to site teams and accounts |
+
+The public server only queues mail on the kernel's outbox (`MAIL_OUTBOX_PUBLIC_KEY`); the worker and the admin app send it (`NUXT_SECRET_ENCRYPTION_KEY`, which must match). The env account (`MAILGUN_API_KEY` + `MAILGUN_DOMAIN`, or `MAIL_DOMAIN` with `MAIL_TRANSPORT=smtp` in development) must be identical in the admin app and the worker. Provider webhooks go to the URLs Admin → Email shows (`MAIL_WEBHOOK_SECRET` signs them); bounces and complaints land on the kernel's list, and a site's complaints also pause its marketing past the complaint-rate limit.
 
 ## Where this differs from the plans, or stops short
 
-- **Nuxtinator upgrades are done here, not upstream.** The marketing layer lives in `apps/admin/apps/marketing`; the CRM "system actor" is a no-login system user; the consent log's wording/surface/source go in the CRM event `meta`; global suppression is `pt_suppression`; the shared transport replaces the three email paths only for prayer.tools mail (core invites/password resets still use `email-mailgun`).
+- **Nuxtinator upgrades are done here, not upstream.** The marketing layer lives in `apps/admin/apps/marketing`; the CRM "system actor" is a no-login system user; the consent log's wording/surface/source go in the CRM event `meta`.
 - **Manage and unsubscribe links are signed tokens** (rotatable per subscription through `manage_version`, manage links expire after 400 days) rather than stored random tokens; verification, check-in and account codes (sign-in links, hand-offs, email changes) are random and stored hashed.
 - **Admin UI is English only**; the public site ships five languages.
 - **Site owners don't see the CRM's schema builder or permissions matrix.** `register-pt.ts` withholds `crm.schema.manage` from the `admin` role (core's `withholdFromAdmin`), so no one on a site holds it unless it is granted to them individually; operators included.
 - **Accounts stop short in a few places.** App installs can't yet add an email to their account. Apple sign-in on the public server doesn't keep Apple's refresh token, so deleting an account from My prayer doesn't revoke it at Apple; an account whose admin app Apple sign-in holds one is kept until it is deleted in the admin app, which revokes it.
 - **A crisis hands on within one site.** The 4-day crisis template's thank-you invites people to the next campaign on the same site, with `?from=<slug>` on the signup link so `joined_from` records it; a follow-up campaign on another site needs the champion's own button.
-- **Not built:** sending from a champion's own domain (DKIM), the one-step 4-day → 12-day join (only `joined_from` is recorded), an operator cross-site inbox view (operators see only the conversations site teams send them as help requests, under Admin → Help requests), the cross-site "all my people" list (deferred: it would need cross-org reads), CI axe/RTL screenshot jobs and size budgets, the WordPress importer (legacy URL handling is in place).
+- **Not built:** the one-step 4-day → 12-day join (only `joined_from` is recorded), an operator cross-site inbox view (operators see only the conversations site teams send them as help requests, under Admin → Help requests), the cross-site "all my people" list (deferred: it would need cross-org reads), CI axe/RTL screenshot jobs and size budgets, the WordPress importer (legacy URL handling is in place).
 - **Layers follow Nuxtinator's newest release.** No layer in `layers.ts` sets a `version`, so `layers:update` locks each one to its newest released tag (`layers.lock.json`), and the build fetches exactly those tags. A Nuxtinator change reaches the app once it is tagged and `/sync-layers` (or `bun run --cwd apps/admin layers:update`) commits the new lock; a push to Nuxtinator master alone ships nothing.

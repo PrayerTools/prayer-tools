@@ -10,7 +10,7 @@ import { primaryEmailOf, PURPOSE_SITE_UPDATES } from '@prayertools/shared/crm'
 import { todayIn } from '@prayertools/shared/dates'
 import { suppressedAmong } from '@prayertools/shared/email/suppression'
 import { loadSiteMailContext, runsAgainEmail } from '@prayertools/shared/email/templates'
-import type { OutgoingMail } from '@prayertools/shared/email/transport'
+import type { OutgoingMail } from '@prayertools/shared/email/mail'
 import { nextRun } from '@prayertools/shared/notify-requests'
 import { sitePath } from '@prayertools/shared/paths'
 import { pickCurrentCampaign } from '@prayertools/shared/setup'
@@ -67,7 +67,7 @@ export async function announceRunsAgain(ctx: WorkerContext, log: Logger): Promis
     const consented = new Set(channelIds.length
       ? (await tx.selectFrom('crm_channel_consents').select('channel_id').where('channel_id', 'in', channelIds).where('purpose', '=', PURPOSE_SITE_UPDATES).where('status', '=', 'opt_in').execute()).map(c => c.channel_id)
       : [])
-    const suppressed = await suppressedAmong(tx, [...emails.values()].map(e => e.email))
+    const suppressed = await suppressedAmong(tx, [...emails.values()].map(e => e.email), orgId)
 
     const mctx = await loadSiteMailContext(tx, orgId)
     const current = pickCurrentCampaign(await loadCampaigns(tx), now)?.campaign
@@ -97,7 +97,7 @@ export async function announceRunsAgain(ctx: WorkerContext, log: Logger): Promis
         startsOn: run.start_mode === 'date' && run.start_date && run.start_date > todayIn(run.timezone, now) ? run.start_date : null,
         signupUrl: `${mctx.siteUrl}${path}`
       })
-      out.push({ id: r.id, mail: siteMail(mctx, to.email, rendered, 'runs_again', null) })
+      out.push({ id: r.id, mail: siteMail(mctx, to.email, rendered, null) })
     }
     return out
   }, (orgId, err) => log.error('runs_again.claim_failed', { site: orgId, err }))

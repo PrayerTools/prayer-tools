@@ -1,7 +1,7 @@
 // prayer.tools' implementation of the marketing layer's host contract
 // (`MarketingHost` in apps/admin/apps/marketing/lib/types.ts): audiences from
-// campaigns and consent options, site branding and sender, global suppression,
-// consent through the CRM helpers, and the marketing mail stream. The admin
+// campaigns and consent options, site branding and sender, the mail kernel's
+// suppressions, consent through the CRM helpers, and the marketing mail stream. The admin
 // app registers it at boot; the worker passes it to `processMarketing`.
 import { sql } from 'kysely'
 import { platformConfig } from './config'
@@ -10,7 +10,7 @@ import type { PtCampaignTable, TiptapDoc } from './db/schema'
 import type { Tx } from './db/scope'
 import { suppressedAmong } from './email/suppression'
 import { layout, loadSiteMailContext, type SiteMailContext } from './email/templates'
-import { sendMail } from './email/transport'
+import { failure, PT_STREAMS, sendPtMail } from './email/mail'
 import { emailT } from './i18n/email'
 import { getLanguage, languageFlag } from './languages'
 import { toIsoDate } from './dates'
@@ -303,8 +303,8 @@ export const ptMarketingHost = {
     return { fromName: mail.fromName, fromLocal: mail.fromLocal, replyTo: mail.replyTo }
   },
 
-  async suppressedAmong(tx: Tx, addresses: string[]): Promise<Set<string>> {
-    return await suppressedAmong(tx, addresses)
+  async suppressedAmong(tx: Tx, orgId: string, addresses: string[]): Promise<Set<string>> {
+    return await suppressedAmong(tx, addresses, orgId)
   },
 
   async withdrawConsent(tx: Tx, channelId: string, purpose: string, capture: { source: string, surface: string, ip?: string | null, userAgent?: string | null }): Promise<boolean> {
@@ -317,8 +317,24 @@ export const ptMarketingHost = {
     })
   },
 
-  async send(mail: { to: string, fromName: string, fromLocal: string, replyTo: string | null, subject: string, html: string, text: string, unsubscribeUrl: string | null, meta: Record<string, string> }) {
-    return await sendMail({ stream: 'marketing', ...mail, tags: ['marketing'] })
+  async send(mail: { to: string, fromName: string, fromLocal: string, replyTo: string | null, subject: string, html: string, text: string, unsubscribeUrl: string | null, orgId: string, ref?: string }) {
+    const res = await sendPtMail({
+      stream: PT_STREAMS.marketing.id,
+      orgId: mail.orgId,
+      to: mail.to,
+      fromName: mail.fromName,
+      fromLocal: mail.fromLocal,
+      replyTo: mail.replyTo ?? undefined,
+      subject: mail.subject,
+      html: mail.html,
+      text: mail.text,
+      unsubscribeUrl: mail.unsubscribeUrl ?? undefined,
+      ref: mail.ref
+    })
+    if (res.status === 'suppressed') return { status: 'suppressed' as const }
+    const err = failure(res)
+    if (err) throw err
+    return { status: 'sent' as const, id: res.status === 'sent' ? res.providerMessageId : null }
   },
 
   async complaintCount(tx: Tx, orgId: string, since: Date): Promise<number> {

@@ -10,10 +10,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@nuxtinator/mail": "workspace:*",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
-    "jose": "^6.1.0",
-    "nodemailer": "^9.0.1"
+    "jose": "^6.1.0"
   },
   "peerDependencies": {
     "kysely": "^0.28.0",
@@ -22,7 +22,6 @@
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "@types/nodemailer": "^8.0.1",
     "typescript": "^5.9.0",
     "vitest": "^3.2.0"
   }
