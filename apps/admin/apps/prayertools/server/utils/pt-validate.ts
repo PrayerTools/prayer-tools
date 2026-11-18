@@ -1,8 +1,9 @@
-import type { TranslatableText, LandingCustomSection, CampaignBranding, CampaignLanding, CampaignShare, SiteBranding, SiteEmailIdentity, TiptapDoc } from '@prayertools/shared/db/schema'
+import type { TranslatableText, LandingCustomSection, CampaignBranding, CampaignEmailText, CampaignLanding, CampaignShare, SiteBranding, SiteEmailIdentity, TiptapDoc } from '@prayertools/shared/db/schema'
 import { parseText } from '@prayertools/shared/translatable'
 import { parseHex } from '@prayertools/shared/colors'
 import { isHideableSection, parseStoryIds, storedLandingOrder } from '@prayertools/shared/landing'
 import { videoEmbed } from '@prayertools/shared/video'
+import { isEmptyDoc } from '@prayertools/shared/tiptap'
 
 const MAX_DOC_BYTES = 200_000
 
@@ -105,6 +106,26 @@ export function ptLanding(input: unknown): CampaignLanding {
 export function ptShare(input: unknown): CampaignShare {
   const s = (input ?? {}) as Record<string, unknown>
   return clean({ messages: parseText(s.messages) ?? undefined })
+}
+
+// A campaign's own email text: only what the champion wrote, so an empty
+// tagline or note leaves the email as it is.
+export function ptEmailText(input: unknown): CampaignEmailText {
+  const e = (input ?? {}) as Record<string, unknown>
+  const docs = (byLang: unknown) => {
+    const out: Record<string, TiptapDoc> = {}
+    for (const [lang, doc] of Object.entries((byLang ?? {}) as Record<string, unknown>)) {
+      const d = ptDoc(doc)
+      if (d && !isEmptyDoc(d)) out[lang] = d
+    }
+    return Object.keys(out).length ? out : undefined
+  }
+  const tagline = parseText(e.tagline)
+  return clean({
+    tagline: tagline && Object.values(tagline.values).some(v => v.trim()) ? tagline : undefined,
+    welcome: docs(e.welcome),
+    reminder: docs(e.reminder)
+  })
 }
 
 export function ptFieldOptions(input: unknown): { key: string, label: TranslatableText }[] {

@@ -4,12 +4,12 @@
 import { brandColor } from '../colors'
 import { platformConfig, platformOrigin } from '../config'
 import type { Tx } from '../db/scope'
-import type { Cadence, SiteBranding, SiteEmailIdentity } from '../db/schema'
+import type { Cadence, CampaignEmailText, SiteBranding, SiteEmailIdentity, TiptapDoc, TranslatableText } from '../db/schema'
 import { emailT } from '../i18n/email'
 import { languageDir } from '../languages'
 import { siteUrlFor } from '../site'
 import { siteInboxAddress } from '../inbox'
-import { escapeHtml } from '../tiptap'
+import { escapeHtml, isEmptyDoc, tiptapToHtml, tiptapToText } from '../tiptap'
 import type { NextStep } from '../next-step'
 
 export interface SiteMailContext {
@@ -121,6 +121,20 @@ function heading(text: string): string {
   return `<h1 style="margin:0 0 16px;font-size:22px;line-height:1.3;">${escapeHtml(text)}</h1>`
 }
 
+// A campaign's own email text in the email's language, else in the site's
+// default language, else none.
+function lineIn(t: TranslatableText | undefined, lang: string, defaultLang: string): string | null {
+  return t?.values[lang]?.trim() || t?.values[defaultLang]?.trim() || null
+}
+
+function docIn(docs: Record<string, TiptapDoc> | undefined, lang: string, defaultLang: string): TiptapDoc | null {
+  for (const l of [lang, defaultLang]) {
+    const doc = docs?.[l]
+    if (doc && !isEmptyDoc(doc)) return doc
+  }
+  return null
+}
+
 // ── Messages ───────────────────────────────────────────────────────────────
 
 export function verificationEmail(ctx: SiteMailContext, lang: string, verifyUrl: string, opts: { test?: boolean } = {}): Rendered {
@@ -200,6 +214,7 @@ export interface WelcomeDetails {
   shareUrl: string | null
   manageUrl: string
   unsubscribeUrl: string
+  emailText: CampaignEmailText | null
 }
 
 // Sent once a web signup's email is verified.
@@ -209,22 +224,28 @@ export function welcomeEmail(ctx: SiteMailContext, lang: string, d: WelcomeDetai
   const starts = d.startsOn
     ? emailT(lang, 'welcome.starts', { date: new Intl.DateTimeFormat(lang, { dateStyle: 'long', timeZone: 'UTC' }).format(new Date(`${d.startsOn}T00:00:00Z`)) })
     : null
+  const tagline = lineIn(d.emailText?.tagline, lang, ctx.defaultLanguage)
+  const note = docIn(d.emailText?.welcome, lang, ctx.defaultLanguage)
   const html = heading(title)
+    + (tagline ? paragraph(tagline) : '')
     + paragraph(emailT(lang, 'welcome.body', vars))
     + (starts ? paragraph(starts) : '')
     + (d.times.length
       ? `<p style="margin:0 0 8px;font-size:16px;font-weight:600;">${escapeHtml(emailT(lang, 'welcome.times'))}</p>`
         + `<ul style="margin:0 0 16px;padding-inline-start:20px;font-size:15px;line-height:1.6;">${d.times.map(t => `<li>${escapeHtml(t)}</li>`).join('')}</ul>`
       : '')
+    + (note ? tiptapToHtml(note, { mode: 'email', color: ctx.color }) : '')
     + button(ctx, d.prayUrl, emailT(lang, 'welcome.button'))
     + (d.calendarUrl ? `<p style="margin:0 0 16px;"><a href="${escapeHtml(d.calendarUrl)}" style="color:${ctx.color};font-weight:600;">${escapeHtml(emailT(lang, 'welcome.calendar'))}</a></p>` : '')
     + (d.shareUrl ? paragraph(emailT(lang, 'welcome.share')) + `<p style="margin:0 0 16px;"><a href="${escapeHtml(d.shareUrl)}" style="color:${ctx.color};">${escapeHtml(d.shareUrl)}</a></p>` : '')
     + paragraph(emailT(lang, 'welcome.manage'))
   const text = [
     title,
+    tagline ?? '',
     emailT(lang, 'welcome.body', vars),
     starts ?? '',
     d.times.length ? `${emailT(lang, 'welcome.times')}:\n${d.times.map(t => `- ${t}`).join('\n')}` : '',
+    note ? tiptapToText(note) : '',
     `${emailT(lang, 'welcome.button')}: ${d.prayUrl}`,
     d.calendarUrl ? `${emailT(lang, 'welcome.calendar')}: ${d.calendarUrl}` : '',
     d.shareUrl ? `${emailT(lang, 'welcome.share')}\n${d.shareUrl}` : '',
@@ -247,6 +268,7 @@ export interface ReminderDetails {
   manageUrl: string
   unsubscribeUrl: string
   leaveUrl: string
+  emailText: CampaignEmailText | null
 }
 
 // Reminders link to the day's prayer content; they never contain it.
@@ -256,14 +278,16 @@ export function reminderEmail(ctx: SiteMailContext, lang: string, d: ReminderDet
     d.day ? emailT(lang, d.cadence === 'weekly' ? 'reminder.week' : 'reminder.day', { day: d.day }) : null,
     d.minutes ? emailT(lang, 'reminder.duration', { minutes: d.minutes }) : null
   ].filter(Boolean).join(' · ')
+  const note = docIn(d.emailText?.reminder, lang, ctx.defaultLanguage)
   const body = heading(emailT(lang, 'reminder.heading'))
     + paragraph(emailT(lang, 'reminder.body', vars))
+    + (note ? tiptapToHtml(note, { mode: 'email', color: ctx.color }) : '')
     + (meta ? `<p style="margin:0 0 8px;color:#52525b;font-size:14px;">${escapeHtml(meta)}</p>` : '')
     + button(ctx, d.prayUrl, emailT(lang, 'reminder.button'))
   return {
     subject: emailT(lang, 'reminder.subject', vars),
     html: layout(ctx, lang, body, { manageUrl: d.manageUrl, leaveUrl: d.leaveUrl, unsubscribeUrl: d.unsubscribeUrl }, opts),
-    text: `${emailT(lang, 'reminder.heading')}\n\n${emailT(lang, 'reminder.body', vars)}${meta ? `\n${meta}` : ''}\n\n${emailT(lang, 'reminder.button')}: ${d.prayUrl}${footerText(ctx, lang, { manageUrl: d.manageUrl, leaveUrl: d.leaveUrl, unsubscribeUrl: d.unsubscribeUrl })}`
+    text: `${emailT(lang, 'reminder.heading')}\n\n${emailT(lang, 'reminder.body', vars)}${note ? `\n\n${tiptapToText(note)}` : ''}${meta ? `\n${meta}` : ''}\n\n${emailT(lang, 'reminder.button')}: ${d.prayUrl}${footerText(ctx, lang, { manageUrl: d.manageUrl, leaveUrl: d.leaveUrl, unsubscribeUrl: d.unsubscribeUrl })}`
   }
 }
 

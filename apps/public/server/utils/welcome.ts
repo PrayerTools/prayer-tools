@@ -33,7 +33,8 @@ export async function prepareWelcomeMail(tx: Tx, orgId: string, sub: Subscriptio
     calendarUrl: `${m.siteUrl}/ics/${personalToken(orgId, sub.id)}.ics`,
     shareUrl: sub.referral_code ? `${campaignUrl(m.siteUrl, campaign, current)}?r=${encodeURIComponent(sub.referral_code)}` : null,
     manageUrl: manageUrl(m.siteUrl, orgId, sub.id, sub.manage_version),
-    unsubscribeUrl: unsubscribeUrl(m.siteUrl, orgId, sub.id)
+    unsubscribeUrl: unsubscribeUrl(m.siteUrl, orgId, sub.id),
+    emailText: campaign.email_text
   }), sub.id)
   return mail && { ...mail, unsubscribeUrl: unsubscribeUrl(mail.ctx.siteUrl, orgId, sub.id) }
 }

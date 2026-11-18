@@ -163,6 +163,7 @@ export async function ptCreateCampaign(tx: Transaction<Database>, ctx: TenantCon
     landing: jsonb(personal ? personal.landing : look && (previous || kind !== 'side') ? look.landing : {}),
     branding: jsonb(personal ? { ...look?.branding, ...personal.branding } : (look?.branding ?? {})),
     share: jsonb(look?.share ?? {}),
+    email_text: jsonb(personal ? personal.email_text : look && (previous || kind !== 'side') ? look.email_text : {}),
     description: personal ? (personal.description ? jsonb(personal.description) : null) : look?.description && (previous || kind !== 'side') ? jsonb(look.description) : null,
     relaunch_of: previous?.id ?? null,
     // A campaign starts as a draft, except a site's first main campaign while
@@ -251,6 +252,7 @@ export async function ptUpdateCampaign(tx: Transaction<Database>, ctx: TenantCon
     patch.branding = jsonb(ptCampaignBranding({ ...hero, share_image_url: shareImage }))
   }
   if ('share' in b) patch.share = jsonb(ptShare(b.share))
+  if ('email_text' in b) patch.email_text = jsonb(ptEmailText(b.email_text))
   if (Object.keys(patch).length) await tx.updateTable('pt_campaign').set({ ...patch, updated_at: new Date() } as never).where('id', '=', id).execute()
   return { ok: true }
 }
