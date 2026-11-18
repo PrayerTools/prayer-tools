@@ -37,7 +37,7 @@ const durationItems = computed(() => props.durations.map(d => ({ label: formatMi
     <UFormField :label="t('commitment.how_often')" :name="`${idPrefix}-frequency`">
       <URadioGroup v-model="model.frequency" :items="frequencies" orientation="horizontal" />
     </UFormField>
-    <UFormField v-if="!timeless" :label="t('commitment.time')" :name="`${idPrefix}-time`" :help="t('commitment.time_help')" required>
+    <UFormField v-if="!timeless" :label="t('commitment.time')" :name="`${idPrefix}-time`" required>
       <TimePicker :id="`${idPrefix}-time`" v-model="model.time" :lang="lang" required class="w-40" />
     </UFormField>
     <UFormField v-if="model.frequency === 'weekly'" :label="t('commitment.days')" :name="`${idPrefix}-days`" class="sm:col-span-2" required>

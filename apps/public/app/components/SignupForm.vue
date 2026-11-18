@@ -208,7 +208,7 @@ async function submit() {
           <UButton v-if="campaign.startMode !== 'join'" variant="soft" icon="i-lucide-plus" :label="t('signup.add_time')" @click="addCommitment" />
           <UButton v-if="campaign.goal === 'coverage'" variant="ghost" icon="i-lucide-calendar" :label="t('signup.pick_slots')" :to="link('coverage')" />
         </div>
-        <UFormField :label="t('signup.timezone')" name="timezone" :help="t('signup.timezone_help')">
+        <UFormField :label="t('signup.timezone')" name="timezone">
           <USelectMenu v-model="state.timezone" :items="tzItems" class="w-full" />
         </UFormField>
       </fieldset>
