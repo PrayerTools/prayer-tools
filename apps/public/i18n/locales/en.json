@@ -436,7 +436,7 @@
   },
   "home": {
     "title": "Discipleship Through Prayer",
-    "intro": "Prayer campaigns for the places and peoples you care about. Gather your community around a shared purpose, guide them with daily prayer content, and help them build a regular rhythm of prayer.",
+    "intro": "Prayer campaigns for the places, peoples and causes on your heart. Gather your community, guide them with daily prayer rooted in Scripture, and help them grow a lasting rhythm of prayer.",
     "start": "Start a prayer campaign",
     "sign_in": "Sign in",
     "features": "Help people begin praying and keep growing",
@@ -450,11 +450,22 @@
     "how_title": "Inspire prayer. Grow a habit. Make disciples.",
     "how_intro": "Gather people around the places and peoples you care about, then help them grow through a regular rhythm of guided prayer.",
     "step_setup_title": "Create your campaign",
-    "step_setup_body": "Choose the place or people you want to pray for, set your campaign dates, and add daily prayer content from a library or write your own.",
+    "step_setup_body": "Choose the place, people or cause you want to pray for, set your dates and a goal, and add daily prayer content from a library or write your own.",
     "step_invite_title": "Invite people to join",
-    "step_invite_body": "Share your campaign link with your church, friends, or network. Each person chooses a prayer time that fits their day, helping you build around-the-clock coverage.",
+    "step_invite_body": "Share your campaign link with your church, friends, or network. Each person chooses when to pray, and every prayer counts toward your campaign's goal.",
     "step_pray_title": "Keep praying together",
-    "step_pray_body": "Participants receive reminders for their chosen times and follow your daily prayer content. You can see which times are covered and invite others to fill the gaps."
+    "step_pray_body": "Participants receive reminders at the times they chose and follow your daily prayer content. You can watch progress toward your goal and invite others to join.",
+    "vision_label": "Why we pray",
+    "vision_title": "Prayer changes the place, and the person who prays",
+    "vision_body": "Jesus sent his followers to make disciples of all nations. We believe that work begins in prayer. As people pray God's Word for a place or a people, God moves there, and he shapes the ones praying into disciples who make disciples. Every campaign is a step toward movements of disciples, at home and among the peoples who have never heard the gospel.",
+    "next_label": "Go further",
+    "next_title": "Pray for the unreached",
+    "next_intro": "Many people who start by praying for a cause close to home go on to pray for the peoples with the least access to the gospel. Lead your community there with a campaign for Ramadan or for an unreached people group.",
+    "next_ramadan_title": "Ramadan",
+    "next_ramadan_body": "Thirty days of prayer for Muslims as they fast, asking God to reveal Jesus to families, cities and nations.",
+    "next_peoples_title": "Unreached people groups",
+    "next_peoples_body": "Sustained prayer for a people with no church among them, so that disciples are made and the gospel takes root.",
+    "next_cta": "Start a campaign for the unreached"
   },
   "embed": {
     "open_site": "Open the campaign site"
