@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { brandColor, brandForeground } from '@prayertools/shared/colors'
-import ThemeToggle from './ThemeToggle.vue'
 import type { Me } from '~/composables/useMe'
 const props = defineProps<{ page: string }>()
 const { site, link, st, campaignLink } = useSite()
@@ -19,6 +18,11 @@ const nav = computed(() => {
   items.push({ label: t('nav.contact'), icon: 'i-lucide-mail', to: link('contact') })
   return site.value.status === 'archived' ? [] : items
 })
+const themeItem = computed(() => {
+  const dark = mode.value === 'dark'
+  return { label: t(dark ? 'theme.light' : 'theme.dark'), icon: dark ? 'i-lucide-sun' : 'i-lucide-moon', onSelect: () => { mode.preference = dark ? 'light' : 'dark' } }
+})
+const menu = computed(() => [nav.value, [themeItem.value]].filter(group => group.length))
 
 const showShare = computed(() => site.value.status !== 'archived' && props.page !== 'embed' && !site.value.editor)
 const showFeedback = computed(() => !!site.value.feedback && props.page !== 'embed' && !site.value.editor)
@@ -84,10 +88,9 @@ async function signOut() {
         </NuxtLink>
         <ShareButton v-if="showShare" icon-only />
         <LanguageSwitcher />
-        <ThemeToggle />
         <AccountMenu v-if="showAccount" :account="me?.account ?? null" :ready="meReady" :sign-in-href="signInHref" :items="accountItems" />
-        <nav v-if="nav.length" :aria-label="t('nav.label')">
-          <UDropdownMenu :items="nav" :content="{ align: 'end' }">
+        <nav :aria-label="t('nav.label')">
+          <UDropdownMenu :items="menu" :content="{ align: 'end' }">
             <UButton color="neutral" variant="ghost" icon="i-lucide-menu" :aria-label="t('nav.menu')" :title="t('nav.menu')" class="text-(--brand-text) hover:bg-white/10" />
           </UDropdownMenu>
         </nav>
