@@ -238,7 +238,7 @@ export interface PtPersonalBlockTable {
 
 // A champion's own campaign template: a campaign's setup answers (no dates;
 // a dated campaign keeps its length in `length_days`), landing page,
-// end-of-campaign message, call to action and the libraries it uses.
+// end-of-campaign message, call to action, email text and the libraries it uses.
 export interface PtPersonalTemplateTable {
   id: Generated<string>
   owner_user_id: string
@@ -250,6 +250,7 @@ export interface PtPersonalTemplateTable {
   description: Json<TranslatableText | null> | null
   end_message: Json<TranslatableText | null> | null
   cta: JsonDefault<CampaignCta>
+  email_text: JsonDefault<CampaignEmailText>
   library_ids: Generated<string[]>
   created_at: Generated<Date>
   updated_at: Generated<Date>
@@ -344,6 +345,16 @@ export interface CampaignShare {
   messages?: TranslatableText
 }
 
+// The champion's own words in a campaign's emails; a missing key adds nothing.
+export interface CampaignEmailText {
+  // A sentence right after the welcome email's greeting.
+  tagline?: TranslatableText
+  // Shown in the welcome email after the prayer times, per language.
+  welcome?: Record<string, TiptapDoc>
+  // Shown in every prayer reminder after its main text, per language.
+  reminder?: Record<string, TiptapDoc>
+}
+
 export interface SiteOnboarding {
   step?: string
   completed?: boolean
@@ -420,6 +431,7 @@ export interface PtCampaignTable {
   branding: JsonDefault<CampaignBranding>
   share: JsonDefault<CampaignShare>
   description: Json<TranslatableText | null> | null
+  email_text: JsonDefault<CampaignEmailText>
   // The campaign this one was relaunched from.
   relaunch_of: string | null
   // Null while the campaign is a draft being set up.

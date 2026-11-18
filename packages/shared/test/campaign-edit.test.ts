@@ -6,10 +6,11 @@ const mobilizer = new Set(['pt.site.read', 'pt.messages.write'])
 const viewer = new Set(['pt.site.read'])
 
 describe('campaignEditMissing', () => {
-  it('lets message writers edit share and end-of-campaign messages', () => {
+  it('lets message writers edit share and end-of-campaign messages and email text', () => {
     expect(campaignEditMissing(['share'], mobilizer)).toBeNull()
     expect(campaignEditMissing(['share_image_url'], mobilizer)).toBeNull()
     expect(campaignEditMissing(['end_message', 'cta'], mobilizer)).toBeNull()
+    expect(campaignEditMissing(['email_text'], mobilizer)).toBeNull()
   })
 
   it('rejects message writers sending any other field', () => {
