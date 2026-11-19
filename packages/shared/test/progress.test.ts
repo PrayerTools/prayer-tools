@@ -17,6 +17,11 @@ describe('personal-start position', () => {
     expect(positionOf({ entries_done: 2, advanced_on: '2026-03-13', timezone: NY }, 'weekly', 10, at).movedToday).toBe(false)
   })
 
+  it('moves forward once per calendar month for monthly campaigns', () => {
+    expect(positionOf({ entries_done: 2, advanced_on: '2026-03-01', timezone: NY }, 'monthly', 12, at).movedToday).toBe(true)
+    expect(positionOf({ entries_done: 2, advanced_on: '2026-02-28', timezone: NY }, 'monthly', 12, at).movedToday).toBe(false)
+  })
+
   it('is finished past the last entry; never without a known length', () => {
     expect(positionOf({ entries_done: 30, advanced_on: '2026-03-19', timezone: NY }, 'daily', 30, at)).toMatchObject({ current: 31, finished: true })
     expect(positionOf({ entries_done: 30, advanced_on: '2026-03-19', timezone: NY }, 'daily', null, at).finished).toBe(false)

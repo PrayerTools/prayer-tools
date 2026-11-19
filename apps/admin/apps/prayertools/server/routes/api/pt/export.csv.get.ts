@@ -6,6 +6,7 @@ import { textIn } from '@prayertools/shared/translatable'
 import type { TranslatableText } from '@prayertools/shared/db/schema'
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const monthly = (c: { day_of_month: number | null, days_of_week: number[] }) => c.day_of_month ? `Monthly on day ${c.day_of_month}` : `Monthly on the first ${DAYS[c.days_of_week[0] ?? 0]}`
 
 function csvCell(v: unknown): string {
   const s = v === null || v === undefined ? '' : String(v)
@@ -27,12 +28,12 @@ export default definePtHandler('pt.intercessors.export', async (event, tx, ctx) 
     .where('s.anonymized_at', 'is', null)
     .orderBy('s.created_at')
     .execute()
-  const commitments = await tx.selectFrom('pt_commitment').select(['subscription_id', 'kind', 'frequency', 'days_of_week', 'time', 'duration_min', 'dates']).execute()
+  const commitments = await tx.selectFrom('pt_commitment').select(['subscription_id', 'kind', 'frequency', 'days_of_week', 'day_of_month', 'time', 'duration_min', 'dates']).execute()
   const bySub = new Map<string, string[]>()
   for (const c of commitments) {
     const label = c.kind === 'dates'
       ? `${c.dates.length} date(s) at ${c.time}`
-      : `${c.frequency === 'daily' ? 'Daily' : c.days_of_week.map(d => DAYS[d]).join('/')} ${c.time}${c.duration_min ? ` (${c.duration_min} min)` : ''}`
+      : `${c.frequency === 'daily' ? 'Daily' : c.frequency === 'monthly' ? monthly(c) : c.days_of_week.map(d => DAYS[d]).join('/')} ${c.time}${c.duration_min ? ` (${c.duration_min} min)` : ''}`
     bySub.set(c.subscription_id, [...(bySub.get(c.subscription_id) ?? []), label])
   }
   const consents = await tx.selectFrom('crm_channel_consents').select(['channel_id', 'purpose', 'status']).execute()

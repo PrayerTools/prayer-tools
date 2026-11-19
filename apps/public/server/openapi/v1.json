@@ -490,7 +490,7 @@
         "tags": ["Subscriptions"],
         "operationId": "updateCommitment",
         "summary": "Change or pause a commitment",
-        "description": "Two forms. A body containing only `paused` pauses or resumes any commitment. Any other body replaces the rule of a `recurring` commitment: `frequency` (omitted means `daily`), `days_of_week`, `time` and `duration_min` (omitted or null clears it, which fails when the campaign requires a duration) are all taken from the body, with optional `paused`. `kind` and `timezone` are not changeable here; `dates` commitments can only be paused or resumed.",
+        "description": "Two forms. A body containing only `paused` pauses or resumes any commitment. Any other body replaces the rule of a `recurring` commitment: `frequency` (omitted means `daily`), `days_of_week`, `day_of_month`, `time` and `duration_min` (omitted or null clears it, which fails when the campaign requires a duration) are all taken from the body, with optional `paused`. `kind` and `timezone` are not changeable here; `dates` commitments can only be paused or resumed.",
         "security": [{ "device": [] }],
         "parameters": [
           { "$ref": "#/components/parameters/Slug" },
@@ -514,8 +514,9 @@
                     "type": "object",
                     "required": ["time"],
                     "properties": {
-                      "frequency": { "type": "string", "enum": ["daily", "weekly"], "default": "daily" },
-                      "days_of_week": { "type": "array", "items": { "type": "integer", "minimum": 0, "maximum": 6 }, "description": "0 = Sunday .. 6 = Saturday. Required (non-empty) when frequency is weekly." },
+                      "frequency": { "type": "string", "enum": ["daily", "weekly", "monthly"], "default": "daily", "description": "`monthly` in monthly campaigns, which allow nothing else; `daily` or `weekly` in the others." },
+                      "days_of_week": { "type": "array", "items": { "type": "integer", "minimum": 0, "maximum": 6 }, "description": "0 = Sunday .. 6 = Saturday. Required (non-empty) when frequency is weekly; exactly one when frequency is monthly without `day_of_month` (the first of that weekday)." },
+                      "day_of_month": { "type": ["integer", "null"], "enum": [1, 15, null], "description": "Monthly only: the day of the month. Null means the first of the weekday in `days_of_week`." },
                       "time": { "type": "string", "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$", "description": "Local time HH:MM (24h)." },
                       "duration_min": { "type": ["integer", "null"], "minimum": 1, "maximum": 1440 },
                       "paused": { "type": "boolean" }
@@ -594,7 +595,7 @@
         "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
       },
       "CommitmentInvalid": {
-        "description": "Invalid commitment (`statusMessage` `commitment`, or `timezone`, or `Invalid JSON`). On create, `data.errors` lists the invalid fields: any of `frequency`, `days_of_week`, `time`, `dates`, `duration_min`, `kind`.",
+        "description": "Invalid commitment (`statusMessage` `commitment`, or `timezone`, or `Invalid JSON`). On create, `data.errors` lists the invalid fields: any of `frequency`, `days_of_week`, `day_of_month`, `time`, `dates`, `duration_min`, `kind`.",
         "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
       },
       "Unauthorized": {
@@ -656,16 +657,17 @@
       },
       "CommitmentInput": {
         "type": "object",
-        "description": "A prayer time rule. `recurring` repeats daily or on chosen weekdays; `dates` lists specific instants (only allowed in `coverage` campaigns).",
+        "description": "A prayer time rule. `recurring` repeats daily, on chosen weekdays, or (in monthly campaigns) monthly; `dates` lists specific instants (only allowed in `coverage` campaigns).",
         "required": ["time"],
         "properties": {
           "kind": { "type": "string", "enum": ["recurring", "dates"], "default": "recurring" },
-          "frequency": { "type": "string", "enum": ["daily", "weekly"], "default": "daily", "description": "Recurring only." },
+          "frequency": { "type": "string", "enum": ["daily", "weekly", "monthly"], "default": "daily", "description": "Recurring only. `monthly` in monthly campaigns, which allow nothing else; `daily` or `weekly` in the others." },
           "days_of_week": {
             "type": "array",
             "items": { "type": "integer", "minimum": 0, "maximum": 6 },
-            "description": "Recurring weekly only: 0 = Sunday .. 6 = Saturday. Required (non-empty) when frequency is weekly; duplicates are removed."
+            "description": "Recurring only: 0 = Sunday .. 6 = Saturday. Required (non-empty) when frequency is weekly; exactly one when frequency is monthly without `day_of_month` (the first of that weekday); duplicates are removed."
           },
+          "day_of_month": { "type": ["integer", "null"], "enum": [1, 15, null], "description": "Monthly only: the day of the month. Null means the first of the weekday in `days_of_week`." },
           "time": { "type": "string", "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$", "description": "Local time HH:MM (24h) in `timezone`." },
           "timezone": { "type": "string", "maxLength": 64, "description": "IANA timezone. Defaults to the subscription's timezone." },
           "duration_min": {
@@ -684,13 +686,14 @@
       },
       "Commitment": {
         "type": "object",
-        "required": ["id", "campaign_id", "kind", "frequency", "days_of_week", "time", "timezone", "duration_min", "dates", "starts_on", "ends_on", "paused", "current_entry"],
+        "required": ["id", "campaign_id", "kind", "frequency", "days_of_week", "day_of_month", "time", "timezone", "duration_min", "dates", "starts_on", "ends_on", "paused", "current_entry"],
         "properties": {
           "id": { "type": "string", "format": "uuid" },
           "campaign_id": { "type": "string", "format": "uuid" },
           "kind": { "type": "string", "enum": ["recurring", "dates"] },
-          "frequency": { "type": ["string", "null"], "enum": ["daily", "weekly", null], "description": "Null for kind `dates`." },
-          "days_of_week": { "type": "array", "items": { "type": "integer", "minimum": 0, "maximum": 6 }, "description": "0 = Sunday .. 6 = Saturday, sorted. Empty unless frequency is weekly." },
+          "frequency": { "type": ["string", "null"], "enum": ["daily", "weekly", "monthly", null], "description": "Null for kind `dates`." },
+          "days_of_week": { "type": "array", "items": { "type": "integer", "minimum": 0, "maximum": 6 }, "description": "0 = Sunday .. 6 = Saturday, sorted. Empty unless frequency is weekly, or monthly on the first of a weekday." },
+          "day_of_month": { "type": ["integer", "null"], "description": "Monthly only: the day of the month, or null for the first of the weekday in `days_of_week`." },
           "time": { "type": "string", "description": "Local time HH:MM." },
           "timezone": { "type": "string", "description": "IANA timezone the time is in." },
           "duration_min": { "type": ["integer", "null"] },
@@ -698,7 +701,7 @@
           "starts_on": { "$ref": "#/components/schemas/IsoDate" },
           "ends_on": { "type": ["string", "null"], "format": "date", "description": "Last date (YYYY-MM-DD), or null when open-ended." },
           "paused": { "type": "boolean" },
-          "current_entry": { "type": "integer", "minimum": 1, "description": "Personal-start campaigns: the entry the person is on. They move forward one entry per day (week, for weekly campaigns) by opening or praying the entry they are on; past the last entry once they have finished." }
+          "current_entry": { "type": "integer", "minimum": 1, "description": "Personal-start campaigns: the entry the person is on. They move forward one entry per day (week for weekly campaigns, calendar month for monthly ones) by opening or praying the entry they are on; past the last entry once they have finished." }
         }
       },
       "Campaign": {
@@ -712,7 +715,7 @@
           "status": { "type": "string", "enum": ["upcoming", "active", "ended"] },
           "goal": { "type": "string", "enum": ["people", "prayer_time", "coverage"] },
           "goal_target": { "type": ["integer", "null"] },
-          "cadence": { "type": "string", "enum": ["daily", "weekly"], "description": "How often a new content entry is published." },
+          "cadence": { "type": "string", "enum": ["daily", "weekly", "monthly"], "description": "How often a new content entry is published. Monthly entries are calendar months." },
           "start_mode": { "type": "string", "enum": ["date", "join"], "description": "`date`: shared calendar; `join`: each person starts on their own first day." },
           "start_date": { "type": ["string", "null"], "format": "date" },
           "end_date": { "type": ["string", "null"], "format": "date" },

@@ -24,7 +24,7 @@ import type { TiptapDoc, TiptapNode } from '@prayertools/shared/db/schema'
 interface Pack {
   title: string
   description?: string
-  cadence: 'daily' | 'weekly'
+  cadence: 'daily' | 'weekly' | 'monthly'
   source_language: string
   license: string
   license_note?: string | null
@@ -103,7 +103,7 @@ async function readPack(file: string): Promise<{ pack: Pack, images: Map<string,
 function check(pack: Pack, file: string): void {
   const fail = (m: string) => { throw new Error(`${file}: ${m}`) }
   if (!pack.title || pack.title.length > 120) fail('title must be 1–120 characters')
-  if (pack.cadence !== 'daily' && pack.cadence !== 'weekly') fail('cadence must be daily or weekly')
+  if (pack.cadence !== 'daily' && pack.cadence !== 'weekly' && pack.cadence !== 'monthly') fail('cadence must be daily, weekly or monthly')
   if (!isLanguage(pack.source_language)) fail(`unknown source language ${pack.source_language}`)
   if (!(LICENSES as readonly string[]).includes(pack.license)) fail(`license must be one of ${LICENSES.join(', ')}`)
   if (!pack.entries?.length) fail('no entries')

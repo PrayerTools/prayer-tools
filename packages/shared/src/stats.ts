@@ -102,7 +102,7 @@ export async function activeRules(tx: Tx, campaignId: string, opts: { ended?: bo
   const rows = await tx
     .selectFrom('pt_commitment as cm')
     .innerJoin('pt_subscription as s', 's.id', 'cm.subscription_id')
-    .select(['cm.subscription_id', 'cm.kind', 'cm.frequency', 'cm.days_of_week', 'cm.time', 'cm.timezone', 'cm.duration_min', 'cm.dates', 'cm.starts_on', 'cm.ends_on', 'cm.paused'])
+    .select(['cm.subscription_id', 'cm.kind', 'cm.frequency', 'cm.days_of_week', 'cm.day_of_month', 'cm.time', 'cm.timezone', 'cm.duration_min', 'cm.dates', 'cm.starts_on', 'cm.ends_on', 'cm.paused'])
     .where('cm.campaign_id', '=', campaignId)
     .where('s.status', 'in', countedStatuses(!!opts.ended))
     .where(eb => eb.or([eb('s.verified_at', 'is not', null), eb('s.delivery', '=', 'app')]))
@@ -135,7 +135,7 @@ export async function goalProgress(tx: Tx, c: CampaignForCount, defaultMinutes =
     for (const r of rules) {
       if (r.paused) continue
       const minutes = r.duration_min ?? defaultMinutes
-      perDay += r.kind === 'dates' ? 0 : r.frequency === 'daily' ? minutes : minutes * r.days_of_week.length / 7
+      perDay += r.kind === 'dates' ? 0 : r.frequency === 'daily' ? minutes : r.frequency === 'monthly' ? minutes * 12 / 365 : minutes * r.days_of_week.length / 7
     }
     const target = c.goal_target ?? 1440
     return { goal: c.goal, people, value: Math.round(perDay), target, percent: Math.min(100, Math.round(perDay / target * 100)) }

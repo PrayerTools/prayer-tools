@@ -101,7 +101,7 @@ export default defineEventHandler(async (event) => {
         ownerHere = cookie?.subscriptionId === sub.id && cookie.version === sub.manage_version
         if (!ownerHere) {
           const token = await saveSignupRequest(tx, sub.id, campaign.id, request)
-          const times = prayerTimeLines(commitments.map(c => ({ kind: c.kind ?? 'recurring', frequency: c.frequency ?? null, days_of_week: c.days_of_week ?? [], time: c.time, timezone: c.timezone ?? timezone, duration_min: c.duration_min ?? null, dates: c.dates ?? [] })), language)
+          const times = prayerTimeLines(commitments.map(c => ({ kind: c.kind ?? 'recurring', frequency: c.frequency ?? null, days_of_week: c.days_of_week ?? [], day_of_month: c.day_of_month ?? null, time: c.time, timezone: c.timezone ?? timezone, duration_min: c.duration_min ?? null, dates: c.dates ?? [] })), language)
           const mail = await prepareSiteMail(tx, ctx.orgId, normalized, 'add_times', m => addTimesEmail(m, language, { campaignName: campaign.name, times, confirmUrl: `${m.siteUrl}/add/${token}` }), sub.id)
           return { known: true as const, mail }
         }

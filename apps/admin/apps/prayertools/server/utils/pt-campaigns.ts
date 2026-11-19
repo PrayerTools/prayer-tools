@@ -25,7 +25,17 @@ export function ptSetupFromBody(b: Record<string, unknown>, templateKey: string 
   }
   const answers = applyTemplate(templateKey, chosen)
   const errors = validateSetup(answers, kind)
-  if (errors.length) ptBadRequest(kind === 'side' ? 'A side campaign needs a start date and an end date.' : 'Please check the campaign setup.', { errors })
+  if (errors.length) {
+    const monthly = answers.cadence === 'monthly'
+    ptBadRequest(
+      monthly && errors.includes('start_date')
+        ? 'A monthly campaign starts on the 1st of a month.'
+        : monthly && errors.includes('goal')
+          ? '24/7 coverage isn\'t offered on monthly campaigns.'
+          : kind === 'side' ? 'A side campaign needs a start date and an end date.' : 'Please check the campaign setup.',
+      { errors }
+    )
+  }
   return answers
 }
 

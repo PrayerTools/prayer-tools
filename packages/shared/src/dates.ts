@@ -40,6 +40,24 @@ export function daysBetween(from: string, to: string): number {
   return Math.round((b - a) / 86_400_000)
 }
 
+// The same day `months` calendar months later, moved back to the month's last
+// day when it is shorter (Jan 31 + 1 month = Feb 28).
+export function addMonths(date: string, months: number): string {
+  const y = +date.slice(0, 4)
+  const m = +date.slice(5, 7) - 1 + months
+  const last = new Date(Date.UTC(y, m + 1, 0)).getUTCDate()
+  return new Date(Date.UTC(y, m, Math.min(+date.slice(8, 10), last))).toISOString().slice(0, 10)
+}
+
+// Whole calendar months from `from` to `to`, counting a month once `to`
+// reaches the same day of the month (Jan 15 → Feb 14 is 0, → Feb 15 is 1).
+export function monthsBetween(from: string, to: string): number {
+  const months = (+to.slice(0, 4) - +from.slice(0, 4)) * 12 + (+to.slice(5, 7) - +from.slice(5, 7))
+  if (months > 0 && addMonths(from, months) > to) return months - 1
+  if (months < 0 && addMonths(from, months) < to) return months + 1
+  return months
+}
+
 // 0 = Sunday … 6 = Saturday, for a calendar date.
 export function weekdayOf(date: string): number {
   return new Date(`${date}T00:00:00Z`).getUTCDay()

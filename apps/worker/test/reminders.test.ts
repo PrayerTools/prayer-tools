@@ -81,6 +81,21 @@ describe('reminder sweep', () => {
     expect(mail!.text).not.toContain('Day 3')
   })
 
+  it('labels a monthly campaign\'s entry as a month and reminds again next month', async () => {
+    const { orgId } = await createSite(env)
+    const campaignId = await createCampaign(env, orgId, { startDate: '2026-01-01', endMode: 'none', cadence: 'monthly' })
+    const { email, subscriptionId } = await createSubscriber(env, orgId, campaignId)
+    const cid = await addCommitment(env, orgId, subscriptionId, campaignId, { startsOn: '2026-01-01', dayOfMonth: 15, next: new Date('2026-03-15T11:00:00Z') })
+    const ctx = testCtx(env)
+
+    ctx.setNow(new Date('2026-03-15T11:00:30Z'))
+    await runReminderSweep(ctx, ctx.log)
+    const [mail] = mailsTo(ctx.mails, email)
+    expect(mail!.text).toContain('Month 3')
+    expect(mail!.text).toContain('/pray/3')
+    expect((await commitmentRow(orgId, cid)).next_reminder_utc?.toISOString()).toBe('2026-04-15T11:00:00.000Z')
+  })
+
   it('never sends the same day twice (dedupe on pt_reminder_sent)', async () => {
     const { orgId } = await createSite(env)
     const campaignId = await createCampaign(env, orgId, { startDate: '2026-03-01', endDate: '2026-03-20' })
@@ -223,6 +238,21 @@ describe('reminder sweep', () => {
     expect(mailsTo(ctx.mails, recent.email)).toHaveLength(0)
     expect(mailsTo(ctx.mails, weekAgo.email)).toHaveLength(1)
     expect(mailsTo(ctx.mails, weekAgo.email)[0]!.text).toContain('/pray/3')
+  })
+
+  it('keeps monthly personal-start reminders going after unopened ones', async () => {
+    const { orgId } = await createSite(env)
+    const campaignId = await createCampaign(env, orgId, { startMode: 'join', endMode: 'days', lengthDays: 12, cadence: 'monthly' })
+    const { subscriptionId, email } = await createSubscriber(env, orgId, campaignId)
+    const cid = await addCommitment(env, orgId, subscriptionId, campaignId, { startsOn: '2025-12-01', dayOfMonth: 1, entriesDone: 1, advancedOn: '2025-12-01', next: new Date('2026-04-01T11:00:00Z') })
+    await withOrg(env.admin, orgId, tx => tx.insertInto('pt_reminder_sent').values(
+      ['2026-01-01', '2026-02-01', '2026-03-01'].map(d => ({ commitment_id: cid, local_date: d, sent_at: new Date(`${d}T12:00:00Z`) }))
+    ).execute())
+    const ctx = testCtx(env)
+    ctx.setNow(new Date('2026-04-01T11:00:30Z'))
+    const res = await runReminderSweep(ctx, ctx.log)
+    expect(res.outcomes.slowed ?? 0).toBe(0)
+    expect(mailsTo(ctx.mails, email)[0]!.text).toContain('/pray/2')
   })
 
   it('skips an occurrence more than 6 hours late and moves to the next one', async () => {

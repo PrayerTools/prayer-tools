@@ -161,5 +161,26 @@ describe('subscription housekeeping', () => {
     expect((await sub(orgId, busy))!.status).toBe('active')
     expect((await sub(orgId, gone))!.status).toBe('unsubscribed')
   })
+
+  it('app subscriptions praying with a monthly campaign stay active for 100 quiet days', async () => {
+    const { orgId } = await createSite(env)
+    const campaignId = await createCampaign(env, orgId, { startDate: '2026-01-01', endMode: 'none', cadence: 'monthly' })
+    const make = async (days: number) => {
+      const userId = await createAnonymousAccount(env.admin)
+      env.accounts.push(userId)
+      const id = await withOrg(env.admin, orgId, async tx => (await tx.insertInto('pt_subscription').values({
+        user_id: userId, delivery: 'app', status: 'active', language: 'en', timezone: TZ, referral_code: Math.random().toString(36).slice(2, 8),
+        last_activity_at: new Date(Date.now() - days * DAY), created_at: new Date(Date.now() - 200 * DAY)
+      }).returning('id').executeTakeFirstOrThrow()).id)
+      await addCommitment(env, orgId, id, campaignId, { startsOn: '2026-01-01', dayOfMonth: 1 })
+      return id
+    }
+    const monthly = await make(40)
+    const gone = await make(101)
+    const ctx = testCtx(env)
+    await appInactivity(ctx, ctx.log)
+    expect((await sub(orgId, monthly))!.status).toBe('active')
+    expect((await sub(orgId, gone))!.status).toBe('inactive')
+  })
 })
 

@@ -250,6 +250,7 @@ function languageItems(s: MySiteView) {
             <h4 class="font-semibold">{{ cur.campaign.name }}</h4>
             <CommitmentList
               :commitments="cur.commitments"
+              :cadence="cur.campaign.cadence"
               :duration-rule="cur.campaign.durationRule"
               :durations="cur.campaign.durations"
               :default-duration="cur.campaign.defaultDuration"

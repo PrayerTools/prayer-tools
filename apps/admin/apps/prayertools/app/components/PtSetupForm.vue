@@ -5,7 +5,9 @@
 // withCadence is false, the cadence. A
 // template pre-fills them; answers the template fixes are shown but locked,
 // and `dated` (side campaigns) locks a start and an end date.
-import { addDays, daysBetween } from '@prayertools/shared/dates'
+import { addDays, daysBetween, todayIn } from '@prayertools/shared/dates'
+import { entryNumber } from '@prayertools/shared/schedule'
+import { monthlyStartDate } from '@prayertools/shared/setup'
 
 export interface SetupState {
   start_mode: 'date' | 'join'
@@ -14,7 +16,7 @@ export interface SetupState {
   end_date: string | null
   length_days: number | null
   goal: 'people' | 'prayer_time' | 'coverage'
-  cadence: 'daily' | 'weekly'
+  cadence: 'daily' | 'weekly' | 'monthly'
   track_time: boolean
   goal_target: number | null
   slot_min: number | null
@@ -89,13 +91,16 @@ function setDayCount(days: number | null) {
   if (days && state.value.start_date) state.value.end_date = addDays(state.value.start_date, days - 1)
 }
 const startToday = computed(() => ptFormatDate(new Date().toISOString().slice(0, 10)))
-// 24/7 coverage is a grid over the campaign's dates, so it needs both.
+// 24/7 coverage is a grid over the campaign's dates, so it needs both, and a
+// grid filled once a month stays empty, so monthly campaigns don't offer it.
 const datedCampaign = computed(() => state.value.start_mode === 'date' && state.value.end_mode === 'date')
+const monthly = computed(() => state.value.cadence === 'monthly')
+const coverageBlocked = computed(() => monthly.value ? 'Not offered on monthly campaigns.' : !datedCampaign.value ? 'Needs start and end dates.' : null)
 const goalItems = computed(() => (meta.value?.setup.goals ?? ['prayer_time', 'people', 'coverage']).map(g => ({
   value: g,
   label: PT_LABELS.goal[g],
-  description: g === 'coverage' && !datedCampaign.value ? 'Needs start and end dates.' : PT_LABELS.goalTag[g],
-  disabled: g === 'coverage' && !datedCampaign.value
+  description: g === 'coverage' && coverageBlocked.value ? coverageBlocked.value : PT_LABELS.goalTag[g],
+  disabled: g === 'coverage' && !!coverageBlocked.value
 })))
 const defaultSlot = computed(() => meta.value?.setup.defaultSlot ?? 15)
 const slotItems = computed(() => (meta.value?.setup.slotOptions ?? [5, 10, 15, 30, 60]).map(m => ({
@@ -112,9 +117,18 @@ const targetHours = computed({
   set: (v: number | null) => { state.value.goal_target = v ? Math.max(1, Math.round(v * 60)) : null }
 })
 
-watch(datedCampaign, (dated) => {
-  if (!dated && state.value.goal === 'coverage') state.value.goal = 'prayer_time'
+watch(coverageBlocked, (blocked) => {
+  if (blocked && state.value.goal === 'coverage') state.value.goal = 'prayer_time'
 })
+
+// Monthly entries are calendar months, so a monthly campaign starts on the 1st,
+// picked as a month under the cadence when the cadence is asked here.
+const today = todayIn(Intl.DateTimeFormat().resolvedOptions().timeZone)
+watch([monthly, () => state.value.start_date], ([isMonthly, start]) => {
+  if (isMonthly && start && !start.endsWith('-01')) state.value.start_date = monthlyStartDate(start, today)
+}, { immediate: true })
+const pickMonth = computed(() => props.withCadence && monthly.value && state.value.start_mode === 'date' && !!state.value.start_date)
+const startMonthItems = computed(() => ptStartMonthItems(state.value.start_date, today))
 
 watch(() => state.value.start_mode, (m) => {
   if (m === 'join' && state.value.end_mode === 'date') state.value.end_mode = 'days'
@@ -127,7 +141,8 @@ const lengthLabel = computed(() => {
   const days = Math.round((Date.parse(s.end_date) - Date.parse(s.start_date)) / 86_400_000) + 1
   if (days < 1) return null
   const fixed = days - 1 <= (meta.value?.setup.fixedMaxDays ?? 50)
-  return `${days} days · shows as ${fixed ? 'a fixed' : 'an ongoing'} campaign`
+  const length = s.cadence === 'monthly' ? ptPlural(entryNumber(s.start_date, 'monthly', s.end_date), 'month', 'months') : `${days} days`
+  return `${length} · shows as ${fixed ? 'a fixed' : 'an ongoing'} campaign`
 })
 </script>
 
@@ -170,6 +185,7 @@ const lengthLabel = computed(() => {
       <template v-if="state.start_mode === 'date'">
         <div class="flex flex-wrap gap-4">
           <UFormField
+            v-if="!pickMonth"
             label="Start date"
             :help="props.dated ? 'A side campaign has a start date and an end date.' : undefined"
             required
@@ -356,6 +372,18 @@ const lengthLabel = computed(() => {
           indicator="hidden"
           :ui="{ item: 'px-5 py-2' }"
           :disabled="!open('cadence')"
+        />
+      </UFormField>
+      <UFormField v-if="pickMonth">
+        <template #label>
+          Starts in <InfoTip text="A monthly campaign starts on the 1st, and each calendar month has its own prayer content." />
+        </template>
+        <USelect
+          :model-value="state.start_date ?? undefined"
+          :items="startMonthItems"
+          :disabled="!open('start_date')"
+          class="w-56"
+          @update:model-value="(v) => { state.start_date = String(v) }"
         />
       </UFormField>
     </section>

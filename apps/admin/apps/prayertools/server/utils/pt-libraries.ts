@@ -7,6 +7,8 @@ import { sql } from 'kysely'
 import { db } from '#core/server/utils/database'
 import { requireAuth } from '#core/server/utils/auth'
 import { LICENSES } from '@prayertools/shared/content'
+import { CADENCES } from '@prayertools/shared/setup'
+import type { Cadence } from '@prayertools/shared/db/schema'
 import { isLanguage } from '@prayertools/shared/languages'
 import { jsonb, pgArray } from '@prayertools/shared/db/json'
 
@@ -50,7 +52,7 @@ export function ptLibraryMeta(b: Record<string, unknown>, partial = false) {
     out.title = title
   }
   if ('description' in b) out.description = typeof b.description === 'string' ? b.description.slice(0, 2000) : null
-  if (!partial || 'cadence' in b) out.cadence = b.cadence === 'weekly' ? 'weekly' : 'daily'
+  if (!partial || 'cadence' in b) out.cadence = CADENCES.includes(b.cadence as Cadence) ? b.cadence : 'daily'
   if (!partial || 'source_language' in b) {
     if (!isLanguage(b.source_language)) ptBadRequest('Unknown source language.')
     out.source_language = b.source_language

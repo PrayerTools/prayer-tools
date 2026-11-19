@@ -84,6 +84,7 @@ export function commitmentJson(c: CommitmentRow) {
     kind: c.kind,
     frequency: c.frequency,
     days_of_week: (c.days_of_week ?? []).map(Number),
+    day_of_month: c.day_of_month,
     time: c.time,
     timezone: c.timezone,
     duration_min: c.duration_min,

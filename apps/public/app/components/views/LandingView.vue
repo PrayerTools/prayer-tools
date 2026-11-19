@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { CustomSectionView, PageView } from '~~/shared/view'
+import { entryUnit } from '~/utils/commitment'
 
 const props = defineProps<{ page: Extract<PageView, { kind: 'landing' }> }>()
 const { site, link, campaignLink, st, num, date } = useSite()
@@ -220,7 +221,7 @@ function onJoined(verify: boolean) {
           <section v-else-if="s.key === 'today' && page.today" aria-labelledby="today-title" class="space-y-4" data-pt-section="today">
             <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
               <h2 id="today-title" class="text-2xl font-bold">{{ st('landing.today.title') }}</h2>
-              <p class="text-sm text-stone-600">{{ t(campaign?.cadence === 'weekly' ? 'pray.week' : 'pray.day', { n: num(page.today.day) }) }}</p>
+              <p class="text-sm text-stone-600">{{ t(`pray.${entryUnit(campaign?.cadence)}`, { n: num(page.today.day) }) }}</p>
             </div>
             <div class="rounded-xl border border-stone-200 bg-white shadow-[0_1px_3px_rgb(28_25_23/0.05)]">
               <div class="max-h-96 overflow-hidden px-5 pt-6 pb-6 sm:px-8 sm:pt-8 [mask-image:linear-gradient(to_bottom,#000_calc(100%_-_4rem),transparent)]">

@@ -91,6 +91,42 @@ describe('weekly rules', () => {
   })
 })
 
+describe('monthly rules', () => {
+  it('falls on the 1st or the 15th of each month', () => {
+    const r = rule({ frequency: 'monthly', day_of_month: 15, time: '08:00', timezone: 'Europe/London' })
+    expect(chain(r, new Date('2026-01-20T00:00:00Z'), 3)).toEqual([
+      '2026-02-15T08:00:00.000Z',
+      '2026-03-15T08:00:00.000Z',
+      '2026-04-15T07:00:00.000Z'
+    ])
+    expect(nextOccurrence(rule({ frequency: 'monthly', day_of_month: 1 }), new Date('2026-01-01T12:00:00Z'))?.toISOString()).toBe('2026-02-01T12:00:00.000Z')
+  })
+
+  it('falls on the first of a weekday, up to five weeks apart', () => {
+    const r = rule({ frequency: 'monthly', days_of_week: [5], time: '19:00', timezone: 'America/New_York' })
+    // First Fridays of 2026: January 2, February 6, March 6.
+    expect(chain(r, new Date('2026-01-01T00:00:00Z'), 3)).toEqual([
+      '2026-01-03T00:00:00.000Z',
+      '2026-02-07T00:00:00.000Z',
+      '2026-03-07T00:00:00.000Z'
+    ])
+  })
+
+  it('occurs once a month within a window', () => {
+    const r = rule({ frequency: 'monthly', days_of_week: [0], time: '09:00', timezone: 'UTC' })
+    expect(occurrences(r, new Date('2026-03-01T00:00:00Z'), new Date('2026-06-01T00:00:00Z')).map(d => d.toISOString().slice(0, 10)))
+      .toEqual(['2026-03-01', '2026-04-05', '2026-05-03'])
+  })
+
+  it('validates the day', () => {
+    expect(validateRule({ kind: 'recurring', frequency: 'monthly', day_of_month: 15, time: '07:00' })).toEqual([])
+    expect(validateRule({ kind: 'recurring', frequency: 'monthly', day_of_month: null, days_of_week: [3], time: '07:00' })).toEqual([])
+    expect(validateRule({ kind: 'recurring', frequency: 'monthly', day_of_month: 10, time: '07:00' })).toEqual(['day_of_month'])
+    expect(validateRule({ kind: 'recurring', frequency: 'monthly', day_of_month: null, days_of_week: [1, 3], time: '07:00' })).toEqual(['day_of_month'])
+    expect(validateRule({ kind: 'recurring', frequency: 'monthly', day_of_month: 1, days_of_week: [1], time: '07:00' })).toEqual(['day_of_month'])
+  })
+})
+
 describe('date lists and ranges', () => {
   it('specific-date picks are instants', () => {
     const r = rule({ kind: 'dates', frequency: null, dates: ['2026-03-08T03:00:00Z', '2026-03-01T03:00:00Z'] })
@@ -115,6 +151,18 @@ describe('entries', () => {
     expect(entryNumber('2026-03-01', 'weekly', '2026-03-08')).toBe(2)
     expect(entryDate('2026-03-01', 'weekly', 3)).toBe('2026-03-15')
     expect(entryDate('2026-03-01', 'daily', 31)).toBe('2026-03-31')
+  })
+
+  it('numbers monthly entries by calendar month', () => {
+    expect(entryNumber('2026-01-01', 'monthly', '2026-01-31')).toBe(1)
+    expect(entryNumber('2026-01-01', 'monthly', '2026-02-01')).toBe(2)
+    expect(entryNumber('2026-01-01', 'monthly', '2027-01-01')).toBe(13)
+    expect(entryNumber('2026-01-31', 'monthly', '2026-02-28')).toBe(2)
+    expect(entryNumber('2026-03-10', 'monthly', '2026-04-09')).toBe(1)
+    expect(entryNumber('2026-03-10', 'monthly', '2026-04-10')).toBe(2)
+    expect(entryNumber('2026-03-01', 'monthly', '2026-02-28')).toBe(0)
+    expect(entryDate('2026-01-01', 'monthly', 12)).toBe('2026-12-01')
+    expect(entryDate('2026-01-31', 'monthly', 2)).toBe('2026-02-28')
   })
 
   it('validates rules', () => {

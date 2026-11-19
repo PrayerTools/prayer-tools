@@ -28,6 +28,15 @@ describe('prayerTimeLines', () => {
     expect(lines).toEqual(['Every day at 7:00 AM (Asia/Beirut) · 15 minutes', 'Monday and Thursday at 7:30 PM (UTC)'])
   })
 
+  it('describes monthly times by their day of the month', () => {
+    const lines = prayerTimeLines([
+      { kind: 'recurring', frequency: 'monthly', days_of_week: [], day_of_month: 15, time: '08:00', timezone: 'UTC', duration_min: null, dates: [] },
+      { kind: 'recurring', frequency: 'monthly', days_of_week: [5], day_of_month: null, time: '19:30', timezone: 'UTC', duration_min: null, dates: [] }
+    ], 'en')
+    expect(lines).toEqual(['15th of the month at 8:00 AM (UTC)', 'First Friday of the month at 7:30 PM (UTC)'])
+    expect(prayerTimeLines([{ kind: 'recurring', frequency: 'monthly', days_of_week: [1], day_of_month: null, time: '08:00', timezone: 'UTC', duration_min: null, dates: [] }], 'pt')[0]).toMatch(/^Primeira segunda-feira do mês às /)
+  })
+
   it('lists chosen dates in order, capped with a count of the rest', () => {
     const dates = Array.from({ length: 12 }, (_, i) => new Date(Date.UTC(2027, 1, 12 - i, 6)))
     const lines = prayerTimeLines([{ kind: 'dates', frequency: null, days_of_week: [], time: '06:00', timezone: 'UTC', duration_min: 60, dates }], 'en')

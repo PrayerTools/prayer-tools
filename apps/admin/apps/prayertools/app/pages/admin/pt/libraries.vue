@@ -329,7 +329,7 @@ async function importPack() {
           <UFormField label="Cadence">
             <USelect
               v-model="form.cadence"
-              :items="[{ value: 'daily', label: 'Daily' }, { value: 'weekly', label: 'Weekly' }]"
+              :items="PT_CADENCE_ITEMS"
               class="w-full"
             />
           </UFormField>

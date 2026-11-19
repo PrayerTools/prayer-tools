@@ -2,14 +2,16 @@
 import type { CampaignEmailText, CampaignLanding, TranslatableText } from '@prayertools/shared/db/schema'
 import type { SitePlaceWording } from '@prayertools/shared/place'
 import type { SetupState } from '../components/PtSetupForm.vue'
-import { daysBetween } from '@prayertools/shared/dates'
 import { campaignEndDate } from '@prayertools/shared/setup'
+import { entryNumber } from '@prayertools/shared/schedule'
+import { addMonths } from '@prayertools/shared/dates'
 
 export type PtCampaignSummary = Pick<SetupState, 'start_mode' | 'start_date' | 'end_mode' | 'end_date' | 'length_days' | 'goal' | 'cadence'>
 
 export const PT_CADENCE_ITEMS = [
   { value: 'daily', label: 'Daily' },
-  { value: 'weekly', label: 'Weekly' }
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'monthly', label: 'Monthly' }
 ]
 
 export interface PtGoalProgress {
@@ -66,10 +68,7 @@ export function ptCampaignDates(c: PtCampaignSummary & { ended_at?: string | nul
 
 // Entries a campaign goes through, when its dates or length fix them.
 export function ptCampaignEntries(c: Pick<SetupState, 'start_mode' | 'start_date' | 'end_mode' | 'end_date' | 'length_days' | 'cadence'>): number | null {
-  if (c.start_mode === 'date' && c.end_mode === 'date' && c.start_date && c.end_date) {
-    const days = daysBetween(c.start_date, c.end_date) + 1
-    return c.cadence === 'weekly' ? Math.ceil(days / 7) : days
-  }
+  if (c.start_mode === 'date' && c.end_mode === 'date' && c.start_date && c.end_date) return entryNumber(c.start_date, c.cadence, c.end_date)
   return c.end_mode === 'days' ? c.length_days : null
 }
 
@@ -90,4 +89,18 @@ export function ptGoalText(p: PtGoalProgress): string | null {
 
 export const ptPlural = (n: number, one: string, many: string) => `${n.toLocaleString()} ${n === 1 ? one : many}`
 
-export const ptUnit = (cadence: string) => cadence === 'weekly' ? 'week' : 'day'
+export const ptUnit = (cadence: string) => cadence === 'monthly' ? 'month' : cadence === 'weekly' ? 'week' : 'day'
+export const ptUnitTitle = (cadence: string) => cadence === 'monthly' ? 'Month' : cadence === 'weekly' ? 'Week' : 'Day'
+
+// The months a monthly campaign can start in, each as its 1st: this month and
+// the two years after it, and the campaign's own start month when outside them.
+export function ptStartMonthItems(current: string | null, today: string): { value: string, label: string }[] {
+  const thisMonth = `${today.slice(0, 8)}01`
+  const months = Array.from({ length: 24 }, (_, i) => addMonths(thisMonth, i))
+  const own = current ? `${current.slice(0, 8)}01` : null
+  if (own && !months.includes(own)) months.push(own)
+  return months.sort().map(m => ({ value: m, label: ptFormatDate(m, { month: 'long', year: 'numeric' }) }))
+}
+
+// The PT_LABELS.monthDay key of a monthly prayer time.
+export const ptMonthDayKey = (c: { day_of_month?: number | null, days_of_week?: number[] }) => c.day_of_month ? `d${c.day_of_month}` : `w${c.days_of_week?.[0] ?? 0}`

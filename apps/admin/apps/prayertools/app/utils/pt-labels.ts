@@ -7,7 +7,7 @@ export const PT_LABELS = {
   startMode: { date: 'On a date', join: 'When each person joins' } as Record<string, string>,
   endMode: { date: 'On a date', none: 'No end', days: 'After the last entry' } as Record<string, string>,
   goal: { people: 'People mobilized', prayer_time: 'Prayer time', coverage: '24/7 coverage' } as Record<string, string>,
-  cadence: { daily: 'Daily', weekly: 'Weekly' } as Record<string, string>,
+  cadence: { daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly' } as Record<string, string>,
   length: { fixed: 'Fixed', ongoing: 'Ongoing' } as Record<string, string>,
   campaignType: { fixed: 'Short and focused', ongoing: 'Ongoing', anytime: 'Start anytime' } as Record<string, string>,
   template: {
@@ -49,6 +49,18 @@ export const PT_LABELS = {
   domainStatus: { pending: 'Waiting for DNS', active: 'Active', failing: 'Not pointing to us' } as Record<string, string>,
   directoryStatus: { requested: 'Waiting for review', listed: 'Listed', unlisted: 'Not listed' } as Record<string, string>,
   weekday: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+  // Days a monthly prayer time can fall on, keyed `d<day of month>` or `w<weekday>` (the first of it).
+  monthDay: {
+    d1: '1st of the month',
+    d15: '15th of the month',
+    w0: 'First Sunday of the month',
+    w1: 'First Monday of the month',
+    w2: 'First Tuesday of the month',
+    w3: 'First Wednesday of the month',
+    w4: 'First Thursday of the month',
+    w5: 'First Friday of the month',
+    w6: 'First Saturday of the month'
+  } as Record<string, string>,
   setting: {
     checkins_enabled: 'Send check-in emails to people who stop praying (ongoing campaigns)',
     show_people_count: 'Show the number of people signed up',

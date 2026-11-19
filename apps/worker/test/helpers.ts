@@ -179,6 +179,8 @@ export interface CommitmentOpts {
   durationMin?: number | null
   entriesDone?: number
   advancedOn?: string | null
+  // A monthly prayer time on this day of the month.
+  dayOfMonth?: number
 }
 
 export async function addCommitment(env: TestEnv, orgId: string, subscriptionId: string, campaignId: string, o: CommitmentOpts): Promise<string> {
@@ -186,7 +188,8 @@ export async function addCommitment(env: TestEnv, orgId: string, subscriptionId:
     subscription_id: subscriptionId,
     campaign_id: campaignId,
     kind: 'recurring',
-    frequency: 'daily',
+    frequency: o.dayOfMonth ? 'monthly' : 'daily',
+    day_of_month: o.dayOfMonth ?? null,
     time: o.time ?? '07:00',
     timezone: o.timezone ?? 'America/New_York',
     duration_min: o.durationMin ?? null,

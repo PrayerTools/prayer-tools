@@ -47,8 +47,9 @@ const libraries = computed(() => content.value?.libraries ?? [])
 
 // ── Days and their dates ─────────────────────────────────────────────────
 const weekly = computed(() => campaign.value?.cadence === 'weekly')
-const unit = computed(() => weekly.value ? 'week' : 'day')
-const Unit = computed(() => weekly.value ? 'Week' : 'Day')
+const monthly = computed(() => campaign.value?.cadence === 'monthly')
+const unit = computed(() => ptUnit(campaign.value?.cadence ?? 'daily'))
+const Unit = computed(() => ptUnitTitle(campaign.value?.cadence ?? 'daily'))
 const length = computed(() => campaign.value ? campaignLength(campaign.value) : null)
 const lastEntry = computed(() => Math.max(0, ...libraries.value.map(l => l.entryCount)))
 const anchor = computed(() => campaign.value?.start_mode === 'date' ? campaign.value.start_date : null)
@@ -78,12 +79,14 @@ function dateOf(n: number): string | null {
 function shortDate(n: number): string {
   const d = dateOf(n)
   if (!d) return ''
+  if (monthly.value) return ptFormatDate(d, { month: 'short', year: 'numeric' })
   if (weekly.value) return `${ptFormatDate(d, { day: 'numeric', month: 'short' })} – ${ptFormatDate(addDays(d, 6), { day: 'numeric', month: 'short' })}`
   return ptFormatDate(d, { weekday: 'short', day: 'numeric', month: 'short' })
 }
 function longDate(n: number): string {
   const d = dateOf(n)
   if (!d) return campaign.value?.start_mode === 'join' ? `The ${ordinal(n)} ${unit.value} after each person signs up` : ''
+  if (monthly.value) return ptFormatDate(d, { month: 'long', year: 'numeric' })
   if (weekly.value) return `${ptFormatDate(d, { weekday: 'long', day: 'numeric', month: 'long' })} – ${ptFormatDate(addDays(d, 6), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`
   return ptFormatDate(d, { dateStyle: 'full' })
 }
@@ -95,7 +98,7 @@ function ordinal(n: number): string {
 const summary = computed(() => {
   const c = campaign.value
   if (!c) return ''
-  const per = weekly.value ? 'each week' : 'each day'
+  const per = `each ${unit.value}`
   if (c.start_mode === 'join') {
     return `Each person starts at ${unit.value} 1 when they sign up and moves to the next entry at most once a ${unit.value}, by opening the one they are on${length.value ? `, for ${length.value} ${unit.value}s` : c.end_mode === 'days' ? ', until the last entry' : ''}.`
   }
@@ -258,7 +261,7 @@ async function addLibrary(libraryId: string) {
     toast.fail(err)
   }
 }
-const defaultTitle = computed(() => weekly.value ? 'Prayer for the week' : 'Prayer for the day')
+const defaultTitle = computed(() => `Prayer for the ${unit.value}`)
 async function createOwn(title: string): Promise<string | null> {
   try {
     const res = await $fetch<{ siteLibraryId: string }>('/api/pt/content/libraries', { method: 'POST', body: { campaignId: campaignId.value, title, cadence: campaign.value?.cadence } })

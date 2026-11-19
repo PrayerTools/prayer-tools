@@ -1,7 +1,8 @@
 import { sql, type Transaction } from 'kysely'
 import type { Database } from '#core/server/database/schema'
 import type { TenantContext } from '#tenant/server'
-import type { TiptapDoc } from '@prayertools/shared/db/schema'
+import type { Cadence, TiptapDoc } from '@prayertools/shared/db/schema'
+import { CADENCES } from '@prayertools/shared/setup'
 import { jsonb } from '@prayertools/shared/db/json'
 import { newerEditions } from '@prayertools/shared/editions'
 
@@ -207,7 +208,7 @@ export async function ptAddCampaignContent(tx: Tx, ctx: TenantContext, b: { camp
     siteLibraryId = existing?.id ?? (await tx.insertInto('pt_site_library').values({ library_id: lib.id, title: lib.title, cadence: lib.cadence }).returning('id').executeTakeFirstOrThrow()).id
   } else {
     const title = (String(b.title ?? '').trim() || `${campaign.name} library`).slice(0, 120)
-    const cadence = b.cadence === 'weekly' ? 'weekly' : campaign.cadence
+    const cadence = CADENCES.includes(b.cadence as Cadence) ? b.cadence as Cadence : campaign.cadence
     siteLibraryId = (await tx.insertInto('pt_site_library').values({ library_id: null, title, cadence }).returning('id').executeTakeFirstOrThrow()).id
   }
   const max = await tx.selectFrom('pt_campaign_library').select(eb => eb.fn.max('position').as('max')).where('campaign_id', '=', campaign.id).executeTakeFirst()

@@ -1,15 +1,19 @@
 <script setup lang="ts">
 import type { PageView } from '~~/shared/view'
+import { entryUnit } from '~/utils/commitment'
 
 const props = defineProps<{ page: Extract<PageView, { kind: 'pray' }> }>()
 const { site, link, st, num } = useSite()
 const { t } = useI18n()
 const route = useRoute()
 
-const weekly = computed(() => site.value.campaign?.cadence === 'weekly')
+const unit = computed(() => entryUnit(site.value.campaign?.cadence))
 const entryTitle = computed(() => props.page.personal && props.page.length
-  ? t(weekly.value ? 'pray.week_of' : 'pray.day_of', { n: num(props.page.day), total: num(props.page.length) })
-  : t(weekly.value ? 'pray.week' : 'pray.day', { n: num(props.page.day) }))
+  ? t(`pray.${unit.value}_of`, { n: num(props.page.day), total: num(props.page.length) })
+  : t(`pray.${unit.value}`, { n: num(props.page.day) }))
+const opensNext = { day: 'pray.opens_tomorrow', week: 'pray.opens_next_week', month: 'pray.opens_next_month' }
+const prevLabel = { day: 'pray.previous', week: 'pray.previous_week', month: 'pray.previous_month' }
+const nextLabel = { day: 'pray.next', week: 'pray.next_week', month: 'pray.next_month' }
 
 useHead({ title: () => `${entryTitle.value} · ${site.value.name}` })
 
@@ -198,10 +202,10 @@ async function sendGroup() {
             <UProgress v-if="position?.entries" :model-value="Math.min(position.current - 1, position.entries)" :max="position.entries" size="sm" class="w-56 max-w-full pt-1" />
           </header>
           <nav v-if="page.prev || page.next || nextOpensLater" class="flex flex-wrap items-center gap-x-4 gap-y-2" :aria-label="t('pray.nav')">
-            <UButton v-if="page.prev" :to="link('pray', [page.prev])" variant="outline" color="neutral" icon="i-lucide-arrow-left" :ui="{ leadingIcon: 'rtl:rotate-180' }" :label="t(weekly ? 'pray.previous_week' : 'pray.previous')" />
-            <UButton v-if="page.next" :to="link('pray', [page.next])" variant="outline" color="neutral" trailing-icon="i-lucide-arrow-right" :ui="{ trailingIcon: 'rtl:rotate-180' }" :label="t(weekly ? 'pray.next_week' : 'pray.next')" />
+            <UButton v-if="page.prev" :to="link('pray', [page.prev])" variant="outline" color="neutral" icon="i-lucide-arrow-left" :ui="{ leadingIcon: 'rtl:rotate-180' }" :label="t(prevLabel[unit])" />
+            <UButton v-if="page.next" :to="link('pray', [page.next])" variant="outline" color="neutral" trailing-icon="i-lucide-arrow-right" :ui="{ trailingIcon: 'rtl:rotate-180' }" :label="t(nextLabel[unit])" />
             <p v-else-if="nextOpensLater" class="inline-flex items-center gap-1.5 text-sm text-stone-600" role="status">
-              <UIcon name="i-lucide-clock" class="size-4 shrink-0" />{{ t(weekly ? 'pray.opens_next_week' : 'pray.opens_tomorrow', { n: num(position!.current) }) }}
+              <UIcon name="i-lucide-clock" class="size-4 shrink-0" />{{ t(opensNext[unit], { n: num(position!.current) }) }}
             </p>
           </nav>
         </div>
@@ -234,7 +238,7 @@ async function sendGroup() {
                 <span class="grid size-10 shrink-0 place-items-center rounded-full bg-success/10 text-success"><UIcon name="i-lucide-heart" class="size-5" /></span>
                 {{ t('pray.amen_thanks') }}
               </p>
-              <UButton v-if="page.next" :to="link('pray', [page.next])" variant="outline" color="neutral" trailing-icon="i-lucide-arrow-right" :ui="{ trailingIcon: 'rtl:rotate-180' }" :label="t(weekly ? 'pray.next_week' : 'pray.next')" />
+              <UButton v-if="page.next" :to="link('pray', [page.next])" variant="outline" color="neutral" trailing-icon="i-lucide-arrow-right" :ui="{ trailingIcon: 'rtl:rotate-180' }" :label="t(nextLabel[unit])" />
             </div>
           </Transition>
           <div class="flex flex-col items-center">

@@ -2,14 +2,15 @@
 // that pre-fill them, and everything that follows from them (length, status,
 // which commitment fields are asked). Options and defaults live here; a
 // campaign stores its answers.
-import type { Cadence, CampaignKind, EndMode, Goal, StartMode } from './db/schema'
-import { addDays, daysBetween, isIsoDate, localDateOf, todayIn } from './dates'
+import type { Cadence, CampaignKind, EndMode, Frequency, Goal, StartMode } from './db/schema'
+import { addDays, addMonths, daysBetween, isIsoDate, localDateOf, todayIn } from './dates'
 import { campaignSlugError } from './paths'
+import { entryNumber } from './schedule'
 
 export const START_MODES: readonly StartMode[] = ['date', 'join']
 export const END_MODES: readonly EndMode[] = ['date', 'none', 'days']
 export const GOALS: readonly Goal[] = ['prayer_time', 'people', 'coverage']
-export const CADENCES: readonly Cadence[] = ['daily', 'weekly']
+export const CADENCES: readonly Cadence[] = ['daily', 'weekly', 'monthly']
 
 export const FIXED_MAX_DAYS = 50
 export const DEFAULT_DURATION_MIN = 15
@@ -110,6 +111,13 @@ export function suggestedStartDate(key: string, today: string): string | null {
   return RAMADAN_START_DATES.find(d => d >= today) ?? null
 }
 
+// The 1st a monthly campaign starts on for a chosen date: the 1st of its month,
+// or of the next month when the date is in the current month, whose 1st has passed.
+export function monthlyStartDate(date: string, today: string): string {
+  const first = `${date.slice(0, 8)}01`
+  return first < today && date.slice(0, 7) === today.slice(0, 7) ? addMonths(first, 1) : first
+}
+
 // How many days ahead of Ramadan a new campaign is offered the Ramadan template.
 export const RAMADAN_OFFER_DAYS = 180
 
@@ -164,6 +172,9 @@ export function validateSetup(a: SetupAnswers, kind: CampaignKind | null = null)
   }
   // Coverage is a grid over fixed dates; open-ended campaigns aim for prayer time.
   if (a.goal === 'coverage' && (a.start_mode !== 'date' || a.end_mode !== 'date')) errors.push('goal')
+  // Monthly entries are calendar months, and a grid filled once a month stays empty.
+  if (a.cadence === 'monthly' && a.start_mode === 'date' && isIsoDate(a.start_date) && !a.start_date.endsWith('-01')) errors.push('start_date')
+  if (a.cadence === 'monthly' && a.goal === 'coverage') errors.push('goal')
   if (a.end_mode === 'days' && a.length_days !== null && !(Number.isInteger(a.length_days) && a.length_days >= 1 && a.length_days <= 3650)) {
     errors.push('length_days')
   }
@@ -227,11 +238,14 @@ export function campaignEndDate(c: Pick<CampaignDates, 'end_mode' | 'end_date' |
 // `campaignEntries` in content.ts).
 export function campaignLength(c: CampaignDates): number | null {
   if (c.end_mode === 'days') return c.length_days
-  if (c.end_mode === 'date' && c.start_date && c.end_date) {
-    const days = daysBetween(c.start_date, c.end_date) + 1
-    return c.cadence === 'weekly' ? Math.ceil(days / 7) : days
-  }
+  if (c.end_mode === 'date' && c.start_date && c.end_date) return entryNumber(c.start_date, c.cadence, c.end_date)
   return null
+}
+
+// How often a campaign's reminders can repeat: monthly campaigns remind
+// monthly, the others daily or on chosen weekdays.
+export function frequencyOptions(cadence: Cadence): Frequency[] {
+  return cadence === 'monthly' ? ['monthly'] : ['daily', 'weekly']
 }
 
 // What a commitment asks for, by goal.

@@ -33,18 +33,26 @@ async function patch(body: Record<string, unknown>, message = 'Saved') {
 function progress(c: Record<string, any>): string | null {
   if (c.start_mode !== 'join') return null
   const done = Number(c.entries_done)
-  const day = c.entries && done >= c.entries ? `Finished all ${c.entries} entries` : `Day ${done + 1}${c.entries ? ` of ${c.entries}` : ''}`
+  const day = c.entries && done >= c.entries ? `Finished all ${c.entries} entries` : `${ptUnitTitle(c.cadence)} ${done + 1}${c.entries ? ` of ${c.entries}` : ''}`
   return c.advanced_on ? `${day} · last moved ${ptFormatDate(c.advanced_on)}` : day
 }
 
 function describe(c: Record<string, any>): string {
   const when = c.kind === 'dates'
     ? `${c.dates.length} date${c.dates.length === 1 ? '' : 's'}`
-    : c.frequency === 'daily' ? 'Every day' : `Every ${c.days_of_week.map((d: number) => PT_LABELS.weekday[d]).join(', ')}`
+    : c.frequency === 'daily'
+      ? 'Every day'
+      : c.frequency === 'monthly' ? PT_LABELS.monthDay[ptMonthDayKey(c)] : `Every ${c.days_of_week.map((d: number) => PT_LABELS.weekday[d]).join(', ')}`
   return `${when} at ${c.time} (${c.timezone})${c.duration_min ? ` · ${c.duration_min} min` : ''}`
 }
 
-const add = reactive({ open: false, campaignId: '', frequency: 'daily', days: [] as string[], time: '07:00', duration: 15 })
+const add = reactive({ open: false, campaignId: '', frequency: 'daily', days: [] as string[], monthDay: 'd1', time: '07:00', duration: 15 })
+// Monthly campaigns take monthly prayer times only.
+const addMonthly = computed(() => campaigns.value?.campaigns.find(c => c.id === add.campaignId)?.cadence === 'monthly')
+watch(addMonthly, (monthly) => {
+  add.frequency = monthly ? 'monthly' : 'daily'
+})
+const monthDayItems = Object.entries(PT_LABELS.monthDay).map(([value, label]) => ({ value, label }))
 async function openAdd() {
   if (!campaigns.value) await loadCampaigns()
   add.campaignId = campaigns.value?.campaigns[0]?.id ?? ''
@@ -54,7 +62,14 @@ async function addCommitment() {
   try {
     await $fetch(`/api/pt/intercessors/${subId.value}/commitments`, {
       method: 'POST',
-      body: { campaignId: add.campaignId, frequency: add.frequency, days_of_week: add.days.map(Number), time: add.time, duration_min: add.duration }
+      body: {
+        campaignId: add.campaignId,
+        frequency: add.frequency,
+        days_of_week: add.frequency === 'monthly' ? (add.monthDay.startsWith('w') ? [Number(add.monthDay.slice(1))] : []) : add.days.map(Number),
+        day_of_month: add.frequency === 'monthly' && add.monthDay.startsWith('d') ? Number(add.monthDay.slice(1)) : null,
+        time: add.time,
+        duration_min: add.duration
+      }
     })
     add.open = false
     await refresh()
@@ -299,7 +314,20 @@ async function remove() {
               class="w-full"
             />
           </UFormField>
-          <UFormField label="How often">
+          <UFormField
+            v-if="addMonthly"
+            label="Day"
+          >
+            <USelect
+              v-model="add.monthDay"
+              :items="monthDayItems"
+              class="w-full"
+            />
+          </UFormField>
+          <UFormField
+            v-else
+            label="How often"
+          >
             <URadioGroup
               v-model="add.frequency"
               :items="[{ value: 'daily', label: 'Every day' }, { value: 'weekly', label: 'Selected days' }]"

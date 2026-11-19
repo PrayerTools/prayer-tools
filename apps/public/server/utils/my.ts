@@ -109,6 +109,7 @@ export async function buildMyView(userId: string | null): Promise<MyView> {
             name: c.name,
             state: (campaignStatus(c) === 'upcoming' ? 'upcoming' : 'active') as 'upcoming' | 'active',
             goal: c.goal,
+            cadence: c.cadence,
             durationRule: durationRule(c.goal, c.track_time),
             durations: durationOptions(c),
             defaultDuration: defaultDuration(c, settings.default_duration_min)

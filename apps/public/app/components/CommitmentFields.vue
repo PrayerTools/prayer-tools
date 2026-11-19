@@ -1,11 +1,13 @@
 <script setup lang="ts">
-// One prayer time: daily at a time, or chosen weekdays at a time, with a
-// duration when the campaign's goal uses it. `timeless` leaves the time to a
-// picker next to it.
+// One prayer time: daily at a time, or chosen weekdays at a time, or in a
+// monthly campaign a day of the month at a time, with a duration when the
+// campaign's goal uses it. `timeless` leaves the time to a picker next to it.
+import type { Cadence } from '@prayertools/shared/db/schema'
+import { MONTH_DAYS } from '@prayertools/shared/schedule'
 import type { CommitmentInput } from '~/utils/commitment'
 
 const model = defineModel<CommitmentInput>({ required: true })
-const props = defineProps<{ durationRule: 'required' | 'optional' | 'hidden', durations: number[], idPrefix: string, lang: string, timeless?: boolean }>()
+const props = defineProps<{ durationRule: 'required' | 'optional' | 'hidden', durations: number[], idPrefix: string, lang: string, timeless?: boolean, cadence?: Cadence }>()
 const { t } = useI18n()
 
 const frequencies = computed(() => [
@@ -17,6 +19,20 @@ const weekdays = computed(() => {
   const fmt = new Intl.DateTimeFormat(props.lang, { weekday: 'short', timeZone: 'UTC' })
   // 2024-01-07 is a Sunday.
   return [0, 1, 2, 3, 4, 5, 6].map(d => ({ label: fmt.format(new Date(Date.UTC(2024, 0, 7 + d))), value: String(d) }))
+})
+
+// A monthly rule falls on a day of the month (`d15`) or the first of a weekday (`w1`).
+const monthDayItems = computed(() => [
+  ...MONTH_DAYS.map(d => ({ label: t(`commitment.month_day_${d}`), value: `d${d}` })),
+  ...[0, 1, 2, 3, 4, 5, 6].map(d => ({ label: t(`commitment.first_weekday_${d}`), value: `w${d}` }))
+])
+const monthDay = computed({
+  get: () => model.value.day_of_month ? `d${model.value.day_of_month}` : `w${model.value.days_of_week[0] ?? 0}`,
+  set: (v: string) => {
+    const n = Number(v.slice(1))
+    if (v.startsWith('d')) Object.assign(model.value, { day_of_month: n, days_of_week: [] })
+    else Object.assign(model.value, { day_of_month: null, days_of_week: [n] })
+  }
 })
 
 const days = computed({
@@ -34,7 +50,10 @@ const durationItems = computed(() => props.durations.map(d => ({ label: formatMi
 
 <template>
   <div class="grid gap-4 sm:grid-cols-2">
-    <UFormField :label="t('commitment.how_often')" :name="`${idPrefix}-frequency`">
+    <UFormField v-if="cadence === 'monthly'" :label="t('commitment.month_day')" :name="`${idPrefix}-month-day`" required>
+      <USelect v-model="monthDay" :items="monthDayItems" class="w-full" />
+    </UFormField>
+    <UFormField v-else :label="t('commitment.how_often')" :name="`${idPrefix}-frequency`">
       <URadioGroup v-model="model.frequency" :items="frequencies" orientation="horizontal" />
     </UFormField>
     <UFormField v-if="!timeless" :label="t('commitment.time')" :name="`${idPrefix}-time`" required>

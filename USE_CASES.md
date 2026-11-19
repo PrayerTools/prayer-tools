@@ -171,6 +171,7 @@ The champion or the mobilizer:
 - **Crisis response:** a 4-day campaign started right away. Its thank-you invites people to the campaign that starts after it on the site, such as a longer follow-up, unless the champion sets their own button *(one-step join not built)*.
 - **Start anytime:** a devotional where each person starts on day 1 the day they join and finishes at the last entry.
 - **School:** ongoing weekly content through the school year.
+- **Monthly:** one prayer focus a month, suited to newsletters and to people who open the campaign rarely. It starts on the 1st, and each entry covers one calendar month. Intercessors choose a monthly reminder day: the 1st, the 15th, or the first of a weekday such as the first Friday. Daily and weekly reminders aren't offered, and unopened reminders never change the schedule *(not built)*.
 - **Own content:** write content, publish it as a library for other sites, and ask Prayer.Tools to share it with everyone.
 
 ## Intercessor

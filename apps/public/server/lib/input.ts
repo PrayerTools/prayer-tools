@@ -10,10 +10,14 @@ export function parseRuleInput(raw: unknown): RuleInput | null {
   const time = typeof r.time === 'string' ? r.time.slice(0, 5) : ''
   const out: RuleInput = { kind, time }
   if (kind === 'recurring') {
-    out.frequency = r.frequency === 'weekly' ? 'weekly' : 'daily'
+    out.frequency = r.frequency === 'weekly' || r.frequency === 'monthly' ? r.frequency : 'daily'
     out.days_of_week = Array.isArray(r.days_of_week)
       ? [...new Set(r.days_of_week.map(Number).filter(d => Number.isInteger(d) && d >= 0 && d <= 6))]
       : []
+    if (out.frequency === 'monthly') {
+      const day = Number(r.day_of_month)
+      out.day_of_month = r.day_of_month === null || r.day_of_month === undefined || r.day_of_month === '' ? null : Number.isInteger(day) ? day : NaN
+    }
   } else {
     out.dates = Array.isArray(r.dates)
       ? r.dates.filter((d): d is string => typeof d === 'string' && !Number.isNaN(Date.parse(d))).slice(0, 200).map(d => new Date(d).toISOString())

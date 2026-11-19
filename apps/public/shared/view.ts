@@ -155,8 +155,9 @@ export interface CommitmentView {
   campaignName: string
   campaignEnded: boolean
   kind: 'recurring' | 'dates'
-  frequency: 'daily' | 'weekly' | null
+  frequency: 'daily' | 'weekly' | 'monthly' | null
   daysOfWeek: number[]
+  dayOfMonth: number | null
   time: string
   timezone: string
   durationMin: number | null
@@ -173,6 +174,7 @@ export interface ManageCampaignView {
   state: 'upcoming' | 'active' | 'ended'
   // Start-anytime campaigns hold one prayer time per person.
   personal: boolean
+  cadence: Cadence
   durationRule: 'required' | 'optional' | 'hidden'
   durations: number[]
   defaultDuration: number
@@ -214,7 +216,7 @@ export interface MySiteView {
   status: SubscriptionStatus
   siteUpdates: boolean
   customConsents: { key: string, label: string, granted: boolean }[]
-  current: { campaign: { id: string, name: string, state: CampaignState, goal: Goal, durationRule: 'required' | 'optional' | 'hidden', durations: number[], defaultDuration: number }, commitments: CommitmentView[] }[]
+  current: { campaign: { id: string, name: string, state: CampaignState, goal: Goal, cadence: Cadence, durationRule: 'required' | 'optional' | 'hidden', durations: number[], defaultDuration: number }, commitments: CommitmentView[] }[]
   past: { id: string, name: string, prayers: number, minutes: number }[]
 }
 

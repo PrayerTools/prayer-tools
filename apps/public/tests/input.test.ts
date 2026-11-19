@@ -14,6 +14,13 @@ describe('parseRuleInput', () => {
     expect(r?.duration_min).toBeNull()
   })
 
+  test('monthly rule keeps its day of the month or its weekday', () => {
+    expect(parseRuleInput({ frequency: 'monthly', day_of_month: 15, days_of_week: [], time: '08:00' })).toMatchObject({ frequency: 'monthly', day_of_month: 15, days_of_week: [] })
+    expect(parseRuleInput({ frequency: 'monthly', day_of_month: null, days_of_week: [5], time: '08:00' })).toMatchObject({ frequency: 'monthly', day_of_month: null, days_of_week: [5] })
+    expect(Number.isNaN(parseRuleInput({ frequency: 'monthly', day_of_month: 'x', time: '08:00' })!.day_of_month)).toBe(true)
+    expect(parseRuleInput({ frequency: 'daily', day_of_month: 15, time: '08:00' })?.day_of_month).toBeUndefined()
+  })
+
   test('dates rule normalizes instants and drops junk', () => {
     const r = parseRuleInput({ kind: 'dates', dates: ['2026-10-01T03:00:00+03:00', 'nope', 5], time: '03:00' })
     expect(r?.dates).toEqual(['2026-10-01T00:00:00.000Z'])

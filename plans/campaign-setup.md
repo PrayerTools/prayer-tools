@@ -8,13 +8,23 @@ There are no campaign types. A campaign is described by four setup answers; temp
 |---|---|
 | Start | **on a date** (shared calendar, everyone on the same day) · **when each person joins** (personal start: each intercessor's day 1 is the day they sign up) |
 | End | **on a date** · **no end** · for personal start: **how many days** each person goes through |
-| Goal | **prayer time** (e.g. 24 hours of prayer every day) · **people mobilized** (preselected) · **24/7 coverage** (needs a start date and an end date) — offered in this order |
-| Content cadence | daily · weekly |
+| Goal | **prayer time** (e.g. 24 hours of prayer every day) · **people mobilized** (preselected) · **24/7 coverage** (needs a start date and an end date, and isn't offered on monthly campaigns) — offered in this order |
+| Content cadence | daily · weekly · monthly |
 
 ## Length
 
 - A shared-calendar campaign ending 50 days or less after its start displays as a **fixed** campaign.
 - One ending more than 50 days after its start, or with no end, displays as **ongoing** (with or without an end date).
+
+## Monthly campaigns
+
+One entry a month, for newsletters and content people open rarely.
+
+- A shared-calendar monthly campaign starts on the 1st of a month, and each entry covers one calendar month.
+- Reminders are monthly and only monthly. The intercessor picks the 1st, the 15th, or the first of a weekday (the first Monday … the first Sunday), and a time. Daily and weekly campaigns don't offer monthly reminders.
+- Unopened reminders never change the schedule: a personal-start monthly campaign doesn't drop to weekly (see Content).
+- 24/7 coverage isn't offered: a grid filled once a month stays nearly empty.
+- The app inactivity sweep waits 100 quiet days, not 30, for someone praying with a monthly campaign.
 
 ## Lifecycle
 
@@ -45,7 +55,7 @@ Signup is built around the reminder (Doxa model): the intercessor says when they
 | Prayer time | required | required, intercessor's choice; default 15 min |
 | 24/7 coverage | required | required, whole slots only; default 15 min, raised to one slot |
 
-- Daily means choosing a time; weekly or selected days means choosing the days and a time. There is no weekly without a day.
+- Daily means choosing a time; weekly or selected days means choosing the days and a time. There is no weekly without a day. Monthly means choosing the 1st, the 15th or the first of a weekday, and a time.
 - The time is when the reminder is sent. Only for 24/7 coverage is it also the prayer slot that fills the coverage grid.
 - One `commitment` row per prayer time. People mobilized counts distinct people with an active commitment, prayer time sums durations, 24/7 expands each row into slots.
 - 24/7 campaigns also allow specific-date picks.
@@ -91,7 +101,7 @@ All templates preselect the people-mobilized goal.
 
 - Content is a numbered sequence of entries (1…N) with a cadence. On a shared calendar, today's entry = campaign start + cadence.
 - Public URLs address the entry number, so pages stay shared and edge-cacheable even for personal-start campaigns.
-- **Personal start is paced by progress, like a devotional.** A person has one prayer time per campaign, which records how far they are. Opening the entry they are on (from a reminder link, the site in a browser they confirmed in, or the app) moves them to the next one, at most once per day (once per week for weekly campaigns) in their timezone. A missed day is not skipped: the next reminder sends the same entry. Reminders are skipped on a day they already moved forward, and drop to weekly after three unopened reminders in a row until they open one.
+- **Personal start is paced by progress, like a devotional.** A person has one prayer time per campaign, which records how far they are. Opening the entry they are on (from a reminder link, the site in a browser they confirmed in, or the app) moves them to the next one, at most once per day (once per week for weekly campaigns, once per calendar month for monthly ones) in their timezone. A missed day is not skipped: the next reminder sends the same entry. Reminders are skipped on a day they already moved forward, and drop to weekly after three unopened reminders in a row until they open one. Monthly campaigns never drop.
 - Personal-start pray pages have no "Next" link. `/pray` takes a recognised subscriber to their entry and shows "Day N of M" with a progress bar; anyone else sees day 1 with an invitation to sign up.
 - Personal start suits devotionals and crises where people should start praying right away, daily.
 

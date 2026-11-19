@@ -18,13 +18,13 @@ export type SiteStatus = 'draft' | 'published' | 'archived'
 export type StartMode = 'date' | 'join'
 export type EndMode = 'date' | 'none' | 'days'
 export type Goal = 'people' | 'prayer_time' | 'coverage'
-export type Cadence = 'daily' | 'weekly'
+export type Cadence = 'daily' | 'weekly' | 'monthly'
 // Stored only for side campaigns; NULL is the site's main campaign.
 export type CampaignKind = 'side'
 export type SubscriptionStatus = 'active' | 'inactive' | 'completed' | 'unsubscribed'
 export type Delivery = 'email' | 'app'
 export type CommitmentKind = 'recurring' | 'dates'
-export type Frequency = 'daily' | 'weekly'
+export type Frequency = 'daily' | 'weekly' | 'monthly'
 export type DomainStatus = 'pending' | 'active' | 'failing'
 export type DirectoryStatus = 'requested' | 'listed' | 'unlisted'
 export type JobStatus = 'pending' | 'processing' | 'completed' | 'failed'
@@ -507,6 +507,9 @@ export interface PtCommitmentTable {
   kind: Generated<CommitmentKind>
   frequency: Frequency | null
   days_of_week: Generated<number[]>
+  // Monthly rules fall on this day of the month, or when null on the first of
+  // the one weekday in `days_of_week`.
+  day_of_month: number | null
   time: string
   timezone: string
   duration_min: number | null

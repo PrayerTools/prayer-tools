@@ -45,6 +45,7 @@ export async function patchCommitment(tx: Tx, sub: SubscriptionRow, id: string, 
   await updateCommitment(tx, sub, id, {
     frequency: rule.frequency,
     days_of_week: rule.days_of_week,
+    day_of_month: rule.day_of_month ?? null,
     time: rule.time,
     duration_min: rule.duration_min,
     ...(typeof raw.paused === 'boolean' ? { paused: raw.paused } : {})

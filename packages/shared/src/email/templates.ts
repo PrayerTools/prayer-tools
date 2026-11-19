@@ -152,8 +152,9 @@ export function verificationEmail(ctx: SiteMailContext, lang: string, verifyUrl:
 
 export interface PrayerTime {
   kind: 'recurring' | 'dates'
-  frequency: 'daily' | 'weekly' | null
+  frequency: 'daily' | 'weekly' | 'monthly' | null
   days_of_week: (number | string)[]
+  day_of_month?: number | null
   time: string
   timezone: string
   duration_min: number | null
@@ -195,9 +196,11 @@ export function prayerTimeLines(times: PrayerTime[], lang: string): string[] {
       continue
     }
     const time = formatTimeOfDay(t.time, lang)
-    const rule = t.frequency === 'weekly'
-      ? emailT(lang, 'welcome.weekly_at', { days: weekdayList(t.days_of_week.map(Number), lang), time })
-      : emailT(lang, 'welcome.daily_at', { time })
+    const rule = t.frequency === 'monthly'
+      ? emailT(lang, 'welcome.monthly_at', { day: emailT(lang, t.day_of_month ? `month_day.${t.day_of_month}` : `first_weekday.${t.days_of_week[0]}`), time })
+      : t.frequency === 'weekly'
+        ? emailT(lang, 'welcome.weekly_at', { days: weekdayList(t.days_of_week.map(Number), lang), time })
+        : emailT(lang, 'welcome.daily_at', { time })
     lines.push(`${rule} (${t.timezone})${minutes}`)
   }
   return lines
@@ -275,7 +278,7 @@ export interface ReminderDetails {
 export function reminderEmail(ctx: SiteMailContext, lang: string, d: ReminderDetails, opts: { test?: boolean } = {}): Rendered {
   const vars = { site: ctx.siteName, campaign: d.campaignName }
   const meta = [
-    d.day ? emailT(lang, d.cadence === 'weekly' ? 'reminder.week' : 'reminder.day', { day: d.day }) : null,
+    d.day ? emailT(lang, d.cadence === 'monthly' ? 'reminder.month' : d.cadence === 'weekly' ? 'reminder.week' : 'reminder.day', { day: d.day }) : null,
     d.minutes ? emailT(lang, 'reminder.duration', { minutes: d.minutes }) : null
   ].filter(Boolean).join(' · ')
   const note = docIn(d.emailText?.reminder, lang, ctx.defaultLanguage)

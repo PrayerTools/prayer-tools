@@ -4,7 +4,8 @@
 // topic, template and text.
 import { db } from '#core/server/utils/database'
 import { sql } from 'kysely'
-import { getTemplate } from '@prayertools/shared/setup'
+import { CADENCES, getTemplate } from '@prayertools/shared/setup'
+import type { Cadence } from '@prayertools/shared/db/schema'
 
 export default defineEventHandler(async (event) => {
   const user = await ptUser(event)
@@ -29,7 +30,7 @@ export default defineEventHandler(async (event) => {
       ...(sharedIds.length ? [eb('id', 'in', sharedIds)] : [])
     ])).where('published_version', '>', 0)
   }
-  if (q.cadence === 'daily' || q.cadence === 'weekly') query = query.where('cadence', '=', q.cadence)
+  if (CADENCES.includes(q.cadence as Cadence)) query = query.where('cadence', '=', q.cadence as Cadence)
   if (typeof q.language === 'string' && q.language) query = query.where(sql<boolean>`${q.language} = ANY(languages)`)
   if (typeof q.topic === 'string' && q.topic) query = query.where(sql<boolean>`${q.topic} = ANY(topics)`)
   if (typeof q.q === 'string' && q.q.trim()) query = query.where(eb => eb.or([eb('title', 'ilike', `%${q.q}%`), eb('description', 'ilike', `%${q.q}%`)]))

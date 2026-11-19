@@ -14,7 +14,7 @@ Copy the Doxa prayer app (`doxa-prayer-mobile-app`, Flutter, open source, copyin
 - **Native Tiptap rendering** of prayer content, with an offline file cache.
 - **Several sites per device**, several reminders per site.
 - **OneSignal** for push.
-- **Server-side inactivity sweep** — 30 days without prayer on a site marks the subscription inactive; activity reactivates it; explicit unsubscribe is sticky.
+- **Server-side inactivity sweep** — 30 days without prayer on a site (100 when the person prays with a monthly campaign) marks the subscription inactive; activity reactivates it; explicit unsubscribe is sticky.
 
 ## Changes for prayer.tools
 

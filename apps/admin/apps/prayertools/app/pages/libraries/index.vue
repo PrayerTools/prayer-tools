@@ -72,7 +72,7 @@ async function create() {
               />
             </div>
             <p class="text-xs text-(--ui-text-muted)">
-              {{ l.entry_count }} {{ l.cadence === 'weekly' ? 'weeks' : 'days' }} · {{ l.languages.map(x => languageName(meta, x)).join(', ') || 'no entries yet' }} · version {{ l.published_version }}
+              {{ l.entry_count }} {{ ptUnit(l.cadence) }}s · {{ l.languages.map(x => languageName(meta, x)).join(', ') || 'no entries yet' }} · version {{ l.published_version }}
             </p>
           </NuxtLink>
         </div>
@@ -104,7 +104,7 @@ async function create() {
               />
             </div>
             <p class="text-xs text-(--ui-text-muted)">
-              From {{ l.owner_name }} · {{ l.entry_count }} {{ l.cadence === 'weekly' ? 'weeks' : 'days' }} · {{ l.languages.map(x => languageName(meta, x)).join(', ') || 'no entries yet' }} · version {{ l.published_version }}
+              From {{ l.owner_name }} · {{ l.entry_count }} {{ ptUnit(l.cadence) }}s · {{ l.languages.map(x => languageName(meta, x)).join(', ') || 'no entries yet' }} · version {{ l.published_version }}
             </p>
           </NuxtLink>
         </div>
@@ -142,7 +142,7 @@ async function create() {
               <UFormField label="Cadence">
                 <USelect
                   v-model="form.cadence"
-                  :items="[{ value: 'daily', label: 'Daily' }, { value: 'weekly', label: 'Weekly' }]"
+                  :items="PT_CADENCE_ITEMS"
                   class="w-full"
                 />
               </UFormField>

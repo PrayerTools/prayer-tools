@@ -134,6 +134,7 @@ async function deleteData() {
           </template>
           <CommitmentList
             :commitments="c.commitments"
+            :cadence="c.cadence"
             :duration-rule="c.durationRule"
             :durations="c.durations"
             :default-duration="c.defaultDuration"

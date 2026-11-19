@@ -2,10 +2,12 @@
 // A person's prayer times with edit / pause / remove, and adding a new one.
 // The parent performs the API calls.
 import type { CommitmentView } from '~~/shared/view'
-import { describeRule, formatMinutes, formatTime, newCommitment, weekdayList, type CommitmentInput } from '~/utils/commitment'
+import type { Cadence } from '@prayertools/shared/db/schema'
+import { describeRule, formatMinutes, formatTime, monthDayKey, newCommitment, weekdayList, type CommitmentInput } from '~/utils/commitment'
 
 const props = defineProps<{
   commitments: CommitmentView[]
+  cadence: Cadence
   durationRule: 'required' | 'optional' | 'hidden'
   durations: number[]
   defaultDuration: number
@@ -23,19 +25,19 @@ const emit = defineEmits<{
 const { t } = useI18n()
 
 const editing = ref<string | null>(null)
-const draft = ref<CommitmentInput>(newCommitment(props.durationRule, props.defaultDuration))
+const draft = ref<CommitmentInput>(newCommitment(props.durationRule, props.defaultDuration, props.cadence))
 const adding = ref(false)
 
 function startEdit(c: CommitmentView) {
   editing.value = c.id
   adding.value = false
-  draft.value = { frequency: c.frequency ?? 'daily', days_of_week: [...c.daysOfWeek], time: c.time, duration_min: c.durationMin }
+  draft.value = { frequency: c.frequency ?? 'daily', days_of_week: [...c.daysOfWeek], day_of_month: c.dayOfMonth, time: c.time, duration_min: c.durationMin }
 }
 
 function startAdd() {
   editing.value = null
   adding.value = true
-  draft.value = newCommitment(props.durationRule, props.defaultDuration)
+  draft.value = newCommitment(props.durationRule, props.defaultDuration, props.cadence)
 }
 
 function save() {
@@ -51,6 +53,7 @@ function dateList(c: CommitmentView): string[] {
 }
 
 function days(c: CommitmentView): string {
+  if (c.frequency === 'monthly') return t(monthDayKey(c))
   return c.frequency === 'daily' ? t('commitment.daily') : weekdayList(c.daysOfWeek, props.lang)
 }
 
@@ -96,7 +99,7 @@ function menu(c: CommitmentView) {
           <li v-for="d in dateList(c)" :key="d" class="rounded-md bg-[color-mix(in_srgb,currentColor_6%,transparent)] px-2 py-0.5 text-sm tabular-nums">{{ d }}</li>
         </ul>
         <div v-if="editing === c.id" class="space-y-4 rounded-lg bg-[color-mix(in_srgb,currentColor_4%,transparent)] p-4">
-          <CommitmentFields v-model="draft" :duration-rule="durationRule" :durations="durations" :id-prefix="`e-${c.id}`" :lang="lang" />
+          <CommitmentFields v-model="draft" :duration-rule="durationRule" :durations="durations" :id-prefix="`e-${c.id}`" :lang="lang" :cadence="cadence" />
           <div class="flex gap-2">
             <UButton :loading="busy" :label="t('common.save')" @click="save" />
             <UButton variant="ghost" color="neutral" :label="t('common.cancel')" @click="editing = null" />
@@ -105,7 +108,7 @@ function menu(c: CommitmentView) {
       </li>
     </ul>
     <div v-if="adding" class="space-y-4 border-stone-200 py-4" :class="commitments.length > 0 && 'border-t'">
-      <CommitmentFields v-model="draft" :duration-rule="durationRule" :durations="durations" id-prefix="new" :lang="lang" />
+      <CommitmentFields v-model="draft" :duration-rule="durationRule" :durations="durations" id-prefix="new" :lang="lang" :cadence="cadence" />
       <div class="flex gap-2">
         <UButton :loading="busy" :label="t('manage.add_time')" @click="save" />
         <UButton variant="ghost" color="neutral" :label="t('common.cancel')" @click="adding = false" />

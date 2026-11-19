@@ -5,13 +5,13 @@ import { sql, type Selectable } from 'kysely'
 import type { Tx } from './db/scope'
 import type { PtCampaignTable, PtCommitmentTable, PtSubscriptionTable } from './db/schema'
 import { todayIn, toIsoDate } from './dates'
-import { nextReminderUtc, validateRule, type CommitmentRule } from './schedule'
+import { nextReminderUtc, usesWeekdays, validateRule, type CommitmentRule } from './schedule'
 import { campaignEntries } from './content'
 import { hashToken, randomToken, shortCode } from './tokens'
 import { consentHistory, consentState, deleteChannelIfUnused, markChannelVerified, primaryEmailOf, setConsent, upsertContact, type ConsentCapture } from './crm'
 import { ensureAccount, linkSubscriptionToAccount, markAccountVerified } from './accounts'
 import { bumpStat } from './stats'
-import { durationOptions, durationRule } from './setup'
+import { durationOptions, durationRule, frequencyOptions } from './setup'
 import { normalizeCampaign } from './campaigns'
 
 export type CampaignRow = Selectable<PtCampaignTable>
@@ -20,11 +20,12 @@ export type CommitmentRow = Selectable<PtCommitmentTable>
 
 export const VERIFY_TOKEN_DAYS = 7
 
-export function ruleOf(c: Pick<CommitmentRow, 'kind' | 'frequency' | 'days_of_week' | 'time' | 'timezone' | 'duration_min' | 'dates' | 'starts_on' | 'ends_on' | 'paused'>): CommitmentRule {
+export function ruleOf(c: Pick<CommitmentRow, 'kind' | 'frequency' | 'days_of_week' | 'day_of_month' | 'time' | 'timezone' | 'duration_min' | 'dates' | 'starts_on' | 'ends_on' | 'paused'>): CommitmentRule {
   return {
     kind: c.kind,
     frequency: c.frequency,
     days_of_week: (c.days_of_week ?? []).map(Number),
+    day_of_month: c.day_of_month,
     time: c.time,
     timezone: c.timezone,
     duration_min: c.duration_min,
@@ -37,8 +38,9 @@ export function ruleOf(c: Pick<CommitmentRow, 'kind' | 'frequency' | 'days_of_we
 
 export interface RuleInput {
   kind?: 'recurring' | 'dates'
-  frequency?: 'daily' | 'weekly'
+  frequency?: 'daily' | 'weekly' | 'monthly'
   days_of_week?: number[]
+  day_of_month?: number | null
   time: string
   timezone?: string
   duration_min?: number | null
@@ -75,9 +77,7 @@ export function validateRuleForCampaign(input: RuleInput, campaign: CampaignRow)
   const kind = input.kind ?? 'recurring'
   const errors = validateRule({ ...input, kind, frequency: input.frequency ?? null, days_of_week: input.days_of_week ?? [], dates: input.dates ?? [], duration_min: input.duration_min ?? null })
   if (kind === 'dates' && campaign.goal !== 'coverage') errors.push('kind')
-  if (kind === 'recurring' && campaign.cadence === 'weekly' && input.frequency === 'daily') {
-    // A weekly campaign still lets people pray daily; nothing to reject.
-  }
+  if (kind === 'recurring' && !frequencyOptions(campaign.cadence).includes(input.frequency ?? 'daily')) errors.push('frequency')
   const rule = durationRule(campaign.goal, campaign.track_time)
   if (rule === 'required' && !input.duration_min) errors.push('duration_min')
   else if (campaign.goal === 'coverage' && !durationOptions(campaign).includes(input.duration_min!)) errors.push('duration_min')
@@ -112,7 +112,8 @@ export async function insertCommitment(tx: Tx, sub: SubscriptionRow, campaign: C
     campaign_id: campaign.id,
     kind,
     frequency: kind === 'dates' ? null : (input.frequency ?? 'daily'),
-    days_of_week: kind === 'dates' || input.frequency !== 'weekly' ? [] : [...new Set(input.days_of_week ?? [])].sort(),
+    days_of_week: kind === 'dates' || !usesWeekdays({ frequency: input.frequency ?? null, day_of_month: input.day_of_month }) ? [] : [...new Set(input.days_of_week ?? [])].sort(),
+    day_of_month: kind === 'recurring' && input.frequency === 'monthly' ? (input.day_of_month ?? null) : null,
     time: input.time,
     timezone: tz,
     duration_min: rule === 'hidden' ? null : (input.duration_min ?? null),
@@ -135,12 +136,14 @@ export async function updateCommitment(tx: Tx, sub: SubscriptionRow, commitmentI
     ...ruleOf(existing),
     ...(patch.frequency ? { frequency: patch.frequency } : {}),
     ...(patch.days_of_week ? { days_of_week: [...new Set(patch.days_of_week)].sort() } : {}),
+    ...(patch.day_of_month !== undefined ? { day_of_month: patch.day_of_month } : {}),
     ...(patch.time ? { time: patch.time } : {}),
     ...(patch.timezone ? { timezone: patch.timezone } : {}),
     ...(patch.duration_min !== undefined ? { duration_min: patch.duration_min } : {}),
     ...(patch.paused !== undefined ? { paused: patch.paused } : {})
   }
-  if (merged.frequency === 'daily') merged.days_of_week = []
+  if (merged.frequency !== 'monthly') merged.day_of_month = null
+  if (!usesWeekdays(merged)) merged.days_of_week = []
   const campaign = await tx.selectFrom('pt_campaign').select('ended_at').where('id', '=', existing.campaign_id).executeTakeFirst()
   const next = remindersOn(sub) && !campaign?.ended_at ? nextReminderUtc(merged) : null
   return await tx
@@ -148,6 +151,7 @@ export async function updateCommitment(tx: Tx, sub: SubscriptionRow, commitmentI
     .set({
       frequency: merged.frequency,
       days_of_week: sql`${`{${merged.days_of_week.join(',')}}`}::smallint[]`,
+      day_of_month: merged.day_of_month ?? null,
       time: merged.time,
       timezone: merged.timezone,
       duration_min: merged.duration_min,
@@ -386,7 +390,7 @@ export async function personData(tx: Tx, subscriptionId: string) {
   const commitments = await tx
     .selectFrom('pt_commitment as c')
     .innerJoin('pt_campaign as k', 'k.id', 'c.campaign_id')
-    .select(['k.name as campaign', 'c.kind', 'c.frequency', 'c.days_of_week', 'c.time', 'c.timezone', 'c.duration_min', 'c.dates', 'c.starts_on', 'c.ends_on', 'c.paused'])
+    .select(['k.name as campaign', 'c.kind', 'c.frequency', 'c.days_of_week', 'c.day_of_month', 'c.time', 'c.timezone', 'c.duration_min', 'c.dates', 'c.starts_on', 'c.ends_on', 'c.paused'])
     .where('c.subscription_id', '=', subscriptionId)
     .execute()
   return {

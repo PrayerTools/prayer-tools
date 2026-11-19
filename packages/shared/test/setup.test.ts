@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyTemplate, campaignEndDate, campaignLength, handOnCampaign, offeredTemplates, suggestedStartDate, campaignStatus, campaignType, campaignsOverlap, defaultDuration, displayLength, durationOptions, durationRule, overlappingCampaign, pickCurrentCampaign, slotMinutes, suggestCampaignSlug, suggestSideSlug, validateSetup, type CampaignDates } from '../src/setup'
+import { applyTemplate, campaignEndDate, campaignLength, handOnCampaign, offeredTemplates, suggestedStartDate, campaignStatus, campaignType, campaignsOverlap, defaultDuration, displayLength, durationOptions, durationRule, frequencyOptions, monthlyStartDate, overlappingCampaign, pickCurrentCampaign, slotMinutes, suggestCampaignSlug, suggestSideSlug, validateSetup, type CampaignDates } from '../src/setup'
 
 const NY = 'America/New_York'
 
@@ -205,15 +205,32 @@ describe('applyTemplate', () => {
     expect(validateSetup(applyTemplate('generic', { goal: 'coverage', start_mode: 'date', start_date: '2026-10-01', end_mode: 'none' }))).toEqual(['goal'])
     expect(validateSetup(applyTemplate('generic', { goal: 'coverage', start_mode: 'join', end_mode: 'days' }))).toEqual(['goal'])
   })
+
+  it('monthly campaigns start on the 1st and aim for people or prayer time', () => {
+    expect(validateSetup(applyTemplate('generic', { cadence: 'monthly', start_mode: 'date', start_date: '2027-01-01', end_mode: 'none' }))).toEqual([])
+    expect(validateSetup(applyTemplate('generic', { cadence: 'monthly', start_mode: 'date', start_date: '2027-01-15', end_mode: 'none' }))).toEqual(['start_date'])
+    expect(validateSetup(applyTemplate('generic', { cadence: 'monthly', start_mode: 'join', end_mode: 'days' }))).toEqual([])
+    expect(monthlyStartDate('2026-11-19', '2026-11-19')).toBe('2026-12-01')
+    expect(monthlyStartDate('2026-11-01', '2026-11-01')).toBe('2026-11-01')
+    expect(monthlyStartDate('2027-02-10', '2026-11-19')).toBe('2027-02-01')
+    expect(monthlyStartDate('2026-08-10', '2026-11-19')).toBe('2026-08-01')
+    expect(validateSetup(applyTemplate('generic', { cadence: 'monthly', goal: 'coverage', start_mode: 'date', start_date: '2027-01-01', end_mode: 'date', end_date: '2027-03-31' }))).toEqual(['goal'])
+  })
 })
 
 describe('derived answers', () => {
   it('campaign length in entries', () => {
     expect(campaignLength(c({ start_date: '2026-03-01', end_date: '2026-03-30' }))).toBe(30)
     expect(campaignLength(c({ start_date: '2026-03-01', end_date: '2026-03-30', cadence: 'weekly' }))).toBe(5)
+    expect(campaignLength(c({ start_date: '2026-01-01', end_date: '2026-12-31', cadence: 'monthly' }))).toBe(12)
     expect(campaignLength(c({ start_mode: 'join', end_mode: 'days', length_days: 7 }))).toBe(7)
     expect(campaignLength(c({ start_mode: 'join', end_mode: 'days', length_days: null }))).toBeNull()
     expect(campaignLength(c({ end_mode: 'none', end_date: null }))).toBeNull()
+  })
+
+  it('monthly campaigns remind monthly only', () => {
+    expect(frequencyOptions('monthly')).toEqual(['monthly'])
+    expect(frequencyOptions('weekly')).toEqual(['daily', 'weekly'])
   })
 
   it('duration asked by goal', () => {

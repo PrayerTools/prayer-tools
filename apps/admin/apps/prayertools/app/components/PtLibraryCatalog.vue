@@ -13,7 +13,7 @@ interface Library {
   owner_user_id: string | null
   title: string
   description: string | null
-  cadence: 'daily' | 'weekly'
+  cadence: 'daily' | 'weekly' | 'monthly'
   entry_count: number
   languages: string[]
   source_language: string
@@ -159,7 +159,7 @@ function openPreview(lib: Library) {
   preview.open = true
 }
 
-const previewUnit = computed(() => preview.lib?.cadence === 'weekly' ? 'week' : 'day')
+const previewUnit = computed(() => ptUnit(preview.lib?.cadence ?? 'daily'))
 function showDays() {
   preview.tab = 'days'
   if (!preview.doc) loadPreview()
@@ -187,7 +187,7 @@ function coverage(lib: Library): string {
       />
       <USelect
         v-model="cadence"
-        :items="[{ label: 'Daily', value: 'daily' }, { label: 'Weekly', value: 'weekly' }]"
+        :items="PT_CADENCE_ITEMS"
         placeholder="Any cadence"
         class="w-40"
       />
@@ -293,7 +293,7 @@ function coverage(lib: Library): string {
                 {{ lib.description }}
               </p>
               <p class="text-xs text-(--ui-text-dimmed)">
-                {{ PT_LABELS.cadence[lib.cadence] ?? lib.cadence }} · {{ lib.entry_count }} {{ lib.cadence === 'weekly' ? 'weeks' : 'days' }} · {{ coverage(lib) }} · {{ PT_LABELS.license[lib.license] ?? lib.license }}<template v-if="lib.credit">
+                {{ PT_LABELS.cadence[lib.cadence] ?? lib.cadence }} · {{ lib.entry_count }} {{ ptUnit(lib.cadence) }}s · {{ coverage(lib) }} · {{ PT_LABELS.license[lib.license] ?? lib.license }}<template v-if="lib.credit">
                   · {{ lib.credit }}
                 </template>
               </p>

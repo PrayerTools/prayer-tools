@@ -133,7 +133,8 @@ async function submit() {
     const commitments: Record<string, unknown>[] = state.commitments.map(c => ({
       kind: 'recurring',
       frequency: c.frequency,
-      days_of_week: c.frequency === 'weekly' ? c.days_of_week : [],
+      days_of_week: c.frequency === 'weekly' || (c.frequency === 'monthly' && !c.day_of_month) ? c.days_of_week : [],
+      day_of_month: c.frequency === 'monthly' ? c.day_of_month : null,
       time: c.time,
       duration_min: c.duration_min
     }))
@@ -179,7 +180,7 @@ async function submit() {
         <legend class="text-lg font-semibold">{{ t('signup.when_title') }}</legend>
         <p class="text-sm text-stone-600">{{ t(isCoverage ? 'signup.when_help_coverage' : 'signup.when_help') }}</p>
         <div v-for="(c, i) in state.commitments" :key="i" class="rounded-lg border border-stone-200 bg-white p-4 space-y-3">
-          <CommitmentFields v-model="state.commitments[i]!" :duration-rule="campaign.durationRule" :durations="campaign.durations" :id-prefix="`c${i}`" :lang="site.lang" :timeless="usePicker" />
+          <CommitmentFields v-model="state.commitments[i]!" :duration-rule="campaign.durationRule" :durations="campaign.durations" :id-prefix="`c${i}`" :lang="site.lang" :cadence="campaign.cadence" :timeless="usePicker" />
           <template v-if="usePicker">
             <CoveragePicker
               v-if="coverage"

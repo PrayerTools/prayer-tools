@@ -1,7 +1,8 @@
 // Progress through a personal-start campaign. A person has one commitment per
 // such campaign, which records how many entries they have opened in order.
 // They move forward by opening the entry they are on, at most once per day
-// (once per week for weekly campaigns) in their own timezone.
+// (once per week for weekly campaigns, once per calendar month for monthly
+// ones) in their own timezone.
 import type { Tx } from './db/scope'
 import type { Cadence } from './db/schema'
 import { daysBetween, todayIn, toIsoDate } from './dates'
@@ -10,10 +11,16 @@ import type { CampaignRow, CommitmentRow } from './subscriptions'
 import { normalizeCampaign } from './campaigns'
 
 // After this many reminders in a row go unopened, reminders drop to weekly.
+// Monthly campaigns never drop: they suit content people open rarely.
 export const MISSES_BEFORE_WEEKLY = 3
 
 export function periodDays(cadence: Cadence): number {
   return cadence === 'weekly' ? 7 : 1
+}
+
+function movedThisPeriod(advanced: string, today: string, cadence: Cadence): boolean {
+  if (cadence === 'monthly') return advanced.slice(0, 7) === today.slice(0, 7)
+  return daysBetween(advanced, today) < periodDays(cadence)
 }
 
 export interface Position {
@@ -30,7 +37,7 @@ export function positionOf(c: Pick<CommitmentRow, 'entries_done' | 'advanced_on'
   const advanced = toIsoDate(c.advanced_on as unknown as string | null)
   return {
     current: done + 1,
-    movedToday: !!advanced && daysBetween(advanced, todayIn(c.timezone, now)) < periodDays(cadence),
+    movedToday: !!advanced && movedThisPeriod(advanced, todayIn(c.timezone, now), cadence),
     entries,
     finished: !!entries && done >= entries
   }

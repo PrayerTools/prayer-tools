@@ -238,7 +238,7 @@ async function remove() {
             {{ data.campaign.contentEntries }}
           </p>
           <p class="text-xs text-muted">
-            {{ data.campaign.entries ? `of ${data.campaign.entries} ${data.campaign.cadence === 'weekly' ? 'weeks' : 'days'}` : 'entries' }}
+            {{ data.campaign.entries ? `of ${data.campaign.entries} ${ptUnit(data.campaign.cadence)}s` : 'entries' }}
           </p>
           <UButton
             :to="{ path: '/site/content', query: { campaign: id } }"
@@ -267,7 +267,7 @@ async function remove() {
       variant="subtle"
       icon="i-lucide-triangle-alert"
       title="Some days have no prayer content yet"
-      :description="`The campaign has ${data.campaign.entries} ${data.campaign.cadence === 'weekly' ? 'weeks' : 'days'} and ${data.campaign.contentEntries} content entries.`"
+      :description="`The campaign has ${data.campaign.entries} ${ptUnit(data.campaign.cadence)}s and ${data.campaign.contentEntries} content entries.`"
       :actions="[{ label: 'Add content', to: { path: '/site/content', query: { campaign: id } }, trailingIcon: 'i-lucide-arrow-right' }]"
     />
 

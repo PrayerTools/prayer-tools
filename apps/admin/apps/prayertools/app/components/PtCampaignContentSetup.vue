@@ -8,9 +8,11 @@
 // `save()` adds the campaign's own content when that is the choice; the
 // wizard calls it on Continue.
 import type { SetupState } from './PtSetupForm.vue'
+import { todayIn } from '@prayertools/shared/dates'
+import { monthlyStartDate } from '@prayertools/shared/setup'
 
 const props = defineProps<{
-  campaign: { id: string, cadence: SetupState['cadence'], start_mode: SetupState['start_mode'], start_date: string | null, end_mode: SetupState['end_mode'], end_date: string | null, length_days: number | null }
+  campaign: { id: string, cadence: SetupState['cadence'], goal: SetupState['goal'], timezone: string, start_mode: SetupState['start_mode'], start_date: string | null, end_mode: SetupState['end_mode'], end_date: string | null, length_days: number | null }
   templateKey: string
 }>()
 const emit = defineEmits<{ changed: [], added: [] }>()
@@ -43,14 +45,46 @@ const cadenceOpen = computed(() => {
   const t = meta.value.templates.find(x => x.key === props.templateKey)
   return !t || t.open.includes('cadence')
 })
+// 24/7 coverage isn't offered on monthly campaigns.
+const cadenceItems = computed(() => PT_CADENCE_ITEMS.map(i => ({ ...i, disabled: i.value === 'monthly' && props.campaign.goal === 'coverage' })))
 const savingCadence = ref(false)
 async function saveCadence(next: SetupState['cadence']) {
+  const previous = cadence.value
   cadence.value = next
   savingCadence.value = true
+  // Monthly entries are calendar months, so a monthly campaign starts on the 1st.
+  const start = props.campaign.start_mode === 'date' ? props.campaign.start_date : null
+  const firstOfMonth = next === 'monthly' && start && !start.endsWith('-01') ? monthlyStartDate(start, todayIn(props.campaign.timezone)) : null
   try {
-    await $fetch(`/api/pt/campaigns/${props.campaign.id}`, { method: 'PATCH', body: { cadence: next } })
+    await $fetch(`/api/pt/campaigns/${props.campaign.id}`, { method: 'PATCH', body: firstOfMonth ? { cadence: next, start_date: firstOfMonth } : { cadence: next } })
+    if (firstOfMonth) {
+      startDate.value = firstOfMonth
+      toast.ok('Start date moved to the 1st', `Monthly campaigns start on the 1st of a month, so this one now starts ${ptFormatDate(firstOfMonth)}.`)
+    }
     emit('changed')
   } catch (err) {
+    cadence.value = previous
+    toast.fail(err)
+  } finally {
+    savingCadence.value = false
+  }
+}
+// A shared-calendar monthly campaign picks the month it starts in.
+const startDate = ref(props.campaign.start_date)
+watch(() => props.campaign.start_date, (d) => {
+  startDate.value = d
+})
+const pickMonth = computed(() => cadence.value === 'monthly' && props.campaign.start_mode === 'date' && !!startDate.value)
+const startMonthItems = computed(() => ptStartMonthItems(startDate.value, todayIn(props.campaign.timezone)))
+async function saveStartMonth(start: string) {
+  const previous = startDate.value
+  startDate.value = start
+  savingCadence.value = true
+  try {
+    await $fetch(`/api/pt/campaigns/${props.campaign.id}`, { method: 'PATCH', body: { start_date: start } })
+    emit('changed')
+  } catch (err) {
+    startDate.value = previous
     toast.fail(err)
   } finally {
     savingCadence.value = false
@@ -93,23 +127,36 @@ defineExpose({ save })
 
 <template>
   <div class="divide-y divide-(--ui-border-accented)">
-    <UFormField
-      label="How often is there new prayer content?"
-      :help="!cadenceOpen ? 'Set by the template.' : undefined"
-      :ui="{ label: 'text-base font-semibold' }"
-      class="py-6 first:pt-0 last:pb-0"
-    >
-      <URadioGroup
-        :model-value="cadence"
-        :items="PT_CADENCE_ITEMS"
-        orientation="horizontal"
-        variant="table"
-        indicator="hidden"
-        :ui="{ item: 'px-5 py-2' }"
-        :disabled="!cadenceOpen || savingCadence"
-        @update:model-value="(v) => saveCadence(v as SetupState['cadence'])"
-      />
-    </UFormField>
+    <div class="space-y-4 py-6 first:pt-0 last:pb-0">
+      <UFormField
+        label="How often is there new prayer content?"
+        :help="!cadenceOpen ? 'Set by the template.' : campaign.goal === 'coverage' ? 'Monthly content isn\'t offered on 24/7 coverage campaigns.' : undefined"
+        :ui="{ label: 'text-base font-semibold' }"
+      >
+        <URadioGroup
+          :model-value="cadence"
+          :items="cadenceItems"
+          orientation="horizontal"
+          variant="table"
+          indicator="hidden"
+          :ui="{ item: 'px-5 py-2' }"
+          :disabled="!cadenceOpen || savingCadence"
+          @update:model-value="(v) => saveCadence(v as SetupState['cadence'])"
+        />
+      </UFormField>
+      <UFormField v-if="pickMonth">
+        <template #label>
+          Starts in <InfoTip text="A monthly campaign starts on the 1st, and each calendar month has its own prayer content." />
+        </template>
+        <USelect
+          :model-value="startDate ?? undefined"
+          :items="startMonthItems"
+          :disabled="savingCadence"
+          class="w-56"
+          @update:model-value="(v) => saveStartMonth(String(v))"
+        />
+      </UFormField>
+    </div>
     <UFormField
       v-if="lengthOpen"
       :label="`How many ${ptUnit(cadence)}s does each person go through? (optional)`"

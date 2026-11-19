@@ -299,7 +299,7 @@ async function deleteLibrary() {
             />
             <UButton
               icon="i-lucide-plus"
-              :label="`Add ${lib.cadence === 'weekly' ? 'week' : 'day'} ${maxDay + 1}`"
+              :label="`Add ${ptUnit(lib.cadence)} ${maxDay + 1}`"
               @click="openEntry(maxDay + 1, lib.source_language)"
             />
           </div>
@@ -310,7 +310,7 @@ async function deleteLibrary() {
           <thead>
             <tr>
               <th class="p-2 text-start">
-                {{ lib.cadence === 'weekly' ? 'Week' : 'Day' }}
+                {{ ptUnitTitle(lib.cadence) }}
               </th>
               <th
                 v-for="l in [...languages, ...(addLanguage ? [addLanguage] : [])]"
@@ -356,7 +356,7 @@ async function deleteLibrary() {
 
     <UModal
       v-model:open="editor.open"
-      :title="`${lib.cadence === 'weekly' ? 'Week' : 'Day'} ${editor.day} · ${languageName(meta, editor.lang)}`"
+      :title="`${ptUnitTitle(lib.cadence)} ${editor.day} · ${languageName(meta, editor.lang)}`"
       :ui="{ content: 'max-w-3xl' }"
     >
       <template #body>

@@ -166,7 +166,7 @@ async function prepare(tx: Tx, claimed: Claimed, now: Date, mailCtx: Map<string,
       await advance(tx, c.id, occurrence, next)
       return { outcome: 'prayed' }
     }
-    if (await slowedDown(tx, c.id, c.advanced_on, localDate)) {
+    if (campaign.cadence !== 'monthly' && await slowedDown(tx, c.id, c.advanced_on, localDate)) {
       await advance(tx, c.id, occurrence, next)
       return { outcome: 'slowed' }
     }
