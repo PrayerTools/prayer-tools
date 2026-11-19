@@ -35,6 +35,7 @@ interface Entry { source: string, doc: Record<string, any> | null, stale: boolea
 const { data: site, can } = usePtSite()
 const { data: meta } = usePtMeta()
 const toast = usePtToast()
+const canAiTranslate = usePtAiTranslate()
 
 const { id: campaignId, campaign, campaigns, status: campaignsStatus } = usePtCampaign()
 
@@ -600,7 +601,7 @@ function sourceBadge(l: Lib): { label: string, color: 'info' | 'warning' | 'neut
                 class="ms-auto flex gap-2"
               >
                 <UButton
-                  v-if="!isSource"
+                  v-if="!isSource && canAiTranslate"
                   size="sm"
                   variant="soft"
                   icon="i-lucide-languages"

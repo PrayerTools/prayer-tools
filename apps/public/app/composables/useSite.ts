@@ -43,6 +43,16 @@ export function useSite() {
     }
   }
 
+  // A per-day amount of prayer: minutes while under an hour, otherwise hours to one decimal.
+  function hours(n: number): string {
+    if (n > 0 && n < 60) return minutes(n)
+    try {
+      return new Intl.NumberFormat(site.value.lang, { style: 'unit', unit: 'hour', unitDisplay: 'long', maximumFractionDigits: 1 }).format(n / 60)
+    } catch {
+      return `${Math.round(n / 6) / 10} h`
+    }
+  }
+
   function date(iso: string | null): string {
     if (!iso) return ''
     return new Intl.DateTimeFormat(site.value.lang, { dateStyle: 'long', timeZone: 'UTC' }).format(new Date(`${iso}T00:00:00Z`))
@@ -57,5 +67,5 @@ export function useSite() {
     return site.value.shareMessage || st('share.default_message', { site: site.value.name })
   }
 
-  return { site, link, campaignLink, st, num, minutes, date, shareUrl, shareText }
+  return { site, link, campaignLink, st, num, minutes, hours, date, shareUrl, shareText }
 }

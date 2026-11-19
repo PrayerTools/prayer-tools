@@ -2,7 +2,7 @@
 import type { GoalProgressView } from '~~/shared/view'
 
 const props = defineProps<{ progress: GoalProgressView, onBrand?: boolean }>()
-const { site, num, minutes } = useSite()
+const { site, num, hours } = useSite()
 const { t } = useI18n()
 
 // People counts read as signed up before the campaign starts and prayed once it has ended.
@@ -15,7 +15,7 @@ const people = computed(() => t(`progress.people${suffix.value}`, { n: num(props
 const label = computed(() => {
   const p = props.progress
   if (p.goal === 'coverage') return t('progress.coverage', { percent: num(p.value) })
-  if (p.goal === 'prayer_time') return t('progress.prayer_time', { minutes: minutes(p.value), target: minutes(p.target ?? 1440) })
+  if (p.goal === 'prayer_time') return t('progress.prayer_time', { minutes: hours(p.value), target: hours(p.target ?? 1440) })
   return p.target ? t(`progress.people_target${suffix.value}`, { n: num(p.people), target: num(p.target) }) : people.value
 })
 

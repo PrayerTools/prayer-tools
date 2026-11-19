@@ -83,11 +83,16 @@ export function ptAnswersLine(c: PtCampaignSummary): string {
 
 export function ptGoalText(p: PtGoalProgress): string | null {
   if (p.goal === 'people') return p.target ? `${p.people.toLocaleString()} of ${p.target.toLocaleString()} people` : null
-  if (p.goal === 'prayer_time') return `${p.value.toLocaleString()} of ${(p.target ?? 1440).toLocaleString()} minutes of prayer a day`
+  if (p.goal === 'prayer_time') return `${ptHours(p.value)} of ${ptHours(p.target ?? 1440)} of prayer a day`
   return `${p.percent ?? 0}% of the day and night covered`
 }
 
 export const ptPlural = (n: number, one: string, many: string) => `${n.toLocaleString()} ${n === 1 ? one : many}`
+
+// A per-day amount of prayer: minutes while under an hour, otherwise hours to one decimal.
+export const ptHours = (min: number) => min > 0 && min < 60
+  ? ptPlural(min, 'minute', 'minutes')
+  : ptPlural(Math.round(min / 6) / 10, 'hour', 'hours')
 
 export const ptUnit = (cadence: string) => cadence === 'monthly' ? 'month' : cadence === 'weekly' ? 'week' : 'day'
 export const ptUnitTitle = (cadence: string) => cadence === 'monthly' ? 'Month' : cadence === 'weekly' ? 'Week' : 'Day'

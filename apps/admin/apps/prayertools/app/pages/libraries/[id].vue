@@ -10,6 +10,7 @@ const route = useRoute()
 const id = computed(() => String(route.params.id))
 const { data: meta } = usePtMeta()
 const toast = usePtToast()
+const aiTranslate = usePtAiTranslate('library')
 // The back link returns operators to the admin library list when they came from it.
 const fromAdmin = String(useRouter().options.history.state.back ?? '').startsWith('/admin/pt/libraries')
 const { data, refresh } = useFetch<{ library: Record<string, any>, entries: { day: number, language: string, unpublished: boolean }[], canEdit: boolean, role: 'owner' | 'editor' | 'viewer' | null, usage: { following: number, copies: number } | null }>(() => `/api/pt/libraries/${id.value}`, { key: computed(() => `pt-library-${id.value}`) })
@@ -378,7 +379,7 @@ async function deleteLibrary() {
       >
         <div class="flex justify-between w-full">
           <UButton
-            v-if="editor.lang !== lib.source_language"
+            v-if="editor.lang !== lib.source_language && aiTranslate"
             variant="soft"
             icon="i-lucide-languages"
             label="AI translate from source"

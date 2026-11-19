@@ -63,6 +63,7 @@ watch(site, (s) => {
 const isSource = computed(() => lang.value === site.value?.site.default_language)
 const canWrite = computed(() => can('pt.site.write'))
 const canEditLang = computed(() => isSource.value ? canWrite.value : can('pt.content.translate'))
+const aiTranslate = usePtAiTranslate()
 const dir = computed(() => meta.value?.languages.find(l => l.code === lang.value)?.dir ?? 'ltr')
 
 const why = ref<Record<string, Record<string, any> | null>>({})
@@ -438,7 +439,7 @@ async function translateWhy() {
         >
           <template #actions>
             <UButton
-              v-if="s.key === 'why' && !isSource && canEditLang"
+              v-if="s.key === 'why' && !isSource && canEditLang && aiTranslate"
               size="sm"
               variant="soft"
               icon="i-lucide-languages"
