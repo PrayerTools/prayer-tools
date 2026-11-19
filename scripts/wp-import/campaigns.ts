@@ -55,10 +55,33 @@ export async function placesOf(wp: SQL, blogId: number, meta: Map<number, Meta>)
   return out
 }
 
-// An image the prayer campaigns plugin ships (its default header), which no champion chose.
+// An image the prayer campaigns plugin ships, which no champion chose.
 export function isPluginDefault(url: string): boolean {
   return /\/wp-content\/plugins\/disciple-tools-prayer-campaigns\//.test(url)
 }
+
+// The plugin's preset theme colors by `theme_color` key. Its default theme,
+// `preset`, isn't a champion's choice, so it isn't kept.
+const THEME_COLORS: Record<string, string> = { forestgreen: '#1eb858', green: '#94c523', orange: '#f57d41', purple: '#6b58cd', teal: '#1ab7d8' }
+
+// A campaign's color as the plugin chose it: its custom color, else its preset theme's.
+export function campaignColor(m: Meta | undefined): string | null {
+  const custom = first(m, 'custom_theme_color')?.trim()
+  if (custom && /^#[0-9a-f]{6}$/i.test(custom)) return custom.toLowerCase()
+  return THEME_COLORS[first(m, 'theme_color') ?? ''] ?? null
+}
+
+// The site's color: the home campaign's, which WordPress showed at the site's
+// root, else the most recent campaign's that has one, main campaigns first.
+export function siteColor(plans: CampaignPlan[], selected: number): string | null {
+  const home = plans.find(p => p.wpId === selected)
+  if (home) return home.color
+  return [...plans].sort((x, y) => Number(!!x.kind) - Number(!!y.kind) || y.startDate.localeCompare(x.startDate)).find(p => p.color)?.color ?? null
+}
+
+// The plugin's own header image, which it shows when a campaign sets none.
+const STENCIL_PATH = '/wp-content/plugins/disciple-tools-prayer-campaigns/porches/generic/site/img/stencil-header.png'
+export const isStencil = (url: string | null | undefined): boolean => !!url && url.endsWith(STENCIL_PATH)
 
 const isoUtc = (ts: number) => new Date(ts * 1000).toISOString().slice(0, 10)
 
@@ -82,7 +105,8 @@ function campaignSlug(raw: string | null, taken: Set<string>, fallback: string):
   return candidate
 }
 
-export function planCampaigns(posts: WpPost[], meta: Map<number, Meta>, now = new Date()): CampaignPlan[] {
+// `domain` is the site's, for the address of the plugin's stencil header.
+export function planCampaigns(posts: WpPost[], meta: Map<number, Meta>, now = new Date(), domain: string | null = null): CampaignPlan[] {
   const taken = new Set<string>()
   const plans = posts.map((p, i): CampaignPlan => {
     const m = meta.get(p.ID)
@@ -117,10 +141,9 @@ export function planCampaigns(posts: WpPost[], meta: Map<number, Meta>, now = ne
       const url = first(m, key)?.trim()
       return url && !isPluginDefault(url) ? url : null
     }
-    const hero = image('header_background_url')
+    const hero = first(m, 'header_background_url')?.trim() || (domain ? `https://${domain}${STENCIL_PATH}` : null)
     const share = image('promo_image_url')
     const branding: CampaignBranding = { ...(hero ? { image_url: hero } : {}), ...(share ? { share_image_url: share } : {}) }
-    const custom = first(m, 'custom_theme_color')
 
     // Ended campaigns carry ended_at, so the end-date sweep doesn't treat
     // them as ending now and send their thank-you.
@@ -146,7 +169,7 @@ export function planCampaigns(posts: WpPost[], meta: Map<number, Meta>, now = ne
       languages,
       defaultLanguage,
       branding,
-      color: custom && /^#[0-9a-f]{6}$/i.test(custom) ? custom.toLowerCase() : null,
+      color: campaignColor(m),
       publishedAt: wpDate(p.post_date_gmt),
       endedAt,
       warnings

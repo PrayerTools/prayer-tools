@@ -24,7 +24,7 @@ import { isLanguage } from '@prayertools/shared/languages'
 import type { CampaignRow } from '@prayertools/shared/subscriptions'
 import type { CampaignBranding } from '@prayertools/shared/db/schema'
 import { connectWp, languageOf, metaOf, networkTable, options, postsOf, table, tableExists, unserialize, wpDate, WP_PREFIX } from './wp'
-import { campaignUse, emptyOverlaps, peopleGroupsOf, placesOf, planCampaigns } from './campaigns'
+import { campaignUse, emptyOverlaps, peopleGroupsOf, placesOf, planCampaigns, isStencil, siteColor } from './campaigns'
 import { importSignupFields } from './signup-fields'
 import { landingText, translationsOf, type LandingText } from './landing'
 import { importMessages, type MessageCounts } from './messages'
@@ -178,10 +178,10 @@ async function importBlog(b: typeof blogs[number]): Promise<SiteReport> {
   const posts = await postsOf(wp, b.blog_id, 'campaigns')
   const meta = await metaOf(wp, b.blog_id, posts.map(p => p.ID))
   const selected = Number((await options(wp, b.blog_id, ['dt_campaign_selected_campaign'])).get('dt_campaign_selected_campaign')) || 0
-  const skippedCampaigns = emptyOverlaps(planCampaigns(posts, meta, now), await campaignUse(wp, b.blog_id), selected)
+  const skippedCampaigns = emptyOverlaps(planCampaigns(posts, meta, now, b.domain), await campaignUse(wp, b.blog_id), selected)
   const kept = posts.filter(p => !skippedCampaigns.has(p.ID))
   for (const p of posts) if (skippedCampaigns.has(p.ID)) out.warnings.push(`${p.post_title}: empty and overlaps another open-ended campaign; not imported`)
-  const plans = planCampaigns(kept, meta, now)
+  const plans = planCampaigns(kept, meta, now, b.domain)
   const places = await placesOf(wp, b.blog_id, meta)
   const peopleGroups = await peopleGroupsOf(wp, b.blog_id)
   const translations = await translationsOf(wp, b.blog_id)
@@ -251,6 +251,7 @@ async function importBlog(b: typeof blogs[number]): Promise<SiteReport> {
     }
 
     let heroUrl: string | null = null
+    const color = siteColor(plans, selected)
     await withOrg(app, org.id, async (tx) => {
       await tx.insertInto('pt_site').values({
         org_id: org.id,
@@ -259,7 +260,7 @@ async function importBlog(b: typeof blogs[number]): Promise<SiteReport> {
         default_language: defaultLanguage,
         timezone: latest?.timezone ?? 'UTC',
         branding: jsonb({
-          ...(plans.find(p => p.color) ? { color: plans.find(p => p.color)!.color! } : {}),
+          ...(color ? { color } : {}),
           ...(siteText?.siteLogoUrl ? { logo_url: siteText.siteLogoUrl } : {})
         }),
         email_identity: jsonb(siteText?.emailIdentity ?? {}),
@@ -306,7 +307,8 @@ async function importBlog(b: typeof blogs[number]): Promise<SiteReport> {
       out.messages = msgs.counts
       if (msgs.unparsed.length) out.warnings.push(`${msgs.unparsed.length} story or contact comments not in a known format: ${msgs.unparsed.slice(0, 5).join(', ')}`)
       out.stats = await importStats(wp, b.blog_id, tx, { campaigns, hosts: [b.domain.toLowerCase(), ...(CUSTOM_DOMAINS[b.blog_id] ?? []), ...(PRAYING_HOSTS[b.blog_id] ?? [])], praying, timezone: latest?.timezone ?? 'UTC' })
-      heroUrl = ((latest ? campaigns.get(latest.wpId)?.branding : undefined) as CampaignBranding | undefined)?.image_url ?? null
+      // The directory shows a site's own picture, not the plugin's stencil.
+      heroUrl = latest && !isStencil(latest.branding.image_url) ? (campaigns.get(latest.wpId)?.branding as CampaignBranding | undefined)?.image_url ?? null : null
       out.status = archived ? 'archived' : 'published'
       out.campaigns = plans.length
       out.sideCampaigns = plans.filter(p => p.kind).length
