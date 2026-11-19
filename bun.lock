@@ -5,6 +5,8 @@
     "": {
       "name": "prayer-tools",
       "devDependencies": {
+        "domhandler": "^6.0.1",
+        "htmlparser2": "^12.0.0",
         "playwright": "1.57",
       },
     },

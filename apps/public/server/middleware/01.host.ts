@@ -10,7 +10,9 @@ import { useDb } from '../utils/db'
 import { NOT_FOUND_CACHE, PRIVATE_CACHE, limit, requestHost, setCache } from '../utils/request'
 import { buildSiteContext, resolveSiteCached } from '../utils/site-context'
 import { PREVIEW_COOKIE, previewCookieMatches } from '../utils/cookies'
-import { addTimesLink, checkinAnswer, exchangeManageLink, leaveCampaignPost, legacyFuel, legacyManage, notifyLink, previewLink, unsubscribePost, verifyLink } from '../utils/actions'
+import { addTimesLink, checkinAnswer, exchangeManageLink, leaveCampaignPost, legacyManage, legacyRedirect, notifyLink, previewLink, unsubscribePost, verifyLink } from '../utils/actions'
+import { isLegacyPath } from '../utils/legacy-paths'
+import { siteAliasTarget } from '../utils/site-alias'
 import { editorAccess } from '../utils/editor'
 import { setFrameHeaders } from '../utils/framing'
 import { claimHandoff, confirmEmailChange, continueToAdmin, continueToSite, exchangeSignInLink, signInFromSite, undoEmailChange } from '../utils/account-links'
@@ -111,6 +113,14 @@ export default defineEventHandler(async (event) => {
 
   // Site subdomains and custom domains.
   const resolved = await resolveSiteCached(host)
+  // A site's former hostname redirects to the same path on its address.
+  if (!resolved && kind.kind === 'custom') {
+    const target = await siteAliasTarget(kind.hostname)
+    if (target) {
+      setCache(event, 'public, max-age=3600, s-maxage=3600')
+      return sendRedirect(event, `${target}${event.path}`, 301)
+    }
+  }
   if (!resolved || resolved.suspended) return notFound(event)
   const ctx = buildSiteContext(event, host, kind.kind, resolved)
   event.context.site = ctx
@@ -166,11 +176,11 @@ export default defineEventHandler(async (event) => {
   if (first === 'notify' && second && segs.length === 2) return await notifyLink(event, ctx, second)
   if (first === 'checkin' && second && third && segs.length === 3) return await checkinAnswer(event, ctx, second, third)
   if (first === 'subscriptions_app' && second === 'manage') return await legacyManage(event, ctx, third ?? '')
-  if (segs.includes('fuel')) {
-    const data = await withOrg(useDb(), ctx.orgId, async tx => ({
-      languages: (await tx.selectFrom('pt_site').select('languages').executeTakeFirst())?.languages ?? [],
-      slugs: (await loadCampaigns(tx)).map(c => c.slug)
-    }))
-    return await legacyFuel(event, ctx, segs, data.languages, data.slugs)
+  if (isLegacyPath(segs, getRequestURL(event).searchParams)) {
+    const site = await withOrg(useDb(), ctx.orgId, async (tx) => {
+      const row = await tx.selectFrom('pt_site').select(['languages', 'default_language']).executeTakeFirst()
+      return { languages: row?.languages ?? [], defaultLanguage: row?.default_language ?? 'en', campaignSlugs: (await loadCampaigns(tx)).map(c => c.slug) }
+    })
+    if (await legacyRedirect(event, ctx, segs, site)) return
   }
 })

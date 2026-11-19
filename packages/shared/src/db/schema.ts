@@ -140,6 +140,13 @@ export interface PtSiteDomainTable {
   created_at: Timestamp
 }
 
+// A site's former hostname; requests to it redirect to the site's address.
+export interface PtSiteAliasTable {
+  hostname: string
+  org_id: string
+  created_at: Generated<Date>
+}
+
 export interface PtDirectoryEntryTable {
   org_id: string
   slug: string
@@ -732,6 +739,7 @@ export interface PtTables {
   pt_account_session: PtAccountSessionTable
   pt_job: PtJobTable
   pt_site_domain: PtSiteDomainTable
+  pt_site_alias: PtSiteAliasTable
   pt_directory_entry: PtDirectoryEntryTable
   pt_site_report: PtSiteReportTable
   pt_library: PtLibraryTable

@@ -14,6 +14,7 @@ import { cleanup, closeEnv, createCampaign, createSite, createSubscriber, testEn
 // org_id in code.
 const GLOBAL_ORG_TABLES = new Set([
   'pt_site_domain', // resolves a request's host to its site before the org is known
+  'pt_site_alias', // redirects a site's former hostname before the org is known
   'pt_legacy_key', // resolves old links to their site before the org is known
   'pt_directory_entry', // the public directory, reviewed by operators
   'pt_site_report', // reports from the public, reviewed by operators
