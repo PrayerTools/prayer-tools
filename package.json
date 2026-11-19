@@ -24,6 +24,8 @@
     "pt": "bun apps/cli/src/index.ts"
   },
   "devDependencies": {
+    "domhandler": "^6.0.1",
+    "htmlparser2": "^12.0.0",
     "playwright": "1.57"
   }
 }

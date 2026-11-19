@@ -22,6 +22,7 @@ import { grantPlatformNews, staffOrgId } from './staff'
 import { prepareWelcomeMail } from './welcome'
 import { loadSiteData, stateOf } from './site-data'
 import { takeSignupRequest } from './signup-request'
+import { legacyTarget, type LegacySite } from './legacy-paths'
 import { sessionUserId, startAccountSession } from './account-session'
 
 // Renders another page path in place of the requested one.
@@ -185,19 +186,17 @@ export async function legacyManage(event: H3Event, ctx: SiteContext, key: string
   return sendRedirect(event, '/manage', 302)
 }
 
-// `/…/prayer/fuel/<day or key>` and any other `fuel` URL → prayer content.
-export async function legacyFuel(event: H3Event, ctx: SiteContext, segments: string[], languages: string[], campaignSlugs: string[]) {
-  const at = segments.indexOf('fuel')
-  const before = segments.slice(0, at).filter(s => s !== 'prayer')
-  const prefix = before.filter(s => languages.includes(s) || campaignSlugs.includes(s))
-  const after = segments[at + 1] ?? ''
-  const base = `/${[...prefix, 'pray'].join('/')}`
-  if (/^\d{1,4}$/.test(after)) return sendRedirect(event, `${base}/${Number(after)}`, 301)
-  if (after) {
-    const sub = await legacySubscription(ctx.orgId, 'fuel', after)
-    if (sub) return sendRedirect(event, `${base}#p=${personalToken(ctx.orgId, sub.id)}`, 302)
+// WordPress-era addresses (see legacy-paths.ts). True when it redirected.
+export async function legacyRedirect(event: H3Event, ctx: SiteContext, segments: string[], site: LegacySite): Promise<boolean> {
+  const target = legacyTarget(segments, getRequestURL(event).searchParams, site)
+  if (!target) return false
+  if (target.kind === 'redirect') {
+    await sendRedirect(event, target.to, 301)
+    return true
   }
-  return sendRedirect(event, base, 301)
+  const sub = await legacySubscription(ctx.orgId, 'fuel', target.key)
+  await sendRedirect(event, sub ? `${target.base}#p=${personalToken(ctx.orgId, sub.id)}` : target.base, sub ? 302 : 301)
+  return true
 }
 
 // Unsubscribe: the confirm form on /u/<token> and RFC 8058 one-click
