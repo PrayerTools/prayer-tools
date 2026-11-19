@@ -59,6 +59,16 @@ const currentDir = computed(() => props.languages.find(l => l.code === shown.val
 const sourceLabel = computed(() => props.languages.find(l => l.code === draft.value.source_language)?.label ?? draft.value.source_language)
 
 // ── AI translate ────────────────────────────────────────────────────────────
+const translateAvailable = ref(false)
+watch(() => props.translateHeaders, async (headers) => {
+  const endpoint = appConfig.marketing?.translateEndpoint
+  try {
+    translateAvailable.value = !!endpoint && !!(await $fetch<{ available: boolean }>(endpoint, { headers })).available
+  } catch {
+    translateAvailable.value = false
+  }
+}, { immediate: true, deep: true })
+
 const translating = ref(false)
 async function translate() {
   const src = draft.value.versions[draft.value.source_language]
@@ -222,7 +232,7 @@ async function saveTemplate() {
         class="flex flex-wrap items-center gap-2 text-sm text-(--ui-text-muted)"
       >
         <UButton
-          v-if="!disabled"
+          v-if="!disabled && translateAvailable"
           label="AI translate"
           icon="i-lucide-languages"
           variant="soft"

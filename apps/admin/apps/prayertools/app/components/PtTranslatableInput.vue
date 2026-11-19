@@ -19,6 +19,7 @@ const props = withDefaults(defineProps<{
 const model = defineModel<TranslatableText | null>({ default: null })
 const { data: meta } = usePtMeta()
 const toast = usePtToast()
+const aiTranslate = usePtAiTranslate()
 const translating = ref<string | null>(null)
 const TextareaField = resolveComponent('UTextarea')
 const InputField = resolveComponent('UInput')
@@ -111,6 +112,7 @@ async function translate(lang: string) {
               label="Missing"
             />
             <UButton
+              v-if="aiTranslate"
               size="xs"
               variant="ghost"
               icon="i-lucide-languages"

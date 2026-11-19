@@ -3,10 +3,15 @@
 // {site_name} stay verbatim. The result is returned for review, not saved.
 import type { Transaction } from 'kysely'
 import type { Database } from '#core/server/database/schema'
-import { generate, isAiConfigured } from '#ai/server'
+import { generate, isAiConfigured, resolveFeatureModel } from '#ai/server'
 import { collectText, mapText } from '@prayertools/shared/tiptap'
 import { getLanguage } from '@prayertools/shared/languages'
 import type { TiptapDoc } from '@prayertools/shared/db/schema'
+
+// Whether ptTranslate can run in this transaction's scope: a key and a model for pt.translate.
+export async function ptTranslateAvailable(tx: Transaction<Database>): Promise<boolean> {
+  return await isAiConfigured(tx) && !!(await resolveFeatureModel(tx, 'pt.translate'))
+}
 
 export async function ptTranslate(tx: Transaction<Database>, b: { texts?: string[], doc?: unknown, from?: string, to?: string }): Promise<{ texts?: string[], doc?: TiptapDoc | null }> {
   const from = getLanguage(b.from)

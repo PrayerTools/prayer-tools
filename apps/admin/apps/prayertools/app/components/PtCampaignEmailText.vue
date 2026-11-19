@@ -17,6 +17,7 @@ const emit = defineEmits<{ saved: [] }>()
 const { can } = usePtSite()
 const { data: meta } = usePtMeta()
 const toast = usePtToast()
+const aiTranslate = usePtAiTranslate()
 const canEdit = computed(() => can('pt.messages.write') || can('pt.campaigns.write'))
 
 type Docs = Record<string, TiptapDoc | null>
@@ -114,7 +115,7 @@ async function save() {
           Welcome email note{{ inLanguage }} <InfoTip text="Shown in the welcome email after the person's prayer times." />
         </template>
         <template
-          v-if="!isDefault && canEdit"
+          v-if="!isDefault && canEdit && aiTranslate"
           #hint
         >
           <UButton
@@ -140,7 +141,7 @@ async function save() {
           Reminder note{{ inLanguage }} <InfoTip text="Shown in every prayer reminder, after its main text." />
         </template>
         <template
-          v-if="!isDefault && canEdit"
+          v-if="!isDefault && canEdit && aiTranslate"
           #hint
         >
           <UButton
