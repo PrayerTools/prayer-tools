@@ -242,7 +242,7 @@ async function importBlog(b: typeof blogs[number]): Promise<SiteReport> {
     const team = new Map<string, string[]>()
     for (const r of rolesByBlog.get(b.blog_id) ?? []) {
       const u = users.get(r.userId)
-      if (!u || siteAdmins.has(u.user_login)) continue
+      if (!u) continue
       const userId = await account(r.userId)
       if (userId) team.set(userId, siteRoles(r.roles))
     }

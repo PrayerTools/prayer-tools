@@ -6,6 +6,8 @@
 // Usage: DATABASE_URL=… WP_DATABASE_URL=mysql://… PT_SITE_BASE_HOST=… bun run scripts/wp-import/check.ts
 //   [--blogs 32,92]   only these subsites
 //   [--sample 2]      pages and links to try per site
+//   [--no-aliases]    skip the old-address redirects, while the old addresses
+//                     still point at WordPress (staging rehearsals)
 // CHECK_ORIGIN=http://127.0.0.1:3041 sends every request there with the site's
 // Host header (local runs); without it requests go to each site's own address.
 import { parseArgs } from 'node:util'
@@ -20,7 +22,7 @@ import { todayIn } from '@prayertools/shared/dates'
 import { connectWp, first, languageOf, metaOf, networkTable, postsOf, table, tableExists } from './wp'
 import { parseMessage } from './messages'
 
-const { values: args } = parseArgs({ options: { blogs: { type: 'string' }, sample: { type: 'string' } } })
+const { values: args } = parseArgs({ options: { 'blogs': { type: 'string' }, 'sample': { type: 'string' }, 'no-aliases': { type: 'boolean' } } })
 const sample = Number(args.sample ?? 2) || 2
 const db = createDb(process.env.DATABASE_URL!)
 const wp = connectWp()
@@ -119,7 +121,7 @@ async function checkSite(orgId: string, slug: string, wpBlog: { blog_id: number,
       const f = await get(`${base}/prayer/fuel/${fuelKey}`)
       add('old personal fuel link', f.status === 302 && location(f).includes('/pray#p='), `${f.status}`)
     }
-    if (alias) {
+    if (alias && !args['no-aliases']) {
       const a = await get(`http://${alias}/subscriptions_app/manage/${manage}?x=1`)
       add('old address redirects', a.status === 301 && location(a) === `${base}/subscriptions_app/manage/${manage}?x=1`, `${a.status} → ${location(a).replace(/[0-9a-f]{20,}/g, '…')}`)
     }
