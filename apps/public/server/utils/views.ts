@@ -7,6 +7,7 @@ import { landingStories, visibleSections } from '@prayertools/shared/landing'
 import { landingWhyDoc } from '@prayertools/shared/i18n/landing'
 import { prayingNow } from '@prayertools/shared/stats'
 import { entryDate } from '@prayertools/shared/schedule'
+import { addDays, todayIn } from '@prayertools/shared/dates'
 import { parseLink } from '@prayertools/shared/links'
 import { textIn } from '@prayertools/shared/translatable'
 import { isEmptyDoc } from '@prayertools/shared/tiptap'
@@ -277,6 +278,10 @@ async function prayPage(tx: Parameters<typeof loadSiteData>[0], ctx: SiteContext
   // Personal-start campaigns move each person forward one entry per day, so
   // their pages never link ahead.
   const personal = campaign.start_mode === 'join'
+  const next = !personal && day < max ? day + 1 : null
+  const nextDate = next && campaign.start_mode === 'date' && campaign.start_date && !ctx.preview
+    ? entryDate(campaign.start_date, campaign.cadence, next)
+    : null
   return {
     kind: 'pray',
     day,
@@ -285,7 +290,10 @@ async function prayPage(tx: Parameters<typeof loadSiteData>[0], ctx: SiteContext
     dateLabel: campaign.start_mode === 'date' && campaign.start_date ? formatDate(entryDate(campaign.start_date, campaign.cadence, day), lang) : null,
     blocks,
     prev: day > 1 ? day - 1 : null,
-    next: !personal && day < max ? day + 1 : null,
+    next,
+    // A viewer's date trails the campaign's by up to two days, so only a next
+    // entry dated yesterday or today there can still be ahead of them.
+    nextDate: nextDate && nextDate >= addDays(todayIn(campaign.timezone), -1) ? nextDate : null,
     length: last || null
   }
 }

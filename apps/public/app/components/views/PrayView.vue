@@ -29,6 +29,14 @@ const groupOpen = ref(false)
 const groupCount = ref<number | null>(2)
 const groupSent = ref(false)
 
+// The viewer's own calendar date, known once the page runs in the browser.
+const localToday = ref<string | null>(null)
+onMounted(() => {
+  const d = new Date()
+  localToday.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+})
+const showNext = computed(() => !!props.page.next && (!props.page.nextDate || (!!localToday.value && localToday.value >= props.page.nextDate)))
+
 // Personal-start campaigns: where a recognised subscriber is (see
 // /api/pray/position). Null for visitors we don't recognise.
 interface Position { current: number, movedToday: boolean, entries: number | null, finished: boolean }
@@ -201,9 +209,9 @@ async function sendGroup() {
             <p v-if="page.dateLabel" class="text-stone-600">{{ page.dateLabel }}</p>
             <UProgress v-if="position?.entries" :model-value="Math.min(position.current - 1, position.entries)" :max="position.entries" size="sm" class="w-56 max-w-full pt-1" />
           </header>
-          <nav v-if="page.prev || page.next || nextOpensLater" class="flex flex-wrap items-center gap-x-4 gap-y-2" :aria-label="t('pray.nav')">
+          <nav v-if="page.prev || showNext || nextOpensLater" class="flex flex-wrap items-center gap-x-4 gap-y-2" :aria-label="t('pray.nav')">
             <UButton v-if="page.prev" :to="link('pray', [page.prev])" variant="outline" color="neutral" icon="i-lucide-arrow-left" :ui="{ leadingIcon: 'rtl:rotate-180' }" :label="t(prevLabel[unit])" />
-            <UButton v-if="page.next" :to="link('pray', [page.next])" variant="outline" color="neutral" trailing-icon="i-lucide-arrow-right" :ui="{ trailingIcon: 'rtl:rotate-180' }" :label="t(nextLabel[unit])" />
+            <UButton v-if="showNext" :to="link('pray', [page.next!])" variant="outline" color="neutral" trailing-icon="i-lucide-arrow-right" :ui="{ trailingIcon: 'rtl:rotate-180' }" :label="t(nextLabel[unit])" />
             <p v-else-if="nextOpensLater" class="inline-flex items-center gap-1.5 text-sm text-stone-600" role="status">
               <UIcon name="i-lucide-clock" class="size-4 shrink-0" />{{ t(opensNext[unit], { n: num(position!.current) }) }}
             </p>
@@ -238,7 +246,7 @@ async function sendGroup() {
                 <span class="grid size-10 shrink-0 place-items-center rounded-full bg-success/10 text-success"><UIcon name="i-lucide-heart" class="size-5" /></span>
                 {{ t('pray.amen_thanks') }}
               </p>
-              <UButton v-if="page.next" :to="link('pray', [page.next])" variant="outline" color="neutral" trailing-icon="i-lucide-arrow-right" :ui="{ trailingIcon: 'rtl:rotate-180' }" :label="t(nextLabel[unit])" />
+              <UButton v-if="showNext" :to="link('pray', [page.next!])" variant="outline" color="neutral" trailing-icon="i-lucide-arrow-right" :ui="{ trailingIcon: 'rtl:rotate-180' }" :label="t(nextLabel[unit])" />
             </div>
           </Transition>
           <div class="flex flex-col items-center">

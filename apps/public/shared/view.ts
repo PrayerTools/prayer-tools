@@ -244,7 +244,8 @@ export type PageView =
   | { kind: 'between', stats: StatsView | null, endMessage: string, next: NextStep | null, notify: boolean, again: { campaign: string, path: string } | null }
   | { kind: 'archived' }
   | { kind: 'not_started', startDate: string }
-  | { kind: 'pray', day: number, chosen: boolean, personal: boolean, dateLabel: string | null, blocks: ContentBlockView[], prev: number | null, next: number | null, length: number | null }
+  // `nextDate`: link to `next` only once the viewer's local date reaches it.
+  | { kind: 'pray', day: number, chosen: boolean, personal: boolean, dateLabel: string | null, blocks: ContentBlockView[], prev: number | null, next: number | null, nextDate: string | null, length: number | null }
   | { kind: 'signup', form: SignupFormView }
   | { kind: 'stats', stats: StatsView }
   | { kind: 'coverage', progress: GoalProgressView | null }
