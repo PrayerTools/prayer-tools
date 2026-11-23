@@ -44,6 +44,17 @@ const signupIntro = computed(() => campaign.value?.state === 'upcoming' && campa
   ? t('signup.starts_on', { date: date(campaign.value.startDate) })
   : st('landing.signup.intro', { site: site.value.name }))
 
+// Where a running campaign with a shared start date stands, e.g. "Day 8 of 10 · 3 days left" (today counts as left).
+const runningLine = computed(() => {
+  const c = campaign.value
+  if (c?.state !== 'active' || c.startMode !== 'date' || !c.startDate) return null
+  const unit = entryUnit(c.cadence)
+  if (!c.length) return t(`pray.${unit}`, { n: num(c.todayEntry) })
+  const left = c.length - c.todayEntry + 1
+  const remaining = left <= 1 ? t(`landing.last_${unit}`) : t(`landing.${unit}s_left`, { n: num(left) }, left)
+  return `${t(`pray.${unit}_of`, { n: num(c.todayEntry), total: num(c.length) })} · ${remaining}`
+})
+
 const imageStyle = computed(() => site.value.image ? { objectPosition: `${site.value.image.fx * 100}% ${site.value.image.fy * 100}%` } : {})
 
 // Splits the image credit so web addresses in it render as links.
@@ -91,6 +102,7 @@ function onJoined(verify: boolean) {
           <h1 id="top-title" class="text-3xl sm:text-5xl font-bold leading-tight">{{ campaign?.name ?? site.name }}</h1>
           <p v-if="page.subtitle" class="text-lg opacity-95">{{ page.subtitle }}</p>
           <p v-if="campaign?.state === 'upcoming' && campaign.startDate" class="font-medium">{{ t('landing.starts_on', { date: date(campaign.startDate) }) }}</p>
+          <p v-if="runningLine" class="font-medium tabular-nums">{{ runningLine }}</p>
           <GoalProgress v-if="page.progress" :progress="page.progress" on-brand />
           <p v-if="page.prayingNow > 0" class="inline-flex items-center gap-2 text-sm tabular-nums">
             <span class="size-2 shrink-0 rounded-full bg-current" aria-hidden="true" />{{ t('pray.praying_now', { n: num(page.prayingNow) }, page.prayingNow) }}

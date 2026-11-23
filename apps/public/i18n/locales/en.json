@@ -40,6 +40,12 @@
   },
   "landing": {
     "starts_on": "Starts on {date}",
+    "days_left": "{n} day left | {n} days left",
+    "weeks_left": "{n} week left | {n} weeks left",
+    "months_left": "{n} month left | {n} months left",
+    "last_day": "Final day",
+    "last_week": "Final week",
+    "last_month": "Final month",
     "pray_today": "Pray today",
     "photo_credit": "Photo credit",
     "signed_up": "You are already praying with {site}. Add, change or stop your prayer times there.",

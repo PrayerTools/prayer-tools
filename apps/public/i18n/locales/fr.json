@@ -37,6 +37,12 @@
   },
   "landing": {
     "starts_on": "Commence le {date}",
+    "days_left": "{n} jour restant | {n} jours restants",
+    "weeks_left": "{n} semaine restante | {n} semaines restantes",
+    "months_left": "{n} mois restant | {n} mois restants",
+    "last_day": "Dernier jour",
+    "last_week": "Dernière semaine",
+    "last_month": "Dernier mois",
     "pray_today": "Prier aujourd'hui",
     "photo_credit": "Crédit photo",
     "signed_up": "Vous priez déjà avec {site}. Vous pouvez y ajouter, modifier ou arrêter vos moments de prière.",

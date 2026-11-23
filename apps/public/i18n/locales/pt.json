@@ -37,6 +37,12 @@
   },
   "landing": {
     "starts_on": "Começa em {date}",
+    "days_left": "Falta {n} dia | Faltam {n} dias",
+    "weeks_left": "Falta {n} semana | Faltam {n} semanas",
+    "months_left": "Falta {n} mês | Faltam {n} meses",
+    "last_day": "Último dia",
+    "last_week": "Última semana",
+    "last_month": "Último mês",
     "pray_today": "Ore hoje",
     "photo_credit": "Crédito da foto",
     "signed_up": "Você já está orando com {site}. Lá você pode adicionar, mudar ou parar seus horários de oração.",
