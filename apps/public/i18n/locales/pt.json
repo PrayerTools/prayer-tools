@@ -241,6 +241,7 @@
     "all_covered": "{time}: alguém já ora em todos os próximos dias"
   },
   "between": {
+    "guide": "Ler o guia de oração",
     "ended": "{campaign} chegou ao fim.",
     "thanks": "Obrigado por orar",
     "results": "Resultados finais",

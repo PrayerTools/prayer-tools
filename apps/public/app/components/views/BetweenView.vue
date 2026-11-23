@@ -2,7 +2,7 @@
 import type { PageView } from '~~/shared/view'
 
 defineProps<{ page: Extract<PageView, { kind: 'between' }> }>()
-const { site, st } = useSite()
+const { site, st, link } = useSite()
 const { t } = useI18n()
 useHead({ title: () => site.value.name })
 </script>
@@ -22,6 +22,9 @@ useHead({ title: () => site.value.name })
         <UButton v-if="page.next?.kind === 'cta'" :to="page.next.url" size="xl" :label="page.next.label || t('between.cta_default')" trailing-icon="i-lucide-arrow-right" />
         <UButton v-else-if="page.next?.kind === 'join'" :to="page.next.path" size="xl" :label="t('between.keep_praying', { campaign: page.next.campaign })" trailing-icon="i-lucide-arrow-right" />
         <p v-else-if="page.next?.kind === 'praying'" class="text-lg font-medium">{{ t('between.still_praying', { campaign: page.next.campaign }) }}</p>
+        <div v-if="page.hasGuide">
+          <UButton :to="link('pray', [1])" size="xl" variant="outline" icon="i-lucide-book-open" :label="t('between.guide')" />
+        </div>
       </section>
       <section v-if="page.stats" aria-labelledby="results-title" class="space-y-4">
         <h2 id="results-title" class="text-2xl font-bold">{{ t('between.results') }}</h2>

@@ -19,6 +19,7 @@ import { isSideCampaign } from '@prayertools/shared/setup'
 import { nextStep, nextStepCampaign, prayingIn } from '@prayertools/shared/next-step'
 import { notifyOffer } from '@prayertools/shared/notify-requests'
 import { campaignSegment } from '@prayertools/shared/campaigns'
+import { contentLength } from '@prayertools/shared/content'
 import type { PageView, SiteResponse } from '../../shared/view'
 import { useDb } from './db'
 import type { SiteContext } from './site-context'
@@ -255,6 +256,7 @@ async function betweenPage(tx: Parameters<typeof loadSiteData>[0], event: H3Even
     kind: 'between',
     stats: await statsFor(tx, campaign, data.settings.default_duration_min),
     endMessage: textIn(campaign.end_message as TranslatableText | null, lang, def),
+    hasGuide: (await contentLength(tx, campaign.id)) > 0,
     next: nextStep(campaign, main, { lang, defaultLang: def, praying }),
     notify: offer.form,
     again: offer.running

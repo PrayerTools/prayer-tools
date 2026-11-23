@@ -244,6 +244,7 @@
     "all_covered": "{time}: someone is already praying on every coming day"
   },
   "between": {
+    "guide": "Read the prayer guide",
     "ended": "{campaign} has ended.",
     "thanks": "Thank you for praying",
     "results": "Final results",

@@ -241,7 +241,7 @@ export type PageView =
   | { kind: 'landing', sections: string[], progress: GoalProgressView | null, subtitle: string, why: string, today: { day: number, html: string, title: string } | null, stories: StoryView[], custom: CustomSectionView[], prayingNow: number, form: SignupFormView, placeholders: string[], side: SideCampaignView[] }
   // `notify` offers the "notify me" form; `again` is the open run of the same
   // series, shown in its place.
-  | { kind: 'between', stats: StatsView | null, endMessage: string, next: NextStep | null, notify: boolean, again: { campaign: string, path: string } | null }
+  | { kind: 'between', stats: StatsView | null, endMessage: string, hasGuide: boolean, next: NextStep | null, notify: boolean, again: { campaign: string, path: string } | null }
   | { kind: 'archived' }
   | { kind: 'not_started', startDate: string }
   // `nextDate`: link to `next` only once the viewer's local date reaches it.
