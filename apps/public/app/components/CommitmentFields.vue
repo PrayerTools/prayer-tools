@@ -63,7 +63,7 @@ const durationItems = computed(() => props.durations.map(d => ({ label: formatMi
       <UCheckboxGroup v-model="days" :items="weekdays" orientation="horizontal" class="flex-wrap" />
     </UFormField>
     <UFormField v-if="durationRule !== 'hidden'" :label="t('commitment.duration')" :name="`${idPrefix}-duration`" :required="durationRule === 'required'">
-      <USelect v-model="duration" :items="durationItems" :placeholder="t('commitment.duration_placeholder')" class="w-48" />
+      <USelect v-model="duration" :items="durationItems" :placeholder="t('commitment.duration_placeholder')" class="w-full max-w-48" />
     </UFormField>
   </div>
 </template>

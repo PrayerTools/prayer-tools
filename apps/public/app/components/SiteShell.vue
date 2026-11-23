@@ -59,8 +59,9 @@ onMounted(async () => {
 })
 
 // The landing hero runs under the header, which stays transparent over it until the page scrolls.
+// Null until mounted, so a page that loads already scrolled keeps a solid header before hydration.
 const overlay = computed(() => props.page === 'landing')
-const scrolled = ref(false)
+const scrolled = ref<boolean | null>(null)
 const onScroll = () => { scrolled.value = window.scrollY > 0 }
 onMounted(() => {
   onScroll()
@@ -80,7 +81,7 @@ async function signOut() {
     <div v-if="site.preview && !site.editor" class="bg-amber-100 text-amber-900 text-sm text-center px-4 py-2" role="status">
       {{ t('preview.banner') }}
     </div>
-    <header class="sticky top-0 z-40 transition-[background-color,box-shadow]" :class="[overlay && '-mb-15', overlay && !scrolled ? 'text-(--brand-text)' : 'brand-bg', scrolled && 'shadow-md']">
+    <header class="sticky top-0 z-40 transition-[background-color,box-shadow]" :class="[overlay && '-mb-15', overlay && scrolled === false ? 'text-(--brand-text)' : 'brand-bg', scrolled && 'shadow-md']">
       <div class="max-w-5xl mx-auto px-4 h-15 flex items-center gap-1">
         <NuxtLink :to="link('', [], { current: true })" class="flex items-center gap-3 font-bold text-lg me-auto min-w-0">
           <img v-if="site.logoUrl" :src="site.logoUrl" alt="" class="h-9 w-auto">
