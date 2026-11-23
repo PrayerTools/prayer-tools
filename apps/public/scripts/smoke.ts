@@ -224,6 +224,10 @@ check('session upserted, identified by the personal token, amen completes it', s
 const total = await admin.selectFrom('pt_person_total').selectAll().where('subscription_id', '=', sub1!.id).executeTakeFirst()
 check('person totals updated', total?.prayers === 1 && Number(total.seconds) >= 1)
 check('group prayer count', (await req(SITE, '/api/pray/group', { body: { id: sid, campaign: campaignId, day: 6, count: 4 } })).status === 200)
+const vid = `smoke-${run}`
+const day1 = await req(SITE, '/api/pray/ping', { body: { id: crypto.randomUUID(), visitor: vid, campaign: campaignId, day: 1 } })
+const day2 = await req(SITE, '/api/pray/ping', { body: { id: crypto.randomUUID(), visitor: vid, campaign: campaignId, day: 2 } })
+check('one visitor on two day pages counts as one person praying', day2.json().praying_now === day1.json().praying_now)
 
 console.log('Analytics relay')
 const origin = `http://${SITE}:${PORT}`

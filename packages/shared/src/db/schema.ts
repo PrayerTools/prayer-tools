@@ -616,6 +616,7 @@ export interface PtPrayerSessionTable {
   campaign_id: string | null
   subscription_id: string | null
   user_id: string | null
+  visitor: string | null
   source: SessionSource
   day: number | null
   language: string | null

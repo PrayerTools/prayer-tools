@@ -2,6 +2,7 @@
 // prayer, later pings add the time since the previous ping, capped so a gap
 // with the page closed or hidden isn't counted. Sessions are partitioned by
 // start time, so a session is only continued within 6 hours of its start.
+import { createHmac } from 'node:crypto'
 import { sql } from 'kysely'
 import type { Tx } from '@prayertools/shared/db/scope'
 import type { SessionSource } from '@prayertools/shared/db/schema'
@@ -9,6 +10,7 @@ import { bumpStat } from '@prayertools/shared/stats'
 import { todayIn } from '@prayertools/shared/dates'
 import { recordActivity } from '@prayertools/shared/subscriptions'
 import { parsePersonalToken } from '@prayertools/shared/links'
+import { platformConfig } from '@prayertools/shared/config'
 import type { H3Event } from 'h3'
 import { managedSubscription } from './manage'
 
@@ -24,6 +26,7 @@ export interface PingInput {
   source: SessionSource
   subscriptionId: string | null
   userId: string | null
+  visitor?: string | null
   country: string | null
 }
 
@@ -55,6 +58,7 @@ export async function recordPing(tx: Tx, p: PingInput): Promise<PingResult> {
       campaign_id: p.campaignId,
       subscription_id: p.subscriptionId,
       user_id: p.userId,
+      visitor: p.visitor ?? null,
       source: p.source,
       day: p.day,
       language: p.language,
@@ -64,6 +68,14 @@ export async function recordPing(tx: Tx, p: PingInput): Promise<PingResult> {
   }
   await countPrayer(tx, p.campaignId, p.timezone, result.subscriptionId, result.first ? 1 : 0, result.delta)
   return result
+}
+
+// Tells a browser's simultaneous sessions apart from other people's; keyed by
+// site and UTC day so the stored value can't follow a browser across days.
+export function visitorKey(orgId: string, visitorId: unknown): string | null {
+  if (typeof visitorId !== 'string' || !visitorId || visitorId.length > 64) return null
+  const day = new Date().toISOString().slice(0, 10)
+  return createHmac('sha256', platformConfig().secret).update(`v:${orgId}:${day}:`).update(visitorId).digest('base64url').slice(0, 22)
 }
 
 // Campaign stats and the person's own totals.

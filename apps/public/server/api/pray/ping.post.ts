@@ -5,7 +5,7 @@ import { prayingNow } from '@prayertools/shared/stats'
 import { useDb } from '../../utils/db'
 import { limit, readJson } from '../../utils/request'
 import { siteContext } from '../../utils/site-context'
-import { prayingSubscription, recordPing } from '../../utils/prayer'
+import { prayingSubscription, recordPing, visitorKey } from '../../utils/prayer'
 import { isUuid } from '../../lib/input'
 import { forwardInBackground } from '../../utils/analytics'
 
@@ -29,6 +29,7 @@ export default defineEventHandler(async (event) => {
       source,
       subscriptionId,
       userId: null,
+      visitor: visitorKey(ctx.orgId, body.visitor),
       country: getRequestHeader(event, 'cf-ipcountry')?.slice(0, 2) ?? null
     })
     const position = ping.first && ping.subscriptionId ? await openEntry(tx, ping.subscriptionId, campaign, day) : null

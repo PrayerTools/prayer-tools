@@ -109,7 +109,7 @@ async function ping() {
   try {
     const res = await $fetch<{ praying_now: number, position: Position | null }>('/api/pray/ping', {
       method: 'POST',
-      body: { id: sessionId.value, campaign: site.value.campaign.id, day: props.page.day, language: site.value.lang, source: personal ? 'manage' : 'porch', p: personal }
+      body: { id: sessionId.value, visitor: visitorId(), campaign: site.value.campaign.id, day: props.page.day, language: site.value.lang, source: personal ? 'manage' : 'porch', p: personal }
     })
     prayingNow.value = res.praying_now
     if (res.position) position.value = res.position
@@ -221,7 +221,7 @@ async function sendGroup() {
           <NuxtLink v-if="site.campaign" :to="link()" class="inline-flex items-center gap-1.5 font-medium text-primary underline-offset-4 hover:underline">
             <UIcon name="i-lucide-house" class="size-4 shrink-0" />{{ site.campaign.name }} · {{ t('manage.home_link') }}
           </NuxtLink>
-          <p v-if="prayingNow > 1 && site.settings.showPrayingNow" class="inline-flex items-center gap-2 text-stone-600 tabular-nums" aria-live="polite">
+          <p v-if="prayingNow > 0 && site.settings.showPrayingNow" class="inline-flex items-center gap-2 text-stone-600 tabular-nums" aria-live="polite">
             <span class="size-2 shrink-0 rounded-full bg-success" aria-hidden="true" />{{ t('pray.praying_now', { n: num(prayingNow) }, prayingNow) }}
           </p>
         </div>

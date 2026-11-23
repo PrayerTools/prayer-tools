@@ -148,10 +148,11 @@ export async function goalProgress(tx: Tx, c: CampaignForCount, defaultMinutes =
   return { goal: c.goal, people, value: 0, target: 100, percent: 0 }
 }
 
+// People, not sessions: one person can have several day pages or tabs open.
 export async function prayingNow(tx: Tx, windowSeconds = 90): Promise<number> {
   const row = await tx
     .selectFrom('pt_prayer_session')
-    .select(eb => eb.fn.countAll<string>().as('n'))
+    .select(sql<string>`count(DISTINCT coalesce(visitor, user_id::text, id::text))`.as('n'))
     .where('last_ping_at', '>', new Date(Date.now() - windowSeconds * 1000))
     .where('started_at', '>', new Date(Date.now() - 6 * 3600 * 1000))
     .where('completed', '=', false)
