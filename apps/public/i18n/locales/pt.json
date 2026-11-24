@@ -68,7 +68,10 @@
     },
     "how": {
       "title": "Como funciona",
-      "body": "Escolha quando você quer orar e enviaremos um lembrete por e-mail nesse horário, com um link para o guia de oração do dia. Ore pelo tempo que puder: cada oração conta. Você pode mudar seus horários de oração ou parar a qualquer momento."
+      "step1": "Inscreva-se para orar",
+      "step2": "Receba lembretes",
+      "step3": "Dedique tempo à oração",
+      "step4": "Encontre Deus ao orar"
     },
     "signup": {
       "title": "Inscreva-se para orar",

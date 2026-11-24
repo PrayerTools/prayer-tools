@@ -68,7 +68,10 @@
     },
     "how": {
       "title": "Comment ça marche",
-      "body": "Choisissez quand vous souhaitez prier et nous vous enverrons un rappel par e-mail à ce moment-là, avec un lien vers le guide de prière du jour. Priez aussi longtemps que vous le pouvez : chaque prière compte. Vous pouvez modifier vos moments de prière ou arrêter à tout moment."
+      "step1": "S’inscrire pour prier",
+      "step2": "Recevoir des rappels",
+      "step3": "Prendre du temps pour prier",
+      "step4": "Rencontrer Dieu dans la prière"
     },
     "signup": {
       "title": "S'inscrire pour prier",

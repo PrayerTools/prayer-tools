@@ -14,6 +14,12 @@ const campaign = computed(() => site.value.campaign)
 interface Entry { key: string, customId?: string, custom?: CustomSectionView, placeholder: boolean, cards?: Entry[] }
 const CUSTOM = 'custom:'
 const CARD_SECTIONS = new Set(['share', 'contact', 'app'])
+const HOW_STEPS = [
+  { key: 'step1', icon: 'i-lucide-pen-line' },
+  { key: 'step2', icon: 'i-lucide-bell-ring' },
+  { key: 'step3', icon: 'i-lucide-clock' },
+  { key: 'step4', icon: 'i-lucide-heart' }
+]
 const blocks = computed(() => {
   const out: { signup: boolean, entries: Entry[] }[] = []
   for (const key of props.page.sections) {
@@ -255,7 +261,14 @@ function onJoined(verify: boolean) {
 
           <section v-else-if="s.key === 'how'" aria-labelledby="how-title" class="text-center" data-pt-section="how">
             <LandingHeading :title="st('landing.how.title')" title-id="how-title" />
-            <p class="mx-auto max-w-prose whitespace-pre-line text-lg leading-[1.75] text-stone-800">{{ st('landing.how.body', { site: site.name }) }}</p>
+            <ol class="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-4">
+              <li v-for="step in HOW_STEPS" :key="step.key" class="flex flex-col items-center gap-3">
+                <span class="flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary" aria-hidden="true">
+                  <UIcon :name="step.icon" class="size-7" />
+                </span>
+                <span class="font-semibold text-balance">{{ st(`landing.how.${step.key}`, { site: site.name }) }}</span>
+              </li>
+            </ol>
           </section>
 
           <section v-else-if="s.key === 'today' && page.today" aria-labelledby="today-title" data-pt-section="today">

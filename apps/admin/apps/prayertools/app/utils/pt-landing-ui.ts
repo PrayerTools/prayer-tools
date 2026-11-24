@@ -7,7 +7,7 @@ const SECTION_INFO: Record<string, { description: string, icon: string }> = {
   why: { description: 'Your own words about why people should pray.', icon: 'i-lucide-message-square-quote' },
   custom: { description: 'A section of your own.', icon: 'i-lucide-layout-list' },
   stories: { description: 'Stories from people who prayed, ones you publish from the Stories page.', icon: 'i-lucide-heart-handshake' },
-  how: { description: 'Explains signing up, reminders and praying, written for your campaign\'s setup.', icon: 'i-lucide-list-checks' },
+  how: { description: 'Four steps with icons: signing up, reminders, praying and meeting God.', icon: 'i-lucide-list-checks' },
   signup: { description: 'The signup form.', icon: 'i-lucide-user-plus' },
   today: { description: 'A preview of today\'s prayer content.', icon: 'i-lucide-book-open' },
   share: { description: 'Invites visitors to share the campaign.', icon: 'i-lucide-share-2' },
@@ -28,7 +28,13 @@ export const PT_LANDING_TEXT_FIELDS: Record<string, { key: string, label: string
   goal: [{ key: 'landing.goal.title', label: 'Heading' }],
   why: [{ key: 'landing.why.title', label: 'Heading' }],
   stories: [{ key: 'landing.stories.title', label: 'Heading' }],
-  how: [{ key: 'landing.how.title', label: 'Heading' }, { key: 'landing.how.body', label: 'Text', multiline: true }],
+  how: [
+    { key: 'landing.how.title', label: 'Heading' },
+    { key: 'landing.how.step1', label: 'Step 1' },
+    { key: 'landing.how.step2', label: 'Step 2' },
+    { key: 'landing.how.step3', label: 'Step 3' },
+    { key: 'landing.how.step4', label: 'Step 4' }
+  ],
   signup: [{ key: 'landing.signup.title', label: 'Heading' }, { key: 'landing.signup.intro', label: 'Introduction', multiline: true }],
   today: [{ key: 'landing.today.title', label: 'Heading' }],
   share: [{ key: 'landing.share.title', label: 'Heading' }, { key: 'landing.share.body', label: 'Text', multiline: true }],

@@ -68,7 +68,10 @@
     },
     "how": {
       "title": "Cómo funciona",
-      "body": "Elige cuándo quieres orar y te enviaremos un recordatorio por correo a esa hora, con un enlace a la guía de oración del día. Ora todo el tiempo que puedas: cada oración cuenta. Puedes cambiar tus horarios de oración o dejar de recibir recordatorios cuando quieras."
+      "step1": "Inscríbete para orar",
+      "step2": "Recibe recordatorios",
+      "step3": "Dedica tiempo a la oración",
+      "step4": "Encuentra a Dios al orar"
     },
     "signup": {
       "title": "Inscríbete para orar",

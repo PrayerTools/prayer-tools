@@ -71,7 +71,10 @@
     },
     "how": {
       "title": "How it works",
-      "body": "Choose when you want to pray and we will send you a reminder by email at that time, with a link to the day's prayer guide. Pray for as long as you can: every prayer counts. You can change your prayer times or stop at any time."
+      "step1": "Sign up to pray",
+      "step2": "Receive reminders",
+      "step3": "Spend time in prayer",
+      "step4": "Encounter God as you pray"
     },
     "signup": {
       "title": "Sign up to pray",
