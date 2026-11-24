@@ -59,7 +59,8 @@
       "title": "Nuestro progreso",
       "starts_in": "Comienza en {n} día | Comienza en {n} días",
       "since": "Desde el {date}",
-      "today": "hoy"
+      "today": "hoy",
+      "signed_up_since": "{n} persona se ha inscrito desde {date} | {n} personas se han inscrito desde {date}"
     },
     "why": {
       "title": "Por qué oramos"
@@ -107,8 +108,8 @@
     "qr_caption": "Escanéalo con tu teléfono para abrir esta campaña en la aplicación."
   },
   "progress": {
-    "people": "{n} persona orando | {n} personas orando",
-    "people_target": "{n} de {target} personas orando",
+    "people": "{n} persona comprometida a orar | {n} personas comprometidas a orar",
+    "people_target": "{n} de {target} personas comprometidas a orar",
     "people_upcoming": "{n} persona inscrita | {n} personas inscritas",
     "people_target_upcoming": "{n} de {target} personas inscritas",
     "people_ended": "{n} persona oró | {n} personas oraron",
@@ -225,7 +226,8 @@
   },
   "stats": {
     "title": "La oración hasta ahora",
-    "people": "Personas inscritas",
+    "people": "Personas comprometidas a orar",
+    "signed_up_total": "Inscritos desde el inicio",
     "commitments": "Horarios de oración",
     "prayers": "Oraciones",
     "minutes": "Tiempo en oración",

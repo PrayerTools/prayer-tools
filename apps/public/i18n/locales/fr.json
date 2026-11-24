@@ -59,7 +59,8 @@
       "title": "Notre progression",
       "starts_in": "Commence dans {n} jour | Commence dans {n} jours",
       "since": "Depuis le {date}",
-      "today": "aujourd’hui"
+      "today": "aujourd’hui",
+      "signed_up_since": "{n} personne s’est inscrite depuis {date} | {n} personnes se sont inscrites depuis {date}"
     },
     "why": {
       "title": "Pourquoi nous prions"
@@ -107,8 +108,8 @@
     "qr_caption": "Scannez avec votre téléphone pour ouvrir cette campagne dans l'application."
   },
   "progress": {
-    "people": "{n} personne en prière | {n} personnes en prière",
-    "people_target": "{n} sur {target} personnes en prière",
+    "people": "{n} personne engagée à prier | {n} personnes engagées à prier",
+    "people_target": "{n} sur {target} personnes engagées à prier",
     "people_upcoming": "{n} personne inscrite | {n} personnes inscrites",
     "people_target_upcoming": "{n} sur {target} personnes inscrites",
     "people_ended": "{n} personne a prié | {n} personnes ont prié",
@@ -225,7 +226,8 @@
   },
   "stats": {
     "title": "La prière jusqu'ici",
-    "people": "Personnes inscrites",
+    "people": "Personnes engagées à prier",
+    "signed_up_total": "Inscrits depuis le début",
     "commitments": "Moments de prière",
     "prayers": "Prières",
     "minutes": "Temps de prière",

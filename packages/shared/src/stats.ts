@@ -92,6 +92,19 @@ export async function peopleCount(tx: Tx, c: CampaignForCount, now: Date = new D
   return Number(row?.n ?? 0)
 }
 
+// Everyone who has signed up to a campaign since it began: confirmed sign-ups
+// with a prayer time in it, whatever has happened to them since.
+export async function signupsCount(tx: Tx, campaignId: string): Promise<number> {
+  const row = await tx
+    .selectFrom('pt_commitment as cm')
+    .innerJoin('pt_subscription as s', 's.id', 'cm.subscription_id')
+    .select(eb => eb.fn.count<string>('s.id').distinct().as('n'))
+    .where('cm.campaign_id', '=', campaignId)
+    .where(eb => eb.or([eb('s.verified_at', 'is not', null), eb('s.delivery', '=', 'app')]))
+    .executeTakeFirst()
+  return Number(row?.n ?? 0)
+}
+
 // Ending a campaign completes the subscriptions it leaves with nothing open,
 // so its final numbers keep them.
 function countedStatuses(ended: boolean): SubscriptionStatus[] {

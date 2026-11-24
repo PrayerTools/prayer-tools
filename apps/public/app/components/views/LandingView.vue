@@ -79,6 +79,14 @@ const aboutTitle = computed(() => {
 // The latest entry, when it isn't today's, is headed "Latest prayer" unless the site renamed the section.
 const todayTitle = computed(() => props.page.today?.current === false && !site.value.strings['landing.today.title'] ? t('landing.today.latest') : st('landing.today.title'))
 const todayLink = computed(() => props.page.today && !props.page.today.current ? link('pray', [props.page.today.day]) : link('pray'))
+// On ongoing campaigns, everyone who has signed up since the start, when more than are committed now.
+const signedUpLine = computed(() => {
+  const n = props.page.signedUp
+  const start = props.page.run?.start
+  if (n === null || !start || !site.value.settings.showPeopleCount || n <= (props.page.progress?.people ?? 0)) return null
+  const since = new Intl.DateTimeFormat(site.value.lang, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${start}T00:00:00Z`))
+  return t('landing.goal.signed_up_since', { n: num(n), date: since }, n)
+})
 const showProgress = computed(() => !!props.page.progress && (props.page.progress.goal !== 'people' || site.value.settings.showPeopleCount))
 
 const imageStyle = computed(() => site.value.image ? { objectPosition: `${site.value.image.fx * 100}% ${site.value.image.fy * 100}%` } : {})
@@ -221,6 +229,7 @@ function onJoined(verify: boolean) {
                 </div>
                 <div v-if="showProgress || page.prayingNow > 0" class="space-y-3">
                   <GoalProgress v-if="showProgress" :progress="page.progress!" />
+                  <p v-if="signedUpLine" class="text-sm text-stone-600">{{ signedUpLine }}</p>
                   <p v-if="page.prayingNow > 0" class="inline-flex items-center gap-2 text-sm tabular-nums text-stone-700">
                     <span class="size-2 shrink-0 rounded-full bg-success" aria-hidden="true" />{{ t('pray.praying_now', { n: num(page.prayingNow) }, page.prayingNow) }}
                   </p>

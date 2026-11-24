@@ -13,7 +13,10 @@ const tiles = computed(() => {
     { label: t('stats.minutes'), value: minutes(s.prayerMinutes) },
     { label: t('stats.share_signups'), value: num(s.shareSignups) }
   ]
-  if (site.value.settings.showPeopleCount) out.unshift({ label: t('stats.people'), value: num(s.progress.people) })
+  if (site.value.settings.showPeopleCount) {
+    if (s.signedUp !== null) out.unshift({ label: t('stats.signed_up_total'), value: num(s.signedUp) })
+    out.unshift({ label: t('stats.people'), value: num(s.progress.people) })
+  }
   if (s.groupPrayers) out.push({ label: t('stats.group_prayers'), value: num(s.groupPrayers) })
   if (site.value.settings.showPrayingNow) out.push({ label: t('stats.praying_now'), value: num(s.prayingNow) })
   return out

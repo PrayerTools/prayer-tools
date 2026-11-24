@@ -25,7 +25,7 @@ import { useDb } from './db'
 import type { SiteContext } from './site-context'
 import { buildSiteView, campaignView, loadSiteData, sideCampaigns, stateOf, type SiteData } from './site-data'
 import { contentBlocks, contentVars, docHtml, formatDate, visibleEntries } from './content'
-import { progressFor, runFor, statsFor } from './site-stats'
+import { progressFor, runFor, signedUpFor, statsFor } from './site-stats'
 import { managedSubscription, manageView } from './manage'
 import { socialProviders } from './social-sign-in'
 import { sessionAccount } from './account-session'
@@ -246,6 +246,7 @@ async function landingPage(tx: Parameters<typeof loadSiteData>[0], event: H3Even
     sections,
     progress,
     run,
+    signedUp: campaign ? await signedUpFor(tx, campaign) : null,
     subtitle: textIn(landing.subtitle, lang, def),
     template: templateKey,
     why,

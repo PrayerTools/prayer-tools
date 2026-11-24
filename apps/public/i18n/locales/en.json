@@ -62,7 +62,8 @@
       "title": "Our progress",
       "starts_in": "Starts in {n} day | Starts in {n} days",
       "since": "Since {date}",
-      "today": "today"
+      "today": "today",
+      "signed_up_since": "{n} person has signed up since {date} | {n} people have signed up since {date}"
     },
     "why": {
       "title": "Why we pray"
@@ -110,8 +111,8 @@
     "qr_caption": "Scan with your phone to open this campaign in the app."
   },
   "progress": {
-    "people": "{n} person praying | {n} people praying",
-    "people_target": "{n} of {target} people praying",
+    "people": "{n} person committed to pray | {n} people committed to pray",
+    "people_target": "{n} of {target} people committed to pray",
     "people_upcoming": "{n} person signed up | {n} people signed up",
     "people_target_upcoming": "{n} of {target} people signed up",
     "people_ended": "{n} person prayed | {n} people prayed",
@@ -228,7 +229,8 @@
   },
   "stats": {
     "title": "Prayer so far",
-    "people": "People signed up",
+    "people": "People committed to pray",
+    "signed_up_total": "Signed up since the start",
     "commitments": "Prayer times",
     "prayers": "Prayers",
     "minutes": "Time in prayer",

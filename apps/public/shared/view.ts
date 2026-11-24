@@ -121,6 +121,8 @@ export interface ContentBlockView {
 
 export interface StatsView {
   progress: GoalProgressView
+  // Ongoing campaigns: everyone who has signed up since the start.
+  signedUp: number | null
   commitments: number
   prayers: number
   prayerMinutes: number
@@ -260,7 +262,7 @@ export interface MyView {
 export type PageView =
   // `sections` are the sections after the hero, in page order: a standard key or `custom:<id>`.
   // `placeholders` are the ones the admin editor's preview shows as empty.
-  | { kind: 'landing', sections: string[], progress: GoalProgressView | null, run: CampaignRunView | null, subtitle: string, template: string | null, why: string, about: string, today: TodayView | null, stories: StoryView[], custom: CustomSectionView[], prayingNow: number, form: SignupFormView, placeholders: string[], side: SideCampaignView[] }
+  | { kind: 'landing', sections: string[], progress: GoalProgressView | null, run: CampaignRunView | null, signedUp: number | null, subtitle: string, template: string | null, why: string, about: string, today: TodayView | null, stories: StoryView[], custom: CustomSectionView[], prayingNow: number, form: SignupFormView, placeholders: string[], side: SideCampaignView[] }
   // `notify` offers the "notify me" form; `again` is the open run of the same
   // series, shown in its place.
   | { kind: 'between', stats: StatsView | null, endMessage: string, hasGuide: boolean, next: NextStep | null, notify: boolean, again: { campaign: string, path: string } | null }

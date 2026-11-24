@@ -1,12 +1,18 @@
 import type { Tx } from '@prayertools/shared/db/scope'
 import { addDays, addMonths, todayIn } from '@prayertools/shared/dates'
-import { campaignEndDate } from '@prayertools/shared/setup'
-import { dailyGoalPercents, goalProgress, prayingNow, statTotals } from '@prayertools/shared/stats'
+import { campaignEndDate, displayLength } from '@prayertools/shared/setup'
+import { dailyGoalPercents, goalProgress, prayingNow, signupsCount, statTotals } from '@prayertools/shared/stats'
 import type { CampaignRow } from '@prayertools/shared/subscriptions'
 import type { CampaignRunView, GoalProgressView, StatsView } from '../../shared/view'
 
 export async function progressFor(tx: Tx, c: CampaignRow, defaultMinutes: number): Promise<GoalProgressView> {
   return await goalProgress(tx, c, defaultMinutes)
+}
+
+// Everyone who has signed up since an ongoing campaign began. A fixed campaign's
+// people count already includes everyone who committed, so it has none.
+export async function signedUpFor(tx: Tx, c: CampaignRow): Promise<number | null> {
+  return displayLength(c) === 'ongoing' ? await signupsCount(tx, c.id) : null
 }
 
 export async function runFor(tx: Tx, c: CampaignRow, defaultMinutes: number): Promise<CampaignRunView | null> {
@@ -27,8 +33,9 @@ export async function runFor(tx: Tx, c: CampaignRow, defaultMinutes: number): Pr
 }
 
 export async function statsFor(tx: Tx, c: CampaignRow, defaultMinutes: number): Promise<StatsView> {
-  const [progress, totals, now, commitments] = [
+  const [progress, signedUp, totals, now, commitments] = [
     await progressFor(tx, c, defaultMinutes),
+    await signedUpFor(tx, c),
     await statTotals(tx, c.id),
     await prayingNow(tx),
     await tx
@@ -43,6 +50,7 @@ export async function statsFor(tx: Tx, c: CampaignRow, defaultMinutes: number): 
   ]
   return {
     progress,
+    signedUp,
     commitments: Number(commitments?.n ?? 0),
     prayers: totals.prayers ?? 0,
     prayerMinutes: Math.round((totals.prayer_seconds ?? 0) / 60),
