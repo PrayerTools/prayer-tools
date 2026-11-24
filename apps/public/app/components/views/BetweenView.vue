@@ -39,10 +39,7 @@ useHead({ title: () => site.value.name })
         <h2 id="again-title" class="text-2xl font-bold">{{ t('between.again_title', { campaign: page.again.campaign }) }}</h2>
         <UButton :to="page.again.path" size="xl" :label="st('landing.signup.title')" trailing-icon="i-lucide-arrow-right" />
       </section>
-      <section aria-labelledby="share-title" class="space-y-3">
-        <h2 id="share-title" class="text-2xl font-bold">{{ st('landing.share.title') }}</h2>
-        <ShareButton />
-      </section>
+      <InviteCard />
     </div>
   </div>
 </template>

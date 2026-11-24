@@ -190,12 +190,7 @@ function onJoined(verify: boolean) {
         <template v-for="s in block.entries" :key="s.key">
           <div v-if="s.cards" class="grid gap-6 sm:grid-cols-2">
             <template v-for="(c, i) in s.cards" :key="c.key">
-              <SectionCard v-if="c.key === 'share'" :title="st('landing.share.title')" title-id="share-title" data-pt-section="share" centered :class="s.cards.length % 2 && i === s.cards.length - 1 && 'sm:col-span-2'">
-                <div class="space-y-4 py-5">
-                  <p class="text-stone-700">{{ st('landing.share.body') }}</p>
-                  <ShareButton size="md" variant="soft" class="justify-center" />
-                </div>
-              </SectionCard>
+              <InviteCard v-if="c.key === 'share'" data-pt-section="share" centered :class="s.cards.length % 2 && i === s.cards.length - 1 && 'sm:col-span-2'" />
               <SectionCard v-else-if="c.key === 'contact'" :title="st('landing.contact.title')" title-id="contact-title" data-pt-section="contact" centered :class="s.cards.length % 2 && i === s.cards.length - 1 && 'sm:col-span-2'">
                 <div class="space-y-4 py-5">
                   <p class="text-stone-700">{{ st('landing.contact.body') }}</p>

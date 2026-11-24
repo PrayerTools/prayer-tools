@@ -278,11 +278,7 @@ async function sendGroup() {
             <UButton :to="link('signup')" variant="outline" icon="i-lucide-bell" :label="st(site.campaign?.goal === 'coverage' ? 'landing.signup.button' : 'landing.signup.title')" />
           </div>
         </SectionCard>
-        <SectionCard :title="t('share.invite')" title-id="share-title" :class="!showPersonalSignup && !showReminders && 'sm:col-span-2'">
-          <div class="py-4">
-            <ShareButton size="md" variant="soft" />
-          </div>
-        </SectionCard>
+        <InviteCard :class="!showPersonalSignup && !showReminders && 'sm:col-span-2'" />
       </aside>
     </div>
 
