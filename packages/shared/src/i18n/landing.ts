@@ -1,9 +1,17 @@
-// Standard landing page text a campaign template brings, per language. A site
-// shows it until it writes its own, and it is never stored.
+// Standard landing page text a campaign template brings, per language: the
+// "why we pray" text and the about text. A site shows it until it writes its
+// own, and it is never stored.
 import type { TiptapDoc } from '../db/schema'
 import { isEmptyDoc, textDoc, tiptapToText } from '../tiptap'
+import { visionDoc } from './vision'
 
-const WHY: Record<string, Record<string, string>> = {
+export type TemplateText = 'why' | 'about'
+
+const WHY: Record<string, (lang: string) => TiptapDoc | null> = {
+  ramadan: lang => visionDoc(lang)
+}
+
+const ABOUT: Record<string, Record<string, string>> = {
   ramadan: {
     en: `Ramadan is one of the five requirements (or pillars) of Islam. During each of its 30 days, Muslims are obligated to fast from dawn until sunset. During this time they are supposed to abstain from food, drinking liquids, smoking, and sexual relations.
 
@@ -108,29 +116,29 @@ Meskipun banyak yang berhenti berpuasa dalam beberapa tahun terakhir, dan merasa
   }
 }
 
-// The template's "why" text in a language, or in the fallback language when
-// it has none in that one; null when the template has none.
-export function templateWhyText(templateKey: string | null | undefined, lang: string, fallback?: string): string | null {
-  const texts = WHY[templateKey ?? '']
-  return texts?.[lang] ?? (fallback ? texts?.[fallback] : undefined) ?? null
-}
-
-export function templateWhyDoc(templateKey: string | null | undefined, lang: string, fallback?: string): TiptapDoc | null {
-  const text = templateWhyText(templateKey, lang, fallback)
-  return text ? textDoc(text) : null
+// The template's text in a language, or in the fallback language when it
+// has none in that one; null when the template has none.
+export function templateDoc(kind: TemplateText, templateKey: string | null | undefined, lang: string, fallback?: string): TiptapDoc | null {
+  const key = templateKey ?? ''
+  const one = (l: string): TiptapDoc | null => {
+    if (kind === 'why') return WHY[key]?.(l) ?? null
+    const text = ABOUT[key]?.[l]
+    return text ? textDoc(text) : null
+  }
+  return one(lang) ?? (fallback ? one(fallback) : null)
 }
 
 // Whether a doc still holds the template's text for that language unchanged.
-export function isTemplateWhy(doc: TiptapDoc | null | undefined, templateKey: string | null | undefined, lang: string): boolean {
-  const text = WHY[templateKey ?? '']?.[lang]
+export function isTemplateDoc(kind: TemplateText, doc: TiptapDoc | null | undefined, templateKey: string | null | undefined, lang: string): boolean {
+  const standard = templateDoc(kind, templateKey, lang)
   const squash = (s: string) => s.replace(/\s+/g, ' ').trim()
-  return !!text && !!doc && squash(tiptapToText(doc)) === squash(text)
+  return !!standard && !!doc && squash(tiptapToText(doc)) === squash(tiptapToText(standard))
 }
 
-// The "why" text visitors see in a language: the site's own text in that
-// language or its default language, else the template's text, else the
-// site's own text in any language.
-export function landingWhyDoc(why: Record<string, TiptapDoc> | undefined, templateKey: string | null | undefined, lang: string, defaultLang: string): TiptapDoc | null {
-  const own = Object.fromEntries(Object.entries(why ?? {}).filter(([, doc]) => !isEmptyDoc(doc)))
-  return own[lang] ?? own[defaultLang] ?? templateWhyDoc(templateKey, lang, defaultLang) ?? Object.values(own)[0] ?? null
+// The text visitors see in a language: the site's own text in that language
+// or its default language, else the template's text, else the site's own
+// text in any language.
+export function landingDoc(kind: TemplateText, own: Record<string, TiptapDoc> | undefined, templateKey: string | null | undefined, lang: string, defaultLang: string): TiptapDoc | null {
+  const written = Object.fromEntries(Object.entries(own ?? {}).filter(([, doc]) => !isEmptyDoc(doc)))
+  return written[lang] ?? written[defaultLang] ?? templateDoc(kind, templateKey, lang, defaultLang) ?? Object.values(written)[0] ?? null
 }

@@ -133,7 +133,7 @@ export async function buildSiteView(tx: Tx, ctx: SiteContext, data: SiteData, la
     description: textIn(campaign?.description as TranslatableText | null, lang, def),
     status: site.status,
     preview: ctx.preview,
-    editor: ctx.editor ? { adminOrigin: new URL(cfg.adminUrl).origin, defaults: editorDefaults(uiLanguage(lang)) } : null,
+    editor: ctx.editor ? { adminOrigin: new URL(cfg.adminUrl).origin, defaults: editorDefaults(uiLanguage(lang), campaign?.template_key ?? null) } : null,
     campaign: cv,
     campaignSegment: campaign ? campaignSegment(campaign, data.current?.campaign.id) : null,
     pastCampaigns: data.campaigns

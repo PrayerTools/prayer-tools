@@ -5,6 +5,8 @@
 import type { SQL } from 'bun'
 import type { CampaignEmailText, CampaignLanding, LandingCustomSection, TiptapDoc, TiptapNode, TranslatableText } from '@prayertools/shared/db/schema'
 import { customSectionKey, defaultLandingOrder } from '@prayertools/shared/landing'
+import { isTemplateDoc } from '@prayertools/shared/i18n/landing'
+import { visionTexts } from '@prayertools/shared/i18n/vision'
 import { videoEmbed } from '@prayertools/shared/video'
 import { normalizeEmail } from '@prayertools/shared/crm'
 import { first, languageOf, table, tableExists, unserialize, type Meta } from './wp'
@@ -28,30 +30,25 @@ export async function translationsOf(wp: SQL, blogId: number): Promise<Translati
   return out
 }
 
-// The plugin's English defaults: a text equal to its default wasn't written by the champion.
+// The plugin's English defaults for section titles: a title equal to its default wasn't written by the champion.
 const DEFAULTS: Record<string, string> = {
   vision_title: 'Our Vision',
-  vision: 'We want to cover this region with continuous 24/7 prayer.',
-  pray_section_title: 'Extraordinary Prayer',
-  pray_section_text: 'Every disciple making movement in history has happened in the context of extraordinary prayer.',
-  movement_section_title: 'Movement Focused',
-  movement_section_text: 'Join us in asking, seeking, and knocking for streams of disciples and churches to be made.',
-  time_section_title: '24/7 Every Day',
-  time_section_text: 'Choose a 15-minute (or more!) time slot that you can pray during each day. Invite someone else to sign up too.',
   prayer_fuel_title: 'Prayer Fuel'
 }
 const COLUMNS = ['pray', 'movement', 'time'] as const
 
-// "About Ramadan" in the plugin's translations, for the Ramadan page's about section.
-const ABOUT_RAMADAN: Record<string, string> = {
-  en: 'About Ramadan', ar: 'عن رمضان', de: 'Über Ramadan', es: 'Acerca del Ramadán', fr: 'À propos du Ramadan', hi: 'रमज़ान के बारे में',
-  id: 'Tentang Ramadan', it: 'Informazioni sul Ramadan', kn: 'ರಂಜಾನ್ ಬಗ್ಗೆ', ko: '라마단에 대해', ne: 'रमजानको बारेमा', nl: 'Over Ramadan',
-  pt: 'Sobre o Ramadã', ro: 'Despre Ramadan', ru: 'О Рамадане', ta: 'ரமலான் பற்றி', te: 'రంజాన్ గురించి', tr: 'Ramazan Hakkında',
-  uk: 'Про Рамадан', ur: 'رمضان کے بارے میں', vi: 'Về Ramadan', wo: 'Lu jëm ci Koor', 'zh-hans': '关于斋月', 'zh-hant': '關於齋月'
-}
-
 const norm = (s: string) => s.replace(/\s+/g, ' ').trim()
 const plain = (html: string) => norm(html.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&#0?39;|&apos;/g, '\'').replace(/&quot;/g, '"'))
+
+const columnTitle = (text: string): TiptapNode => ({ type: 'heading', attrs: { level: 3 }, content: [{ type: 'text', text }] })
+
+// A YouTube or Vimeo player, or a link to any other video.
+function videoNodes(url: string): TiptapNode[] {
+  const v = videoEmbed(url)
+  if (!v) return []
+  if (v.kind !== 'file') return [{ type: 'youtube', attrs: { src: url } }]
+  return [{ type: 'paragraph', content: [{ type: 'text', text: url, marks: [{ type: 'link', attrs: { href: url } }] }] }]
+}
 
 export interface LandingInput {
   defaultLanguage: string
@@ -103,25 +100,24 @@ export async function landingText(meta: Meta | undefined, tr: Map<string, Map<st
 
   const subtitle = text(field('subtitle'))
 
-  // The vision section, with the three columns under it when the champion changed them.
+  // "Why we pray" is the vision as WordPress showed it in each language, then the video.
+  // An unchanged vision on the Ramadan template is v3's standard text, so it is not stored.
+  const daily = first(meta, 'campaign_goal') === 'quantity'
   const vision = field('vision')
-  const visionChanged = changed('vision', vision)
-  const columns = COLUMNS.map(c => ({ title: field(`${c}_section_title`), body: field(`${c}_section_text`), c }))
-  const columnsChanged = columns.some(c => changed(`${c.c}_section_title`, c.title) || changed(`${c.c}_section_text`, c.body))
-  const why: Record<string, TiptapDoc> = {}
-  if (visionChanged || columnsChanged) {
-    const langs = new Set([...(visionChanged ? Object.keys(vision) : []), ...(columnsChanged ? columns.flatMap(c => [...Object.keys(c.title), ...Object.keys(c.body)]) : [])])
-    for (const lang of langs) {
-      const content: TiptapNode[] = visionChanged && (vision[lang] ?? vision[def]) ? await doc(vision[lang] ?? vision[def]!) : []
-      if (columnsChanged) {
-        for (const c of columns) {
-          const title = plain(c.title[lang] ?? c.title[def] ?? DEFAULTS[`${c.c}_section_title`]!)
-          content.push({ type: 'heading', attrs: { level: 3 }, content: [{ type: 'text', text: title }] }, ...await doc(c.body[lang] ?? c.body[def] ?? DEFAULTS[`${c.c}_section_text`]!))
-        }
-      }
-      if (content.length) why[lang] = { type: 'doc', content }
+  const columns = COLUMNS.map(c => [field(`${c}_section_title`), field(`${c}_section_text`)] as const)
+  const shown = (values: Record<string, string>, lang: string, fallback: string) => values[lang] ?? values[def] ?? fallback
+  const video = first(meta, 'promo_video_url')?.trim()
+  const videoContent = video ? videoNodes(video) : []
+  let why: Record<string, TiptapDoc> = {}
+  for (const lang of input.languages) {
+    const defaults = visionTexts(lang, daily) ?? visionTexts('en', daily)!
+    const content = await doc(shown(vision, lang, defaults.vision))
+    for (const [i, [title, body]] of columns.entries()) {
+      content.push(columnTitle(plain(shown(title, lang, defaults.columns[i]![0]))), ...await doc(shown(body, lang, defaults.columns[i]![1])))
     }
+    why[lang] = { type: 'doc', content: [...content, ...videoContent] }
   }
+  if (input.ramadan && input.languages.every(lang => isTemplateDoc('why', why[lang], 'ramadan', lang))) why = {}
 
   // Custom sections need a heading: a section's own first heading, else a name for it.
   const nameHeading = (): TranslatableText => ({ source: def, values: { [def]: input.campaignName }, stale: [] })
@@ -141,22 +137,29 @@ export async function landingText(meta: Meta | undefined, tr: Map<string, Map<st
     }
     return { id, heading, body }
   }
-  const about = field('what_content')
-  if (Object.values(about).every(v => /^\s*lorem ipsum/i.test(plain(v)))) for (const k of Object.keys(about)) delete about[k]
-  const ramadanHeading: TranslatableText | null = input.ramadan
-    ? { source: 'en', values: Object.fromEntries([...new Set(['en', ...input.languages])].filter(l => ABOUT_RAMADAN[l]).map(l => [l, ABOUT_RAMADAN[l]!])), stale: [] }
-    : null
+  // The champion's own about text: the plugin's default was lorem ipsum or, on Ramadan,
+  // v3's standard text. Outside the Ramadan template its first heading was its title.
+  const about = await docs(Object.fromEntries(Object.entries(field('what_content')).filter(([, v]) => !/^\s*lorem ipsum/i.test(plain(v)))))
+  const aboutTitles: Record<string, string> = {}
+  for (const [lang, d] of Object.entries(about)) {
+    if (input.ramadan && isTemplateDoc('about', d, 'ramadan', lang)) {
+      delete about[lang]
+      continue
+    }
+    const firstNode = d.content?.[0]
+    if (input.ramadan || firstNode?.type !== 'heading') continue
+    const title = (firstNode.content ?? []).map(n => n.text ?? '').join('').trim()
+    if (!title) continue
+    aboutTitles[lang] = title
+    about[lang] = { type: 'doc', content: d.content!.slice(1) }
+  }
   const custom: LandingCustomSection[] = []
-  const aboutSection = await section('about', about, ramadanHeading)
-  const video = first(meta, 'promo_video_url')?.trim()
-  const videoUrl = video && videoEmbed(video) ? video : null
-  if (aboutSection) custom.push({ ...aboutSection, ...(videoUrl ? { video_url: videoUrl } : {}) })
-  else if (videoUrl) custom.push({ id: 'about', heading: ramadanHeading ?? nameHeading(), body: {}, video_url: videoUrl })
   const footer = await section('footer', field('footer_content'), null)
   if (footer) custom.push(footer)
   const landing: CampaignLanding = {
     ...(subtitle ? { subtitle } : {}),
     ...(Object.keys(why).length ? { why } : {}),
+    ...(Object.keys(about).length ? { about } : {}),
     ...(custom.length ? { custom } : {}),
     ...(footer ? { order: [...defaultLandingOrder(custom.map(c => c.id)).filter(k => k !== customSectionKey('footer')), customSectionKey('footer')] } : {})
   }
@@ -187,6 +190,7 @@ export async function landingText(meta: Meta | undefined, tr: Map<string, Map<st
     if (!changed(wpKey, values)) continue
     for (const [language, value] of Object.entries(values)) if (plain(value)) siteStrings.push({ key, language, value: plain(value) })
   }
+  for (const [language, value] of Object.entries(aboutTitles)) siteStrings.push({ key: 'landing.about.title', language, value })
 
   // Replies go where the champion set them, else to the address they sent from.
   const address = (v: string | null) => {

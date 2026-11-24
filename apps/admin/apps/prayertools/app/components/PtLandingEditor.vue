@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // The landing page editor: the standard sections and the champion's custom
 // sections, one row each, in the order the page shows them. The champion
-// writes the "why" text and custom sections, hides sections they don't need,
+// writes the "why" and about texts and custom sections, hides sections they don't need,
 // moves any section below the top one up or down,
 // and chooses whether stories show and, on a side campaign, which ones. Section headings and standard
 // text can be reworded per language; the preview beside the editor shows
@@ -13,7 +13,7 @@ import type { CampaignBranding, CampaignLanding, SiteBranding, TiptapDoc, Transl
 import { DEFAULT_BRAND_COLOR } from '@prayertools/shared/colors'
 import { heroImage } from '@prayertools/shared/hero-images'
 import { isEmptyDoc } from '@prayertools/shared/tiptap'
-import { isTemplateWhy, templateWhyDoc } from '@prayertools/shared/i18n/landing'
+import { isTemplateDoc, templateDoc, type TemplateText } from '@prayertools/shared/i18n/landing'
 import { LANDING_STORY_LIMIT, customSectionId, customSectionKey, expandHiddenCustom, isSectionHidden, landingOrder, storedLandingOrder } from '@prayertools/shared/landing'
 import { videoEmbed } from '@prayertools/shared/video'
 import { campaignSegment, campaignUrl } from '@prayertools/shared/campaigns'
@@ -67,6 +67,7 @@ const aiTranslate = usePtAiTranslate()
 const dir = computed(() => meta.value?.languages.find(l => l.code === lang.value)?.dir ?? 'ltr')
 
 const why = ref<Record<string, Record<string, any> | null>>({})
+const about = ref<typeof why.value>({})
 const hidden = ref<string[]>([])
 // The champion's own section order; absent while the page uses the default order.
 const order = ref<string[] | undefined>()
@@ -79,7 +80,8 @@ const openIds = ref<string[]>([])
 watch(source, (src) => {
   const s = site.value
   if (!s || !src) return
-  why.value = withTemplateWhy((src.landing.why ?? {}) as Record<string, TiptapDoc>, src.templateKey, s.site.languages, s.site.default_language)
+  why.value = withTemplateText('why', (src.landing.why ?? {}) as Record<string, TiptapDoc>, src.templateKey, s.site.languages, s.site.default_language)
+  about.value = withTemplateText('about', (src.landing.about ?? {}) as Record<string, TiptapDoc>, src.templateKey, s.site.languages, s.site.default_language)
   hidden.value = [...(src.landing.hidden ?? meta.value?.templates.find(t => t.key === src.templateKey)?.hiddenSections ?? [])]
   order.value = src.landing.order ? [...src.landing.order] : undefined
   stories.value = src.landing.stories !== false
@@ -123,24 +125,30 @@ function comparable(o: object | null | undefined) {
 }
 const brandDirty = computed(() => comparable(brand.value) !== comparable(site.value?.site.branding))
 
-// Until the site writes its own "why" text in its default language, each
-// language without its own text starts from the template's standard text.
-function withTemplateWhy(own: Record<string, TiptapDoc>, templateKey: string | null, languages: string[], defaultLanguage: string) {
+// Until the site writes its own "why" or about text in its default language,
+// each language without its own text starts from the template's standard text.
+function withTemplateText(kind: TemplateText, own: Record<string, TiptapDoc>, templateKey: string | null, languages: string[], defaultLanguage: string) {
   const out = { ...own }
   if (own[defaultLanguage] && !isEmptyDoc(own[defaultLanguage])) return out
   for (const l of languages) {
-    const standard = templateWhyDoc(templateKey, l)
+    const standard = templateDoc(kind, templateKey, l)
     if (standard && (!out[l] || isEmptyDoc(out[l]))) out[l] = standard
   }
   return out
 }
-const whyIsStandard = computed(() => isTemplateWhy(why.value[lang.value] as TiptapDoc | null | undefined, source.value?.templateKey, lang.value))
+const whyIsStandard = computed(() => isTemplateDoc('why', why.value[lang.value] as TiptapDoc | null | undefined, source.value?.templateKey, lang.value))
+const aboutIsStandard = computed(() => isTemplateDoc('about', about.value[lang.value] as TiptapDoc | null | undefined, source.value?.templateKey, lang.value))
 
 const whyDoc = computed({
   get: () => why.value[lang.value] ?? null,
   set: (v) => { why.value = { ...why.value, [lang.value]: v } }
 })
+const aboutDoc = computed({
+  get: () => about.value[lang.value] ?? null,
+  set: (v) => { about.value = { ...about.value, [lang.value]: v } }
+})
 const whyGuidance = computed(() => ptLandingGuidance('why', source.value?.templateKey))
+const aboutGuidance = computed(() => ptLandingGuidance('about', source.value?.templateKey))
 
 // Section headings and standard text: the site's own wording per language
 // over the standard wording, which the preview reports for each language it
@@ -320,7 +328,7 @@ async function uploadVideo(e: Event) {
   }
 }
 
-const draft = computed(() => ({ landing: { subtitle: subtitle.value, why: why.value, hidden: hidden.value, order: order.value, stories: stories.value, story_ids: storyIds.value, custom: custom.value }, description: description.value, branding: hero.value, brand: brand.value, strings: wording.value[lang.value] ?? {} }))
+const draft = computed(() => ({ landing: { subtitle: subtitle.value, why: why.value, about: about.value, hidden: hidden.value, order: order.value, stories: stories.value, story_ids: storyIds.value, custom: custom.value }, description: description.value, branding: hero.value, brand: brand.value, strings: wording.value[lang.value] ?? {} }))
 const preview = ref<{ focus: (section: string, id?: string) => void }>()
 
 // The selected section ('why', or 'custom-<id>' for one custom section) stays
@@ -349,7 +357,7 @@ async function save() {
       toast.ok('Translation saved')
       return
     }
-    const landing = { subtitle: subtitle.value, why: why.value, hidden: hidden.value, order: order.value, stories: stories.value, story_ids: storyIds.value, custom: custom.value }
+    const landing = { subtitle: subtitle.value, why: why.value, about: about.value, hidden: hidden.value, order: order.value, stories: stories.value, story_ids: storyIds.value, custom: custom.value }
     await $fetch(`/api/pt/campaigns/${props.campaignId}`, { method: 'PATCH', body: { landing, branding: hero.value, description: description.value } })
     if (brandDirty.value) await $fetch('/api/pt/site', { method: 'PATCH', body: { branding: brand.value } })
     await saveWording()
@@ -370,6 +378,7 @@ async function saveTranslation() {
   if (subtitle.value?.values[l] !== undefined) await put({ field: 'subtitle', value: subtitle.value.values[l] })
   if (description.value?.values[l] !== undefined) await put({ field: 'description', value: description.value.values[l] })
   if (why.value[l]) await put({ field: 'why', value: why.value[l] })
+  if (about.value[l]) await put({ field: 'about', value: about.value[l] })
   for (const s of custom.value) {
     if (s.heading.values[l] !== undefined) await put({ field: 'custom', sectionId: s.id, part: 'heading', value: s.heading.values[l] })
     if (s.body[l]) await put({ field: 'custom', sectionId: s.id, part: 'body', value: s.body[l] })
@@ -377,13 +386,14 @@ async function saveTranslation() {
   }
 }
 
-async function translateWhy() {
+async function translateText(kind: TemplateText) {
   const s = site.value!
-  const src = why.value[s.site.default_language]
+  const src = (kind === 'why' ? why : about).value[s.site.default_language]
   if (!src) return
   try {
     const res = await $fetch<{ doc: Record<string, any> }>('/api/pt/translate', { method: 'POST', body: { doc: src, from: s.site.default_language, to: lang.value } })
-    whyDoc.value = res.doc
+    if (kind === 'why') whyDoc.value = res.doc
+    else aboutDoc.value = res.doc
   } catch (err) {
     toast.fail(err, 'Translation failed')
   }
@@ -439,12 +449,12 @@ async function translateWhy() {
         >
           <template #actions>
             <UButton
-              v-if="s.key === 'why' && !isSource && canEditLang && aiTranslate"
+              v-if="(s.key === 'why' || s.key === 'about') && !isSource && canEditLang && aiTranslate"
               size="sm"
               variant="soft"
               icon="i-lucide-languages"
               label="AI translate"
-              @click.stop="translateWhy"
+              @click.stop="translateText(s.key as TemplateText)"
             />
             <UButton
               v-if="s.custom && canWrite"
@@ -669,6 +679,31 @@ async function translateWhy() {
               />
               <p
                 v-if="whyIsStandard"
+                class="text-xs text-(--ui-text-muted)"
+              >
+                This is the {{ PT_LABELS.template[source?.templateKey ?? ''] ?? 'template' }} template's standard text. Visitors see it until you change it.
+              </p>
+            </div>
+
+            <div
+              v-else-if="s.key === 'about'"
+              class="space-y-3"
+            >
+              <UAlert
+                v-if="aboutGuidance && canEditLang"
+                color="neutral"
+                variant="subtle"
+                icon="i-lucide-lightbulb"
+                :description="aboutGuidance"
+              />
+              <PtRichEditor
+                v-model="aboutDoc"
+                :dir="dir"
+                :disabled="!canEditLang"
+                placeholder="What is this campaign about? What should people know about the people or place you pray for?"
+              />
+              <p
+                v-if="aboutIsStandard"
                 class="text-xs text-(--ui-text-muted)"
               >
                 This is the {{ PT_LABELS.template[source?.templateKey ?? ''] ?? 'template' }} template's standard text. Visitors see it until you change it.

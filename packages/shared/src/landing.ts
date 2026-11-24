@@ -7,12 +7,12 @@ import { campaignSeries } from './campaigns'
 import { getTemplate } from './setup'
 
 // `top` is always first. `custom` is where custom sections sit by default.
-export const LANDING_SECTIONS = ['top', 'goal', 'why', 'custom', 'stories', 'how', 'signup', 'today', 'share', 'contact', 'app'] as const
+export const LANDING_SECTIONS = ['top', 'why', 'goal', 'about', 'custom', 'stories', 'how', 'signup', 'today', 'share', 'contact', 'app'] as const
 export type LandingSection = typeof LANDING_SECTIONS[number]
 
 // Sections a champion may hide. The top section and the signup form always
 // show. `custom` hides every custom section; `custom:<id>` hides one.
-export const HIDEABLE_SECTIONS: readonly LandingSection[] = ['goal', 'why', 'custom', 'stories', 'how', 'today', 'share', 'contact', 'app']
+export const HIDEABLE_SECTIONS: readonly LandingSection[] = ['goal', 'why', 'about', 'custom', 'stories', 'how', 'today', 'share', 'contact', 'app']
 
 const CUSTOM_PREFIX = 'custom:'
 
@@ -72,7 +72,7 @@ export function expandHiddenCustom(hidden: readonly string[], customIds: readonl
 export function visibleSections(
   landing: { hidden?: string[], order?: string[], custom?: { id: string }[] },
   templateKey: string | null | undefined,
-  opts: { hasStories: boolean, hasWhy: boolean, appAvailable: boolean, hasCustom: (id: string) => boolean }
+  opts: { hasStories: boolean, hasWhy: boolean, hasAbout: boolean, appAvailable: boolean, hasCustom: (id: string) => boolean }
 ): string[] {
   const hidden = landing.hidden ?? getTemplate(templateKey).hiddenSections
   return landingOrder(landing.order, (landing.custom ?? []).map(c => c.id)).filter((s) => {
@@ -81,6 +81,7 @@ export function visibleSections(
     const id = customSectionId(s)
     if (id !== null) return opts.hasCustom(id)
     if (s === 'why') return opts.hasWhy
+    if (s === 'about') return opts.hasAbout
     if (s === 'stories') return opts.hasStories
     if (s === 'app') return opts.appAvailable
     return true

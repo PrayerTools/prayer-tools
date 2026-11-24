@@ -338,6 +338,7 @@ export interface CampaignLanding {
   // Shown under the hero heading; the campaign's description is for search and link previews.
   subtitle?: TranslatableText
   why?: Record<string, TiptapDoc>
+  about?: Record<string, TiptapDoc>
   // Standard section keys, `custom:<id>` for one custom section, or `custom` for all of them.
   hidden?: string[]
   // The sections after the top one, as `hidden` names them; absent while the default order applies.

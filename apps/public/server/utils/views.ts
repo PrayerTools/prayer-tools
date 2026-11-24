@@ -4,7 +4,7 @@ import type { H3Event } from 'h3'
 import { withOrg } from '@prayertools/shared/db/scope'
 import { parseSitePath, sitePath } from '@prayertools/shared/paths'
 import { landingStories, visibleSections } from '@prayertools/shared/landing'
-import { landingWhyDoc } from '@prayertools/shared/i18n/landing'
+import { landingDoc } from '@prayertools/shared/i18n/landing'
 import { prayingNow } from '@prayertools/shared/stats'
 import { entryDate } from '@prayertools/shared/schedule'
 import { addDays, todayIn } from '@prayertools/shared/dates'
@@ -192,8 +192,10 @@ async function landingPage(tx: Parameters<typeof loadSiteData>[0], event: H3Even
   const templateKey = campaign?.template_key ?? null
   const side = !!campaign && isSideCampaign(campaign)
   const vars = campaign ? contentVars(data, ctx.name, campaign, lang) : undefined
-  const whyDoc = landingWhyDoc(landing.why, templateKey, lang, def)
+  const whyDoc = landingDoc('why', landing.why, templateKey, lang, def)
   const why = whyDoc ? docHtml({ [lang]: whyDoc }, lang, def, vars) : ''
+  const aboutDoc = landingDoc('about', landing.about, templateKey, lang, def)
+  const about = aboutDoc ? docHtml({ [lang]: aboutDoc }, lang, def, vars) : ''
   const custom = (landing.custom ?? []).map(s => ({
     id: s.id,
     heading: textIn(s.heading, lang, def),
@@ -223,13 +225,14 @@ async function landingPage(tx: Parameters<typeof loadSiteData>[0], event: H3Even
   const shown = visibleSections(landing, templateKey, {
     hasStories: landing.stories !== false && stories.length > 0,
     hasWhy: !!why,
+    hasAbout: !!about,
     appAvailable: appAvailable(),
     hasCustom: id => withContent.has(id)
   }).filter(s => (s !== 'today' || today) && (s !== 'goal' || !!run))
   // In the admin editor, sections that are switched on but have nothing to
   // show yet appear as placeholders.
   const sections = ctx.editor
-    ? visibleSections(landing, templateKey, { hasStories: true, hasWhy: true, appAvailable: true, hasCustom: () => true }).filter(s => s !== 'goal' || goalSection)
+    ? visibleSections(landing, templateKey, { hasStories: true, hasWhy: true, hasAbout: true, appAvailable: true, hasCustom: () => true }).filter(s => s !== 'goal' || goalSection)
     : shown
   const placeholders = sections.filter(s => !shown.includes(s))
   return {
@@ -238,7 +241,9 @@ async function landingPage(tx: Parameters<typeof loadSiteData>[0], event: H3Even
     progress,
     run,
     subtitle: textIn(landing.subtitle, lang, def),
+    template: templateKey,
     why,
+    about,
     today,
     stories: stories.map(s => ({ id: s.id, body: s.body, name: s.use_name ? s.name : null })),
     custom,

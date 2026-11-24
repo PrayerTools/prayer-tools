@@ -5,7 +5,7 @@ import { entryUnit } from '~/utils/commitment'
 
 const props = defineProps<{ page: Extract<PageView, { kind: 'landing' }> }>()
 const { site, link, campaignLink, st, num, date, dateRange } = useSite()
-const { t } = useI18n()
+const { t, te } = useI18n()
 const campaign = computed(() => site.value.campaign)
 
 // The sections after the hero, in page order. Neighbouring sections share a
@@ -70,6 +70,11 @@ const when = computed(() => {
     detail: left <= 1 ? t(`landing.last_${unit}`) : t(`landing.${unit}s_left`, { n: num(left) }, left),
     dates
   }
+})
+// A template with its own about heading names it `landing.about.title_<template>`, e.g. "About Ramadan".
+const aboutTitle = computed(() => {
+  const own = props.page.template ? `landing.about.title_${props.page.template}` : null
+  return site.value.strings['landing.about.title'] || (own && te(own) ? t(own) : t('landing.about.title'))
 })
 const showProgress = computed(() => !!props.page.progress && (props.page.progress.goal !== 'people' || site.value.settings.showPeopleCount))
 
@@ -232,6 +237,12 @@ function onJoined(verify: boolean) {
             <LandingHeading :title="st('landing.why.title')" title-id="why-title" />
             <!-- eslint-disable-next-line vue/no-v-html -->
             <div class="pt-content pt-centered mx-auto max-w-prose" v-html="page.why" />
+          </section>
+
+          <section v-else-if="s.key === 'about'" aria-labelledby="about-title" class="text-center" data-pt-section="about">
+            <LandingHeading :title="aboutTitle" title-id="about-title" />
+            <!-- eslint-disable-next-line vue/no-v-html -->
+            <div class="pt-content pt-centered mx-auto max-w-prose" v-html="page.about" />
           </section>
 
           <section v-else-if="s.custom" :aria-labelledby="`custom-${s.custom.id}`" :data-pt-custom="s.custom.id" class="space-y-4 text-center">

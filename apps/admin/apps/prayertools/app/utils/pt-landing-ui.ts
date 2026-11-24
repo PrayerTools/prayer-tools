@@ -1,10 +1,11 @@
 // Landing page editor copy: what each fixed section shows, its icon, and the
-// guidance a campaign template gives for the champion's own "why" text.
+// guidance a campaign template gives for the champion's own "why" and about texts.
 
 const SECTION_INFO: Record<string, { description: string, icon: string }> = {
   top: { description: 'Heading, subtitle, hero image and the signup button.', icon: 'i-lucide-panel-top' },
   goal: { description: 'The campaign\'s dates, progress toward its goal, people count and a calendar of its days.', icon: 'i-lucide-target' },
   why: { description: 'Your own words about why people should pray.', icon: 'i-lucide-message-square-quote' },
+  about: { description: 'More about the people, place or event you pray for. Hidden until there is text.', icon: 'i-lucide-info' },
   custom: { description: 'A section of your own.', icon: 'i-lucide-layout-list' },
   stories: { description: 'Stories from people who prayed, ones you publish from the Stories page.', icon: 'i-lucide-heart-handshake' },
   how: { description: 'Four steps with icons: signing up, reminders, praying and meeting God.', icon: 'i-lucide-list-checks' },
@@ -27,6 +28,7 @@ export const PT_LANDING_SELECTED = 'ring-2 ring-(--ui-primary) bg-(--ui-primary)
 export const PT_LANDING_TEXT_FIELDS: Record<string, { key: string, label: string, multiline?: boolean }[]> = {
   goal: [{ key: 'landing.goal.title', label: 'Heading' }],
   why: [{ key: 'landing.why.title', label: 'Heading' }],
+  about: [{ key: 'landing.about.title', label: 'Heading' }],
   stories: [{ key: 'landing.stories.title', label: 'Heading' }],
   how: [
     { key: 'landing.how.title', label: 'Heading' },
@@ -52,6 +54,10 @@ const GUIDANCE: Record<string, Record<string, string>> = {
     ramadan: 'During Ramadan many Muslims seek God. Share why you are praying for them this month, what you hope for, and how praying 15 minutes a day makes a difference.',
     disaster_4: 'Say briefly what happened, who is affected, and what you are asking God for in these first days. Keep it short: people should be able to start praying right away.',
     anytime: 'Tell visitors what they will pray for and that they can start today: everyone begins at the first entry on the day they sign up.'
+  },
+  about: {
+    generic: 'Background for people who want to know more: the people, place or event you pray for, its history and its needs. Leave it empty to hide the section.',
+    ramadan: 'The standard text explains what Ramadan is and why it is a strategic time to pray. Replace it with your own if you want to say more about the people you pray for.'
   }
 }
 
