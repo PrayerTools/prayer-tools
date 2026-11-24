@@ -112,7 +112,7 @@ function onJoined(verify: boolean) {
         <div class="space-y-5">
           <!-- The header already shows the site name, so the hero is titled with the campaign's. -->
           <h1 id="top-title" class="text-3xl sm:text-5xl font-bold leading-tight">{{ campaign?.name ?? site.name }}</h1>
-          <p v-if="page.subtitle" class="text-lg opacity-95">{{ page.subtitle }}</p>
+          <p v-if="page.subtitle" class="text-xl sm:text-2xl font-semibold text-balance">{{ page.subtitle }}</p>
           <div class="flex flex-wrap justify-center gap-3">
             <UButton v-if="subscribed" :to="link('manage')" size="xl" color="neutral" variant="solid" class="bg-white text-stone-900 hover:bg-stone-100" :label="t('landing.manage_times')" />
             <UButton v-else to="#signup" size="xl" color="neutral" variant="solid" class="bg-white text-stone-900 hover:bg-stone-100" :label="st('landing.signup.title')" />
