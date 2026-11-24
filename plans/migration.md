@@ -91,7 +91,7 @@ WordPress keeps each text on the campaign in the campaign's language, and its ot
 | `reply_to_email`, else `from_email` | site reply-to. v3 sends from the platform mail domain, so `from_email` isn't the sender. |
 | `email_logo`, `logo_url` | site email logo and site logo |
 | `email_signature` | site email signature |
-| `custom_theme_color`, else a preset `theme_color` (forestgreen, green, orange, purple, teal) | site color, from the home campaign (`dt_campaign_selected_campaign`) as WordPress showed it at the site's root, else the most recent campaign with one. The plugin's default theme (`preset`) leaves v3's default color. |
+| `custom_theme_color`, else a preset `theme_color` (forestgreen, green, orange, purple, teal) | site color, from the home campaign (`dt_campaign_selected_campaign`) as WordPress showed it at the site's root, else the most recent campaign with one. The plugin's default theme (`preset`, also used when a campaign set none) is its blue `#4676fa`, as WordPress showed it. |
 | `email_tagline`, `signup_content`, `reminder_content` (and older `campaign_strings`) | the campaign's email text: tagline and note in the welcome email, note in reminders |
 
 - Site-wide values (strings, sender, logos, signature) come from the most recent campaign that set them, main campaigns first.

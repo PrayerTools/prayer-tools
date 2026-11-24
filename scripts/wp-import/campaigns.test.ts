@@ -24,11 +24,11 @@ describe('campaign colors', () => {
   const meta = (entries: Record<string, string>) => new Map(Object.entries(entries).map(([k, v]) => [k, [v]]))
   const colored = (wpId: number, color: string | null, startDate: string, kind: string | null = null) => ({ wpId, color, startDate, kind }) as CampaignPlan
 
-  test('a custom color wins over the preset theme, and the default theme is no color', () => {
+  test('a custom color wins over the theme, and a campaign without a theme has the default theme\'s blue', () => {
     expect(campaignColor(meta({ custom_theme_color: '#8E4585', theme_color: 'teal' }))).toBe('#8e4585')
     expect(campaignColor(meta({ theme_color: 'forestgreen' }))).toBe('#1eb858')
-    expect(campaignColor(meta({ theme_color: 'preset' }))).toBeNull()
-    expect(campaignColor(undefined)).toBeNull()
+    expect(campaignColor(meta({ theme_color: 'preset' }))).toBe('#4676fa')
+    expect(campaignColor(undefined)).toBe('#4676fa')
   })
 
   test('the site takes its home campaign color, else the most recent main campaign with one', () => {
