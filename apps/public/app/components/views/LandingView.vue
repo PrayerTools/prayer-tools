@@ -117,9 +117,9 @@ function onJoined(verify: boolean) {
         <h1 id="top-title" class="text-3xl sm:text-5xl font-bold leading-tight">{{ campaign?.name ?? site.name }}</h1>
         <p v-if="page.subtitle" class="text-xl sm:text-2xl font-semibold text-balance">{{ page.subtitle }}</p>
         <div class="flex flex-wrap justify-center gap-3">
-          <UButton v-if="subscribed" :to="link('manage')" size="xl" color="neutral" variant="solid" class="bg-white text-stone-900 hover:bg-stone-100" :label="t('landing.manage_times')" />
-          <UButton v-else to="#signup" size="xl" color="neutral" variant="solid" class="bg-white text-stone-900 hover:bg-stone-100" :label="st('landing.signup.title')" />
-          <UButton v-if="page.today" :to="todayLink" size="xl" variant="outline" class="text-(--brand-text) ring-(--brand-text)/60 hover:bg-white/10" :label="page.today.current ? t('landing.pray_today') : t('landing.read_latest')" />
+          <UButton v-if="subscribed" :to="link('manage')" size="xl" class="pt-cta px-7" :label="t('landing.manage_times')" />
+          <UButton v-else to="#signup" size="xl" class="pt-cta px-7" :label="st('landing.signup.title')" />
+          <UButton v-if="page.today" :to="todayLink" size="xl" variant="outline" class="rounded-full px-7 font-semibold text-(--brand-text) ring-(--brand-text)/60 hover:bg-white/10" :label="page.today.current ? t('landing.pray_today') : t('landing.read_latest')" />
         </div>
         <NuxtLink :to="link('about')" class="inline-flex items-center gap-1.5 font-medium underline underline-offset-4 decoration-current/40 hover:decoration-current">
           {{ moreAboutLabel(page.template) }}<UIcon name="i-lucide-arrow-right" class="size-4 rtl:rotate-180" />
