@@ -31,7 +31,7 @@ export const PT_LABELS = {
   license: { own: 'Our own content', permission: 'Used with permission', cc_by: 'CC BY', cc_by_sa: 'CC BY-SA', other: 'Other (described)' } as Record<string, string>,
   // The English headings the public page shows (apps/public i18n `landing.*.title`).
   landingSection: {
-    top: 'Top of the page', why: 'Why we pray', custom: 'Custom sections', stories: 'Stories', how: 'How it works', signup: 'Sign up to pray',
+    top: 'Top of the page', goal: 'Our progress', why: 'Why we pray', custom: 'Custom sections', stories: 'Stories', how: 'How it works', signup: 'Sign up to pray',
     today: 'Today\'s prayer', share: 'Invite others to pray', contact: 'Contact us', app: 'Pray with the app'
   } as Record<string, string>,
   emailKind: {

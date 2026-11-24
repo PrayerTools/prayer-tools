@@ -54,6 +54,12 @@
       "dates": "{start} – {end}",
       "open": "Más información"
     },
+    "goal": {
+      "title": "Nuestro progreso",
+      "starts_in": "Comienza en {n} día | Comienza en {n} días",
+      "since": "Desde el {date}",
+      "today": "hoy"
+    },
     "why": {
       "title": "Por qué oramos"
     },

@@ -7,12 +7,12 @@ import { campaignSeries } from './campaigns'
 import { getTemplate } from './setup'
 
 // `top` is always first. `custom` is where custom sections sit by default.
-export const LANDING_SECTIONS = ['top', 'why', 'custom', 'stories', 'how', 'signup', 'today', 'share', 'contact', 'app'] as const
+export const LANDING_SECTIONS = ['top', 'goal', 'why', 'custom', 'stories', 'how', 'signup', 'today', 'share', 'contact', 'app'] as const
 export type LandingSection = typeof LANDING_SECTIONS[number]
 
 // Sections a champion may hide. The top section and the signup form always
 // show. `custom` hides every custom section; `custom:<id>` hides one.
-export const HIDEABLE_SECTIONS: readonly LandingSection[] = ['why', 'custom', 'stories', 'how', 'today', 'share', 'contact', 'app']
+export const HIDEABLE_SECTIONS: readonly LandingSection[] = ['goal', 'why', 'custom', 'stories', 'how', 'today', 'share', 'contact', 'app']
 
 const CUSTOM_PREFIX = 'custom:'
 

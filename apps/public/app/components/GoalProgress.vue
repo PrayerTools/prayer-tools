@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { GoalProgressView } from '~~/shared/view'
 
-const props = defineProps<{ progress: GoalProgressView, onBrand?: boolean }>()
+const props = defineProps<{ progress: GoalProgressView }>()
 const { site, num, hours } = useSite()
 const { t } = useI18n()
 
@@ -28,15 +28,14 @@ const showBar = computed(() => props.progress.percent !== null && (props.progres
     <p class="text-lg font-semibold">{{ label }}</p>
     <div
       v-if="showBar"
-      class="h-3 rounded-full overflow-hidden"
-      :class="onBrand ? 'bg-white/30' : 'bg-stone-200'"
+      class="h-3 rounded-full overflow-hidden bg-stone-200"
       role="progressbar"
       :aria-valuenow="progress.percent ?? 0"
       aria-valuemin="0"
       aria-valuemax="100"
       :aria-label="label"
     >
-      <div class="h-full rounded-full" :class="onBrand ? 'bg-(--brand-text)' : 'bg-(--brand)'" :style="{ width: `${progress.percent ?? 0}%` }" />
+      <div class="h-full rounded-full bg-(--brand)" :style="{ width: `${progress.percent ?? 0}%` }" />
     </div>
     <p v-if="progress.goal !== 'people' && showPeople" class="text-sm opacity-90">{{ people }}</p>
   </div>

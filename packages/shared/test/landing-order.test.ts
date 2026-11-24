@@ -6,31 +6,31 @@ const custom = [{ id: 'a' }, { id: 'b' }]
 
 describe('landing section order', () => {
   it('puts custom sections after "why" by default, in their own order', () => {
-    expect(landingOrder(undefined, [])).toEqual(['why', 'stories', 'how', 'signup', 'today', 'share', 'contact', 'app'])
-    expect(landingOrder(undefined, ['a', 'b'])).toEqual(['why', 'custom:a', 'custom:b', 'stories', 'how', 'signup', 'today', 'share', 'contact', 'app'])
+    expect(landingOrder(undefined, [])).toEqual(['goal', 'why', 'stories', 'how', 'signup', 'today', 'share', 'contact', 'app'])
+    expect(landingOrder(undefined, ['a', 'b'])).toEqual(['goal', 'why', 'custom:a', 'custom:b', 'stories', 'how', 'signup', 'today', 'share', 'contact', 'app'])
   })
 
   it('follows a stored order', () => {
-    const stored = ['signup', 'custom:b', 'why', 'stories', 'custom:a', 'how', 'today', 'share', 'contact', 'app']
+    const stored = ['goal', 'signup', 'custom:b', 'why', 'stories', 'custom:a', 'how', 'today', 'share', 'contact', 'app']
     expect(landingOrder(stored, ['a', 'b'])).toEqual(stored)
   })
 
   it('slots sections missing from the stored order in after the sections that precede them by default', () => {
     // A custom section added after the order was stored.
     expect(landingOrder(['why', 'stories', 'custom:a', 'how', 'signup', 'today', 'share', 'contact', 'app'], ['a', 'b']))
-      .toEqual(['why', 'stories', 'custom:a', 'custom:b', 'how', 'signup', 'today', 'share', 'contact', 'app'])
+      .toEqual(['goal', 'why', 'stories', 'custom:a', 'custom:b', 'how', 'signup', 'today', 'share', 'contact', 'app'])
     expect(landingOrder(['stories', 'custom:a', 'why', 'how', 'signup', 'today', 'share', 'contact', 'app'], ['a', 'b']))
-      .toEqual(['stories', 'custom:a', 'why', 'custom:b', 'how', 'signup', 'today', 'share', 'contact', 'app'])
+      .toEqual(['goal', 'stories', 'custom:a', 'why', 'custom:b', 'how', 'signup', 'today', 'share', 'contact', 'app'])
     expect(landingOrder(['signup', 'why', 'stories', 'how', 'today', 'share', 'contact', 'app'], ['a']))
-      .toEqual(['signup', 'why', 'custom:a', 'stories', 'how', 'today', 'share', 'contact', 'app'])
+      .toEqual(['goal', 'signup', 'why', 'custom:a', 'stories', 'how', 'today', 'share', 'contact', 'app'])
     // Standard sections the stored order does not know.
     expect(landingOrder(['signup', 'how', 'stories'], []))
-      .toEqual(['why', 'signup', 'how', 'stories', 'today', 'share', 'contact', 'app'])
+      .toEqual(['goal', 'why', 'signup', 'how', 'stories', 'today', 'share', 'contact', 'app'])
   })
 
   it('drops unknown entries, deleted custom sections, the top section and duplicates', () => {
     expect(landingOrder(['top', 'signup', 'nope', 'custom', 'custom:gone', 'custom:a', 'signup', 'why', 'custom:a', 'stories', 'how', 'today', 'share', 'contact', 'app'], ['a']))
-      .toEqual(['signup', 'custom:a', 'why', 'stories', 'how', 'today', 'share', 'contact', 'app'])
+      .toEqual(['goal', 'signup', 'custom:a', 'why', 'stories', 'how', 'today', 'share', 'contact', 'app'])
     expect(landingOrder('why' as unknown as string[], ['a'])).toEqual(landingOrder(undefined, ['a']))
   })
 
@@ -38,23 +38,23 @@ describe('landing section order', () => {
     expect(storedLandingOrder(undefined, ['a'])).toBeUndefined()
     expect(storedLandingOrder(landingOrder(undefined, ['a']), ['a'])).toBeUndefined()
     expect(storedLandingOrder(['why', 'nope'], ['a'])).toBeUndefined()
-    expect(storedLandingOrder(['custom:a', 'why'], ['a'])).toEqual(['custom:a', 'why', 'stories', 'how', 'signup', 'today', 'share', 'contact', 'app'])
+    expect(storedLandingOrder(['custom:a', 'why'], ['a'])).toEqual(['goal', 'custom:a', 'why', 'stories', 'how', 'signup', 'today', 'share', 'contact', 'app'])
   })
 })
 
 describe('landing section visibility', () => {
   it('shows every section with something to show, in order', () => {
-    expect(visibleSections({ custom }, 'generic', all)).toEqual(['why', 'custom:a', 'custom:b', 'stories', 'how', 'signup', 'today', 'share', 'contact', 'app'])
+    expect(visibleSections({ custom }, 'generic', all)).toEqual(['goal', 'why', 'custom:a', 'custom:b', 'stories', 'how', 'signup', 'today', 'share', 'contact', 'app'])
     expect(visibleSections({ custom, order: ['signup', 'custom:b', 'why'] }, 'generic', { hasStories: false, hasWhy: false, appAvailable: false, hasCustom: id => id === 'b' }))
-      .toEqual(['signup', 'custom:b', 'how', 'today', 'share', 'contact'])
+      .toEqual(['goal', 'signup', 'custom:b', 'how', 'today', 'share', 'contact'])
   })
 
   it('hides one custom section by its own entry', () => {
-    expect(visibleSections({ custom, hidden: ['custom:a', 'how'] }, 'generic', all)).toEqual(['why', 'custom:b', 'stories', 'signup', 'today', 'share', 'contact', 'app'])
+    expect(visibleSections({ custom, hidden: ['custom:a', 'how'] }, 'generic', all)).toEqual(['goal', 'why', 'custom:b', 'stories', 'signup', 'today', 'share', 'contact', 'app'])
   })
 
   it('hides every custom section when "custom" is hidden', () => {
-    expect(visibleSections({ custom, hidden: ['custom'] }, 'generic', all)).toEqual(['why', 'stories', 'how', 'signup', 'today', 'share', 'contact', 'app'])
+    expect(visibleSections({ custom, hidden: ['custom'] }, 'generic', all)).toEqual(['goal', 'why', 'stories', 'how', 'signup', 'today', 'share', 'contact', 'app'])
     expect(isSectionHidden(['custom'], 'custom:a')).toBe(true)
     expect(isSectionHidden(['custom:b'], 'custom:a')).toBe(false)
   })

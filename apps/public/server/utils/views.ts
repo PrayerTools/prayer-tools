@@ -25,7 +25,7 @@ import { useDb } from './db'
 import type { SiteContext } from './site-context'
 import { buildSiteView, campaignView, loadSiteData, sideCampaigns, stateOf, type SiteData } from './site-data'
 import { contentBlocks, contentVars, docHtml, formatDate, visibleEntries } from './content'
-import { progressFor, statsFor } from './site-stats'
+import { progressFor, runFor, statsFor } from './site-stats'
 import { managedSubscription, manageView } from './manage'
 import { socialProviders } from './social-sign-in'
 import { sessionAccount } from './account-session'
@@ -216,22 +216,27 @@ async function landingPage(tx: Parameters<typeof loadSiteData>[0], event: H3Even
     ? (landing.custom ?? []).filter(s => !textIn(s.heading, lang, def) && !s.image_url && !videoEmbed(s.video_url) && Object.values(s.body ?? {}).every(isEmptyDoc)).map(s => s.id)
     : []
   const withContent = new Set(custom.map(s => s.id).filter(id => !blank.includes(id)))
+  const progress = campaign ? await progressFor(tx, campaign, data.settings.default_duration_min) : null
+  const run = campaign ? await runFor(tx, campaign, data.settings.default_duration_min) : null
+  // The goal section covers a run of shared dates, which start-anytime campaigns do not have.
+  const goalSection = campaign?.start_mode === 'date'
   const shown = visibleSections(landing, templateKey, {
     hasStories: landing.stories !== false && stories.length > 0,
     hasWhy: !!why,
     appAvailable: appAvailable(),
     hasCustom: id => withContent.has(id)
-  }).filter(s => s !== 'today' || today)
+  }).filter(s => (s !== 'today' || today) && (s !== 'goal' || !!run))
   // In the admin editor, sections that are switched on but have nothing to
   // show yet appear as placeholders.
   const sections = ctx.editor
-    ? visibleSections(landing, templateKey, { hasStories: true, hasWhy: true, appAvailable: true, hasCustom: () => true })
+    ? visibleSections(landing, templateKey, { hasStories: true, hasWhy: true, appAvailable: true, hasCustom: () => true }).filter(s => s !== 'goal' || goalSection)
     : shown
   const placeholders = sections.filter(s => !shown.includes(s))
   return {
     kind: 'landing',
     sections,
-    progress: campaign ? await progressFor(tx, campaign, data.settings.default_duration_min) : null,
+    progress,
+    run,
     subtitle: textIn(landing.subtitle, lang, def),
     why,
     today,

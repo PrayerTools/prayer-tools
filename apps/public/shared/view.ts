@@ -92,6 +92,17 @@ export interface GoalProgressView {
   percent: number | null
 }
 
+// The dates of a campaign that starts on a date, for the landing page's goal
+// section. The calendar shows up to two months from the start or from today,
+// with each campaign day's share of a coverage or prayer-time goal (null for
+// other goals); campaigns without an end have none.
+export interface CampaignRunView {
+  start: string
+  end: string | null
+  today: string
+  calendar: { months: string[], days: { date: string, percent: number | null }[] } | null
+}
+
 export interface ContentBlockView {
   title: string
   html: string
@@ -238,7 +249,7 @@ export interface MyView {
 export type PageView =
   // `sections` are the sections after the hero, in page order: a standard key or `custom:<id>`.
   // `placeholders` are the ones the admin editor's preview shows as empty.
-  | { kind: 'landing', sections: string[], progress: GoalProgressView | null, subtitle: string, why: string, today: { day: number, html: string, title: string } | null, stories: StoryView[], custom: CustomSectionView[], prayingNow: number, form: SignupFormView, placeholders: string[], side: SideCampaignView[] }
+  | { kind: 'landing', sections: string[], progress: GoalProgressView | null, run: CampaignRunView | null, subtitle: string, why: string, today: { day: number, html: string, title: string } | null, stories: StoryView[], custom: CustomSectionView[], prayingNow: number, form: SignupFormView, placeholders: string[], side: SideCampaignView[] }
   // `notify` offers the "notify me" form; `again` is the open run of the same
   // series, shown in its place.
   | { kind: 'between', stats: StatsView | null, endMessage: string, hasGuide: boolean, next: NextStep | null, notify: boolean, again: { campaign: string, path: string } | null }

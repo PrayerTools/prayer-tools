@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { CustomSectionView, PageView } from '~~/shared/view'
+import { daysBetween } from '@prayertools/shared/dates'
 import { entryUnit } from '~/utils/commitment'
 
 const props = defineProps<{ page: Extract<PageView, { kind: 'landing' }> }>()
-const { site, link, campaignLink, st, num, date } = useSite()
+const { site, link, campaignLink, st, num, date, dateRange } = useSite()
 const { t } = useI18n()
 const campaign = computed(() => site.value.campaign)
 
@@ -44,16 +45,27 @@ const signupIntro = computed(() => campaign.value?.state === 'upcoming' && campa
   ? t('signup.starts_on', { date: date(campaign.value.startDate) })
   : st('landing.signup.intro', { site: site.value.name }))
 
-// Where a running campaign with a shared start date stands, e.g. "Day 8 of 10 · 3 days left" (today counts as left).
-const runningLine = computed(() => {
+// Where a campaign with a start date stands: how soon it starts, or while it
+// runs "Day 8 of 10" and "3 days left" (today counts as left).
+const when = computed(() => {
   const c = campaign.value
-  if (c?.state !== 'active' || c.startMode !== 'date' || !c.startDate) return null
+  const run = props.page.run
+  if (!c || !run) return null
+  const dates = run.end ? dateRange(run.start, run.end) : c.state === 'upcoming' ? date(run.start) : t('landing.goal.since', { date: date(run.start) })
+  if (c.state === 'upcoming') {
+    const n = daysBetween(run.today, run.start)
+    return { headline: t('landing.goal.starts_in', { n: num(n) }, n), detail: null, dates }
+  }
   const unit = entryUnit(c.cadence)
-  if (!c.length) return t(`pray.${unit}`, { n: num(c.todayEntry) })
+  if (!c.length) return { headline: t(`pray.${unit}`, { n: num(c.todayEntry) }), detail: null, dates }
   const left = c.length - c.todayEntry + 1
-  const remaining = left <= 1 ? t(`landing.last_${unit}`) : t(`landing.${unit}s_left`, { n: num(left) }, left)
-  return `${t(`pray.${unit}_of`, { n: num(c.todayEntry), total: num(c.length) })} · ${remaining}`
+  return {
+    headline: t(`pray.${unit}_of`, { n: num(c.todayEntry), total: num(c.length) }),
+    detail: left <= 1 ? t(`landing.last_${unit}`) : t(`landing.${unit}s_left`, { n: num(left) }, left),
+    dates
+  }
 })
+const showProgress = computed(() => !!props.page.progress && (props.page.progress.goal !== 'people' || site.value.settings.showPeopleCount))
 
 const imageStyle = computed(() => site.value.image ? { objectPosition: `${site.value.image.fx * 100}% ${site.value.image.fy * 100}%` } : {})
 
@@ -101,12 +113,6 @@ function onJoined(verify: boolean) {
           <!-- The header already shows the site name, so the hero is titled with the campaign's. -->
           <h1 id="top-title" class="text-3xl sm:text-5xl font-bold leading-tight">{{ campaign?.name ?? site.name }}</h1>
           <p v-if="page.subtitle" class="text-lg opacity-95">{{ page.subtitle }}</p>
-          <p v-if="campaign?.state === 'upcoming' && campaign.startDate" class="font-medium">{{ t('landing.starts_on', { date: date(campaign.startDate) }) }}</p>
-          <p v-if="runningLine" class="font-medium tabular-nums">{{ runningLine }}</p>
-          <GoalProgress v-if="page.progress" :progress="page.progress" on-brand />
-          <p v-if="page.prayingNow > 0" class="inline-flex items-center gap-2 text-sm tabular-nums">
-            <span class="size-2 shrink-0 rounded-full bg-current" aria-hidden="true" />{{ t('pray.praying_now', { n: num(page.prayingNow) }, page.prayingNow) }}
-          </p>
           <div class="flex flex-wrap justify-center gap-3">
             <UButton v-if="subscribed" :to="link('manage')" size="xl" color="neutral" variant="solid" class="bg-white text-stone-900 hover:bg-stone-100" :label="t('landing.manage_times')" />
             <UButton v-else to="#signup" size="xl" color="neutral" variant="solid" class="bg-white text-stone-900 hover:bg-stone-100" :label="st('landing.signup.title')" />
@@ -193,6 +199,28 @@ function onJoined(verify: boolean) {
           </div>
           <EditorPlaceholder v-else-if="s.placeholder && s.customId !== undefined" section="custom" :custom-id="s.customId" title="New section" />
           <EditorPlaceholder v-else-if="s.placeholder" :section="s.key" :title="st(`landing.${s.key}.title`)" />
+
+          <section v-else-if="s.key === 'goal'" aria-labelledby="goal-title" data-pt-section="goal">
+            <h2 id="goal-title" class="text-2xl font-bold mb-4">{{ st('landing.goal.title') }}</h2>
+            <div class="rounded-xl border border-stone-200 bg-white px-5 py-6 shadow-[0_1px_3px_rgb(28_25_23/0.05)] sm:px-8 sm:py-8">
+              <div v-if="when || showProgress || page.prayingNow > 0" class="grid gap-6 sm:grid-cols-2">
+                <div v-if="when" class="space-y-1">
+                  <p class="text-3xl font-bold tabular-nums">{{ when.headline }}</p>
+                  <p v-if="when.detail" class="text-lg font-medium tabular-nums">{{ when.detail }}</p>
+                  <p class="text-stone-600">{{ when.dates }}</p>
+                </div>
+                <div v-if="showProgress || page.prayingNow > 0" class="space-y-3">
+                  <GoalProgress v-if="showProgress" :progress="page.progress!" />
+                  <p v-if="page.prayingNow > 0" class="inline-flex items-center gap-2 text-sm tabular-nums text-stone-700">
+                    <span class="size-2 shrink-0 rounded-full bg-success" aria-hidden="true" />{{ t('pray.praying_now', { n: num(page.prayingNow) }, page.prayingNow) }}
+                  </p>
+                </div>
+              </div>
+              <div v-if="page.run?.calendar" :class="(when || showProgress || page.prayingNow > 0) && 'mt-8 border-t border-stone-200 pt-6'">
+                <GoalCalendar :calendar="page.run.calendar" :today="page.run.today" />
+              </div>
+            </div>
+          </section>
 
           <section v-else-if="s.key === 'why'" aria-labelledby="why-title" data-pt-section="why">
             <h2 id="why-title" class="text-2xl font-bold mb-4">{{ st('landing.why.title') }}</h2>

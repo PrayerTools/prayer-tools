@@ -2,7 +2,7 @@
 // as overrides over the public server's i18n defaults).
 export const EDITABLE_SITE_STRINGS = [
   'landing.how.title', 'landing.how.body', 'landing.signup.title', 'landing.signup.intro', 'landing.share.title',
-  'landing.share.body', 'landing.contact.title', 'landing.contact.body', 'landing.why.title', 'landing.stories.title', 'landing.today.title',
+  'landing.share.body', 'landing.contact.title', 'landing.contact.body', 'landing.why.title', 'landing.stories.title', 'landing.today.title', 'landing.goal.title',
   'landing.app.title', 'landing.app.body', 'share.default_message',
   'signup.success', 'between.notify_intro'
 ] as const

@@ -58,6 +58,14 @@ export function useSite() {
     return new Intl.DateTimeFormat(site.value.lang, { dateStyle: 'long', timeZone: 'UTC' }).format(new Date(`${iso}T00:00:00Z`))
   }
 
+  // "February 8 – March 9, 2027": the start drops the year it shares with the end.
+  function dateRange(start: string, end: string): string {
+    const from = start.slice(0, 4) === end.slice(0, 4)
+      ? new Intl.DateTimeFormat(site.value.lang, { month: 'long', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${start}T00:00:00Z`))
+      : date(start)
+    return t('landing.side.dates', { start: from, end: date(end) })
+  }
+
   function shareUrl(referral?: string | null): string {
     const base = `${site.value.url}${link('', [], { current: !site.value.campaign?.side })}`.replace(/\/$/, '') || site.value.url
     return referral ? `${base}${base.includes('?') ? '&' : '?'}r=${encodeURIComponent(referral)}` : base
@@ -67,5 +75,5 @@ export function useSite() {
     return site.value.shareMessage || st('share.default_message', { site: site.value.name })
   }
 
-  return { site, link, campaignLink, st, num, minutes, hours, date, shareUrl, shareText }
+  return { site, link, campaignLink, st, num, minutes, hours, date, dateRange, shareUrl, shareText }
 }

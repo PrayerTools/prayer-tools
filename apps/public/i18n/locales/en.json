@@ -57,6 +57,12 @@
       "dates": "{start} – {end}",
       "open": "Find out more"
     },
+    "goal": {
+      "title": "Our progress",
+      "starts_in": "Starts in {n} day | Starts in {n} days",
+      "since": "Since {date}",
+      "today": "today"
+    },
     "why": {
       "title": "Why we pray"
     },

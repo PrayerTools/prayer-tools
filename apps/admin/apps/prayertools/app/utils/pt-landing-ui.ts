@@ -2,7 +2,8 @@
 // guidance a campaign template gives for the champion's own "why" text.
 
 const SECTION_INFO: Record<string, { description: string, icon: string }> = {
-  top: { description: 'Heading, subtitle, hero image, people count or goal progress, and the signup button.', icon: 'i-lucide-panel-top' },
+  top: { description: 'Heading, subtitle, hero image and the signup button.', icon: 'i-lucide-panel-top' },
+  goal: { description: 'The campaign\'s dates, progress toward its goal, people count and a calendar of its days.', icon: 'i-lucide-target' },
   why: { description: 'Your own words about why people should pray.', icon: 'i-lucide-message-square-quote' },
   custom: { description: 'A section of your own.', icon: 'i-lucide-layout-list' },
   stories: { description: 'Stories from people who prayed, ones you publish from the Stories page.', icon: 'i-lucide-heart-handshake' },
@@ -24,6 +25,7 @@ export const PT_LANDING_SELECTED = 'ring-2 ring-(--ui-primary) bg-(--ui-primary)
 // The site's own wording for each section's standard text (pt_site_string
 // keys); the first field is the section heading.
 export const PT_LANDING_TEXT_FIELDS: Record<string, { key: string, label: string, multiline?: boolean }[]> = {
+  goal: [{ key: 'landing.goal.title', label: 'Heading' }],
   why: [{ key: 'landing.why.title', label: 'Heading' }],
   stories: [{ key: 'landing.stories.title', label: 'Heading' }],
   how: [{ key: 'landing.how.title', label: 'Heading' }, { key: 'landing.how.body', label: 'Text', multiline: true }],
