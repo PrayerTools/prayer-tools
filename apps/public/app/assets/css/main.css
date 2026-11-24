@@ -43,6 +43,9 @@ html:has(.public-campaign) { scroll-padding-top: 3.75rem; }
 /* Content that fills a padded card: the card's padding sets the outer spacing. */
 .pt-content.pt-flush > :first-child { margin-top: 0; }
 .pt-content.pt-flush > :last-child { margin-bottom: 0; }
+/* Centered text: the first paragraph leads, and lists stay start-aligned in a centered block. */
+.pt-content.pt-centered > p:first-child { font-size: 1.25rem; font-weight: 500; }
+.pt-content.pt-centered :is(ul, ol) { display: table; margin-inline: auto; text-align: start; }
 
 :focus-visible { outline: 3px solid var(--brand-foreground, var(--brand)); outline-offset: 2px; }
 .pt-content p.button a { display: inline-block; background: var(--brand); color: var(--brand-text); padding: 0.6em 1.4em; border-radius: 0.5rem; text-decoration: none; font-weight: 600; }

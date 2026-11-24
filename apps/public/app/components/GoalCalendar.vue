@@ -54,7 +54,7 @@ const months = computed(() => {
 <template>
   <div class="grid gap-6" :class="months.length > 1 && 'sm:grid-cols-2'">
     <table v-for="month in months" :key="month.key" class="w-full max-w-xs table-fixed border-separate border-spacing-1 justify-self-center">
-      <caption class="pb-2 text-start font-semibold">{{ month.title }}</caption>
+      <caption class="pb-2 font-semibold">{{ month.title }}</caption>
       <thead>
         <tr>
           <th v-for="w in weekdays" :key="w.long" scope="col" class="pb-1 text-xs font-medium text-stone-600">

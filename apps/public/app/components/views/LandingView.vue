@@ -178,21 +178,21 @@ function onJoined(verify: boolean) {
         <template v-for="s in block.entries" :key="s.key">
           <div v-if="s.cards" class="grid gap-6 sm:grid-cols-2">
             <template v-for="(c, i) in s.cards" :key="c.key">
-              <SectionCard v-if="c.key === 'share'" :title="st('landing.share.title')" title-id="share-title" data-pt-section="share" :class="s.cards.length % 2 && i === s.cards.length - 1 && 'sm:col-span-2'">
+              <SectionCard v-if="c.key === 'share'" :title="st('landing.share.title')" title-id="share-title" data-pt-section="share" centered :class="s.cards.length % 2 && i === s.cards.length - 1 && 'sm:col-span-2'">
                 <div class="space-y-4 py-5">
                   <p class="text-stone-700">{{ st('landing.share.body') }}</p>
-                  <ShareButton size="md" variant="soft" />
+                  <ShareButton size="md" variant="soft" class="justify-center" />
                 </div>
               </SectionCard>
-              <SectionCard v-else-if="c.key === 'contact'" :title="st('landing.contact.title')" title-id="contact-title" data-pt-section="contact" :class="s.cards.length % 2 && i === s.cards.length - 1 && 'sm:col-span-2'">
+              <SectionCard v-else-if="c.key === 'contact'" :title="st('landing.contact.title')" title-id="contact-title" data-pt-section="contact" centered :class="s.cards.length % 2 && i === s.cards.length - 1 && 'sm:col-span-2'">
                 <div class="space-y-4 py-5">
                   <p class="text-stone-700">{{ st('landing.contact.body') }}</p>
                   <UButton :to="link('contact')" variant="outline" color="neutral" icon="i-lucide-mail" :label="t('contact.button')" />
                 </div>
               </SectionCard>
-              <SectionCard v-else :title="st('landing.app.title')" title-id="app-title" data-pt-section="app" :class="s.cards.length % 2 && i === s.cards.length - 1 && 'sm:col-span-2'">
+              <SectionCard v-else :title="st('landing.app.title')" title-id="app-title" data-pt-section="app" centered :class="s.cards.length % 2 && i === s.cards.length - 1 && 'sm:col-span-2'">
                 <div class="py-5">
-                  <AppLinks />
+                  <AppLinks centered />
                 </div>
               </SectionCard>
             </template>
@@ -201,8 +201,8 @@ function onJoined(verify: boolean) {
           <EditorPlaceholder v-else-if="s.placeholder" :section="s.key" :title="st(`landing.${s.key}.title`)" />
 
           <section v-else-if="s.key === 'goal'" aria-labelledby="goal-title" data-pt-section="goal">
-            <h2 id="goal-title" class="text-2xl font-bold mb-4">{{ st('landing.goal.title') }}</h2>
-            <div class="rounded-xl border border-stone-200 bg-white px-5 py-6 shadow-[0_1px_3px_rgb(28_25_23/0.05)] sm:px-8 sm:py-8">
+            <LandingHeading :title="st('landing.goal.title')" title-id="goal-title" />
+            <div class="rounded-xl border border-stone-200 bg-white px-5 py-6 text-center shadow-[0_1px_3px_rgb(28_25_23/0.05)] sm:px-8 sm:py-8">
               <div v-if="when || showProgress || page.prayingNow > 0" class="grid gap-6 sm:grid-cols-2">
                 <div v-if="when" class="space-y-1">
                   <p class="text-3xl font-bold tabular-nums">{{ when.headline }}</p>
@@ -222,28 +222,28 @@ function onJoined(verify: boolean) {
             </div>
           </section>
 
-          <section v-else-if="s.key === 'why'" aria-labelledby="why-title" data-pt-section="why">
-            <h2 id="why-title" class="text-2xl font-bold mb-4">{{ st('landing.why.title') }}</h2>
+          <section v-else-if="s.key === 'why'" aria-labelledby="why-title" class="text-center" data-pt-section="why">
+            <LandingHeading :title="st('landing.why.title')" title-id="why-title" />
             <!-- eslint-disable-next-line vue/no-v-html -->
-            <div class="pt-content" v-html="page.why" />
+            <div class="pt-content pt-centered mx-auto max-w-prose" v-html="page.why" />
           </section>
 
-          <section v-else-if="s.custom" :aria-labelledby="`custom-${s.custom.id}`" :data-pt-custom="s.custom.id" class="space-y-4">
-            <h2 :id="`custom-${s.custom.id}`" class="text-2xl font-bold">{{ s.custom.heading }}</h2>
+          <section v-else-if="s.custom" :aria-labelledby="`custom-${s.custom.id}`" :data-pt-custom="s.custom.id" class="space-y-4 text-center">
+            <LandingHeading :title="s.custom.heading" :title-id="`custom-${s.custom.id}`" />
             <img v-if="s.custom.imageUrl" :src="s.custom.imageUrl" :alt="s.custom.imageAlt" class="w-full rounded-xl" loading="lazy">
             <video v-if="s.custom.video?.kind === 'file'" :src="s.custom.video.src" controls playsinline preload="metadata" class="w-full rounded-xl bg-black aspect-video" />
             <div v-else-if="s.custom.video" class="relative w-full aspect-video overflow-hidden rounded-xl bg-black">
               <iframe :src="s.custom.video.src" :title="s.custom.heading" loading="lazy" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" class="absolute inset-0 size-full border-0" />
             </div>
             <!-- eslint-disable-next-line vue/no-v-html -->
-            <div class="pt-content" v-html="s.custom.html" />
+            <div class="pt-content pt-centered mx-auto max-w-prose" v-html="s.custom.html" />
             <UButton v-if="s.custom.buttonUrl && s.custom.buttonLabel" :to="s.custom.buttonUrl" target="_blank" :label="s.custom.buttonLabel" trailing-icon="i-lucide-external-link" />
           </section>
 
-          <section v-else-if="s.key === 'stories'" aria-labelledby="stories-title" data-pt-section="stories">
-            <h2 id="stories-title" class="text-2xl font-bold mb-4">{{ st('landing.stories.title') }}</h2>
-            <div class="grid gap-4 sm:grid-cols-2">
-              <figure v-for="story in page.stories" :key="story.id" class="m-0 rounded-xl border border-stone-200 bg-white p-5 shadow-[0_1px_3px_rgb(28_25_23/0.05)]">
+          <section v-else-if="s.key === 'stories'" aria-labelledby="stories-title" class="text-center" data-pt-section="stories">
+            <LandingHeading :title="st('landing.stories.title')" title-id="stories-title" />
+            <div class="flex flex-wrap justify-center gap-4">
+              <figure v-for="story in page.stories" :key="story.id" class="m-0 w-full rounded-xl border border-stone-200 bg-white p-5 shadow-[0_1px_3px_rgb(28_25_23/0.05)] sm:w-[calc(50%-0.5rem)]">
                 <blockquote class="whitespace-pre-line text-stone-800">{{ story.body }}</blockquote>
                 <figcaption class="mt-3 text-sm text-stone-600">— {{ story.name || t('stories.anonymous') }}</figcaption>
               </figure>
@@ -253,16 +253,13 @@ function onJoined(verify: boolean) {
             </NuxtLink>
           </section>
 
-          <section v-else-if="s.key === 'how'" aria-labelledby="how-title" data-pt-section="how">
-            <h2 id="how-title" class="text-2xl font-bold mb-4">{{ st('landing.how.title') }}</h2>
-            <p class="whitespace-pre-line text-lg leading-[1.75] text-stone-800">{{ st('landing.how.body', { site: site.name }) }}</p>
+          <section v-else-if="s.key === 'how'" aria-labelledby="how-title" class="text-center" data-pt-section="how">
+            <LandingHeading :title="st('landing.how.title')" title-id="how-title" />
+            <p class="mx-auto max-w-prose whitespace-pre-line text-lg leading-[1.75] text-stone-800">{{ st('landing.how.body', { site: site.name }) }}</p>
           </section>
 
-          <section v-else-if="s.key === 'today' && page.today" aria-labelledby="today-title" class="space-y-4" data-pt-section="today">
-            <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-              <h2 id="today-title" class="text-2xl font-bold">{{ st('landing.today.title') }}</h2>
-              <p class="text-sm text-stone-600">{{ t(`pray.${entryUnit(campaign?.cadence)}`, { n: num(page.today.day) }) }}</p>
-            </div>
+          <section v-else-if="s.key === 'today' && page.today" aria-labelledby="today-title" data-pt-section="today">
+            <LandingHeading :title="st('landing.today.title')" title-id="today-title" :subtitle="t(`pray.${entryUnit(campaign?.cadence)}`, { n: num(page.today.day) })" />
             <div class="rounded-xl border border-stone-200 bg-white shadow-[0_1px_3px_rgb(28_25_23/0.05)]">
               <div class="max-h-96 overflow-hidden px-5 pt-6 pb-6 sm:px-8 sm:pt-8 [mask-image:linear-gradient(to_bottom,#000_calc(100%_-_4rem),transparent)]">
                 <!-- eslint-disable-next-line vue/no-v-html -->
