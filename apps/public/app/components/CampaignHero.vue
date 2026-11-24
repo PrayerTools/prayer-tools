@@ -17,9 +17,9 @@ const creditParts = computed(() => (site.value.image?.credit ?? '')
 
 <template>
   <!-- An untinted image keeps the text white, with a shadow for contrast. -->
-  <section class="brand-bg relative overflow-hidden pt-15" :class="site.image && !site.image.tint && 'pt-untinted'" :aria-labelledby="titleId" data-pt-section="top">
+  <section class="brand-bg relative overflow-clip pt-15" :class="site.image && !site.image.tint && 'pt-untinted'" :aria-labelledby="titleId" data-pt-section="top">
     <template v-if="site.image">
-      <img :src="site.image.url" :alt="site.image.alt" class="absolute inset-0 size-full object-cover" :style="imageStyle" fetchpriority="high">
+      <img :src="site.image.url" :alt="site.image.alt" class="pt-parallax absolute inset-0 size-full object-cover" :style="imageStyle" fetchpriority="high">
       <!-- Tints the image with the brand color so text keeps its contrast. -->
       <div v-if="site.image.tint" class="absolute inset-0 bg-(--brand) opacity-80" aria-hidden="true" />
     </template>
