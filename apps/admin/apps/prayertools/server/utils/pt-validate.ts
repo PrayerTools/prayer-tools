@@ -84,6 +84,7 @@ export function ptLanding(input: unknown): CampaignLanding {
   }
   const why = docs(l.why)
   const about = docs(l.about)
+  const together = docs(l.together)
   const custom: LandingCustomSection[] = []
   for (const raw of Array.isArray(l.custom) ? (l.custom as Record<string, unknown>[]).slice(0, 12) : []) {
     const heading = parseText(raw.heading)
@@ -106,7 +107,7 @@ export function ptLanding(input: unknown): CampaignLanding {
   }
   const customIds = custom.map(s => s.id)
   const hidden = Array.isArray(l.hidden) ? (l.hidden as unknown[]).filter((s): s is string => typeof s === 'string' && isHideableSection(s, customIds)) : undefined
-  return clean({ subtitle: parseText(l.subtitle) ?? undefined, why, about, hidden, order: storedLandingOrder(l.order, customIds), custom, stories: typeof l.stories === 'boolean' ? l.stories : undefined, story_ids: parseStoryIds(l.story_ids) })
+  return clean({ subtitle: parseText(l.subtitle) ?? undefined, why, about, together, hidden, order: storedLandingOrder(l.order, customIds), custom, stories: typeof l.stories === 'boolean' ? l.stories : undefined, story_ids: parseStoryIds(l.story_ids) })
 }
 
 export function ptShare(input: unknown): CampaignShare {

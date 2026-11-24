@@ -250,9 +250,10 @@ export async function ptUpdateCampaign(tx: Transaction<Database>, ctx: TenantCon
   if ('description' in b) patch.description = b.description ? jsonb(parseText(b.description)) : null
   if ('landing' in b) {
     const landing = ptLanding(b.landing)
-    // The template's standard "why" and about texts show by default, so they are not stored.
+    // The template's standard texts show by default, so they are not stored.
     if (landing.why) landing.why = Object.fromEntries(Object.entries(landing.why).filter(([lang, doc]) => !isTemplateDoc('why', doc, templateKey, lang)))
     if (landing.about) landing.about = Object.fromEntries(Object.entries(landing.about).filter(([lang, doc]) => !isTemplateDoc('about', doc, templateKey, lang)))
+    if (landing.together) landing.together = Object.fromEntries(Object.entries(landing.together).filter(([lang, doc]) => !isTemplateDoc('together', doc, templateKey, lang)))
     patch.landing = jsonb(landing)
   }
   // `branding` sets the hero image and `share_image_url` the link-preview image; each keeps the other.

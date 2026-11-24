@@ -8,6 +8,7 @@
     "pray": "Orar",
     "stats": "Estadísticas",
     "coverage": "Calendario de oración",
+    "about": "Acerca de",
     "contact": "Contacto",
     "language": "Idioma",
     "menu": "Menú"
@@ -45,6 +46,8 @@
     "last_month": "Último mes",
     "pray_today": "Ora hoy",
     "read_latest": "Lee la última oración",
+    "more_about": "Más sobre esta campaña",
+    "more_about_ramadan": "Más sobre el Ramadán",
     "photo_credit": "Crédito de la foto",
     "signed_up": "Ya estás orando con {site}. Allí puedes añadir, cambiar o dejar tus horarios de oración.",
     "manage_times": "Gestionar tus horarios de oración",
@@ -261,6 +264,12 @@
     "time_label": "{time}: {percent}% cubierto",
     "open_on": "{time}: todavía libre {open} de {total} días",
     "all_covered": "{time}: ya hay alguien orando todos los días que quedan"
+  },
+  "about": {
+    "together_title": "Por qué oramos juntos",
+    "prayertools_title": "Por qué Prayer.Tools",
+    "prayertools_body": "Prayer.Tools existe para el discipulado a través de la oración. La oración transforma a las personas y los lugares por los que oramos, y nos transforma a nosotros mientras oramos. Creamos las campañas de oración para que cualquiera que lleve en el corazón un pueblo, un lugar o un acontecimiento pueda reunir a otros para orar, y ayudarles a orar de una manera bíblica y estratégica.\n\nPrayer.Tools es gratuito para todas las campañas. Funciona con una economía del cielo: hay personas que dan su tiempo, sus habilidades y su dinero para que otros puedan usar estas herramientas gratuitamente, así como nosotros hemos recibido gratuitamente (Mateo 10:8). Si estas herramientas te ayudan a orar, puedes ser parte de ello dando.",
+    "back": "Volver a {campaign}"
   },
   "between": {
     "guide": "Leer la guía de oración",

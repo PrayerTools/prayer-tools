@@ -15,6 +15,7 @@ const nav = computed(() => {
   const items = site.value.campaign?.state === 'upcoming' ? [] : [{ label: t('nav.pray'), icon: 'i-lucide-book-open', to: link('pray') }]
   items.push({ label: t('nav.stats'), icon: 'i-lucide-chart-column', to: link('stats') })
   if (site.value.campaign?.goal === 'coverage') items.push({ label: t('nav.coverage'), icon: 'i-lucide-calendar-days', to: link('coverage') })
+  items.push({ label: t('nav.about'), icon: 'i-lucide-info', to: link('about') })
   items.push({ label: t('nav.contact'), icon: 'i-lucide-mail', to: link('contact') })
   return site.value.status === 'archived' ? [] : items
 })

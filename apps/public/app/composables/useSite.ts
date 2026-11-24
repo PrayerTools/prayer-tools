@@ -9,7 +9,7 @@ export const SITE_KEY: InjectionKey<Ref<SiteView>> = Symbol('site')
 // page language.
 export function useSite() {
   const site = inject(SITE_KEY)!
-  const { t } = useI18n()
+  const { t, te } = useI18n()
 
   function link(page = '', rest: (string | number)[] = [], opts: { lang?: string, current?: boolean } = {}): string {
     return sitePath({
@@ -66,6 +66,19 @@ export function useSite() {
     return t('landing.side.dates', { start: from, end: date(end) })
   }
 
+  // A template can word the about heading and the link to the About page its
+  // own way (`landing.about.title_<template>`, `landing.more_about_<template>`),
+  // e.g. "About Ramadan"; the site's own heading wins.
+  function aboutTitle(template: string | null): string {
+    const own = template ? `landing.about.title_${template}` : null
+    return site.value.strings['landing.about.title'] || (own && te(own) ? t(own) : t('landing.about.title'))
+  }
+
+  function moreAboutLabel(template: string | null): string {
+    const own = template ? `landing.more_about_${template}` : null
+    return own && te(own) ? t(own) : t('landing.more_about')
+  }
+
   function shareUrl(referral?: string | null): string {
     const base = `${site.value.url}${link('', [], { current: !site.value.campaign?.side })}`.replace(/\/$/, '') || site.value.url
     return referral ? `${base}${base.includes('?') ? '&' : '?'}r=${encodeURIComponent(referral)}` : base
@@ -75,5 +88,5 @@ export function useSite() {
     return site.value.shareMessage || st('share.default_message', { site: site.value.name })
   }
 
-  return { site, link, campaignLink, st, num, minutes, hours, date, dateRange, shareUrl, shareText }
+  return { site, link, campaignLink, st, num, minutes, hours, date, dateRange, aboutTitle, moreAboutLabel, shareUrl, shareText }
 }

@@ -30,6 +30,12 @@ describe('landing template texts', () => {
     expect(landingDoc('about', { fr: own }, 'ramadan', 'en', 'en')).toEqual(templateDoc('about', 'ramadan', 'en'))
   })
 
+  it('gives every template the text about praying together', () => {
+    expect(tiptapToText(templateDoc('together', 'generic', 'en'))).toMatch(/^When we pray together/)
+    expect(templateDoc('together', null, 'fr')).toEqual(templateDoc('together', 'ramadan', 'fr'))
+    expect(templateDoc('together', 'generic', 'xx')).toBeNull()
+  })
+
   it('recognises the unchanged template text only in its own language', () => {
     expect(isTemplateDoc('about', templateDoc('about', 'ramadan', 'ar'), 'ramadan', 'ar')).toBe(true)
     expect(isTemplateDoc('why', templateDoc('why', 'ramadan', 'ar'), 'ramadan', 'ar')).toBe(true)

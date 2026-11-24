@@ -1,11 +1,11 @@
 // Standard landing page text a campaign template brings, per language: the
-// "why we pray" text and the about text. A site shows it until it writes its
-// own, and it is never stored.
+// "why we pray" text, the about text, and the About page's text about praying
+// together. A site shows it until it writes its own, and it is never stored.
 import type { TiptapDoc } from '../db/schema'
 import { isEmptyDoc, textDoc, tiptapToText } from '../tiptap'
 import { visionDoc } from './vision'
 
-export type TemplateText = 'why' | 'about'
+export type TemplateText = 'why' | 'about' | 'together'
 
 const WHY: Record<string, (lang: string) => TiptapDoc | null> = {
   ramadan: lang => visionDoc(lang)
@@ -116,13 +116,22 @@ Meskipun banyak yang berhenti berpuasa dalam beberapa tahun terakhir, dan merasa
   }
 }
 
+// The text about praying together on every campaign's About page, whatever its template.
+const TOGETHER: Record<string, string> = {
+  en: "When we pray together, no one carries the burden alone. One person prays in the morning, another late at night, and together we keep praying in a way none of us could on our own.\n\nThe first followers of Jesus devoted themselves to praying together (Acts 1:14), and God answered in ways that changed whole cities. Praying for the same people and places, day after day, keeps us faithful and expectant.\n\nPrayer also changes those who pray. As we pray through the prayer guide, God shapes our hearts toward what he cares about, and we grow as disciples who know how to pray for others.",
+  es: "Cuando oramos juntos, nadie lleva la carga solo. Una persona ora por la mañana, otra tarde en la noche, y juntos seguimos orando de una manera que ninguno de nosotros podría sostener por su cuenta.\n\nLos primeros seguidores de Jesús se dedicaban a orar juntos (Hechos 1:14), y Dios respondió de maneras que transformaron ciudades enteras. Orar por las mismas personas y lugares, día tras día, nos mantiene fieles y expectantes.\n\nLa oración también transforma a quienes oran. Al orar con la guía de oración, Dios moldea nuestro corazón hacia lo que a él le importa, y crecemos como discípulos que saben orar por otros.",
+  fr: "Quand nous prions ensemble, personne ne porte le fardeau seul. L’un prie le matin, un autre tard le soir, et ensemble nous continuons à prier comme aucun de nous ne le pourrait seul.\n\nLes premiers disciples de Jésus persévéraient ensemble dans la prière (Actes 1.14), et Dieu a répondu d’une manière qui a transformé des villes entières. Prier jour après jour pour les mêmes personnes et les mêmes lieux nous garde fidèles et dans l’attente.\n\nLa prière transforme aussi ceux qui prient. En priant avec le guide de prière, Dieu tourne nos cœurs vers ce qui lui tient à cœur, et nous grandissons comme des disciples qui savent prier pour les autres.",
+  pt: "Quando oramos juntos, ninguém carrega o fardo sozinho. Uma pessoa ora de manhã, outra tarde da noite, e juntos continuamos orando de um jeito que nenhum de nós conseguiria sozinho.\n\nOs primeiros seguidores de Jesus se dedicavam a orar juntos (Atos 1:14), e Deus respondeu de maneiras que transformaram cidades inteiras. Orar pelas mesmas pessoas e lugares, dia após dia, nos mantém fiéis e cheios de expectativa.\n\nA oração também transforma quem ora. Ao orar com o guia de oração, Deus molda nosso coração para o que importa a ele, e crescemos como discípulos que sabem orar pelos outros.",
+  ar: "عندما نصلي معًا، لا يحمل أحد العبء وحده. يصلي أحدنا في الصباح وآخر في آخر الليل، ومعًا نواصل الصلاة بطريقة لا يقدر عليها أحد منا بمفرده.\n\nكان أتباع يسوع الأوائل يواظبون على الصلاة معًا (أعمال الرسل 1: 14)، فاستجاب الله بطرق غيّرت مدنًا بأكملها. والصلاة يومًا بعد يوم من أجل الأشخاص والأماكن نفسها تحفظنا أمناء ومترقبين.\n\nوالصلاة تغيّر أيضًا من يصلّي. فبينما نصلي مع دليل الصلاة، يوجّه الله قلوبنا نحو ما يهمه، وننمو كتلاميذ يعرفون كيف يصلّون من أجل الآخرين."
+}
+
 // The template's text in a language, or in the fallback language when it
 // has none in that one; null when the template has none.
 export function templateDoc(kind: TemplateText, templateKey: string | null | undefined, lang: string, fallback?: string): TiptapDoc | null {
   const key = templateKey ?? ''
   const one = (l: string): TiptapDoc | null => {
     if (kind === 'why') return WHY[key]?.(l) ?? null
-    const text = ABOUT[key]?.[l]
+    const text = kind === 'together' ? TOGETHER[l] : ABOUT[key]?.[l]
     return text ? textDoc(text) : null
   }
   return one(lang) ?? (fallback ? one(fallback) : null)

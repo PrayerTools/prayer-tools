@@ -11,6 +11,7 @@
     "pray": "Pray",
     "stats": "Stats",
     "coverage": "Prayer calendar",
+    "about": "About",
     "contact": "Contact",
     "language": "Language",
     "menu": "Menu"
@@ -48,6 +49,8 @@
     "last_month": "Final month",
     "pray_today": "Pray today",
     "read_latest": "Read the latest prayer",
+    "more_about": "More about this campaign",
+    "more_about_ramadan": "More about Ramadan",
     "photo_credit": "Photo credit",
     "signed_up": "You are already praying with {site}. Add, change or stop your prayer times there.",
     "manage_times": "Manage your prayer times",
@@ -264,6 +267,12 @@
     "time_label": "{time}: {percent}% covered",
     "open_on": "{time}: still open on {open} of {total} days",
     "all_covered": "{time}: someone is already praying on every coming day"
+  },
+  "about": {
+    "together_title": "Why we pray together",
+    "prayertools_title": "Why Prayer.Tools",
+    "prayertools_body": "Prayer.Tools exists for discipleship through prayer. Prayer changes the people and places we pray for, and it changes us as we pray. We built prayer campaigns so that anyone who carries a people, a place or an event on their heart can gather others to pray, and help them pray in ways that are both biblical and strategic.\n\nPrayer.Tools is free for every campaign. It runs on a heavenly economy: people give their time, skills and money so that others can use these tools freely, just as we have freely received (Matthew 10:8). If these tools help you pray, you can be part of that by giving.",
+    "back": "Back to {campaign}"
   },
   "between": {
     "guide": "Read the prayer guide",

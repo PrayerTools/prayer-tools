@@ -68,6 +68,7 @@ const dir = computed(() => meta.value?.languages.find(l => l.code === lang.value
 
 const why = ref<Record<string, Record<string, any> | null>>({})
 const about = ref<typeof why.value>({})
+const together = ref<typeof why.value>({})
 const hidden = ref<string[]>([])
 // The champion's own section order; absent while the page uses the default order.
 const order = ref<string[] | undefined>()
@@ -82,6 +83,7 @@ watch(source, (src) => {
   if (!s || !src) return
   why.value = withTemplateText('why', (src.landing.why ?? {}) as Record<string, TiptapDoc>, src.templateKey, s.site.languages, s.site.default_language)
   about.value = withTemplateText('about', (src.landing.about ?? {}) as Record<string, TiptapDoc>, src.templateKey, s.site.languages, s.site.default_language)
+  together.value = withTemplateText('together', (src.landing.together ?? {}) as Record<string, TiptapDoc>, src.templateKey, s.site.languages, s.site.default_language)
   hidden.value = [...(src.landing.hidden ?? meta.value?.templates.find(t => t.key === src.templateKey)?.hiddenSections ?? [])]
   order.value = src.landing.order ? [...src.landing.order] : undefined
   stories.value = src.landing.stories !== false
@@ -138,6 +140,7 @@ function withTemplateText(kind: TemplateText, own: Record<string, TiptapDoc>, te
 }
 const whyIsStandard = computed(() => isTemplateDoc('why', why.value[lang.value] as TiptapDoc | null | undefined, source.value?.templateKey, lang.value))
 const aboutIsStandard = computed(() => isTemplateDoc('about', about.value[lang.value] as TiptapDoc | null | undefined, source.value?.templateKey, lang.value))
+const togetherIsStandard = computed(() => isTemplateDoc('together', together.value[lang.value] as TiptapDoc | null | undefined, source.value?.templateKey, lang.value))
 
 const whyDoc = computed({
   get: () => why.value[lang.value] ?? null,
@@ -147,6 +150,11 @@ const aboutDoc = computed({
   get: () => about.value[lang.value] ?? null,
   set: (v) => { about.value = { ...about.value, [lang.value]: v } }
 })
+const togetherDoc = computed({
+  get: () => together.value[lang.value] ?? null,
+  set: (v) => { together.value = { ...together.value, [lang.value]: v } }
+})
+const aboutPageUrl = computed(() => source.value ? `${source.value.url.replace(/\/$/, '')}/about` : null)
 const whyGuidance = computed(() => ptLandingGuidance('why', source.value?.templateKey))
 const aboutGuidance = computed(() => ptLandingGuidance('about', source.value?.templateKey))
 
@@ -328,7 +336,7 @@ async function uploadVideo(e: Event) {
   }
 }
 
-const draft = computed(() => ({ landing: { subtitle: subtitle.value, why: why.value, about: about.value, hidden: hidden.value, order: order.value, stories: stories.value, story_ids: storyIds.value, custom: custom.value }, description: description.value, branding: hero.value, brand: brand.value, strings: wording.value[lang.value] ?? {} }))
+const draft = computed(() => ({ landing: { subtitle: subtitle.value, why: why.value, about: about.value, together: together.value, hidden: hidden.value, order: order.value, stories: stories.value, story_ids: storyIds.value, custom: custom.value }, description: description.value, branding: hero.value, brand: brand.value, strings: wording.value[lang.value] ?? {} }))
 const preview = ref<{ focus: (section: string, id?: string) => void }>()
 
 // The selected section ('why', or 'custom-<id>' for one custom section) stays
@@ -357,7 +365,7 @@ async function save() {
       toast.ok('Translation saved')
       return
     }
-    const landing = { subtitle: subtitle.value, why: why.value, about: about.value, hidden: hidden.value, order: order.value, stories: stories.value, story_ids: storyIds.value, custom: custom.value }
+    const landing = { subtitle: subtitle.value, why: why.value, about: about.value, together: together.value, hidden: hidden.value, order: order.value, stories: stories.value, story_ids: storyIds.value, custom: custom.value }
     await $fetch(`/api/pt/campaigns/${props.campaignId}`, { method: 'PATCH', body: { landing, branding: hero.value, description: description.value } })
     if (brandDirty.value) await $fetch('/api/pt/site', { method: 'PATCH', body: { branding: brand.value } })
     await saveWording()
@@ -379,6 +387,7 @@ async function saveTranslation() {
   if (description.value?.values[l] !== undefined) await put({ field: 'description', value: description.value.values[l] })
   if (why.value[l]) await put({ field: 'why', value: why.value[l] })
   if (about.value[l]) await put({ field: 'about', value: about.value[l] })
+  if (together.value[l]) await put({ field: 'together', value: together.value[l] })
   for (const s of custom.value) {
     if (s.heading.values[l] !== undefined) await put({ field: 'custom', sectionId: s.id, part: 'heading', value: s.heading.values[l] })
     if (s.body[l]) await put({ field: 'custom', sectionId: s.id, part: 'body', value: s.body[l] })
@@ -388,12 +397,12 @@ async function saveTranslation() {
 
 async function translateText(kind: TemplateText) {
   const s = site.value!
-  const src = (kind === 'why' ? why : about).value[s.site.default_language]
+  const texts = { why, about, together }[kind]
+  const src = texts.value[s.site.default_language]
   if (!src) return
   try {
     const res = await $fetch<{ doc: Record<string, any> }>('/api/pt/translate', { method: 'POST', body: { doc: src, from: s.site.default_language, to: lang.value } })
-    if (kind === 'why') whyDoc.value = res.doc
-    else aboutDoc.value = res.doc
+    texts.value = { ...texts.value, [lang.value]: res.doc }
   } catch (err) {
     toast.fail(err, 'Translation failed')
   }
@@ -932,6 +941,55 @@ async function translateText(kind: TemplateText) {
           label="Add a section"
           @click="addSection"
         />
+
+        <PtLandingBox
+          section="about-page"
+          title="About page"
+          description="A page of its own, linked from the top of the landing page. It shows the About section's text, this text about praying together, and a short note about Prayer.Tools."
+          icon="i-lucide-book-open-text"
+          :selected="selected === 'about-page'"
+          :shown="null"
+          :can-toggle="false"
+          @select="selected = 'about-page'"
+        >
+          <template #actions>
+            <UButton
+              v-if="!isSource && canEditLang && aiTranslate"
+              size="sm"
+              variant="soft"
+              icon="i-lucide-languages"
+              label="AI translate"
+              @click.stop="translateText('together')"
+            />
+          </template>
+          <div class="space-y-3">
+            <UFormField label="Why we pray together">
+              <PtRichEditor
+                v-model="togetherDoc"
+                :dir="dir"
+                :disabled="!canEditLang"
+                placeholder="Why does praying together matter for this campaign?"
+              />
+            </UFormField>
+            <p
+              v-if="togetherIsStandard"
+              class="text-xs text-(--ui-text-muted)"
+            >
+              This is the standard text every campaign starts with. Visitors see it until you change it.
+            </p>
+            <ULink
+              v-if="aboutPageUrl"
+              :to="aboutPageUrl"
+              target="_blank"
+              class="inline-flex items-center gap-1 text-sm"
+            >
+              Open the About page <UIcon
+                name="i-lucide-external-link"
+                class="size-3.5"
+              />
+            </ULink>
+          </div>
+        </PtLandingBox>
 
         <div class="flex justify-end sticky bottom-4">
           <UButton

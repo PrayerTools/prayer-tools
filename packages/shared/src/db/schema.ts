@@ -341,6 +341,8 @@ export interface CampaignLanding {
   subtitle?: TranslatableText
   why?: Record<string, TiptapDoc>
   about?: Record<string, TiptapDoc>
+  // The About page's text about praying together.
+  together?: Record<string, TiptapDoc>
   // Standard section keys, `custom:<id>` for one custom section, or `custom` for all of them.
   hidden?: string[]
   // The sections after the top one, as `hidden` names them; absent while the default order applies.

@@ -2,7 +2,7 @@
 import type { PageView } from '~~/shared/view'
 
 defineProps<{ page: Extract<PageView, { kind: 'between' }> }>()
-const { site, st, link } = useSite()
+const { site, st, link, moreAboutLabel } = useSite()
 const { t } = useI18n()
 useHead({ title: () => site.value.name })
 </script>
@@ -14,6 +14,9 @@ useHead({ title: () => site.value.name })
         <!-- The header already shows the site name, so the band is titled with the campaign's. -->
         <h1 id="ended-title" class="text-3xl sm:text-5xl font-bold leading-tight text-balance">{{ site.campaign?.name ?? site.name }}</h1>
         <p v-if="site.campaign" class="text-xl sm:text-2xl font-semibold text-balance">{{ t('between.ended_short') }}</p>
+        <NuxtLink :to="link('about')" class="inline-flex items-center gap-1.5 font-medium underline underline-offset-4 decoration-current/40 hover:decoration-current">
+          {{ moreAboutLabel(page.template) }}<UIcon name="i-lucide-arrow-right" class="size-4 rtl:rotate-180" />
+        </NuxtLink>
       </div>
     </CampaignHero>
     <div class="max-w-3xl mx-auto px-4 py-10 space-y-14">

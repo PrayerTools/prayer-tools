@@ -107,6 +107,9 @@ export async function buildSiteResponse(event: H3Event, ctx: SiteContext, fullPa
             options: f.options.map(o => ({ key: o.key, label: textIn(o.label, lang, def) }))
           })) }
           break
+        case 'about':
+          page = campaign && !parsed.rest.length ? aboutPage(ctx, data, campaign, lang) : { kind: 'not_found' }
+          break
         case 'stories':
         case 'story':
           page = { kind: 'stories' }
@@ -261,6 +264,19 @@ async function landingPage(tx: Parameters<typeof loadSiteData>[0], event: H3Even
   }
 }
 
+// A campaign's About page: its about text, the text about praying together,
+// and (on the page itself) why Prayer.Tools exists.
+function aboutPage(ctx: SiteContext, data: SiteData, campaign: CampaignRow, lang: string): PageView {
+  const landing = (campaign.landing ?? {}) as CampaignLanding
+  const def = data.site.default_language
+  const vars = contentVars(data, ctx.name, campaign, lang)
+  const html = (kind: 'about' | 'together') => {
+    const doc = landingDoc(kind, landing[kind], campaign.template_key, lang, def)
+    return doc ? docHtml({ [lang]: doc }, lang, def, vars) : ''
+  }
+  return { kind: 'about', template: campaign.template_key, about: html('about'), together: html('together') }
+}
+
 // The person is known only from a manage session or a sign-in; anyone else
 // gets the invitation to the next campaign.
 async function betweenPage(tx: Parameters<typeof loadSiteData>[0], event: H3Event, ctx: SiteContext, data: SiteData, campaign: CampaignRow, lang: string): Promise<PageView> {
@@ -271,6 +287,7 @@ async function betweenPage(tx: Parameters<typeof loadSiteData>[0], event: H3Even
   const offer = await notifyOffer(tx, data.site, campaign)
   return {
     kind: 'between',
+    template: campaign.template_key,
     stats: await statsFor(tx, campaign, data.settings.default_duration_min),
     endMessage: textIn(campaign.end_message as TranslatableText | null, lang, def),
     hasGuide: (await contentLength(tx, campaign.id)) > 0,

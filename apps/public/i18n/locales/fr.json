@@ -8,6 +8,7 @@
     "pray": "Prier",
     "stats": "Statistiques",
     "coverage": "Calendrier de prière",
+    "about": "À propos",
     "contact": "Contact",
     "language": "Langue",
     "menu": "Menu"
@@ -45,6 +46,8 @@
     "last_month": "Dernier mois",
     "pray_today": "Prier aujourd'hui",
     "read_latest": "Lire la dernière prière",
+    "more_about": "En savoir plus sur cette campagne",
+    "more_about_ramadan": "En savoir plus sur le Ramadan",
     "photo_credit": "Crédit photo",
     "signed_up": "Vous priez déjà avec {site}. Vous pouvez y ajouter, modifier ou arrêter vos moments de prière.",
     "manage_times": "Gérer vos moments de prière",
@@ -261,6 +264,12 @@
     "time_label": "{time} : couvert à {percent} %",
     "open_on": "{time} : encore libre {open} jours sur {total}",
     "all_covered": "{time} : quelqu’un prie déjà chacun des jours à venir"
+  },
+  "about": {
+    "together_title": "Pourquoi prier ensemble",
+    "prayertools_title": "Pourquoi Prayer.Tools",
+    "prayertools_body": "Prayer.Tools existe pour faire des disciples par la prière. La prière transforme les personnes et les lieux pour lesquels nous prions, et elle nous transforme pendant que nous prions. Nous avons créé les campagnes de prière pour que toute personne qui porte à cœur un peuple, un lieu ou un événement puisse rassembler d’autres personnes pour prier, et les aider à prier de façon biblique et stratégique.\n\nPrayer.Tools est gratuit pour toutes les campagnes. Il fonctionne selon une économie du ciel : des personnes donnent leur temps, leurs compétences et leur argent pour que d’autres puissent utiliser ces outils gratuitement, comme nous avons reçu gratuitement (Matthieu 10.8). Si ces outils vous aident à prier, vous pouvez y participer en donnant.",
+    "back": "Retour à {campaign}"
   },
   "between": {
     "guide": "Lire le guide de prière",

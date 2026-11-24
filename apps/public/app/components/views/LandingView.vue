@@ -4,8 +4,8 @@ import { daysBetween } from '@prayertools/shared/dates'
 import { entryUnit } from '~/utils/commitment'
 
 const props = defineProps<{ page: Extract<PageView, { kind: 'landing' }> }>()
-const { site, link, campaignLink, st, num, date, dateRange } = useSite()
-const { t, te } = useI18n()
+const { site, link, campaignLink, st, num, date, dateRange, aboutTitle, moreAboutLabel } = useSite()
+const { t } = useI18n()
 const campaign = computed(() => site.value.campaign)
 
 // The sections after the hero, in page order. Neighbouring sections share a
@@ -71,11 +71,6 @@ const when = computed(() => {
     dates
   }
 })
-// A template with its own about heading names it `landing.about.title_<template>`, e.g. "About Ramadan".
-const aboutTitle = computed(() => {
-  const own = props.page.template ? `landing.about.title_${props.page.template}` : null
-  return site.value.strings['landing.about.title'] || (own && te(own) ? t(own) : t('landing.about.title'))
-})
 // The latest entry, when it isn't today's, is headed "Latest prayer" unless the site renamed the section.
 const todayTitle = computed(() => props.page.today?.current === false && !site.value.strings['landing.today.title'] ? t('landing.today.latest') : st('landing.today.title'))
 const todayLink = computed(() => props.page.today && !props.page.today.current ? link('pray', [props.page.today.day]) : link('pray'))
@@ -126,6 +121,9 @@ function onJoined(verify: boolean) {
           <UButton v-else to="#signup" size="xl" color="neutral" variant="solid" class="bg-white text-stone-900 hover:bg-stone-100" :label="st('landing.signup.title')" />
           <UButton v-if="page.today" :to="todayLink" size="xl" variant="outline" class="text-(--brand-text) ring-(--brand-text)/60 hover:bg-white/10" :label="page.today.current ? t('landing.pray_today') : t('landing.read_latest')" />
         </div>
+        <NuxtLink :to="link('about')" class="inline-flex items-center gap-1.5 font-medium underline underline-offset-4 decoration-current/40 hover:decoration-current">
+          {{ moreAboutLabel(page.template) }}<UIcon name="i-lucide-arrow-right" class="size-4 rtl:rotate-180" />
+        </NuxtLink>
       </div>
     </CampaignHero>
 
@@ -218,7 +216,7 @@ function onJoined(verify: boolean) {
           </section>
 
           <section v-else-if="s.key === 'about'" aria-labelledby="about-title" class="text-center" data-pt-section="about">
-            <LandingHeading :title="aboutTitle" title-id="about-title" />
+            <LandingHeading :title="aboutTitle(page.template)" title-id="about-title" />
             <!-- eslint-disable-next-line vue/no-v-html -->
             <div class="pt-content pt-centered mx-auto max-w-prose" v-html="page.about" />
           </section>
