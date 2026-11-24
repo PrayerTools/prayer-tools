@@ -52,6 +52,7 @@ export function ptCampaignBranding(input: unknown): CampaignBranding {
     image_credit: str(b.image_credit, 200),
     focal_x: unit(b.focal_x),
     focal_y: unit(b.focal_y),
+    tint: b.tint === false ? false : undefined,
     share_image_url: url(b.share_image_url)
   })
 }

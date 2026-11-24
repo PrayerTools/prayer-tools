@@ -143,7 +143,11 @@ export function planCampaigns(posts: WpPost[], meta: Map<number, Meta>, now = ne
     }
     const hero = first(m, 'header_background_url')?.trim() || (domain ? `https://${domain}${STENCIL_PATH}` : null)
     const share = image('promo_image_url')
-    const branding: CampaignBranding = { ...(hero ? { image_url: hero } : {}), ...(share ? { share_image_url: share } : {}) }
+    const branding: CampaignBranding = {
+      ...(hero ? { image_url: hero } : {}),
+      ...(share ? { share_image_url: share } : {}),
+      ...(first(m, 'enable_overlay_blur') === 'no' ? { tint: false as const } : {})
+    }
 
     // Ended campaigns carry ended_at, so the end-date sweep doesn't treat
     // them as ending now and send their thank-you.

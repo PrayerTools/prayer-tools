@@ -312,6 +312,8 @@ export interface CampaignBranding {
   image_credit?: string
   focal_x?: number
   focal_y?: number
+  // false shows the hero image without the brand-color tint.
+  tint?: false
   share_image_url?: string
 }
 

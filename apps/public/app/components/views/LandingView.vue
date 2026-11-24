@@ -113,11 +113,12 @@ function onJoined(verify: boolean) {
 <template>
   <div>
     <!-- pt-15 leaves room for the site header, which overlays the hero. -->
-    <section class="brand-bg relative overflow-hidden pt-15" aria-labelledby="top-title" data-pt-section="top">
+    <!-- An untinted image keeps the text white, with a shadow for contrast. -->
+    <section class="brand-bg relative overflow-hidden pt-15" :class="site.image && !site.image.tint && 'pt-untinted'" aria-labelledby="top-title" data-pt-section="top">
       <template v-if="site.image">
         <img :src="site.image.url" :alt="site.image.alt" class="absolute inset-0 size-full object-cover" :style="imageStyle" fetchpriority="high">
         <!-- Tints the image with the brand color so text keeps its contrast. -->
-        <div class="absolute inset-0 bg-(--brand) opacity-80" aria-hidden="true" />
+        <div v-if="site.image.tint" class="absolute inset-0 bg-(--brand) opacity-80" aria-hidden="true" />
       </template>
       <div class="relative max-w-3xl mx-auto px-4 py-16 sm:py-28 text-center">
         <div class="space-y-5">

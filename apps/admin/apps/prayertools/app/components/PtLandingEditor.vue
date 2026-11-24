@@ -108,7 +108,7 @@ const brandColor = computed({
 })
 const heroPicker = ref<'image' | 'logo' | null>(null)
 function clearHero() {
-  hero.value = { ...hero.value, image_url: undefined, image_asset_id: undefined, image_alt: undefined, image_credit: undefined, focal_x: undefined, focal_y: undefined }
+  hero.value = { ...hero.value, image_url: undefined, image_asset_id: undefined, image_alt: undefined, image_credit: undefined, focal_x: undefined, focal_y: undefined, tint: undefined }
 }
 function pickedHero(a: { url: string, credit: string | null, asset: { id: string, alt: TranslatableText | null, focal_x: number, focal_y: number } }) {
   if (heroPicker.value === 'logo') brand.value = { ...brand.value, logo_url: a.url, logo_asset_id: a.asset.id }
@@ -581,6 +581,13 @@ async function translateText(kind: TemplateText) {
                       />
                     </div>
                   </UFormField>
+                  <USwitch
+                    :model-value="hero.tint !== false"
+                    :disabled="!canWrite"
+                    label="Tint the image with your color"
+                    description="Keeps the heading easy to read on a busy image. Switch it off to show the image as it is."
+                    @update:model-value="(v) => { hero = { ...hero, tint: v ? undefined : false } }"
+                  />
                   <template v-if="!heroImage(hero.image_url)">
                     <PtTranslatableInput
                       v-model="hero.image_alt"

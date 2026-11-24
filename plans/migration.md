@@ -71,6 +71,7 @@ WordPress saves a recurring rule as a rule row plus one row per prayer time (tag
 - Images are stored the way library images are: one WebP of up to 1600 px, named by a hash of the source, so an image used on many subsites, or met again on a re-run, is stored once. Audio and other files are stored as they are, named by a hash.
 - Campaign hero, share images, the site logo and the email logo are copied the same way.
 - A campaign with no header image (`header_background_url`) gets the plugin's stencil header, which WordPress showed in its place. It is stored once and shared; the directory doesn't use it as a site's picture.
+- A campaign that switched off the header overlay (`enable_overlay_blur` = `no`) shows its hero image without the brand-color tint.
 - The report lists referenced files missing from the backup.
 
 ## Landing page and email texts

@@ -84,6 +84,7 @@ function parseHero(input: unknown): CampaignBranding | undefined {
     image_credit: typeof b.image_credit === 'string' ? b.image_credit.slice(0, 200) : undefined,
     focal_x: unit(b.focal_x),
     focal_y: unit(b.focal_y),
+    tint: b.tint === false ? false : undefined,
     share_image_url: url(b.share_image_url)
   }
 }

@@ -36,7 +36,7 @@ export default defineEventHandler(async (event) => {
       default_language: row.default_language,
       languages: row.languages.map(code => ({ code, name: getLanguage(code)?.native ?? code, dir: getLanguage(code)?.dir ?? 'ltr' })),
       timezone: row.timezone,
-      branding: { color: bc.color, text_color: bc.textColor, logo_url: branding.logo_url ?? null, image_url: hero.image_url ?? null, image_alt: textIn(hero.image_alt, lang, row.default_language), image_credit: hero.image_credit ?? null, focal_x: hero.focal_x ?? 0.5, focal_y: hero.focal_y ?? 0.5 },
+      branding: { color: bc.color, text_color: bc.textColor, logo_url: branding.logo_url ?? null, image_url: hero.image_url ?? null, image_alt: textIn(hero.image_alt, lang, row.default_language), image_credit: hero.image_credit ?? null, focal_x: hero.focal_x ?? 0.5, focal_y: hero.focal_y ?? 0.5, image_tint: hero.tint !== false },
       current_campaign: current ? { ...campaignJson(current.campaign, settings.default_duration_min), state: current.state } : null,
       campaigns: campaigns.map(c => campaignJson(c, settings.default_duration_min)),
       stats: current ? await goalProgress(tx, current.campaign, settings.default_duration_min) : null,

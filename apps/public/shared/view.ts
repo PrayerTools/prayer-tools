@@ -59,7 +59,7 @@ export interface SiteView {
   languages: { code: string, native: string }[]
   brand: { color: string, text: string }
   logoUrl: string | null
-  image: { url: string, alt: string, credit: string | null, fx: number, fy: number } | null
+  image: { url: string, alt: string, credit: string | null, fx: number, fy: number, tint: boolean } | null
   shareImageUrl: string | null
   description: string
   status: 'draft' | 'published' | 'archived'
