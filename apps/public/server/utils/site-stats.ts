@@ -1,7 +1,7 @@
 import type { Tx } from '@prayertools/shared/db/scope'
 import { addDays, addMonths, todayIn } from '@prayertools/shared/dates'
-import { campaignEndDate, displayLength } from '@prayertools/shared/setup'
-import { dailyGoalPercents, goalProgress, prayingNow, signupsCount, statTotals } from '@prayertools/shared/stats'
+import { campaignEndDate, campaignStatus, displayLength } from '@prayertools/shared/setup'
+import { dailyGoalPercents, goalProgress, minutesCommitted, prayingNow, signupsCount, statTotals } from '@prayertools/shared/stats'
 import type { CampaignRow } from '@prayertools/shared/subscriptions'
 import type { CampaignRunView, GoalProgressView, StatsView } from '../../shared/view'
 
@@ -33,9 +33,11 @@ export async function runFor(tx: Tx, c: CampaignRow, defaultMinutes: number): Pr
 }
 
 export async function statsFor(tx: Tx, c: CampaignRow, defaultMinutes: number): Promise<StatsView> {
-  const [progress, signedUp, totals, now, commitments] = [
+  const ended = campaignStatus(c) === 'ended'
+  const [progress, signedUp, committed, totals, now, commitments] = [
     await progressFor(tx, c, defaultMinutes),
     await signedUpFor(tx, c),
+    ended ? await minutesCommitted(tx, c, defaultMinutes) : null,
     await statTotals(tx, c.id),
     await prayingNow(tx),
     await tx
@@ -54,8 +56,8 @@ export async function statsFor(tx: Tx, c: CampaignRow, defaultMinutes: number): 
     commitments: Number(commitments?.n ?? 0),
     prayers: totals.prayers ?? 0,
     prayerMinutes: Math.round((totals.prayer_seconds ?? 0) / 60),
+    minutesCommitted: committed,
     groupPrayers: totals.group_prayers ?? 0,
-    shareSignups: totals.share_signups ?? 0,
     prayingNow: now
   }
 }

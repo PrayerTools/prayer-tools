@@ -234,7 +234,7 @@
     "commitments": "Prayer times",
     "prayers": "Prayers",
     "minutes": "Time in prayer",
-    "share_signups": "Joined through a friend",
+    "time_committed": "Time committed",
     "group_prayers": "Prayed in groups",
     "praying_now": "Praying now"
   },
@@ -267,7 +267,8 @@
   },
   "between": {
     "guide": "Read the prayer guide",
-    "ended": "{campaign} has ended.",
+    "ended_short": "This campaign has ended.",
+    "story_title": "Share a story or feedback",
     "thanks": "Thank you for praying",
     "results": "Final results",
     "cta_default": "Continue",

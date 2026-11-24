@@ -231,7 +231,7 @@
     "commitments": "Horarios de oración",
     "prayers": "Oraciones",
     "minutes": "Tiempo en oración",
-    "share_signups": "Se unieron por invitación de un amigo",
+    "time_committed": "Tiempo comprometido",
     "group_prayers": "Oraron en grupo",
     "praying_now": "Orando ahora"
   },
@@ -264,7 +264,8 @@
   },
   "between": {
     "guide": "Leer la guía de oración",
-    "ended": "{campaign} ha terminado.",
+    "ended_short": "Esta campaña ha terminado.",
+    "story_title": "Comparte una historia o tus comentarios",
     "thanks": "Gracias por orar",
     "results": "Resultados finales",
     "cta_default": "Continuar",

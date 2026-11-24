@@ -126,8 +126,9 @@ export interface StatsView {
   commitments: number
   prayers: number
   prayerMinutes: number
+  // Ended campaigns: the minutes of prayer their prayer times committed to.
+  minutesCommitted: number | null
   groupPrayers: number
-  shareSignups: number
   prayingNow: number
 }
 

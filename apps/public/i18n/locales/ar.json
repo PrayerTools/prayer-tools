@@ -231,7 +231,7 @@
     "commitments": "أوقات الصلاة",
     "prayers": "الصلوات",
     "minutes": "الوقت المقضي في الصلاة",
-    "share_signups": "انضموا عن طريق صديق",
+    "time_committed": "الوقت الملتزم به",
     "group_prayers": "صلّوا في مجموعات",
     "praying_now": "يصلّون الآن"
   },
@@ -264,7 +264,8 @@
   },
   "between": {
     "guide": "اقرأ دليل الصلاة",
-    "ended": "انتهت حملة {campaign}.",
+    "ended_short": "انتهت هذه الحملة.",
+    "story_title": "شارك قصة أو ملاحظاتك",
     "thanks": "شكرًا لك على الصلاة",
     "results": "النتائج النهائية",
     "cta_default": "متابعة",

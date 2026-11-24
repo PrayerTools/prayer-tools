@@ -231,7 +231,7 @@
     "commitments": "Moments de prière",
     "prayers": "Prières",
     "minutes": "Temps de prière",
-    "share_signups": "Inscrits grâce à un ami",
+    "time_committed": "Temps engagé",
     "group_prayers": "Prières en groupe",
     "praying_now": "En prière maintenant"
   },
@@ -264,7 +264,8 @@
   },
   "between": {
     "guide": "Lire le guide de prière",
-    "ended": "{campaign} a pris fin.",
+    "ended_short": "Cette campagne a pris fin.",
+    "story_title": "Partagez un témoignage ou vos commentaires",
     "thanks": "Merci d'avoir prié",
     "results": "Résultats finaux",
     "cta_default": "Continuer",

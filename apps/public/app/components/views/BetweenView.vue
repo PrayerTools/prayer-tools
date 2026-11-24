@@ -9,12 +9,13 @@ useHead({ title: () => site.value.name })
 
 <template>
   <div>
-    <section class="brand-bg">
-      <div class="max-w-3xl mx-auto px-4 py-12 space-y-3 text-center">
-        <h1 class="text-3xl sm:text-4xl font-bold text-balance">{{ site.name }}</h1>
-        <p v-if="site.campaign" class="text-lg">{{ t('between.ended', { campaign: site.campaign.name }) }}</p>
+    <CampaignHero title-id="ended-title">
+      <div class="space-y-5">
+        <!-- The header already shows the site name, so the band is titled with the campaign's. -->
+        <h1 id="ended-title" class="text-3xl sm:text-5xl font-bold leading-tight text-balance">{{ site.campaign?.name ?? site.name }}</h1>
+        <p v-if="site.campaign" class="text-xl sm:text-2xl font-semibold text-balance">{{ t('between.ended_short') }}</p>
       </div>
-    </section>
+    </CampaignHero>
     <div class="max-w-3xl mx-auto px-4 py-10 space-y-14">
       <section aria-labelledby="thanks-title">
         <LandingHeading :title="t('between.thanks')" title-id="thanks-title" />
@@ -32,6 +33,13 @@ useHead({ title: () => site.value.name })
         <LandingHeading :title="t('between.results')" title-id="results-title" />
         <div class="text-center">
           <StatsGrid :stats="page.stats" />
+        </div>
+      </section>
+      <section aria-labelledby="story-title" class="space-y-4 rounded-xl border border-stone-200 bg-white px-5 py-8 text-center shadow-[0_1px_3px_rgb(28_25_23/0.05)] sm:px-8">
+        <h2 id="story-title" class="text-2xl font-bold text-balance">{{ t('between.story_title') }}</h2>
+        <p class="mx-auto max-w-prose text-stone-700">{{ t('stories.intro', { site: site.name }) }}</p>
+        <div class="mx-auto max-w-xl text-start">
+          <StoryForm centered />
         </div>
       </section>
       <section v-if="page.notify" aria-labelledby="notify-title" class="space-y-4 rounded-xl border border-stone-200 bg-white px-5 py-8 text-center shadow-[0_1px_3px_rgb(28_25_23/0.05)] sm:px-8">

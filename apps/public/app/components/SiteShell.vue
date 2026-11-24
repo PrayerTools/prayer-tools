@@ -60,7 +60,7 @@ onMounted(async () => {
 
 // The landing hero runs under the header, which stays transparent over it until the page scrolls.
 // Null until mounted, so a page that loads already scrolled keeps a solid header before hydration.
-const overlay = computed(() => props.page === 'landing')
+const overlay = computed(() => props.page === 'landing' || props.page === 'between')
 const scrolled = ref<boolean | null>(null)
 const onScroll = () => { scrolled.value = window.scrollY > 0 }
 onMounted(() => {

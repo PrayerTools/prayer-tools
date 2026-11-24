@@ -6,7 +6,7 @@ import type { Goal, SubscriptionStatus } from './db/schema'
 import { campaignEndDate, campaignStatus, displayLength, slotMinutes, type CampaignDates } from './setup'
 import { addDays, localDateOf, todayIn } from './dates'
 import { buildGrid, campaignWindow, coverageByDay, coveragePercent } from './coverage'
-import { occurrences, type CommitmentRule } from './schedule'
+import { occurrenceCount, occurrences, type CommitmentRule } from './schedule'
 
 const NO_CAMPAIGN = '00000000-0000-0000-0000-000000000000'
 
@@ -90,6 +90,20 @@ export async function peopleCount(tx: Tx, c: CampaignForCount, now: Date = new D
   }
   const row = await q.executeTakeFirst()
   return Number(row?.n ?? 0)
+}
+
+// Minutes of prayer the campaign's prayer times committed to, from its start to its
+// last day (today while it runs); personal-start times from their own start.
+export async function minutesCommitted(tx: Tx, c: CampaignForCount, defaultMinutes = 15, now: Date = new Date()): Promise<number> {
+  const ended = campaignStatus(c, now) === 'ended'
+  const rules = await activeRules(tx, c.id, { ended })
+  const from = c.start_mode === 'date' && c.start_date ? c.start_date : '0001-01-01'
+  const to = (ended && campaignEndDate(c)) || todayIn(c.timezone, now)
+  let total = 0
+  for (const r of rules) {
+    if (!r.paused) total += occurrenceCount(r, from, to) * (r.duration_min ?? defaultMinutes)
+  }
+  return total
 }
 
 // Everyone who has signed up to a campaign since it began: confirmed sign-ups

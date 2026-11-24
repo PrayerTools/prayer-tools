@@ -89,13 +89,6 @@ const signedUpLine = computed(() => {
 })
 const showProgress = computed(() => !!props.page.progress && (props.page.progress.goal !== 'people' || site.value.settings.showPeopleCount))
 
-const imageStyle = computed(() => site.value.image ? { objectPosition: `${site.value.image.fx * 100}% ${site.value.image.fy * 100}%` } : {})
-
-// Splits the image credit so web addresses in it render as links.
-const creditParts = computed(() => (site.value.image?.credit ?? '')
-  .split(/(https?:\/\/[^\s<>"]*[^\s<>".,;:!?)])/)
-  .filter(Boolean)
-  .map(text => ({ text, url: /^https?:\/\//.test(text) })))
 
 const sharePrompt = ref(false)
 const joined = ref(false)
@@ -123,41 +116,18 @@ function onJoined(verify: boolean) {
 
 <template>
   <div>
-    <!-- pt-15 leaves room for the site header, which overlays the hero. -->
-    <!-- An untinted image keeps the text white, with a shadow for contrast. -->
-    <section class="brand-bg relative overflow-hidden pt-15" :class="site.image && !site.image.tint && 'pt-untinted'" aria-labelledby="top-title" data-pt-section="top">
-      <template v-if="site.image">
-        <img :src="site.image.url" :alt="site.image.alt" class="absolute inset-0 size-full object-cover" :style="imageStyle" fetchpriority="high">
-        <!-- Tints the image with the brand color so text keeps its contrast. -->
-        <div v-if="site.image.tint" class="absolute inset-0 bg-(--brand) opacity-80" aria-hidden="true" />
-      </template>
-      <div class="relative max-w-3xl mx-auto px-4 py-16 sm:py-28 text-center">
-        <div class="space-y-5">
-          <!-- The header already shows the site name, so the hero is titled with the campaign's. -->
-          <h1 id="top-title" class="text-3xl sm:text-5xl font-bold leading-tight">{{ campaign?.name ?? site.name }}</h1>
-          <p v-if="page.subtitle" class="text-xl sm:text-2xl font-semibold text-balance">{{ page.subtitle }}</p>
-          <div class="flex flex-wrap justify-center gap-3">
-            <UButton v-if="subscribed" :to="link('manage')" size="xl" color="neutral" variant="solid" class="bg-white text-stone-900 hover:bg-stone-100" :label="t('landing.manage_times')" />
-            <UButton v-else to="#signup" size="xl" color="neutral" variant="solid" class="bg-white text-stone-900 hover:bg-stone-100" :label="st('landing.signup.title')" />
-            <UButton v-if="page.today" :to="todayLink" size="xl" variant="outline" class="text-(--brand-text) ring-(--brand-text)/60 hover:bg-white/10" :label="page.today.current ? t('landing.pray_today') : t('landing.read_latest')" />
-          </div>
+    <CampaignHero title-id="top-title">
+      <div class="space-y-5">
+        <!-- The header already shows the site name, so the hero is titled with the campaign's. -->
+        <h1 id="top-title" class="text-3xl sm:text-5xl font-bold leading-tight">{{ campaign?.name ?? site.name }}</h1>
+        <p v-if="page.subtitle" class="text-xl sm:text-2xl font-semibold text-balance">{{ page.subtitle }}</p>
+        <div class="flex flex-wrap justify-center gap-3">
+          <UButton v-if="subscribed" :to="link('manage')" size="xl" color="neutral" variant="solid" class="bg-white text-stone-900 hover:bg-stone-100" :label="t('landing.manage_times')" />
+          <UButton v-else to="#signup" size="xl" color="neutral" variant="solid" class="bg-white text-stone-900 hover:bg-stone-100" :label="st('landing.signup.title')" />
+          <UButton v-if="page.today" :to="todayLink" size="xl" variant="outline" class="text-(--brand-text) ring-(--brand-text)/60 hover:bg-white/10" :label="page.today.current ? t('landing.pray_today') : t('landing.read_latest')" />
         </div>
       </div>
-      <UPopover v-if="site.image?.credit" :content="{ side: 'top', align: 'end' }">
-        <UButton icon="i-lucide-info" size="sm" variant="ghost" color="neutral" class="absolute bottom-1 end-1 rounded-full text-(--brand-text) opacity-80 hover:opacity-100 hover:bg-white/10" :aria-label="t('landing.photo_credit')" />
-        <template #content>
-          <div class="max-w-xs p-3 text-xs space-y-1">
-            <p class="font-medium">{{ t('landing.photo_credit') }}</p>
-            <p>
-              <template v-for="(part, i) in creditParts" :key="i">
-                <a v-if="part.url" :href="part.text" target="_blank" rel="noopener noreferrer nofollow" class="underline underline-offset-2 break-all">{{ part.text }}</a>
-                <template v-else>{{ part.text }}</template>
-              </template>
-            </p>
-          </div>
-        </template>
-      </UPopover>
-    </section>
+    </CampaignHero>
 
     <div v-if="page.side.length" class="max-w-3xl mx-auto px-4 pt-10 space-y-3" :class="{ 'pb-10': blocks[0]?.signup }">
       <NuxtLink v-for="c in page.side" :key="c.slug" :to="campaignLink(c.slug)" class="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-stone-200 bg-white px-5 py-4 shadow-[0_1px_3px_rgb(28_25_23/0.05)] transition-colors hover:border-primary/60">
