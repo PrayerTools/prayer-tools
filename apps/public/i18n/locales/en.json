@@ -47,6 +47,7 @@
     "last_week": "Final week",
     "last_month": "Final month",
     "pray_today": "Pray today",
+    "read_latest": "Read the latest prayer",
     "photo_credit": "Photo credit",
     "signed_up": "You are already praying with {site}. Add, change or stop your prayer times there.",
     "manage_times": "Manage your prayer times",
@@ -86,7 +87,8 @@
       "button": "Choose my prayer time"
     },
     "today": {
-      "title": "Today's prayer"
+      "title": "Today's prayer",
+      "latest": "Latest prayer"
     },
     "share": {
       "title": "Invite others to pray",

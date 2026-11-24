@@ -20,7 +20,7 @@ import { nextStep, nextStepCampaign, prayingIn } from '@prayertools/shared/next-
 import { notifyOffer } from '@prayertools/shared/notify-requests'
 import { campaignSegment } from '@prayertools/shared/campaigns'
 import { contentLength } from '@prayertools/shared/content'
-import type { PageView, SiteResponse } from '../../shared/view'
+import type { PageView, SiteResponse, TodayView } from '../../shared/view'
 import { useDb } from './db'
 import type { SiteContext } from './site-context'
 import { buildSiteView, campaignView, loadSiteData, sideCampaigns, stateOf, type SiteData } from './site-data'
@@ -207,11 +207,17 @@ async function landingPage(tx: Parameters<typeof loadSiteData>[0], event: H3Even
     buttonUrl: s.button_url ?? null
   })).filter(s => s.heading || s.html || s.video)
   const stories = await landingStories(tx, side ? { campaignId: campaign!.id, storyIds: landing.story_ids } : null)
-  let today: { day: number, html: string, title: string } | null = null
+  // Today's entry, or the latest one when the content stops before today.
+  let today: TodayView | null = null
   if (campaign && stateOf(data, campaign) !== 'upcoming') {
     const cv = campaignView(data, campaign)
-    const blocks = await contentBlocks(tx, data, ctx.name, campaign, cv.todayEntry, lang, 3)
-    if (blocks[0]) today = { day: cv.todayEntry, html: blocks[0].html, title: blocks[0].title }
+    const { max } = await visibleEntries(tx, campaign, cv, ctx.preview)
+    const day = Math.min(cv.todayEntry, max)
+    const blocks = day >= 1 ? await contentBlocks(tx, data, ctx.name, campaign, day, lang, 3) : []
+    if (blocks[0]) {
+      const date = campaign.start_mode === 'date' && campaign.start_date ? entryDate(campaign.start_date, campaign.cadence, day) : null
+      today = { day, html: blocks[0].html, title: blocks[0].title, current: day === cv.todayEntry, date }
+    }
   }
   // The editor's preview treats a custom section with nothing to see as empty.
   const blank = ctx.editor
@@ -280,7 +286,8 @@ async function prayPage(tx: Parameters<typeof loadSiteData>[0], ctx: SiteContext
   const cv = campaignView(data, campaign)
   if (cv.state === 'upcoming' && campaign.start_date && !ctx.preview) return { kind: 'not_started', startDate: campaign.start_date }
   const { last, max } = await visibleEntries(tx, campaign, cv, ctx.preview)
-  let day = cv.todayEntry
+  // Without a chosen day: today's entry, or the latest one when the content stops before today.
+  let day = Math.min(cv.todayEntry, Math.max(max, 1))
   if (rest[0] !== undefined) {
     if (!/^\d{1,5}$/.test(rest[0])) return { kind: 'not_found' }
     day = Number(rest[0])

@@ -44,6 +44,7 @@
     "last_week": "Dernière semaine",
     "last_month": "Dernier mois",
     "pray_today": "Prier aujourd'hui",
+    "read_latest": "Lire la dernière prière",
     "photo_credit": "Crédit photo",
     "signed_up": "Vous priez déjà avec {site}. Vous pouvez y ajouter, modifier ou arrêter vos moments de prière.",
     "manage_times": "Gérer vos moments de prière",
@@ -83,7 +84,8 @@
       "button": "Choisir mon moment de prière"
     },
     "today": {
-      "title": "La prière du jour"
+      "title": "La prière du jour",
+      "latest": "Dernière prière"
     },
     "share": {
       "title": "Invitez d'autres personnes à prier",

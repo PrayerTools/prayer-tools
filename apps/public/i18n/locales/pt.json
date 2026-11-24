@@ -44,6 +44,7 @@
     "last_week": "Última semana",
     "last_month": "Último mês",
     "pray_today": "Ore hoje",
+    "read_latest": "Leia a última oração",
     "photo_credit": "Crédito da foto",
     "signed_up": "Você já está orando com {site}. Lá você pode adicionar, mudar ou parar seus horários de oração.",
     "manage_times": "Gerenciar seus horários de oração",
@@ -83,7 +84,8 @@
       "button": "Escolher meu horário de oração"
     },
     "today": {
-      "title": "A oração de hoje"
+      "title": "A oração de hoje",
+      "latest": "Última oração"
     },
     "share": {
       "title": "Convide outras pessoas para orar",

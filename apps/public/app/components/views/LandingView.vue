@@ -76,6 +76,9 @@ const aboutTitle = computed(() => {
   const own = props.page.template ? `landing.about.title_${props.page.template}` : null
   return site.value.strings['landing.about.title'] || (own && te(own) ? t(own) : t('landing.about.title'))
 })
+// The latest entry, when it isn't today's, is headed "Latest prayer" unless the site renamed the section.
+const todayTitle = computed(() => props.page.today?.current === false && !site.value.strings['landing.today.title'] ? t('landing.today.latest') : st('landing.today.title'))
+const todayLink = computed(() => props.page.today && !props.page.today.current ? link('pray', [props.page.today.day]) : link('pray'))
 const showProgress = computed(() => !!props.page.progress && (props.page.progress.goal !== 'people' || site.value.settings.showPeopleCount))
 
 const imageStyle = computed(() => site.value.image ? { objectPosition: `${site.value.image.fx * 100}% ${site.value.image.fy * 100}%` } : {})
@@ -128,7 +131,7 @@ function onJoined(verify: boolean) {
           <div class="flex flex-wrap justify-center gap-3">
             <UButton v-if="subscribed" :to="link('manage')" size="xl" color="neutral" variant="solid" class="bg-white text-stone-900 hover:bg-stone-100" :label="t('landing.manage_times')" />
             <UButton v-else to="#signup" size="xl" color="neutral" variant="solid" class="bg-white text-stone-900 hover:bg-stone-100" :label="st('landing.signup.title')" />
-            <UButton v-if="page.today" :to="link('pray')" size="xl" variant="outline" class="text-(--brand-text) ring-(--brand-text)/60 hover:bg-white/10" :label="t('landing.pray_today')" />
+            <UButton v-if="page.today" :to="todayLink" size="xl" variant="outline" class="text-(--brand-text) ring-(--brand-text)/60 hover:bg-white/10" :label="page.today.current ? t('landing.pray_today') : t('landing.read_latest')" />
           </div>
         </div>
       </div>
@@ -279,14 +282,14 @@ function onJoined(verify: boolean) {
           </section>
 
           <section v-else-if="s.key === 'today' && page.today" aria-labelledby="today-title" data-pt-section="today">
-            <LandingHeading :title="st('landing.today.title')" title-id="today-title" :subtitle="t(`pray.${entryUnit(campaign?.cadence)}`, { n: num(page.today.day) })" />
+            <LandingHeading :title="todayTitle" title-id="today-title" :subtitle="page.today.current || !page.today.date ? t(`pray.${entryUnit(campaign?.cadence)}`, { n: num(page.today.day) }) : date(page.today.date)" />
             <div class="rounded-xl border border-stone-200 bg-white shadow-[0_1px_3px_rgb(28_25_23/0.05)]">
               <div class="max-h-96 overflow-hidden px-5 pt-6 pb-6 sm:px-8 sm:pt-8 [mask-image:linear-gradient(to_bottom,#000_calc(100%_-_4rem),transparent)]">
                 <!-- eslint-disable-next-line vue/no-v-html -->
                 <div class="pt-content pt-flush" v-html="page.today.html" />
               </div>
               <div class="flex justify-center border-t border-stone-200 px-5 py-5 sm:px-8">
-                <UButton :to="link('pray')" size="lg" :label="t('landing.continue_praying')" trailing-icon="i-lucide-arrow-right" :ui="{ trailingIcon: 'rtl:rotate-180' }" class="w-full justify-center sm:w-auto" />
+                <UButton :to="todayLink" size="lg" :label="t('landing.continue_praying')" trailing-icon="i-lucide-arrow-right" :ui="{ trailingIcon: 'rtl:rotate-180' }" class="w-full justify-center sm:w-auto" />
               </div>
             </div>
           </section>
