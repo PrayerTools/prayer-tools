@@ -206,8 +206,8 @@ async function submit() {
           </ul>
         </div>
         <div class="flex flex-wrap gap-3">
-          <UButton v-if="campaign.startMode !== 'join'" variant="soft" icon="i-lucide-plus" :label="t('signup.add_time')" @click="addCommitment" />
-          <UButton v-if="campaign.goal === 'coverage'" variant="ghost" icon="i-lucide-calendar" :label="t('signup.pick_slots')" :to="link('coverage')" />
+          <UButton v-if="campaign.startMode !== 'join'" variant="soft" icon="i-lucide-plus" :label="t('signup.add_time')" :ui="{ label: 'whitespace-normal text-start' }" @click="addCommitment" />
+          <UButton v-if="campaign.goal === 'coverage'" variant="ghost" icon="i-lucide-calendar" :label="t('signup.pick_slots')" :ui="{ label: 'whitespace-normal text-start' }" :to="link('coverage')" />
         </div>
         <UFormField :label="t('signup.timezone')" name="timezone">
           <USelectMenu v-model="state.timezone" :items="tzItems" class="w-full" />
