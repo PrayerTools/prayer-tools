@@ -46,7 +46,7 @@
 .dark .home-page [class*='bg-[#fff0e3]'] { background: #3e3028; }
 .dark .public-campaign.campaign-theme { background: #141c26; color: #e2e8f0; }
 .dark .public-campaign.campaign-theme > footer { background: #18222f; border-color: #405269; }
-.dark .public-campaign #signup { background: #18222f !important; }
+.dark .pt-band-b { background: #1b2533; border-color: #2a3747; }
 .dark .public-campaign #signup > div > div { border-color: #405269; }
 .home-header .theme-toggle { color: #ffffff; }
 .dark .platform-page { background: #141c26; color: #e2e8f0; }

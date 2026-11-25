@@ -19,6 +19,8 @@ body {
 }
 
 .brand-bg { background: var(--brand); color: var(--brand-text); }
+/* Landing page section bands: every other one in a darker tone. */
+.pt-band-b { background: #f1efec; border-block: 1px solid #e7e5e4; }
 /* Text over a hero image shown without the brand tint. */
 .pt-untinted { --brand-text: #ffffff; color: #ffffff; text-shadow: 0 1px 3px rgb(0 0 0 / 0.6), 0 0 12px rgb(0 0 0 / 0.35); }
 /* The hero image drifts down at under half the scroll speed as the hero scrolls away. The

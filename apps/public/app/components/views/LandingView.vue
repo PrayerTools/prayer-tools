@@ -8,10 +8,10 @@ const { site, link, campaignLink, st, num, date, dateRange, aboutTitle, moreAbou
 const { t } = useI18n()
 const campaign = computed(() => site.value.campaign)
 
-// The sections after the hero, in page order. Neighbouring sections share a
-// narrow column; the signup form is a full-width band between columns.
+// The sections after the hero, in page order. Each is a full-width band, the
+// bands, the signup form's included, alternating between two tones.
 // Neighbouring short calls to action are gathered into one entry and shown as cards side by side.
-interface Entry { key: string, customId?: string, custom?: CustomSectionView, placeholder: boolean, cards?: Entry[] }
+interface Entry { key: string, customId?: string, custom?: CustomSectionView, placeholder: boolean, cards?: Entry[], tone?: 'a' | 'b' }
 const CUSTOM = 'custom:'
 const CARD_SECTIONS = new Set(['share', 'contact', 'app'])
 const HOW_STEPS = [
@@ -21,10 +21,12 @@ const HOW_STEPS = [
   { key: 'step4', icon: 'i-lucide-heart' }
 ]
 const blocks = computed(() => {
-  const out: { signup: boolean, entries: Entry[] }[] = []
+  const out: { signup: boolean, entries: Entry[], tone?: 'a' | 'b' }[] = []
+  let bands = 0
+  const tone = (): 'a' | 'b' => bands++ % 2 ? 'b' : 'a'
   for (const key of props.page.sections) {
     if (key === 'signup') {
-      out.push({ signup: true, entries: [] })
+      out.push({ signup: true, entries: [], tone: tone() })
       continue
     }
     const placeholder = !!props.page.placeholders?.includes(key)
@@ -38,9 +40,9 @@ const blocks = computed(() => {
       out.push(column)
     }
     const prev = column.entries.at(-1)
-    if (!CARD_SECTIONS.has(key) || placeholder) column.entries.push(entry)
+    if (!CARD_SECTIONS.has(key) || placeholder) column.entries.push({ ...entry, tone: tone() })
     else if (prev?.cards) prev.cards.push(entry)
-    else column.entries.push({ key: `cards:${key}`, placeholder: false, cards: [entry] })
+    else column.entries.push({ key: `cards:${key}`, placeholder: false, cards: [entry], tone: tone() })
   }
   return out
 })
@@ -141,7 +143,7 @@ function onJoined(verify: boolean) {
     </div>
 
     <template v-for="block in blocks" :key="block.signup ? 'signup' : block.entries[0]!.key">
-      <section v-if="block.signup" id="signup" class="scroll-mt-4 bg-stone-100/70" aria-labelledby="signup-title" data-pt-section="signup">
+      <section v-if="block.signup" id="signup" class="scroll-mt-4" :class="block.tone === 'b' && 'pt-band-b'" aria-labelledby="signup-title" data-pt-section="signup">
         <div class="max-w-5xl mx-auto px-4 py-12">
           <div class="rounded-xl border border-stone-200 bg-white shadow-sm">
             <div v-if="subscribed && !joined" class="px-5 py-8 text-center sm:px-8 space-y-4">
@@ -165,113 +167,115 @@ function onJoined(verify: boolean) {
         </div>
       </section>
 
-      <div v-else class="max-w-3xl mx-auto px-4 py-10 space-y-14">
-        <template v-for="s in block.entries" :key="s.key">
-          <div v-if="s.cards" class="grid gap-6 sm:grid-cols-2">
-            <template v-for="(c, i) in s.cards" :key="c.key">
-              <InviteCard v-if="c.key === 'share'" data-pt-section="share" centered :class="s.cards.length % 2 && i === s.cards.length - 1 && 'sm:col-span-2'" />
-              <SectionCard v-else-if="c.key === 'contact'" :title="st('landing.contact.title')" title-id="contact-title" data-pt-section="contact" centered :class="s.cards.length % 2 && i === s.cards.length - 1 && 'sm:col-span-2'">
-                <div class="space-y-4 py-5">
-                  <p class="text-stone-700">{{ st('landing.contact.body') }}</p>
-                  <UButton :to="link('contact')" variant="outline" color="neutral" icon="i-lucide-mail" :label="t('contact.button')" />
+      <template v-else>
+        <div v-for="s in block.entries" :key="s.key" :class="s.tone === 'b' && 'pt-band-b'">
+          <div class="max-w-3xl mx-auto px-4 py-14">
+            <div v-if="s.cards" class="grid gap-6 sm:grid-cols-2">
+              <template v-for="(c, i) in s.cards" :key="c.key">
+                <InviteCard v-if="c.key === 'share'" data-pt-section="share" centered :class="s.cards.length % 2 && i === s.cards.length - 1 && 'sm:col-span-2'" />
+                <SectionCard v-else-if="c.key === 'contact'" :title="st('landing.contact.title')" title-id="contact-title" data-pt-section="contact" centered :class="s.cards.length % 2 && i === s.cards.length - 1 && 'sm:col-span-2'">
+                  <div class="space-y-4 py-5">
+                    <p class="text-stone-700">{{ st('landing.contact.body') }}</p>
+                    <UButton :to="link('contact')" variant="outline" color="neutral" icon="i-lucide-mail" :label="t('contact.button')" />
+                  </div>
+                </SectionCard>
+                <SectionCard v-else :title="st('landing.app.title')" title-id="app-title" data-pt-section="app" centered :class="s.cards.length % 2 && i === s.cards.length - 1 && 'sm:col-span-2'">
+                  <div class="py-5">
+                    <AppLinks centered />
+                  </div>
+                </SectionCard>
+              </template>
+            </div>
+            <EditorPlaceholder v-else-if="s.placeholder && s.customId !== undefined" section="custom" :custom-id="s.customId" title="New section" />
+            <EditorPlaceholder v-else-if="s.placeholder" :section="s.key" :title="st(`landing.${s.key}.title`)" />
+
+            <section v-else-if="s.key === 'goal'" aria-labelledby="goal-title" data-pt-section="goal">
+              <LandingHeading :title="st('landing.goal.title')" title-id="goal-title" />
+              <div class="rounded-xl border border-stone-200 bg-white px-5 py-6 text-center shadow-[0_1px_3px_rgb(28_25_23/0.05)] sm:px-8 sm:py-8">
+                <div v-if="when || showProgress || page.prayingNow > 0" class="grid gap-6 sm:grid-cols-2">
+                  <div v-if="when" class="space-y-1">
+                    <p class="text-3xl font-bold tabular-nums">{{ when.headline }}</p>
+                    <p v-if="when.detail" class="text-lg font-medium tabular-nums">{{ when.detail }}</p>
+                    <p class="text-stone-600">{{ when.dates }}</p>
+                  </div>
+                  <div v-if="showProgress || page.prayingNow > 0" class="space-y-3">
+                    <GoalProgress v-if="showProgress" :progress="page.progress!" />
+                    <p v-if="signedUpLine" class="text-sm text-stone-600">{{ signedUpLine }}</p>
+                    <p v-if="page.prayingNow > 0" class="inline-flex items-center gap-2 text-sm tabular-nums text-stone-700">
+                      <span class="size-2 shrink-0 rounded-full bg-success" aria-hidden="true" />{{ t('pray.praying_now', { n: num(page.prayingNow) }, page.prayingNow) }}
+                    </p>
+                  </div>
                 </div>
-              </SectionCard>
-              <SectionCard v-else :title="st('landing.app.title')" title-id="app-title" data-pt-section="app" centered :class="s.cards.length % 2 && i === s.cards.length - 1 && 'sm:col-span-2'">
-                <div class="py-5">
-                  <AppLinks centered />
+                <div v-if="page.run?.calendar" :class="(when || showProgress || page.prayingNow > 0) && 'mt-8 border-t border-stone-200 pt-6'">
+                  <GoalCalendar :calendar="page.run.calendar" :today="page.run.today" />
                 </div>
-              </SectionCard>
-            </template>
+              </div>
+            </section>
+
+            <section v-else-if="s.key === 'why'" aria-labelledby="why-title" class="text-center" data-pt-section="why">
+              <LandingHeading :title="st('landing.why.title')" title-id="why-title" />
+              <!-- eslint-disable-next-line vue/no-v-html -->
+              <div class="pt-content pt-centered mx-auto max-w-prose" v-html="page.why" />
+            </section>
+
+            <section v-else-if="s.key === 'about'" aria-labelledby="about-title" class="text-center" data-pt-section="about">
+              <LandingHeading :title="aboutTitle(page.template)" title-id="about-title" />
+              <!-- eslint-disable-next-line vue/no-v-html -->
+              <div class="pt-content pt-centered mx-auto max-w-prose" v-html="page.about" />
+            </section>
+
+            <section v-else-if="s.custom" :aria-labelledby="`custom-${s.custom.id}`" :data-pt-custom="s.custom.id" class="space-y-4 text-center">
+              <LandingHeading :title="s.custom.heading" :title-id="`custom-${s.custom.id}`" />
+              <img v-if="s.custom.imageUrl" :src="s.custom.imageUrl" :alt="s.custom.imageAlt" class="w-full rounded-xl" loading="lazy">
+              <video v-if="s.custom.video?.kind === 'file'" :src="s.custom.video.src" controls playsinline preload="metadata" class="w-full rounded-xl bg-black aspect-video" />
+              <div v-else-if="s.custom.video" class="relative w-full aspect-video overflow-hidden rounded-xl bg-black">
+                <iframe :src="s.custom.video.src" :title="s.custom.heading" loading="lazy" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" class="absolute inset-0 size-full border-0" />
+              </div>
+              <!-- eslint-disable-next-line vue/no-v-html -->
+              <div class="pt-content pt-centered mx-auto max-w-prose" v-html="s.custom.html" />
+              <UButton v-if="s.custom.buttonUrl && s.custom.buttonLabel" :to="s.custom.buttonUrl" target="_blank" :label="s.custom.buttonLabel" trailing-icon="i-lucide-external-link" />
+            </section>
+
+            <section v-else-if="s.key === 'stories'" aria-labelledby="stories-title" class="text-center" data-pt-section="stories">
+              <LandingHeading :title="st('landing.stories.title')" title-id="stories-title" />
+              <div class="flex flex-wrap justify-center gap-4">
+                <figure v-for="story in page.stories" :key="story.id" class="m-0 w-full rounded-xl border border-stone-200 bg-white p-5 shadow-[0_1px_3px_rgb(28_25_23/0.05)] sm:w-[calc(50%-0.5rem)]">
+                  <blockquote class="whitespace-pre-line text-stone-800">{{ story.body }}</blockquote>
+                  <figcaption class="mt-3 text-sm text-stone-600">— {{ story.name || t('stories.anonymous') }}</figcaption>
+                </figure>
+              </div>
+              <NuxtLink :to="link('stories')" class="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-primary underline-offset-4 hover:underline">
+                <UIcon name="i-lucide-pen-line" class="size-4 shrink-0" />{{ t('stories.share_link') }}
+              </NuxtLink>
+            </section>
+
+            <section v-else-if="s.key === 'how'" aria-labelledby="how-title" class="text-center" data-pt-section="how">
+              <LandingHeading :title="st('landing.how.title')" title-id="how-title" />
+              <ol class="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-4">
+                <li v-for="step in HOW_STEPS" :key="step.key" class="flex flex-col items-center gap-3">
+                  <span class="flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary" aria-hidden="true">
+                    <UIcon :name="step.icon" class="size-7" />
+                  </span>
+                  <span class="font-semibold text-balance">{{ st(`landing.how.${step.key}`, { site: site.name }) }}</span>
+                </li>
+              </ol>
+            </section>
+
+            <section v-else-if="s.key === 'today' && page.today" aria-labelledby="today-title" data-pt-section="today">
+              <LandingHeading :title="todayTitle" title-id="today-title" :subtitle="page.today.current || !page.today.date ? t(`pray.${entryUnit(campaign?.cadence)}`, { n: num(page.today.day) }) : date(page.today.date)" />
+              <div class="rounded-xl border border-stone-200 bg-white shadow-[0_1px_3px_rgb(28_25_23/0.05)]">
+                <div class="max-h-96 overflow-hidden px-5 pt-6 pb-6 sm:px-8 sm:pt-8 [mask-image:linear-gradient(to_bottom,#000_calc(100%_-_4rem),transparent)]">
+                  <!-- eslint-disable-next-line vue/no-v-html -->
+                  <div class="pt-content pt-flush" v-html="page.today.html" />
+                </div>
+                <div class="flex justify-center border-t border-stone-200 px-5 py-5 sm:px-8">
+                  <UButton :to="todayLink" size="lg" :label="t('landing.continue_praying')" trailing-icon="i-lucide-arrow-right" :ui="{ trailingIcon: 'rtl:rotate-180' }" class="w-full justify-center sm:w-auto" />
+                </div>
+              </div>
+            </section>
           </div>
-          <EditorPlaceholder v-else-if="s.placeholder && s.customId !== undefined" section="custom" :custom-id="s.customId" title="New section" />
-          <EditorPlaceholder v-else-if="s.placeholder" :section="s.key" :title="st(`landing.${s.key}.title`)" />
-
-          <section v-else-if="s.key === 'goal'" aria-labelledby="goal-title" data-pt-section="goal">
-            <LandingHeading :title="st('landing.goal.title')" title-id="goal-title" />
-            <div class="rounded-xl border border-stone-200 bg-white px-5 py-6 text-center shadow-[0_1px_3px_rgb(28_25_23/0.05)] sm:px-8 sm:py-8">
-              <div v-if="when || showProgress || page.prayingNow > 0" class="grid gap-6 sm:grid-cols-2">
-                <div v-if="when" class="space-y-1">
-                  <p class="text-3xl font-bold tabular-nums">{{ when.headline }}</p>
-                  <p v-if="when.detail" class="text-lg font-medium tabular-nums">{{ when.detail }}</p>
-                  <p class="text-stone-600">{{ when.dates }}</p>
-                </div>
-                <div v-if="showProgress || page.prayingNow > 0" class="space-y-3">
-                  <GoalProgress v-if="showProgress" :progress="page.progress!" />
-                  <p v-if="signedUpLine" class="text-sm text-stone-600">{{ signedUpLine }}</p>
-                  <p v-if="page.prayingNow > 0" class="inline-flex items-center gap-2 text-sm tabular-nums text-stone-700">
-                    <span class="size-2 shrink-0 rounded-full bg-success" aria-hidden="true" />{{ t('pray.praying_now', { n: num(page.prayingNow) }, page.prayingNow) }}
-                  </p>
-                </div>
-              </div>
-              <div v-if="page.run?.calendar" :class="(when || showProgress || page.prayingNow > 0) && 'mt-8 border-t border-stone-200 pt-6'">
-                <GoalCalendar :calendar="page.run.calendar" :today="page.run.today" />
-              </div>
-            </div>
-          </section>
-
-          <section v-else-if="s.key === 'why'" aria-labelledby="why-title" class="text-center" data-pt-section="why">
-            <LandingHeading :title="st('landing.why.title')" title-id="why-title" />
-            <!-- eslint-disable-next-line vue/no-v-html -->
-            <div class="pt-content pt-centered mx-auto max-w-prose" v-html="page.why" />
-          </section>
-
-          <section v-else-if="s.key === 'about'" aria-labelledby="about-title" class="text-center" data-pt-section="about">
-            <LandingHeading :title="aboutTitle(page.template)" title-id="about-title" />
-            <!-- eslint-disable-next-line vue/no-v-html -->
-            <div class="pt-content pt-centered mx-auto max-w-prose" v-html="page.about" />
-          </section>
-
-          <section v-else-if="s.custom" :aria-labelledby="`custom-${s.custom.id}`" :data-pt-custom="s.custom.id" class="space-y-4 text-center">
-            <LandingHeading :title="s.custom.heading" :title-id="`custom-${s.custom.id}`" />
-            <img v-if="s.custom.imageUrl" :src="s.custom.imageUrl" :alt="s.custom.imageAlt" class="w-full rounded-xl" loading="lazy">
-            <video v-if="s.custom.video?.kind === 'file'" :src="s.custom.video.src" controls playsinline preload="metadata" class="w-full rounded-xl bg-black aspect-video" />
-            <div v-else-if="s.custom.video" class="relative w-full aspect-video overflow-hidden rounded-xl bg-black">
-              <iframe :src="s.custom.video.src" :title="s.custom.heading" loading="lazy" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" class="absolute inset-0 size-full border-0" />
-            </div>
-            <!-- eslint-disable-next-line vue/no-v-html -->
-            <div class="pt-content pt-centered mx-auto max-w-prose" v-html="s.custom.html" />
-            <UButton v-if="s.custom.buttonUrl && s.custom.buttonLabel" :to="s.custom.buttonUrl" target="_blank" :label="s.custom.buttonLabel" trailing-icon="i-lucide-external-link" />
-          </section>
-
-          <section v-else-if="s.key === 'stories'" aria-labelledby="stories-title" class="text-center" data-pt-section="stories">
-            <LandingHeading :title="st('landing.stories.title')" title-id="stories-title" />
-            <div class="flex flex-wrap justify-center gap-4">
-              <figure v-for="story in page.stories" :key="story.id" class="m-0 w-full rounded-xl border border-stone-200 bg-white p-5 shadow-[0_1px_3px_rgb(28_25_23/0.05)] sm:w-[calc(50%-0.5rem)]">
-                <blockquote class="whitespace-pre-line text-stone-800">{{ story.body }}</blockquote>
-                <figcaption class="mt-3 text-sm text-stone-600">— {{ story.name || t('stories.anonymous') }}</figcaption>
-              </figure>
-            </div>
-            <NuxtLink :to="link('stories')" class="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-primary underline-offset-4 hover:underline">
-              <UIcon name="i-lucide-pen-line" class="size-4 shrink-0" />{{ t('stories.share_link') }}
-            </NuxtLink>
-          </section>
-
-          <section v-else-if="s.key === 'how'" aria-labelledby="how-title" class="text-center" data-pt-section="how">
-            <LandingHeading :title="st('landing.how.title')" title-id="how-title" />
-            <ol class="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-4">
-              <li v-for="step in HOW_STEPS" :key="step.key" class="flex flex-col items-center gap-3">
-                <span class="flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary" aria-hidden="true">
-                  <UIcon :name="step.icon" class="size-7" />
-                </span>
-                <span class="font-semibold text-balance">{{ st(`landing.how.${step.key}`, { site: site.name }) }}</span>
-              </li>
-            </ol>
-          </section>
-
-          <section v-else-if="s.key === 'today' && page.today" aria-labelledby="today-title" data-pt-section="today">
-            <LandingHeading :title="todayTitle" title-id="today-title" :subtitle="page.today.current || !page.today.date ? t(`pray.${entryUnit(campaign?.cadence)}`, { n: num(page.today.day) }) : date(page.today.date)" />
-            <div class="rounded-xl border border-stone-200 bg-white shadow-[0_1px_3px_rgb(28_25_23/0.05)]">
-              <div class="max-h-96 overflow-hidden px-5 pt-6 pb-6 sm:px-8 sm:pt-8 [mask-image:linear-gradient(to_bottom,#000_calc(100%_-_4rem),transparent)]">
-                <!-- eslint-disable-next-line vue/no-v-html -->
-                <div class="pt-content pt-flush" v-html="page.today.html" />
-              </div>
-              <div class="flex justify-center border-t border-stone-200 px-5 py-5 sm:px-8">
-                <UButton :to="todayLink" size="lg" :label="t('landing.continue_praying')" trailing-icon="i-lucide-arrow-right" :ui="{ trailingIcon: 'rtl:rotate-180' }" class="w-full justify-center sm:w-auto" />
-              </div>
-            </div>
-          </section>
-        </template>
-      </div>
+        </div>
+      </template>
     </template>
 
     <UModal v-model:open="verifyPrompt" :title="t('pray.verify_prompt_title')" :description="signupEmail ? t('pray.verify_prompt_body_email', { email: signupEmail }) : t('pray.verify_prompt_body')">
