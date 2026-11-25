@@ -99,6 +99,11 @@ import AdminLayout from '#core/app/layouts/default.vue'
 }
 .admin-theme :deep(header.sticky > div:first-child > a::before) { clip-path: inset(0 69% 0 0); }
 .admin-theme :deep(header.sticky > div:first-child > a::after) { clip-path: inset(0 0 0 31%); filter: brightness(0) invert(1); }
+/* On a phone the top bar fits its buttons: a smaller logo, and the site switcher's name truncates. */
+@media (max-width: 479px) {
+  .admin-theme :deep(header.sticky > div:first-child > a) { width: 96px; }
+}
+.admin-theme :deep(header.sticky > div:first-child > button[aria-haspopup]) { min-width: 0; }
 .admin-theme :deep(aside) {
   --chrome-bg: #202833;
   --ui-bg: #202833;
