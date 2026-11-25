@@ -31,6 +31,8 @@ body {
     .pt-parallax { animation: pt-parallax linear both; animation-timeline: view(block 0px); animation-range: exit; }
   }
 }
+/* Waiting for v-reveal to bring it into view; print shows everything. */
+@media screen { [data-reveal-out] { opacity: 0; } }
 /* The prayer timer's four dots come on one after another and stay lit, then fade together. */
 @keyframes pt-dot-fill-1 { 0% { opacity: 0.25; scale: 0.8; } 15% { opacity: 1; scale: 1.15; } 20%, 85% { opacity: 1; scale: 1; } 95%, 100% { opacity: 0.25; scale: 0.8; } }
 @keyframes pt-dot-fill-2 { 0%, 20% { opacity: 0.25; scale: 0.8; } 35% { opacity: 1; scale: 1.15; } 40%, 85% { opacity: 1; scale: 1; } 95%, 100% { opacity: 0.25; scale: 0.8; } }
