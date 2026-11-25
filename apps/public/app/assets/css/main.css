@@ -67,8 +67,10 @@ html:has(.public-campaign) { scroll-padding-top: 3.75rem; }
 /* Content that fills a padded card: the card's padding sets the outer spacing. */
 .pt-content.pt-flush > :first-child { margin-top: 0; }
 .pt-content.pt-flush > :last-child { margin-bottom: 0; }
-/* Centered text: the first paragraph leads, and lists stay start-aligned in a centered block. */
+/* Centered text: the first paragraph leads, images center, and lists stay start-aligned in a centered block. */
 .pt-content.pt-centered > p:first-child { font-size: 1.25rem; font-weight: 500; }
+.pt-content.pt-centered img { margin-inline: auto; }
+.pt-content.pt-centered > .columns { margin-top: 2.5rem; }
 .pt-content.pt-centered :is(ul, ol) { display: table; margin-inline: auto; text-align: start; }
 
 :focus-visible { outline: 3px solid var(--brand-foreground, var(--brand)); outline-offset: 2px; }

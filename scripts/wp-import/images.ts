@@ -78,6 +78,8 @@ export interface ImageStore {
   rewriteUrl(url: string): Promise<string | null>
   // The stored copy of a network file, kept as it is, or null.
   resolveFile(url: string, kind?: 'audio' | 'file'): Promise<string | null>
+  // Stores an image that ships with the importer and returns its address.
+  storeImage(path: string): Promise<string>
   report: ImageReport
 }
 
@@ -305,6 +307,7 @@ export function createImageStore(opts: ImageStoreOptions): ImageStore {
       return stored === undefined ? url : stored
     },
     resolveFile: async (url, k = AUDIO_FILE.test(url.split(/[?#]/)[0] ?? '') ? 'audio' : 'file') => (await resolve(url, k, true)) ?? null,
+    storeImage: async path => await store(await readFile(path), path, 'image'),
     report
   }
 }

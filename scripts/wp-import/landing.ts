@@ -6,7 +6,7 @@ import type { SQL } from 'bun'
 import type { CampaignEmailText, CampaignLanding, LandingCustomSection, TiptapDoc, TiptapNode, TranslatableText } from '@prayertools/shared/db/schema'
 import { customSectionKey, defaultLandingOrder } from '@prayertools/shared/landing'
 import { isTemplateDoc } from '@prayertools/shared/i18n/landing'
-import { visionTexts } from '@prayertools/shared/i18n/vision'
+import { visionTexts } from './vision'
 import { videoEmbed } from '@prayertools/shared/video'
 import { normalizeEmail } from '@prayertools/shared/crm'
 import { first, languageOf, table, tableExists, unserialize, type Meta } from './wp'
@@ -58,6 +58,8 @@ export interface LandingInput {
   rewrite(doc: TiptapDoc): Promise<TiptapDoc>
   // The stored copy, the URL itself when on another host, or null to drop it.
   rewriteUrl(url: string): Promise<string | null>
+  // The stored address of the plugin's own icon for a vision column, shipped with the importer in neutral grey.
+  defaultIcon(column: typeof COLUMNS[number]): Promise<string | null>
 }
 
 export interface LandingText {
@@ -100,24 +102,43 @@ export async function landingText(meta: Meta | undefined, tr: Map<string, Map<st
 
   const subtitle = text(field('subtitle'))
 
-  // "Why we pray" is the vision as WordPress showed it in each language, then the video.
-  // An unchanged vision on the Ramadan template is v3's standard text, so it is not stored.
+  // "Why we pray" is the vision as WordPress showed it in each language, its three
+  // columns side by side, then the video. The vision is imported when the champion
+  // changed it or a column, the columns only when they changed a column; the video
+  // alone is kept when they changed neither.
   const daily = first(meta, 'campaign_goal') === 'quantity'
+  const defaultsIn = (lang: string) => visionTexts(lang, daily) ?? visionTexts('en', daily)!
   const vision = field('vision')
   const columns = COLUMNS.map(c => [field(`${c}_section_title`), field(`${c}_section_text`)] as const)
+  const own = (values: Record<string, string>, pick: (d: ReturnType<typeof defaultsIn>) => string) =>
+    Object.entries(values).some(([lang, v]) => norm(plain(v)) !== norm(pick(defaultsIn(lang))))
+  // A column's icon: the champion's own, else the plugin's.
+  const ownIcons = COLUMNS.map(c => {
+    const url = first(meta, `${c}_section_icon`)?.trim()
+    return url && /^https?:\/\//.test(url) && !isPluginDefault(url) ? url : null
+  })
+  const ownColumns = ownIcons.some(Boolean)
+    || columns.some(([title, body], i) => own(title, d => d.columns[i]![0]) || own(body, d => d.columns[i]![1]))
+  const ownVision = ownColumns || own(vision, d => d.vision)
+  const icons = ownColumns ? await Promise.all(COLUMNS.map(async (c, i) => (ownIcons[i] ? await input.rewriteUrl(ownIcons[i]) : null) ?? await input.defaultIcon(c))) : []
   const shown = (values: Record<string, string>, lang: string, fallback: string) => values[lang] ?? values[def] ?? fallback
   const video = first(meta, 'promo_video_url')?.trim()
   const videoContent = video ? videoNodes(video) : []
-  let why: Record<string, TiptapDoc> = {}
-  for (const lang of input.languages) {
-    const defaults = visionTexts(lang, daily) ?? visionTexts('en', daily)!
-    const content = await doc(shown(vision, lang, defaults.vision))
-    for (const [i, [title, body]] of columns.entries()) {
-      content.push(columnTitle(plain(shown(title, lang, defaults.columns[i]![0]))), ...await doc(shown(body, lang, defaults.columns[i]![1])))
+  const why: Record<string, TiptapDoc> = {}
+  for (const lang of ownVision || videoContent.length ? input.languages : []) {
+    const content: TiptapNode[] = []
+    const defaults = defaultsIn(lang)
+    if (ownVision) content.push(...await doc(shown(vision, lang, defaults.vision)))
+    if (ownColumns) {
+      const cols: TiptapNode[] = []
+      for (const [i, [title, body]] of columns.entries()) {
+        const icon: TiptapNode[] = icons[i] ? [{ type: 'imageResize', attrs: { src: icons[i], alt: '', width: 40 } }] : []
+        cols.push({ type: 'column', content: [...icon, columnTitle(plain(shown(title, lang, defaults.columns[i]![0]))), ...await doc(shown(body, lang, defaults.columns[i]![1]))] })
+      }
+      content.push({ type: 'columns', content: cols })
     }
     why[lang] = { type: 'doc', content: [...content, ...videoContent] }
   }
-  if (input.ramadan && input.languages.every(lang => isTemplateDoc('why', why[lang], 'ramadan', lang))) why = {}
 
   // Custom sections need a heading: a section's own first heading, else a name for it.
   const nameHeading = (): TranslatableText => ({ source: def, values: { [def]: input.campaignName }, stale: [] })

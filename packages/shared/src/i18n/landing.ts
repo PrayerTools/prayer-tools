@@ -1,15 +1,11 @@
 // Standard landing page text a campaign template brings, per language: the
-// "why we pray" text, the about text, and the About page's text about praying
-// together. A site shows it until it writes its own, and it is never stored.
+// about text, and the About page's text about praying together. No template
+// brings a "why" text. A site shows it until it writes its own, and it is
+// never stored.
 import type { TiptapDoc } from '../db/schema'
 import { isEmptyDoc, textDoc, tiptapToText } from '../tiptap'
-import { visionDoc } from './vision'
 
 export type TemplateText = 'why' | 'about' | 'together'
-
-const WHY: Record<string, (lang: string) => TiptapDoc | null> = {
-  ramadan: lang => visionDoc(lang)
-}
 
 const ABOUT: Record<string, Record<string, string>> = {
   ramadan: {
@@ -130,8 +126,7 @@ const TOGETHER: Record<string, string> = {
 export function templateDoc(kind: TemplateText, templateKey: string | null | undefined, lang: string, fallback?: string): TiptapDoc | null {
   const key = templateKey ?? ''
   const one = (l: string): TiptapDoc | null => {
-    if (kind === 'why') return WHY[key]?.(l) ?? null
-    const text = kind === 'together' ? TOGETHER[l] : ABOUT[key]?.[l]
+    const text = kind === 'together' ? TOGETHER[l] : kind === 'about' ? ABOUT[key]?.[l] : undefined
     return text ? textDoc(text) : null
   }
   return one(lang) ?? (fallback ? one(fallback) : null)

@@ -81,8 +81,8 @@ WordPress keeps each text on the campaign in the campaign's language, and its ot
 | WordPress | v3 |
 |---|---|
 | `subtitle` | campaign subtitle and description, with translations |
-| `vision`, `pray_section_*`, `movement_section_*`, `time_section_*` | the campaign's "why" section as WordPress showed it in each language: the vision, then three headings with text, each the champion's text or the plugin's default (the "with prayer" and "Together" wording on `quantity` campaigns). On Ramadan sites an unchanged vision isn't stored: it is the Ramadan template's standard "why" text. |
-| `promo_video_url` | a video at the end of the "why" section |
+| `vision`, `pray_section_*`, `movement_section_*`, `time_section_*` | the campaign's "why" section: the vision as WordPress showed it in each language when the champion changed the vision or a column, and the three columns side by side only when they changed a column's title, text or icon, each the champion's text or the plugin's default (the "with prayer" and "Together" wording on `quantity` campaigns), headed by the champion's `*_section_icon`, else the plugin's icon in neutral grey (`scripts/wp-import/icons/`). No template has a default "why" text. |
+| `promo_video_url` | a video at the end of the "why" section, or the section's only content when the vision is unchanged |
 | `what_content` | the campaign's about section, when the champion wrote it (not lorem ipsum, not the Ramadan default, which is the Ramadan template's standard about text). Outside Ramadan sites its first heading becomes the site string `landing.about.title`. |
 | `footer_content` | a custom section at the end |
 | `vision_title`, `prayer_fuel_title` | site strings `landing.why.title`, `landing.today.title` |

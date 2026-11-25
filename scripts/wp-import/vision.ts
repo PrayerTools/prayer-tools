@@ -2,8 +2,6 @@
 // it was translated into: a sentence, then three titled columns. Campaigns
 // with a daily amount of prayer read "with prayer" and "Together" where 24/7
 // campaigns read "continuous 24/7 prayer" and "24/7 Every Day".
-import type { TiptapDoc, TiptapNode } from '../db/schema'
-
 interface VisionText {
   coverage: string
   daily: string
@@ -53,12 +51,4 @@ export function visionTexts(lang: string, daily = false): { vision: string, colu
     vision: daily ? v.daily : v.coverage,
     columns: [[v.prayTitle, v.prayText], [v.movementTitle, v.movementText], [daily ? v.dailyTitle : v.coverageTitle, v.timeText]]
   }
-}
-
-export function visionDoc(lang: string, daily = false): TiptapDoc | null {
-  const v = visionTexts(lang, daily)
-  if (!v) return null
-  const p = (text: string): TiptapNode => ({ type: 'paragraph', content: [{ type: 'text', text }] })
-  const h = (text: string): TiptapNode => ({ type: 'heading', attrs: { level: 3 }, content: [{ type: 'text', text }] })
-  return { type: 'doc', content: [p(v.vision), ...v.columns.flatMap(([title, text]) => [h(title), p(text)])] }
 }
