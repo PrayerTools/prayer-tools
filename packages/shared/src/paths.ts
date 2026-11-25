@@ -7,7 +7,7 @@ import { isLanguage } from './languages'
 
 export const SITE_PAGES = [
   'pray', 'stats', 'signup', 'contact', 'stories', 'story', 'share', 'manage', 'calendar', 'coverage', 'embed', 'about',
-  'm', 'u', 'l', 'verify', 'add', 'checkin', 'ics', 'preview', 'joined', 'notify', 'api', '_nuxt', 'subscriptions_app', 'prayer', 'notice', 'fuel', 'account'
+  'm', 'u', 'l', 'verify', 'add', 'checkin', 'ics', 'preview', 'joined', 'notify', 'api', '_nuxt', 'subscriptions_app', 'prayer', 'notice', 'fuel', 'account', 'admin'
 ] as const
 
 export function campaignSlugError(slug: string): string | null {
