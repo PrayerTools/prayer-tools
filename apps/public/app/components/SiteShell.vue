@@ -7,8 +7,8 @@ const { t } = useI18n()
 const mode = useColorMode()
 const themeStyle = computed(() => ({
   '--brand-text': brandColor(site.value.brand.color).textColor,
-  '--brand-foreground': brandForeground(site.value.brand.color, mode.value === 'dark' ? '#202c3a' : '#ffffff'),
-  '--ui-primary': brandForeground(site.value.brand.color, mode.value === 'dark' ? '#202c3a' : '#ffffff')
+  '--pt-primary-light': brandForeground(site.value.brand.color, '#ffffff'),
+  '--pt-primary-dark': brandForeground(site.value.brand.color, '#202c3a')
 }))
 
 const nav = computed(() => {

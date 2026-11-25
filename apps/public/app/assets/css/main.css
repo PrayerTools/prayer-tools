@@ -47,6 +47,10 @@ body {
 .pt-cta:hover { background: #ffffff; transform: translateY(-1px); box-shadow: 0 6px 20px rgb(0 0 0 / 0.24); }
 /* Keeps anchor targets clear of the sticky site header. */
 html:has(.public-campaign) { scroll-padding-top: 3.75rem; }
+/* The page's primary colour for the light or dark background. The server renders both, since only the browser knows the color mode. */
+:is(.public-campaign, .home-page, .platform-page) { --ui-primary: var(--pt-primary-light); }
+.dark :is(.public-campaign, .home-page, .platform-page) { --ui-primary: var(--pt-primary-dark); }
+.public-campaign { --brand-foreground: var(--ui-primary); }
 
 /* Prayer content rendered by the shared Tiptap renderer (web mode). */
 .pt-content { font-size: 1.125rem; line-height: 1.75; }
