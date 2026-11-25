@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { StatsView } from '~~/shared/view'
 
-const props = defineProps<{ stats: StatsView }>()
+const props = defineProps<{ stats: StatsView, hideProgress?: boolean }>()
 const { site, num, minutes } = useSite()
 const { t } = useI18n()
 
@@ -36,7 +36,7 @@ const tiles = computed(() => {
 
 <template>
   <div class="space-y-6">
-    <GoalProgress :progress="stats.progress" />
+    <GoalProgress v-if="!hideProgress" :progress="stats.progress" />
     <dl class="grid grid-cols-2 sm:grid-cols-3 gap-4">
       <div v-for="tile in tiles" :key="tile.label" class="rounded-xl bg-white border border-stone-200 p-4">
         <dt class="text-sm text-stone-600">{{ tile.label }}</dt>

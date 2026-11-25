@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { PageView } from '~~/shared/view'
 
-defineProps<{ page: Extract<PageView, { kind: 'between' }> }>()
+const props = defineProps<{ page: Extract<PageView, { kind: 'between' }> }>()
 const { site, st, link, moreAboutLabel } = useSite()
 const { t } = useI18n()
 useHead({ title: () => site.value.name })
+const showProgress = computed(() => !!props.page.stats && (props.page.stats.progress.goal !== 'people' || site.value.settings.showPeopleCount))
 </script>
 
 <template>
@@ -34,8 +35,11 @@ useHead({ title: () => site.value.name })
       </section>
       <section v-if="page.stats" aria-labelledby="results-title">
         <LandingHeading :title="t('between.results')" title-id="results-title" />
-        <div class="text-center">
-          <StatsGrid :stats="page.stats" />
+        <div class="space-y-6 text-center">
+          <div v-if="showProgress" class="rounded-xl border border-stone-200 bg-white px-5 py-6 shadow-[0_1px_3px_rgb(28_25_23/0.05)] sm:px-8 sm:py-8">
+            <GoalProgress :progress="page.stats.progress" class="mx-auto max-w-sm" />
+          </div>
+          <StatsGrid :stats="page.stats" hide-progress />
         </div>
       </section>
       <section aria-labelledby="story-title" class="space-y-4 rounded-xl border border-stone-200 bg-white px-5 py-8 text-center shadow-[0_1px_3px_rgb(28_25_23/0.05)] sm:px-8">
