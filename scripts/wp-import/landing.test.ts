@@ -77,4 +77,26 @@ describe('about', () => {
     expect(tiptapToText(t.landing.about!.en)).toBe('Mali is a country in West Africa.')
     expect(t.siteStrings).toContainEqual({ key: 'landing.about.title', language: 'en', value: 'About Mali' })
   })
+
+  test('line breaks stay line breaks, and a blank line starts a new paragraph', async () => {
+    const about = (await landing({ what_content: 'Ten countries to pray for:\r\n\r\n•Iran-85 UPGs\r\n•Russia-119 UPGs\r\n\r\nOne email per day.' }, false)).landing.about!
+    expect(about.en.content).toEqual([
+      { type: 'paragraph', content: [{ type: 'text', text: 'Ten countries to pray for:' }] },
+      { type: 'paragraph', content: [{ type: 'text', text: '•Iran-85 UPGs' }, { type: 'hardBreak' }, { type: 'text', text: '•Russia-119 UPGs' }] },
+      { type: 'paragraph', content: [{ type: 'text', text: 'One email per day.' }] }
+    ])
+  })
+
+  test('newlines between HTML blocks add no empty lines', async () => {
+    const about = (await landing({ what_content: '<p><b>Who are the Azerbaijanis?</b></p>\n\nAzerbaijanis are a Muslim-background people.\n<p><a href="https://example.org/">Read more</a></p>\n' }, false)).landing.about!
+    expect(about.en.content!.map(n => n.type)).toEqual(['paragraph', 'paragraph', 'paragraph'])
+    expect(about.en.content!.flatMap(n => n.content ?? []).some(n => n.type === 'hardBreak')).toBe(false)
+  })
+})
+
+describe('email identity', () => {
+  test('the signature keeps its lines', async () => {
+    const t = await landing({ email_signature: 'You are loved!\r\n\r\nAscend Prayer Team' })
+    expect(t.emailIdentity.signature?.values.en).toBe('You are loved!\n\nAscend Prayer Team')
+  })
 })

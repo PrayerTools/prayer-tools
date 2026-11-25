@@ -39,6 +39,13 @@ const COLUMNS = ['pray', 'movement', 'time'] as const
 
 const norm = (s: string) => s.replace(/\s+/g, ' ').trim()
 const plain = (html: string) => norm(html.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&#0?39;|&apos;/g, '\'').replace(/&quot;/g, '"'))
+// Plain text keeping its line breaks, for texts v3 shows line by line.
+const plainLines = (html: string) => html.replace(/<br\s*\/?>/gi, '\n').split(/\r?\n/).map(plain).join('\n').replace(/\n{3,}/g, '\n\n').trim()
+
+// WordPress showed most campaign texts through PHP's nl2br. As HTML, a blank line
+// starts a new paragraph and any other newline is a line break.
+const nl2html = (text: string) => `<p>${text.replace(/\r\n?/g, '\n').trim().split(/(<[^>]*>)/).map((part, i) => i % 2 ? part : part.replace(/\n[ \t]*\n\s*/g, '</p><p>').replace(/\n/g, '<br>')).join('')}</p>`
+const nl2htmlAll = (values: Record<string, string>) => Object.fromEntries(Object.entries(values).map(([lang, v]) => [lang, nl2html(v)]))
 
 const columnTitle = (text: string): TiptapNode => ({ type: 'heading', attrs: { level: 3 }, content: [{ type: 'text', text }] })
 
@@ -85,8 +92,8 @@ export async function landingText(meta: Meta | undefined, tr: Map<string, Map<st
     return out
   }
   const changed = (key: string, values: Record<string, string>) => Object.values(values).some(v => !DEFAULTS[key] || norm(plain(v)) !== norm(DEFAULTS[key]!))
-  const text = (values: Record<string, string>): TranslatableText | null => {
-    const entries = Object.entries(values).map(([l, v]) => [l, plain(v)] as const).filter(([, v]) => v)
+  const text = (values: Record<string, string>, toText = plain): TranslatableText | null => {
+    const entries = Object.entries(values).map(([l, v]) => [l, toText(v)] as const).filter(([, v]) => v)
     if (!entries.length) return null
     return { source: entries.some(([l]) => l === def) ? def : entries[0]![0], values: Object.fromEntries(entries), stale: [] }
   }
@@ -128,12 +135,12 @@ export async function landingText(meta: Meta | undefined, tr: Map<string, Map<st
   for (const lang of ownVision || videoContent.length ? input.languages : []) {
     const content: TiptapNode[] = []
     const defaults = defaultsIn(lang)
-    if (ownVision) content.push(...await doc(shown(vision, lang, defaults.vision)))
+    if (ownVision) content.push(...await doc(nl2html(shown(vision, lang, defaults.vision))))
     if (ownColumns) {
       const cols: TiptapNode[] = []
       for (const [i, [title, body]] of columns.entries()) {
         const icon: TiptapNode[] = icons[i] ? [{ type: 'imageResize', attrs: { src: icons[i], alt: '', width: 40 } }] : []
-        cols.push({ type: 'column', content: [...icon, columnTitle(plain(shown(title, lang, defaults.columns[i]![0]))), ...await doc(shown(body, lang, defaults.columns[i]![1]))] })
+        cols.push({ type: 'column', content: [...icon, columnTitle(plain(shown(title, lang, defaults.columns[i]![0]))), ...await doc(nl2html(shown(body, lang, defaults.columns[i]![1])))] })
       }
       content.push({ type: 'columns', content: cols })
     }
@@ -160,7 +167,7 @@ export async function landingText(meta: Meta | undefined, tr: Map<string, Map<st
   }
   // The champion's own about text: the plugin's default was lorem ipsum or, on Ramadan,
   // v3's standard text. Outside the Ramadan template its first heading was its title.
-  const about = await docs(Object.fromEntries(Object.entries(field('what_content')).filter(([, v]) => !/^\s*lorem ipsum/i.test(plain(v)))))
+  const about = await docs(nl2htmlAll(Object.fromEntries(Object.entries(field('what_content')).filter(([, v]) => !/^\s*lorem ipsum/i.test(plain(v))))))
   const aboutTitles: Record<string, string> = {}
   for (const [lang, d] of Object.entries(about)) {
     if (input.ramadan && isTemplateDoc('about', d, 'ramadan', lang)) {
@@ -197,8 +204,8 @@ export async function landingText(meta: Meta | undefined, tr: Map<string, Map<st
     return values
   }
   const tagline = text(field('email_tagline'))
-  const welcome = await docs(withStrings('signup_content'))
-  const reminder = await docs(withStrings('reminder_content'))
+  const welcome = await docs(nl2htmlAll(withStrings('signup_content')))
+  const reminder = await docs(nl2htmlAll(withStrings('reminder_content')))
   const emailText: CampaignEmailText = {
     ...(tagline ? { tagline } : {}),
     ...(Object.keys(welcome).length ? { welcome } : {}),
@@ -226,7 +233,7 @@ export async function landingText(meta: Meta | undefined, tr: Map<string, Map<st
   }
   const emailLogo = await image('email_logo')
   const siteLogo = await image('logo_url')
-  const signature = text(field('email_signature'))
+  const signature = text(field('email_signature'), plainLines)
   const fromName = first(meta, 'from_name')?.trim()
   return {
     description: subtitle,
