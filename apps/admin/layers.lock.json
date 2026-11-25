@@ -2,21 +2,21 @@
   "core": {
     "pkg": "@nuxtinator/core",
     "version": "^4",
-    "ref": "@nuxtinator/core@4.0.1",
+    "ref": "@nuxtinator/core@4.2.1",
     "source": "github:Nuxtinator/nuxtinator/layers/core",
     "tagPrefix": "@nuxtinator/core@"
   },
   "tenancy": {
     "pkg": "@nuxtinator/tenancy",
     "version": "latest",
-    "ref": "@nuxtinator/tenancy@3.9.0",
+    "ref": "@nuxtinator/tenancy@3.10.1",
     "source": "github:Nuxtinator/nuxtinator/layers/tenancy",
     "tagPrefix": "@nuxtinator/tenancy@"
   },
   "mail": {
     "pkg": "@nuxtinator/mail",
     "version": "latest",
-    "ref": "@nuxtinator/mail@1.0.1",
+    "ref": "@nuxtinator/mail@1.0.2",
     "source": "github:Nuxtinator/nuxtinator/layers/mail",
     "tagPrefix": "@nuxtinator/mail@"
   },
@@ -51,21 +51,21 @@
   "records": {
     "pkg": "@nuxtinator/records",
     "version": "latest",
-    "ref": "@nuxtinator/records@0.2.0",
+    "ref": "@nuxtinator/records@0.7.1",
     "source": "github:Nuxtinator/nuxtinator/layers/records",
     "tagPrefix": "@nuxtinator/records@"
   },
   "crm": {
     "pkg": "@nuxtinator/crm",
     "version": "latest",
-    "ref": "@nuxtinator/crm@0.6.0",
+    "ref": "@nuxtinator/crm@0.6.1",
     "source": "github:Nuxtinator/nuxtinator/layers/apps/crm",
     "tagPrefix": "@nuxtinator/crm@"
   },
   "inbox": {
     "pkg": "@nuxtinator/inbox",
     "version": "^1",
-    "ref": "@nuxtinator/inbox@1.0.0",
+    "ref": "@nuxtinator/inbox@1.0.3",
     "source": "github:Nuxtinator/nuxtinator/layers/apps/inbox",
     "tagPrefix": "@nuxtinator/inbox@"
   }

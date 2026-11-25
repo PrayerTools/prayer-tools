@@ -68,7 +68,7 @@
     },
     "apps/admin/_layers/core": {
       "name": "@nuxtinator/core",
-      "version": "4.0.1",
+      "version": "4.2.1",
       "dependencies": {
         "@bradenmacdonald/s3-lite-client": "^1.0.0",
         "@nuxtjs/i18n": "^10.6.0",
@@ -101,7 +101,7 @@
     },
     "apps/admin/_layers/crm": {
       "name": "@nuxtinator/crm",
-      "version": "0.6.0",
+      "version": "0.6.1",
       "optionalDependencies": {
         "@nuxtinator/core": "*",
         "@nuxtinator/records": "*",
@@ -117,7 +117,7 @@
     },
     "apps/admin/_layers/inbox": {
       "name": "@nuxtinator/inbox",
-      "version": "1.0.0",
+      "version": "1.0.3",
       "dependencies": {
         "croner": "^10.0.1",
         "dompurify": "^3.4.13",
@@ -144,7 +144,7 @@
     },
     "apps/admin/_layers/mail": {
       "name": "@nuxtinator/mail",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "dependencies": {
         "nodemailer": "^10.1.0",
         "postal-mime": "^4.2.1",
@@ -196,7 +196,10 @@
     },
     "apps/admin/_layers/records": {
       "name": "@nuxtinator/records",
-      "version": "0.2.0",
+      "version": "0.7.1",
+      "dependencies": {
+        "fractional-indexing": "^3.2.0",
+      },
       "optionalDependencies": {
         "@nuxtinator/core": "*",
       },
@@ -231,7 +234,7 @@
     },
     "apps/admin/_layers/tenancy": {
       "name": "@nuxtinator/tenancy",
-      "version": "3.9.0",
+      "version": "3.10.1",
       "optionalDependencies": {
         "@nuxtinator/core": "*",
       },
@@ -1710,6 +1713,8 @@
     "forwarded": ["forwarded@0.2.0", "", {}, "sha512-buRG0fpBtRHSTCOASe6hD258tEubFoRLb4ZNA6NxMVHNw2gOcwHo9wyablzMzOA5z9xA9L1KNjk/Nt6MT9aYow=="],
 
     "fraction.js": ["fraction.js@5.3.4", "", {}, "sha512-1X1NTtiJphryn/uLQz3whtY6jK3fTqoE3ohKs0tT+Ujr1W59oopxmoEh7Lu5p6vBaPbgoM0bzveAW4Qi5RyWDQ=="],
+
+    "fractional-indexing": ["fractional-indexing@3.4.0", "", {}, "sha512-8J3glhz2rrpKG6KmI7wmJo3zH1VjeOpN+vTJSw1fOyO+Viqq3zX6/5NGh6oaZB2qIAYdOYuu5Dz9xp4faOO0Pg=="],
 
     "framer-motion": ["framer-motion@14.3.1", "", { "dependencies": { "motion-dom": "14.3.1", "motion-utils": "14.1.1", "tslib": "^2.4.0" }, "peerDependencies": { "react": "^18.0.0 || ^19.0.0", "react-dom": "^18.0.0 || ^19.0.0" }, "optionalPeers": ["react", "react-dom"] }, "sha512-/6kjoSWyGsaUaHGaZehiqyVj0eJlY163TPKQCoTh0gHVr0JLyJE/NwCTqkLbXAnOOM00fLD/d92eh9mZfJaa6w=="],
 
