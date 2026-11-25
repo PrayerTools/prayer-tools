@@ -1,15 +1,14 @@
 <script setup lang="ts">
-// The search box in the top bar while a site is open; ⌘K / Ctrl+K opens it
+// The search box in the top bar for anyone signed in; ⌘K / Ctrl+K opens it
 // too. Core's top bars have no slot for it, so its buttons are teleported to
 // the start of their right-hand group.
 const { user } = useAuth()
 const route = useRoute()
-const inSite = computed(() => !!user.value && !!route.params.orgSlug)
 const open = ref(false)
 
 defineShortcuts({
   meta_k: () => {
-    if (inSite.value) open.value = !open.value
+    if (user.value) open.value = !open.value
   }
 })
 watch(() => route.fullPath, () => {
@@ -28,7 +27,7 @@ watch(user, () => nextTick(findTargets))
 </script>
 
 <template>
-  <template v-if="inSite">
+  <template v-if="user">
     <Teleport
       v-if="targets.desktop"
       :to="targets.desktop"
@@ -67,7 +66,7 @@ watch(user, () => nextTick(findTargets))
     <UModal
       v-model:open="open"
       title="Search"
-      description="Find a page or setting of this site."
+      description="Find a site, campaign, page or setting."
       :ui="{ content: 'sm:max-w-2xl' }"
     >
       <template #content>
