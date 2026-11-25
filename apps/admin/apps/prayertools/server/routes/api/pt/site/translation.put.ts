@@ -4,7 +4,7 @@
 import type { CampaignLanding, CampaignShare, TranslatableText, TiptapDoc } from '@prayertools/shared/db/schema'
 import { setText } from '@prayertools/shared/translatable'
 import { jsonb } from '@prayertools/shared/db/json'
-import { isTemplateWhy } from '@prayertools/shared/i18n/landing'
+import { isTemplateDoc } from '@prayertools/shared/i18n/landing'
 
 export default definePtHandler('pt.content.translate', async (event, tx, ctx) => {
   const b = await ptBody<{ field?: string, lang?: string, value?: unknown, sectionId?: string, part?: string, campaignId?: string }>(event)
@@ -38,12 +38,13 @@ export default definePtHandler('pt.content.translate', async (event, tx, ctx) =>
   } else if (b.field === 'share') {
     guard(share.messages)
     await writeCampaign({ share: { ...share, messages: setText(share.messages, lang, String(b.value ?? '')) } })
-  } else if (b.field === 'why') {
+  } else if (b.field === 'why' || b.field === 'about' || b.field === 'together') {
+    const kind = b.field
     if (!canWriteSource && lang === site.default_language) throw createError({ statusCode: 403, statusMessage: 'Translators edit other languages only.' })
     const doc = ptDoc(b.value)
-    const { [lang]: _previous, ...others } = landing.why ?? {}
-    const why = isTemplateWhy(doc, templateKey, lang) ? others : { ...others, [lang]: doc ?? { type: 'doc', content: [] } }
-    await writeCampaign({ landing: { ...landing, why } })
+    const { [lang]: _previous, ...others } = landing[kind] ?? {}
+    const texts = isTemplateDoc(kind, doc, templateKey, lang) ? others : { ...others, [lang]: doc ?? { type: 'doc', content: [] } }
+    await writeCampaign({ landing: { ...landing, [kind]: texts } })
   } else if (b.field === 'custom') {
     const custom = (landing.custom ?? []).map((s) => {
       if (s.id !== b.sectionId) return s

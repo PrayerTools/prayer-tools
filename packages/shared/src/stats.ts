@@ -4,9 +4,9 @@ import { sql } from 'kysely'
 import type { Tx } from './db/scope'
 import type { Goal, SubscriptionStatus } from './db/schema'
 import { campaignEndDate, campaignStatus, displayLength, slotMinutes, type CampaignDates } from './setup'
-import { todayIn } from './dates'
-import { buildGrid, coveragePercent } from './coverage'
-import type { CommitmentRule } from './schedule'
+import { addDays, localDateOf, todayIn } from './dates'
+import { buildGrid, campaignWindow, coverageByDay, coveragePercent } from './coverage'
+import { occurrenceCount, occurrences, type CommitmentRule } from './schedule'
 
 const NO_CAMPAIGN = '00000000-0000-0000-0000-000000000000'
 
@@ -92,6 +92,33 @@ export async function peopleCount(tx: Tx, c: CampaignForCount, now: Date = new D
   return Number(row?.n ?? 0)
 }
 
+// Minutes of prayer the campaign's prayer times committed to, from its start to its
+// last day (today while it runs); personal-start times from their own start.
+export async function minutesCommitted(tx: Tx, c: CampaignForCount, defaultMinutes = 15, now: Date = new Date()): Promise<number> {
+  const ended = campaignStatus(c, now) === 'ended'
+  const rules = await activeRules(tx, c.id, { ended })
+  const from = c.start_mode === 'date' && c.start_date ? c.start_date : '0001-01-01'
+  const to = (ended && campaignEndDate(c)) || todayIn(c.timezone, now)
+  let total = 0
+  for (const r of rules) {
+    if (!r.paused) total += occurrenceCount(r, from, to) * (r.duration_min ?? defaultMinutes)
+  }
+  return total
+}
+
+// Everyone who has signed up to a campaign since it began: confirmed sign-ups
+// with a prayer time in it, whatever has happened to them since.
+export async function signupsCount(tx: Tx, campaignId: string): Promise<number> {
+  const row = await tx
+    .selectFrom('pt_commitment as cm')
+    .innerJoin('pt_subscription as s', 's.id', 'cm.subscription_id')
+    .select(eb => eb.fn.count<string>('s.id').distinct().as('n'))
+    .where('cm.campaign_id', '=', campaignId)
+    .where(eb => eb.or([eb('s.verified_at', 'is not', null), eb('s.delivery', '=', 'app')]))
+    .executeTakeFirst()
+  return Number(row?.n ?? 0)
+}
+
 // Ending a campaign completes the subscriptions it leaves with nothing open,
 // so its final numbers keep them.
 function countedStatuses(ended: boolean): SubscriptionStatus[] {
@@ -146,6 +173,36 @@ export async function goalProgress(tx: Tx, c: CampaignForCount, defaultMinutes =
     return { goal: c.goal, people, value: pct, target: 100, percent: Math.round(pct) }
   }
   return { goal: c.goal, people, value: 0, target: 100, percent: 0 }
+}
+
+// Each day's share of a coverage or prayer-time goal from `from` to `to` (campaign
+// timezone). Null for goals without a daily amount.
+export async function dailyGoalPercents(tx: Tx, c: CampaignForCount, from: string, to: string, defaultMinutes = 15, now: Date = new Date()): Promise<number[] | null> {
+  if (c.goal === 'people') return null
+  return dailyPercents(c, await activeRules(tx, c.id, { ended: campaignStatus(c, now) === 'ended' }), from, to, defaultMinutes)
+}
+
+// Coverage: the share of the day's slots with someone praying. Prayer time: the
+// minutes committed that day against the daily target. Rounded down, so only a
+// day that reaches its goal shows 100.
+export function dailyPercents(c: Pick<CampaignForCount, 'goal' | 'goal_target' | 'timezone' | 'slot_min'>, rules: CommitmentRule[], from: string, to: string, defaultMinutes = 15): number[] {
+  if (c.goal === 'coverage') {
+    const grid = buildGrid(from, to, c.timezone, rules, defaultMinutes, slotMinutes(c))
+    return coverageByDay(grid, from, to, c.timezone).map(d => Math.floor(d.percent))
+  }
+  const window = campaignWindow(from, to, c.timezone)
+  const minutes = new Map<string, number>()
+  for (const r of rules) {
+    if (r.paused) continue
+    for (const at of occurrences(r, window.start, window.end)) {
+      const day = localDateOf(at, c.timezone)
+      minutes.set(day, (minutes.get(day) ?? 0) + (r.duration_min ?? defaultMinutes))
+    }
+  }
+  const target = c.goal_target ?? 1440
+  const out: number[] = []
+  for (let day = from; day <= to; day = addDays(day, 1)) out.push(Math.min(100, Math.floor((minutes.get(day) ?? 0) / target * 100)))
+  return out
 }
 
 // People, not sessions: one person can have several day pages or tabs open.

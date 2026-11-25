@@ -59,7 +59,7 @@ export interface SiteView {
   languages: { code: string, native: string }[]
   brand: { color: string, text: string }
   logoUrl: string | null
-  image: { url: string, alt: string, credit: string | null, fx: number, fy: number } | null
+  image: { url: string, alt: string, credit: string | null, fx: number, fy: number, tint: boolean } | null
   shareImageUrl: string | null
   description: string
   status: 'draft' | 'published' | 'archived'
@@ -92,6 +92,28 @@ export interface GoalProgressView {
   percent: number | null
 }
 
+// The dates of a campaign that starts on a date, for the landing page's goal
+// section. The calendar shows up to two months from the start or from today,
+// with each campaign day's share of a coverage or prayer-time goal (null for
+// other goals); campaigns without an end have none.
+export interface CampaignRunView {
+  start: string
+  end: string | null
+  today: string
+  calendar: { months: string[], days: { date: string, percent: number | null }[] } | null
+}
+
+// The landing page's prayer preview: today's entry, or the latest one when the
+// content stops before today (`current` false). `date` is the entry's date on a
+// campaign that starts on a date.
+export interface TodayView {
+  day: number
+  html: string
+  title: string
+  current: boolean
+  date: string | null
+}
+
 export interface ContentBlockView {
   title: string
   html: string
@@ -99,11 +121,14 @@ export interface ContentBlockView {
 
 export interface StatsView {
   progress: GoalProgressView
+  // Ongoing campaigns: everyone who has signed up since the start.
+  signedUp: number | null
   commitments: number
   prayers: number
   prayerMinutes: number
+  // Ended campaigns: the minutes of prayer their prayer times committed to.
+  minutesCommitted: number | null
   groupPrayers: number
-  shareSignups: number
   prayingNow: number
 }
 
@@ -238,10 +263,11 @@ export interface MyView {
 export type PageView =
   // `sections` are the sections after the hero, in page order: a standard key or `custom:<id>`.
   // `placeholders` are the ones the admin editor's preview shows as empty.
-  | { kind: 'landing', sections: string[], progress: GoalProgressView | null, subtitle: string, why: string, today: { day: number, html: string, title: string } | null, stories: StoryView[], custom: CustomSectionView[], prayingNow: number, form: SignupFormView, placeholders: string[], side: SideCampaignView[] }
+  | { kind: 'landing', sections: string[], progress: GoalProgressView | null, run: CampaignRunView | null, signedUp: number | null, subtitle: string, template: string | null, why: string, about: string, today: TodayView | null, stories: StoryView[], custom: CustomSectionView[], prayingNow: number, form: SignupFormView, placeholders: string[], side: SideCampaignView[] }
   // `notify` offers the "notify me" form; `again` is the open run of the same
   // series, shown in its place.
-  | { kind: 'between', stats: StatsView | null, endMessage: string, hasGuide: boolean, next: NextStep | null, notify: boolean, again: { campaign: string, path: string } | null }
+  | { kind: 'between', template: string | null, stats: StatsView | null, endMessage: string, hasGuide: boolean, next: NextStep | null, notify: boolean, again: { campaign: string, path: string } | null }
+  | { kind: 'about', template: string | null, about: string, together: string }
   | { kind: 'archived' }
   | { kind: 'not_started', startDate: string }
   // `nextDate`: link to `next` only once the viewer's local date reaches it.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { entryDate, entryNumber, nextOccurrence, nextReminderUtc, occurrences, validateRule, type CommitmentRule } from '../src/schedule'
+import { entryDate, entryNumber, nextOccurrence, nextReminderUtc, occurrenceCount, occurrences, validateRule, type CommitmentRule } from '../src/schedule'
 import { zonedInstant } from '../src/dates'
 
 function rule(r: Partial<CommitmentRule>): CommitmentRule {
@@ -170,5 +170,20 @@ describe('entries', () => {
     expect(validateRule({ kind: 'recurring', frequency: 'weekly', days_of_week: [], time: '7:00' })).toEqual(['days_of_week', 'time'])
     expect(validateRule({ kind: 'dates', dates: [], time: '07:00' })).toEqual(['dates'])
     expect(validateRule({ kind: 'recurring', frequency: 'daily', time: '07:00', duration_min: 0 })).toEqual(['duration_min'])
+  })
+})
+
+describe('occurrence counts', () => {
+  it('counts the dates a rule falls on within its own start and end', () => {
+    expect(occurrenceCount(rule({}), '2026-03-01', '2026-03-31')).toBe(31)
+    expect(occurrenceCount(rule({ starts_on: '2026-03-10', ends_on: '2026-03-19' }), '2026-03-01', '2026-03-31')).toBe(10)
+    expect(occurrenceCount(rule({ frequency: 'weekly', days_of_week: [1, 3] }), '2026-03-01', '2026-03-31')).toBe(9)
+    expect(occurrenceCount(rule({ frequency: 'monthly', day_of_month: 15 }), '2026-01-01', '2026-06-30')).toBe(6)
+  })
+
+  it('counts picked dates by their local date', () => {
+    const picked = rule({ kind: 'dates', frequency: null, dates: ['2026-03-01T03:00:00Z', '2026-03-05T15:00:00Z', '2026-04-02T15:00:00Z'] })
+    // 03:00 UTC on March 1 is still February 28 in New York.
+    expect(occurrenceCount(picked, '2026-03-01', '2026-03-31')).toBe(1)
   })
 })

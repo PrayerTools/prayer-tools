@@ -312,6 +312,8 @@ export interface CampaignBranding {
   image_credit?: string
   focal_x?: number
   focal_y?: number
+  // false shows the hero image without the brand-color tint.
+  tint?: false
   share_image_url?: string
 }
 
@@ -338,6 +340,9 @@ export interface CampaignLanding {
   // Shown under the hero heading; the campaign's description is for search and link previews.
   subtitle?: TranslatableText
   why?: Record<string, TiptapDoc>
+  about?: Record<string, TiptapDoc>
+  // The About page's text about praying together.
+  together?: Record<string, TiptapDoc>
   // Standard section keys, `custom:<id>` for one custom section, or `custom` for all of them.
   hidden?: string[]
   // The sections after the top one, as `hidden` names them; absent while the default order applies.

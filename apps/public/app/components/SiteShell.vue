@@ -7,14 +7,15 @@ const { t } = useI18n()
 const mode = useColorMode()
 const themeStyle = computed(() => ({
   '--brand-text': brandColor(site.value.brand.color).textColor,
-  '--brand-foreground': brandForeground(site.value.brand.color, mode.value === 'dark' ? '#202c3a' : '#ffffff'),
-  '--ui-primary': brandForeground(site.value.brand.color, mode.value === 'dark' ? '#202c3a' : '#ffffff')
+  '--pt-primary-light': brandForeground(site.value.brand.color, '#ffffff'),
+  '--pt-primary-dark': brandForeground(site.value.brand.color, '#202c3a')
 }))
 
 const nav = computed(() => {
   const items = site.value.campaign?.state === 'upcoming' ? [] : [{ label: t('nav.pray'), icon: 'i-lucide-book-open', to: link('pray') }]
   items.push({ label: t('nav.stats'), icon: 'i-lucide-chart-column', to: link('stats') })
   if (site.value.campaign?.goal === 'coverage') items.push({ label: t('nav.coverage'), icon: 'i-lucide-calendar-days', to: link('coverage') })
+  items.push({ label: t('nav.about'), icon: 'i-lucide-info', to: link('about') })
   items.push({ label: t('nav.contact'), icon: 'i-lucide-mail', to: link('contact') })
   return site.value.status === 'archived' ? [] : items
 })
@@ -60,7 +61,7 @@ onMounted(async () => {
 
 // The landing hero runs under the header, which stays transparent over it until the page scrolls.
 // Null until mounted, so a page that loads already scrolled keeps a solid header before hydration.
-const overlay = computed(() => props.page === 'landing')
+const overlay = computed(() => props.page === 'landing' || props.page === 'between')
 const scrolled = ref<boolean | null>(null)
 const onScroll = () => { scrolled.value = window.scrollY > 0 }
 onMounted(() => {
@@ -81,7 +82,7 @@ async function signOut() {
     <div v-if="site.preview && !site.editor" class="bg-amber-100 text-amber-900 text-sm text-center px-4 py-2" role="status">
       {{ t('preview.banner') }}
     </div>
-    <header class="sticky top-0 z-40 transition-[background-color,box-shadow]" :class="[overlay && '-mb-15', overlay && scrolled === false ? 'text-(--brand-text)' : 'brand-bg', scrolled && 'shadow-md']">
+    <header class="sticky top-0 z-40 transition-[background-color,box-shadow]" :class="[overlay && '-mb-15', overlay && scrolled === false ? ['text-(--brand-text)', site.image && !site.image.tint && 'pt-untinted'] : 'brand-bg', scrolled && 'shadow-md']">
       <div class="max-w-5xl mx-auto px-4 h-15 flex items-center gap-1">
         <NuxtLink :to="link()" class="flex items-center gap-3 font-bold text-lg me-auto min-w-0">
           <img v-if="site.logoUrl" :src="site.logoUrl" alt="" class="h-9 w-auto">

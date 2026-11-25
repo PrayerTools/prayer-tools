@@ -4,7 +4,7 @@ import type { CampaignBranding, CampaignLanding, TranslatableText } from '@praye
 import { isSideCampaign, pickCurrentCampaign } from '@prayertools/shared/setup'
 import { loadCampaigns } from '@prayertools/shared/campaigns'
 import { LANGUAGES } from '@prayertools/shared/languages'
-import { landingWhyDoc } from '@prayertools/shared/i18n/landing'
+import { landingDoc } from '@prayertools/shared/i18n/landing'
 import { hasPlacePhrases, RELIABLE_PLACE_LANGUAGES, type SitePlaceWording } from '@prayertools/shared/place'
 
 export interface PtChecklistItem {
@@ -81,7 +81,7 @@ export async function ptLaunchChecklist(tx: Transaction<Database>, campaignId?: 
     {
       key: 'why',
       label: '"Why we pray" written',
-      done: !!landingWhyDoc(landing.why, templateKey, site.default_language, site.default_language),
+      done: !!landingDoc('why', landing.why, templateKey, site.default_language, site.default_language),
       required: false,
       to: `/site/landing${forCampaign}`
     },

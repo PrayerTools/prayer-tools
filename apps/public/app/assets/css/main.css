@@ -19,8 +19,38 @@ body {
 }
 
 .brand-bg { background: var(--brand); color: var(--brand-text); }
+/* Landing page section bands: every other one in a darker tone. */
+.pt-band-b { background: #f1efec; border-block: 1px solid #e7e5e4; }
+/* Text over a hero image shown without the brand tint. */
+.pt-untinted { --brand-text: #ffffff; color: #ffffff; text-shadow: 0 1px 3px rgb(0 0 0 / 0.6), 0 0 12px rgb(0 0 0 / 0.35); }
+/* The hero image drifts down at under half the scroll speed as the hero scrolls away. The
+   browser drives it from the scroll position, so it starts in place and never jumps on resize. */
+@keyframes pt-parallax { from { transform: translateY(0); } to { transform: translateY(40%); } }
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .pt-parallax { animation: pt-parallax linear both; animation-timeline: view(block 0px); animation-range: exit; }
+  }
+}
+/* Waiting for v-reveal to bring it into view; print shows everything. */
+@media screen { [data-reveal-out] { opacity: 0; } }
+/* The prayer timer's four dots come on one after another and stay lit, then fade together. */
+@keyframes pt-dot-fill-1 { 0% { opacity: 0.25; scale: 0.8; } 15% { opacity: 1; scale: 1.15; } 20%, 85% { opacity: 1; scale: 1; } 95%, 100% { opacity: 0.25; scale: 0.8; } }
+@keyframes pt-dot-fill-2 { 0%, 20% { opacity: 0.25; scale: 0.8; } 35% { opacity: 1; scale: 1.15; } 40%, 85% { opacity: 1; scale: 1; } 95%, 100% { opacity: 0.25; scale: 0.8; } }
+@keyframes pt-dot-fill-3 { 0%, 40% { opacity: 0.25; scale: 0.8; } 55% { opacity: 1; scale: 1.15; } 60%, 85% { opacity: 1; scale: 1; } 95%, 100% { opacity: 0.25; scale: 0.8; } }
+@keyframes pt-dot-fill-4 { 0%, 60% { opacity: 0.25; scale: 0.8; } 75% { opacity: 1; scale: 1.15; } 80%, 85% { opacity: 1; scale: 1; } 95%, 100% { opacity: 0.25; scale: 0.8; } }
+.pt-dot-fill-1 { animation: pt-dot-fill-1 10s ease-in-out infinite; }
+.pt-dot-fill-2 { animation: pt-dot-fill-2 10s ease-in-out infinite; }
+.pt-dot-fill-3 { animation: pt-dot-fill-3 10s ease-in-out infinite; }
+.pt-dot-fill-4 { animation: pt-dot-fill-4 10s ease-in-out infinite; }
+/* The hero's call to action: a white pill with the brand color as its text, the same in both themes. */
+.pt-cta { background: #ffffff; color: var(--brand-primary, var(--brand)); border-radius: 9999px; font-weight: 600; box-shadow: 0 4px 14px rgb(0 0 0 / 0.18); text-shadow: none; transition: transform 0.15s, box-shadow 0.15s; }
+.pt-cta:hover { background: #ffffff; transform: translateY(-1px); box-shadow: 0 6px 20px rgb(0 0 0 / 0.24); }
 /* Keeps anchor targets clear of the sticky site header. */
 html:has(.public-campaign) { scroll-padding-top: 3.75rem; }
+/* The page's primary colour for the light or dark background. The server renders both, since only the browser knows the color mode. */
+:is(.public-campaign, .home-page, .platform-page) { --ui-primary: var(--pt-primary-light); }
+.dark :is(.public-campaign, .home-page, .platform-page) { --ui-primary: var(--pt-primary-dark); }
+.public-campaign { --brand-foreground: var(--ui-primary); }
 
 /* Prayer content rendered by the shared Tiptap renderer (web mode). */
 .pt-content { font-size: 1.125rem; line-height: 1.75; }
@@ -43,6 +73,11 @@ html:has(.public-campaign) { scroll-padding-top: 3.75rem; }
 /* Content that fills a padded card: the card's padding sets the outer spacing. */
 .pt-content.pt-flush > :first-child { margin-top: 0; }
 .pt-content.pt-flush > :last-child { margin-bottom: 0; }
+/* Centered text: the first paragraph leads, images center, and lists stay start-aligned in a centered block. */
+.pt-content.pt-centered > p:first-child { font-size: 1.25rem; font-weight: 500; }
+.pt-content.pt-centered img { margin-inline: auto; }
+.pt-content.pt-centered > .columns { margin-top: 2.5rem; }
+.pt-content.pt-centered :is(ul, ol) { display: table; margin-inline: auto; text-align: start; }
 
 :focus-visible { outline: 3px solid var(--brand-foreground, var(--brand)); outline-offset: 2px; }
 .pt-content p.button a { display: inline-block; background: var(--brand); color: var(--brand-text); padding: 0.6em 1.4em; border-radius: 0.5rem; text-decoration: none; font-weight: 600; }

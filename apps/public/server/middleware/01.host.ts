@@ -3,6 +3,7 @@
 // hosts get a 404, never a default site).
 import type { H3Event } from 'h3'
 import { classifyHost } from '@prayertools/shared/site'
+import { platformConfig } from '@prayertools/shared/config'
 import { withOrg } from '@prayertools/shared/db/scope'
 import { loadCampaigns } from '@prayertools/shared/campaigns'
 import { siteUrlFor } from '@prayertools/shared/site'
@@ -132,6 +133,10 @@ export default defineEventHandler(async (event) => {
   if (pathname.startsWith('/.well-known/') && kind.kind !== 'site') return notFound(event)
 
   const segs = pathname.split('/').filter(Boolean).map(s => decodeURIComponent(s))
+
+  if (segs.length === 1 && segs[0] === 'admin' && isGet) {
+    return sendRedirect(event, `${new URL(platformConfig().adminUrl).origin}/@${resolved.slug}/site`, 302)
+  }
 
   ctx.editor = editorAccess(event, ctx.orgId)
   if (ctx.editor) {

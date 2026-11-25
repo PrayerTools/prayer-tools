@@ -49,21 +49,24 @@ const durationItems = computed(() => props.durations.map(d => ({ label: formatMi
 </script>
 
 <template>
-  <div class="grid gap-4 sm:grid-cols-2">
-    <UFormField v-if="cadence === 'monthly'" :label="t('commitment.month_day')" :name="`${idPrefix}-month-day`" required>
-      <USelect v-model="monthDay" :items="monthDayItems" class="w-full" />
-    </UFormField>
-    <UFormField v-else :label="t('commitment.how_often')" :name="`${idPrefix}-frequency`">
-      <URadioGroup v-model="model.frequency" :items="frequencies" orientation="horizontal" />
-    </UFormField>
-    <UFormField v-if="!timeless" :label="t('commitment.time')" :name="`${idPrefix}-time`" required>
-      <TimePicker :id="`${idPrefix}-time`" v-model="model.time" :lang="lang" required class="w-40" />
-    </UFormField>
-    <UFormField v-if="model.frequency === 'weekly'" :label="t('commitment.days')" :name="`${idPrefix}-days`" class="sm:col-span-2" required>
-      <UCheckboxGroup v-model="days" :items="weekdays" orientation="horizontal" class="flex-wrap" />
-    </UFormField>
-    <UFormField v-if="durationRule !== 'hidden'" :label="t('commitment.duration')" :name="`${idPrefix}-duration`" :required="durationRule === 'required'">
-      <USelect v-model="duration" :items="durationItems" :placeholder="t('commitment.duration_placeholder')" class="w-full max-w-48" />
-    </UFormField>
+  <!-- Two columns only when this box has room for them, wherever it sits on the page. -->
+  <div class="@container">
+    <div class="grid gap-4 @md:grid-cols-2">
+      <UFormField v-if="cadence === 'monthly'" :label="t('commitment.month_day')" :name="`${idPrefix}-month-day`" required>
+        <USelect v-model="monthDay" :items="monthDayItems" class="w-full" />
+      </UFormField>
+      <UFormField v-else :label="t('commitment.how_often')" :name="`${idPrefix}-frequency`">
+        <URadioGroup v-model="model.frequency" :items="frequencies" orientation="horizontal" :ui="{ fieldset: 'flex-wrap gap-y-2' }" />
+      </UFormField>
+      <UFormField v-if="!timeless" :label="t('commitment.time')" :name="`${idPrefix}-time`" required>
+        <TimePicker :id="`${idPrefix}-time`" v-model="model.time" :lang="lang" required class="w-40" />
+      </UFormField>
+      <UFormField v-if="model.frequency === 'weekly'" :label="t('commitment.days')" :name="`${idPrefix}-days`" class="@md:col-span-2" required>
+        <UCheckboxGroup v-model="days" :items="weekdays" orientation="horizontal" :ui="{ fieldset: 'flex-wrap gap-y-2' }" />
+      </UFormField>
+      <UFormField v-if="durationRule !== 'hidden'" :label="t('commitment.duration')" :name="`${idPrefix}-duration`" :required="durationRule === 'required'">
+        <USelect v-model="duration" :items="durationItems" :placeholder="t('commitment.duration_placeholder')" class="w-full max-w-48" />
+      </UFormField>
+    </div>
   </div>
 </template>

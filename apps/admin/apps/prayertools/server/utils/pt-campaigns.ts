@@ -15,7 +15,7 @@ import { campaignById, campaignEditMissing, campaignSeries, loadCampaigns, norma
 import { endCampaign, thankYouAudience } from '@prayertools/shared/campaign-end'
 import { goalProgress } from '@prayertools/shared/stats'
 import { campaignEntries, campaignLibraries, contentLength } from '@prayertools/shared/content'
-import { isTemplateWhy } from '@prayertools/shared/i18n/landing'
+import { isTemplateDoc } from '@prayertools/shared/i18n/landing'
 import { waitingCounts } from '@prayertools/shared/notify-requests'
 
 export function ptSetupFromBody(b: Record<string, unknown>, templateKey: string | CampaignTemplate, base?: Partial<SetupAnswers>, kind: CampaignKind | null = null): SetupAnswers {
@@ -250,8 +250,10 @@ export async function ptUpdateCampaign(tx: Transaction<Database>, ctx: TenantCon
   if ('description' in b) patch.description = b.description ? jsonb(parseText(b.description)) : null
   if ('landing' in b) {
     const landing = ptLanding(b.landing)
-    // The template's standard "why" text shows by default, so it is not stored.
-    if (landing.why) landing.why = Object.fromEntries(Object.entries(landing.why).filter(([lang, doc]) => !isTemplateWhy(doc, templateKey, lang)))
+    // The template's standard texts show by default, so they are not stored.
+    if (landing.why) landing.why = Object.fromEntries(Object.entries(landing.why).filter(([lang, doc]) => !isTemplateDoc('why', doc, templateKey, lang)))
+    if (landing.about) landing.about = Object.fromEntries(Object.entries(landing.about).filter(([lang, doc]) => !isTemplateDoc('about', doc, templateKey, lang)))
+    if (landing.together) landing.together = Object.fromEntries(Object.entries(landing.together).filter(([lang, doc]) => !isTemplateDoc('together', doc, templateKey, lang)))
     patch.landing = jsonb(landing)
   }
   // `branding` sets the hero image and `share_image_url` the link-preview image; each keeps the other.

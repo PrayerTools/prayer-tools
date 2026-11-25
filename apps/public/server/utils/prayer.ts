@@ -100,6 +100,22 @@ export async function markAmen(tx: Tx, id: string): Promise<boolean> {
   return Number(res.numAffectedRows ?? 0) > 0
 }
 
+// How long the person said they would pray in a campaign: the length of their
+// latest prayer time there that is still running.
+export async function prayerMinutes(tx: Tx, subscriptionId: string, campaignId: string): Promise<number | null> {
+  const row = await tx
+    .selectFrom('pt_commitment')
+    .select('duration_min')
+    .where('subscription_id', '=', subscriptionId)
+    .where('campaign_id', '=', campaignId)
+    .where('paused', '=', false)
+    .where('left_at', 'is', null)
+    .where('duration_min', 'is not', null)
+    .orderBy('created_at', 'desc')
+    .executeTakeFirst()
+  return row?.duration_min ?? null
+}
+
 // The subscriber a pray-page request belongs to: the personal token from a
 // reminder link, else the manage cookie set when they confirmed or managed.
 export async function prayingSubscription(tx: Tx, event: H3Event, orgId: string, token: unknown): Promise<string | null> {

@@ -4,7 +4,7 @@ import type { H3Event } from 'h3'
 import { withOrg } from '@prayertools/shared/db/scope'
 import { parseSitePath, sitePath } from '@prayertools/shared/paths'
 import { landingStories, visibleSections } from '@prayertools/shared/landing'
-import { landingWhyDoc } from '@prayertools/shared/i18n/landing'
+import { landingDoc } from '@prayertools/shared/i18n/landing'
 import { prayingNow } from '@prayertools/shared/stats'
 import { entryDate } from '@prayertools/shared/schedule'
 import { addDays, todayIn } from '@prayertools/shared/dates'
@@ -20,12 +20,12 @@ import { nextStep, nextStepCampaign, prayingIn } from '@prayertools/shared/next-
 import { notifyOffer } from '@prayertools/shared/notify-requests'
 import { campaignSegment } from '@prayertools/shared/campaigns'
 import { contentLength } from '@prayertools/shared/content'
-import type { PageView, SiteResponse } from '../../shared/view'
+import type { PageView, SiteResponse, TodayView } from '../../shared/view'
 import { useDb } from './db'
 import type { SiteContext } from './site-context'
 import { buildSiteView, campaignView, loadSiteData, sideCampaigns, stateOf, type SiteData } from './site-data'
 import { contentBlocks, contentVars, docHtml, formatDate, visibleEntries } from './content'
-import { progressFor, statsFor } from './site-stats'
+import { progressFor, runFor, signedUpFor, statsFor } from './site-stats'
 import { managedSubscription, manageView } from './manage'
 import { socialProviders } from './social-sign-in'
 import { sessionAccount } from './account-session'
@@ -106,6 +106,9 @@ export async function buildSiteResponse(event: H3Event, ctx: SiteContext, fullPa
             required: f.required,
             options: f.options.map(o => ({ key: o.key, label: textIn(o.label, lang, def) }))
           })) }
+          break
+        case 'about':
+          page = campaign && !parsed.rest.length ? aboutPage(ctx, data, campaign, lang) : { kind: 'not_found' }
           break
         case 'stories':
         case 'story':
@@ -192,8 +195,10 @@ async function landingPage(tx: Parameters<typeof loadSiteData>[0], event: H3Even
   const templateKey = campaign?.template_key ?? null
   const side = !!campaign && isSideCampaign(campaign)
   const vars = campaign ? contentVars(data, ctx.name, campaign, lang) : undefined
-  const whyDoc = landingWhyDoc(landing.why, templateKey, lang, def)
+  const whyDoc = landingDoc('why', landing.why, templateKey, lang, def)
   const why = whyDoc ? docHtml({ [lang]: whyDoc }, lang, def, vars) : ''
+  const aboutDoc = landingDoc('about', landing.about, templateKey, lang, def)
+  const about = aboutDoc ? docHtml({ [lang]: aboutDoc }, lang, def, vars) : ''
   const custom = (landing.custom ?? []).map(s => ({
     id: s.id,
     heading: textIn(s.heading, lang, def),
@@ -205,35 +210,50 @@ async function landingPage(tx: Parameters<typeof loadSiteData>[0], event: H3Even
     buttonUrl: s.button_url ?? null
   })).filter(s => s.heading || s.html || s.video)
   const stories = await landingStories(tx, side ? { campaignId: campaign!.id, storyIds: landing.story_ids } : null)
-  let today: { day: number, html: string, title: string } | null = null
+  // Today's entry, or the latest one when the content stops before today.
+  let today: TodayView | null = null
   if (campaign && stateOf(data, campaign) !== 'upcoming') {
     const cv = campaignView(data, campaign)
-    const blocks = await contentBlocks(tx, data, ctx.name, campaign, cv.todayEntry, lang, 3)
-    if (blocks[0]) today = { day: cv.todayEntry, html: blocks[0].html, title: blocks[0].title }
+    const { max } = await visibleEntries(tx, campaign, cv, ctx.preview)
+    const day = Math.min(cv.todayEntry, max)
+    const blocks = day >= 1 ? await contentBlocks(tx, data, ctx.name, campaign, day, lang, 3) : []
+    if (blocks[0]) {
+      const date = campaign.start_mode === 'date' && campaign.start_date ? entryDate(campaign.start_date, campaign.cadence, day) : null
+      today = { day, html: blocks[0].html, title: blocks[0].title, current: day === cv.todayEntry, date }
+    }
   }
   // The editor's preview treats a custom section with nothing to see as empty.
   const blank = ctx.editor
     ? (landing.custom ?? []).filter(s => !textIn(s.heading, lang, def) && !s.image_url && !videoEmbed(s.video_url) && Object.values(s.body ?? {}).every(isEmptyDoc)).map(s => s.id)
     : []
   const withContent = new Set(custom.map(s => s.id).filter(id => !blank.includes(id)))
+  const progress = campaign ? await progressFor(tx, campaign, data.settings.default_duration_min) : null
+  const run = campaign ? await runFor(tx, campaign, data.settings.default_duration_min) : null
+  // The goal section covers a run of shared dates, which start-anytime campaigns do not have.
+  const goalSection = campaign?.start_mode === 'date'
   const shown = visibleSections(landing, templateKey, {
     hasStories: landing.stories !== false && stories.length > 0,
     hasWhy: !!why,
+    hasAbout: !!about,
     appAvailable: appAvailable(),
     hasCustom: id => withContent.has(id)
-  }).filter(s => s !== 'today' || today)
+  }).filter(s => (s !== 'today' || today) && (s !== 'goal' || !!run))
   // In the admin editor, sections that are switched on but have nothing to
   // show yet appear as placeholders.
   const sections = ctx.editor
-    ? visibleSections(landing, templateKey, { hasStories: true, hasWhy: true, appAvailable: true, hasCustom: () => true })
+    ? visibleSections(landing, templateKey, { hasStories: true, hasWhy: true, hasAbout: true, appAvailable: true, hasCustom: () => true }).filter(s => s !== 'goal' || goalSection)
     : shown
   const placeholders = sections.filter(s => !shown.includes(s))
   return {
     kind: 'landing',
     sections,
-    progress: campaign ? await progressFor(tx, campaign, data.settings.default_duration_min) : null,
+    progress,
+    run,
+    signedUp: campaign ? await signedUpFor(tx, campaign) : null,
     subtitle: textIn(landing.subtitle, lang, def),
+    template: templateKey,
     why,
+    about,
     today,
     stories: stories.map(s => ({ id: s.id, body: s.body, name: s.use_name ? s.name : null })),
     custom,
@@ -242,6 +262,19 @@ async function landingPage(tx: Parameters<typeof loadSiteData>[0], event: H3Even
     placeholders,
     side: side ? [] : sideCampaigns(data)
   }
+}
+
+// A campaign's About page: its about text, the text about praying together,
+// and (on the page itself) why Prayer.Tools exists.
+function aboutPage(ctx: SiteContext, data: SiteData, campaign: CampaignRow, lang: string): PageView {
+  const landing = (campaign.landing ?? {}) as CampaignLanding
+  const def = data.site.default_language
+  const vars = contentVars(data, ctx.name, campaign, lang)
+  const html = (kind: 'about' | 'together') => {
+    const doc = landingDoc(kind, landing[kind], campaign.template_key, lang, def)
+    return doc ? docHtml({ [lang]: doc }, lang, def, vars) : ''
+  }
+  return { kind: 'about', template: campaign.template_key, about: html('about'), together: html('together') }
 }
 
 // The person is known only from a manage session or a sign-in; anyone else
@@ -254,6 +287,7 @@ async function betweenPage(tx: Parameters<typeof loadSiteData>[0], event: H3Even
   const offer = await notifyOffer(tx, data.site, campaign)
   return {
     kind: 'between',
+    template: campaign.template_key,
     stats: await statsFor(tx, campaign, data.settings.default_duration_min),
     endMessage: textIn(campaign.end_message as TranslatableText | null, lang, def),
     hasGuide: (await contentLength(tx, campaign.id)) > 0,
@@ -270,7 +304,8 @@ async function prayPage(tx: Parameters<typeof loadSiteData>[0], ctx: SiteContext
   const cv = campaignView(data, campaign)
   if (cv.state === 'upcoming' && campaign.start_date && !ctx.preview) return { kind: 'not_started', startDate: campaign.start_date }
   const { last, max } = await visibleEntries(tx, campaign, cv, ctx.preview)
-  let day = cv.todayEntry
+  // Without a chosen day: today's entry, or the latest one when the content stops before today.
+  let day = Math.min(cv.todayEntry, Math.max(max, 1))
   if (rest[0] !== undefined) {
     if (!/^\d{1,5}$/.test(rest[0])) return { kind: 'not_found' }
     day = Number(rest[0])

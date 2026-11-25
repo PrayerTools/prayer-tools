@@ -69,6 +69,8 @@ async function submit() {
     </div>
     <TurnstileWidget v-model="token" :site-key="site.turnstileSiteKey" />
     <UAlert v-if="error" color="error" variant="soft" :title="error" role="alert" />
-    <UButton type="submit" :loading="sending" icon="i-lucide-bell" :label="t('between.notify_button')" />
+    <div class="flex justify-center">
+      <UButton type="submit" :loading="sending" icon="i-lucide-bell" :label="t('between.notify_button')" />
+    </div>
   </form>
 </template>

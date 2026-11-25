@@ -8,6 +8,7 @@
     "pray": "Orar",
     "stats": "Estatísticas",
     "coverage": "Calendário de oração",
+    "about": "Sobre",
     "contact": "Contato",
     "language": "Idioma",
     "menu": "Menu"
@@ -44,6 +45,9 @@
     "last_week": "Última semana",
     "last_month": "Último mês",
     "pray_today": "Ore hoje",
+    "read_latest": "Leia a última oração",
+    "more_about": "Mais sobre esta campanha",
+    "more_about_ramadan": "Mais sobre o Ramadã",
     "photo_credit": "Crédito da foto",
     "signed_up": "Você já está orando com {site}. Lá você pode adicionar, mudar ou parar seus horários de oração.",
     "manage_times": "Gerenciar seus horários de oração",
@@ -54,15 +58,29 @@
       "dates": "{start} – {end}",
       "open": "Saiba mais"
     },
+    "goal": {
+      "title": "Nosso progresso",
+      "starts_in": "Começa em {n} dia | Começa em {n} dias",
+      "since": "Desde {date}",
+      "today": "hoje",
+      "signed_up_since": "{n} pessoa se inscreveu desde {date} | {n} pessoas se inscreveram desde {date}"
+    },
     "why": {
       "title": "Por que oramos"
+    },
+    "about": {
+      "title": "Sobre esta campanha",
+      "title_ramadan": "Sobre o Ramadã"
     },
     "stories": {
       "title": "Testemunhos"
     },
     "how": {
       "title": "Como funciona",
-      "body": "Escolha quando você quer orar e enviaremos um lembrete por e-mail nesse horário, com um link para o guia de oração do dia. Ore pelo tempo que puder: cada oração conta. Você pode mudar seus horários de oração ou parar a qualquer momento."
+      "step1": "Inscreva-se para orar",
+      "step2": "Receba lembretes",
+      "step3": "Dedique tempo à oração",
+      "step4": "Encontre Deus ao orar"
     },
     "signup": {
       "title": "Inscreva-se para orar",
@@ -70,7 +88,8 @@
       "button": "Escolher meu horário de oração"
     },
     "today": {
-      "title": "A oração de hoje"
+      "title": "A oração de hoje",
+      "latest": "Última oração"
     },
     "share": {
       "title": "Convide outras pessoas para orar",
@@ -92,8 +111,8 @@
     "qr_caption": "Escaneie com o seu celular para abrir esta campanha no aplicativo."
   },
   "progress": {
-    "people": "{n} pessoa orando | {n} pessoas orando",
-    "people_target": "{n} de {target} pessoas orando",
+    "people": "{n} pessoa comprometida a orar | {n} pessoas comprometidas a orar",
+    "people_target": "{n} de {target} pessoas comprometidas a orar",
     "people_upcoming": "{n} pessoa inscrita | {n} pessoas inscritas",
     "people_target_upcoming": "{n} de {target} pessoas inscritas",
     "people_ended": "{n} pessoa orou | {n} pessoas oraram",
@@ -109,6 +128,13 @@
     "week_of": "Semana {n} de {total}",
     "month_of": "Mês {n} de {total}",
     "praying_now": "{n} pessoa orando agora | {n} pessoas orando agora",
+    "timer_start": "Iniciar o cronômetro de oração",
+    "timer_pause": "Pausar o cronômetro de oração",
+    "timer_restart": "Reiniciar o cronômetro de oração",
+    "timer_length": "Escolha quanto tempo orar",
+    "timer_done": "Pronto",
+    "timer_min": "{n} min",
+    "timer_sound": "Som quando o tempo acabar",
     "no_content": "O guia de oração deste dia ainda não está disponível.",
     "amen": "Amém — orei",
     "amen_thanks": "Obrigado por orar!",
@@ -148,7 +174,6 @@
     "button": "Compartilhar",
     "copy": "Copiar link",
     "copied": "Link copiado",
-    "invite": "Convide outras pessoas para orar com você",
     "default_message": "Estou orando com {site}. Você ora comigo?",
     "prompt_title": "Convide outras pessoas para orar com você",
     "prompt_body": "Conhece alguém que também oraria? Envie o link para essa pessoa."
@@ -211,11 +236,12 @@
   },
   "stats": {
     "title": "A oração até agora",
-    "people": "Pessoas inscritas",
+    "people": "Pessoas comprometidas a orar",
+    "signed_up_total": "Inscritos desde o início",
     "commitments": "Horários de oração",
     "prayers": "Orações",
     "minutes": "Tempo em oração",
-    "share_signups": "Entraram por meio de um amigo",
+    "time_committed": "Tempo comprometido",
     "group_prayers": "Orações em grupo",
     "praying_now": "Orando agora"
   },
@@ -246,9 +272,16 @@
     "open_on": "{time}: ainda livre em {open} de {total} dias",
     "all_covered": "{time}: alguém já ora em todos os próximos dias"
   },
+  "about": {
+    "together_title": "Por que oramos juntos",
+    "prayertools_title": "Por que o Prayer.Tools",
+    "prayertools_body": "O Prayer.Tools existe para fazer discípulos por meio da oração. A oração transforma as pessoas e os lugares pelos quais oramos, e nos transforma enquanto oramos. Criamos as campanhas de oração para que qualquer pessoa que carregue no coração um povo, um lugar ou um acontecimento possa reunir outros para orar, e ajudá-los a orar de forma bíblica e estratégica.\n\nO Prayer.Tools é gratuito para todas as campanhas. Ele funciona com uma economia do céu: pessoas doam seu tempo, suas habilidades e seu dinheiro para que outros possam usar estas ferramentas de graça, assim como de graça recebemos (Mateus 10:8). Se estas ferramentas ajudam você a orar, você pode fazer parte disso contribuindo.",
+    "back": "Voltar para {campaign}"
+  },
   "between": {
     "guide": "Ler o guia de oração",
-    "ended": "{campaign} chegou ao fim.",
+    "ended_short": "Esta campanha chegou ao fim.",
+    "story_title": "Compartilhe uma história ou sua opinião",
     "thanks": "Obrigado por orar",
     "results": "Resultados finais",
     "cta_default": "Continuar",

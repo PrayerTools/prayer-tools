@@ -8,6 +8,7 @@
     "pray": "Prier",
     "stats": "Statistiques",
     "coverage": "Calendrier de prière",
+    "about": "À propos",
     "contact": "Contact",
     "language": "Langue",
     "menu": "Menu"
@@ -44,6 +45,9 @@
     "last_week": "Dernière semaine",
     "last_month": "Dernier mois",
     "pray_today": "Prier aujourd'hui",
+    "read_latest": "Lire la dernière prière",
+    "more_about": "En savoir plus sur cette campagne",
+    "more_about_ramadan": "En savoir plus sur le Ramadan",
     "photo_credit": "Crédit photo",
     "signed_up": "Vous priez déjà avec {site}. Vous pouvez y ajouter, modifier ou arrêter vos moments de prière.",
     "manage_times": "Gérer vos moments de prière",
@@ -54,15 +58,29 @@
       "dates": "{start} – {end}",
       "open": "En savoir plus"
     },
+    "goal": {
+      "title": "Notre progression",
+      "starts_in": "Commence dans {n} jour | Commence dans {n} jours",
+      "since": "Depuis le {date}",
+      "today": "aujourd’hui",
+      "signed_up_since": "{n} personne s’est inscrite depuis {date} | {n} personnes se sont inscrites depuis {date}"
+    },
     "why": {
       "title": "Pourquoi nous prions"
+    },
+    "about": {
+      "title": "À propos de cette campagne",
+      "title_ramadan": "À propos du Ramadan"
     },
     "stories": {
       "title": "Témoignages"
     },
     "how": {
       "title": "Comment ça marche",
-      "body": "Choisissez quand vous souhaitez prier et nous vous enverrons un rappel par e-mail à ce moment-là, avec un lien vers le guide de prière du jour. Priez aussi longtemps que vous le pouvez : chaque prière compte. Vous pouvez modifier vos moments de prière ou arrêter à tout moment."
+      "step1": "S’inscrire pour prier",
+      "step2": "Recevoir des rappels",
+      "step3": "Prendre du temps pour prier",
+      "step4": "Rencontrer Dieu dans la prière"
     },
     "signup": {
       "title": "S'inscrire pour prier",
@@ -70,7 +88,8 @@
       "button": "Choisir mon moment de prière"
     },
     "today": {
-      "title": "La prière du jour"
+      "title": "La prière du jour",
+      "latest": "Dernière prière"
     },
     "share": {
       "title": "Invitez d'autres personnes à prier",
@@ -92,8 +111,8 @@
     "qr_caption": "Scannez avec votre téléphone pour ouvrir cette campagne dans l'application."
   },
   "progress": {
-    "people": "{n} personne en prière | {n} personnes en prière",
-    "people_target": "{n} sur {target} personnes en prière",
+    "people": "{n} personne engagée à prier | {n} personnes engagées à prier",
+    "people_target": "{n} sur {target} personnes engagées à prier",
     "people_upcoming": "{n} personne inscrite | {n} personnes inscrites",
     "people_target_upcoming": "{n} sur {target} personnes inscrites",
     "people_ended": "{n} personne a prié | {n} personnes ont prié",
@@ -109,6 +128,13 @@
     "week_of": "Semaine {n} sur {total}",
     "month_of": "Mois {n} sur {total}",
     "praying_now": "{n} personne prie en ce moment | {n} personnes prient en ce moment",
+    "timer_start": "Lancer le minuteur de prière",
+    "timer_pause": "Mettre en pause le minuteur de prière",
+    "timer_restart": "Relancer le minuteur de prière",
+    "timer_length": "Choisir la durée de prière",
+    "timer_done": "Terminé",
+    "timer_min": "{n} min",
+    "timer_sound": "Son à la fin du temps",
     "no_content": "Le guide de prière de ce jour n'est pas encore disponible.",
     "amen": "Amen — j'ai prié",
     "amen_thanks": "Merci d'avoir prié !",
@@ -148,7 +174,6 @@
     "button": "Partager",
     "copy": "Copier le lien",
     "copied": "Lien copié",
-    "invite": "Invitez d'autres personnes à prier avec vous",
     "default_message": "Je prie avec {site}. Voulez-vous vous joindre à moi ?",
     "prompt_title": "Invitez d'autres personnes à prier avec vous",
     "prompt_body": "Vous connaissez quelqu'un qui aimerait prier aussi ? Envoyez-lui le lien."
@@ -211,11 +236,12 @@
   },
   "stats": {
     "title": "La prière jusqu'ici",
-    "people": "Personnes inscrites",
+    "people": "Personnes engagées à prier",
+    "signed_up_total": "Inscrits depuis le début",
     "commitments": "Moments de prière",
     "prayers": "Prières",
     "minutes": "Temps de prière",
-    "share_signups": "Inscrits grâce à un ami",
+    "time_committed": "Temps engagé",
     "group_prayers": "Prières en groupe",
     "praying_now": "En prière maintenant"
   },
@@ -246,9 +272,16 @@
     "open_on": "{time} : encore libre {open} jours sur {total}",
     "all_covered": "{time} : quelqu’un prie déjà chacun des jours à venir"
   },
+  "about": {
+    "together_title": "Pourquoi prier ensemble",
+    "prayertools_title": "Pourquoi Prayer.Tools",
+    "prayertools_body": "Prayer.Tools existe pour faire des disciples par la prière. La prière transforme les personnes et les lieux pour lesquels nous prions, et elle nous transforme pendant que nous prions. Nous avons créé les campagnes de prière pour que toute personne qui porte à cœur un peuple, un lieu ou un événement puisse rassembler d’autres personnes pour prier, et les aider à prier de façon biblique et stratégique.\n\nPrayer.Tools est gratuit pour toutes les campagnes. Il fonctionne selon une économie du ciel : des personnes donnent leur temps, leurs compétences et leur argent pour que d’autres puissent utiliser ces outils gratuitement, comme nous avons reçu gratuitement (Matthieu 10.8). Si ces outils vous aident à prier, vous pouvez y participer en donnant.",
+    "back": "Retour à {campaign}"
+  },
   "between": {
     "guide": "Lire le guide de prière",
-    "ended": "{campaign} a pris fin.",
+    "ended_short": "Cette campagne a pris fin.",
+    "story_title": "Partagez un témoignage ou vos commentaires",
     "thanks": "Merci d'avoir prié",
     "results": "Résultats finaux",
     "cta_default": "Continuer",

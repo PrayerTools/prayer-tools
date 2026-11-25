@@ -175,7 +175,7 @@ const updateCampaignTool = defineMcpTool({
 const getLandingTool = defineMcpTool({
   name: 'get_landing_page',
   title: 'Get Landing Page',
-  description: 'A campaign\'s landing page in one language: the subtitle under the heading, the "why pray" text, the custom sections, which sections are hidden, the order the sections show in, and whether stories show.',
+  description: 'A campaign\'s landing page in one language: the subtitle under the heading, the "why pray" text, the about text, the About page\'s text about praying together, the custom sections, which sections are hidden, the order the sections show in, and whether stories show.',
   appId: SITE_APP,
   scope: 'pt.site.read',
   readOnly: true,
@@ -186,6 +186,8 @@ const getLandingTool = defineMcpTool({
     if (!c) throw createError({ statusCode: 404, statusMessage: 'Campaign not found.' })
     const landing = (c.landing ?? {}) as CampaignLanding
     const why = landing.why?.[lang] ? docBlocks(landing.why[lang]) : null
+    const about = landing.about?.[lang] ? docBlocks(landing.about[lang]) : null
+    const together = landing.together?.[lang] ? docBlocks(landing.together[lang]) : null
     const custom = (landing.custom ?? []).map((s) => {
       const body = s.body[lang] ? docBlocks(s.body[lang]) : null
       return {
@@ -200,12 +202,16 @@ const getLandingTool = defineMcpTool({
         buttonUrl: s.button_url ?? null
       }
     })
-    const inexact = (why && !why.exact) || custom.some(s => !s.exact)
+    const inexact = [why, about, together].some(t => t && !t.exact) || custom.some(s => !s.exact)
     return result(`Landing page of ${c.name}${inexact ? `. ${INEXACT_NOTE}` : '.'}`, {
       language: lang,
       subtitle: landing.subtitle ? textIn(landing.subtitle, lang) : null,
       why: why ? { blocks: why.blocks, exact: why.exact } : null,
       whyUsesTemplateText: !landing.why?.[lang],
+      about: about ? { blocks: about.blocks, exact: about.exact } : null,
+      aboutUsesTemplateText: !landing.about?.[lang],
+      together: together ? { blocks: together.blocks, exact: together.exact } : null,
+      togetherUsesTemplateText: !landing.together?.[lang],
       custom,
       hidden: landing.hidden ?? null,
       hideableSections: [...HIDEABLE_SECTIONS, ...custom.map(s => customSectionKey(s.id))],
@@ -229,7 +235,7 @@ const sectionInput = z.object({
 const updateLandingTool = defineMcpTool({
   name: 'update_landing_page',
   title: 'Update Landing Page',
-  description: 'Change a campaign\'s landing page in one language. `subtitle` is the sentence under the heading (null removes it in every language). `why` replaces the "why pray" text (null goes back to the template\'s standard text). `custom` replaces the whole list of custom sections: keep a section by passing its id, drop it by leaving it out. `hidden` lists the sections to hide. `order` places the sections after the top one. Fields you leave out stay as they are.',
+  description: 'Change a campaign\'s landing page in one language. `subtitle` is the sentence under the heading (null removes it in every language). `why` replaces the "why pray" text, `about` the text about the campaign and `together` the About page\'s text about praying together (null goes back to the template\'s standard text, or hides the section when the template has none). `custom` replaces the whole list of custom sections: keep a section by passing its id, drop it by leaving it out. `hidden` lists the sections to hide. `order` places the sections after the top one. Fields you leave out stay as they are.',
   appId: SITE_APP,
   scope: 'pt.site.write',
   input: z.object({
@@ -238,11 +244,13 @@ const updateLandingTool = defineMcpTool({
     language: langInput,
     subtitle: z.string().max(500).nullable().optional().describe('Sentence shown under the heading at the top of the page.'),
     why: blocksInput.nullable().optional(),
+    about: blocksInput.nullable().optional(),
+    together: blocksInput.nullable().optional(),
     custom: z.array(sectionInput).max(12).optional(),
     hidden: z.array(z.string().max(60)).max(40).optional()
       .describe(`Sections to hide: ${HIDEABLE_SECTIONS.join(', ')}, or custom:<id> for one custom section. "custom" hides every custom section. The top section and signup always show.`),
     order: z.array(z.string().max(60)).max(40).nullable().optional()
-      .describe(`The sections after the top one, in the order the page shows them: ${defaultLandingOrder([]).join(', ')}, and custom:<id> for each custom section. Pass the whole list from get_landing_page, rearranged; a section left out goes after the sections that precede it by default, which is where a new custom section starts. null goes back to the default order: custom sections after "why", in the order of \`custom\`.`),
+      .describe(`The sections after the top one, in the order the page shows them: ${defaultLandingOrder([]).join(', ')}, and custom:<id> for each custom section. Pass the whole list from get_landing_page, rearranged; a section left out goes after the sections that precede it by default, which is where a new custom section starts. null goes back to the default order: custom sections after "about", in the order of \`custom\`.`),
     stories: z.boolean().optional().describe('Show intercessors\' stories on the landing page.')
   }).strict(),
   handler: (input, ctx) => run(() => inSite(ctx, input.org, 'pt.site.write', async (tx, tenant) => {
@@ -256,6 +264,16 @@ const updateLandingTool = defineMcpTool({
       const why = Object.fromEntries(Object.entries(landing.why ?? {}).filter(([l]) => l !== lang))
       if (input.why !== null) why[lang] = await blocksDoc(userId, lang, input.why)
       landing.why = why
+    }
+    if (input.about !== undefined) {
+      const about = Object.fromEntries(Object.entries(landing.about ?? {}).filter(([l]) => l !== lang))
+      if (input.about !== null) about[lang] = await blocksDoc(userId, lang, input.about)
+      landing.about = about
+    }
+    if (input.together !== undefined) {
+      const together = Object.fromEntries(Object.entries(landing.together ?? {}).filter(([l]) => l !== lang))
+      if (input.together !== null) together[lang] = await blocksDoc(userId, lang, input.together)
+      landing.together = together
     }
     if (input.custom) {
       const existing = landing.custom ?? []
@@ -285,7 +303,7 @@ const updateLandingTool = defineMcpTool({
     if (input.order !== undefined) landing.order = input.order ?? undefined
     if (input.stories !== undefined) landing.stories = input.stories
     await ptUpdateCampaign(tx, tenant, c.id, { landing })
-    await audit(ctx, tx, 'UPDATE', 'pt_campaign', c.id, { landing: Object.keys(input).filter(k => ['subtitle', 'why', 'custom', 'hidden', 'order', 'stories'].includes(k)) })
+    await audit(ctx, tx, 'UPDATE', 'pt_campaign', c.id, { landing: Object.keys(input).filter(k => ['subtitle', 'why', 'about', 'together', 'custom', 'hidden', 'order', 'stories'].includes(k)) })
     return result('Landing page updated.', { ok: true, adminUrl: adminLink(tenant.orgSlug, '/site/landing') })
   }))
 })

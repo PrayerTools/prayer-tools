@@ -207,7 +207,8 @@ async function importBlog(b: typeof blogs[number]): Promise<SiteReport> {
       ramadan: p.templateKey === 'ramadan',
       campaignName: p.name,
       rewrite: doc => images.rewrite(doc),
-      rewriteUrl: u => images.rewriteUrl(u)
+      rewriteUrl: u => images.rewriteUrl(u),
+      defaultIcon: c => images.storeImage(join(import.meta.dir, 'icons', `${c === 'time' ? '24_7' : c}.svg`))
     }))
   }
   // Each site-wide text, the sender and the logo come from the most recent

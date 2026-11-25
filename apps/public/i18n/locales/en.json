@@ -11,6 +11,7 @@
     "pray": "Pray",
     "stats": "Stats",
     "coverage": "Prayer calendar",
+    "about": "About",
     "contact": "Contact",
     "language": "Language",
     "menu": "Menu"
@@ -47,6 +48,9 @@
     "last_week": "Final week",
     "last_month": "Final month",
     "pray_today": "Pray today",
+    "read_latest": "Read the latest prayer",
+    "more_about": "More about this campaign",
+    "more_about_ramadan": "More about Ramadan",
     "photo_credit": "Photo credit",
     "signed_up": "You are already praying with {site}. Add, change or stop your prayer times there.",
     "manage_times": "Manage your prayer times",
@@ -57,15 +61,29 @@
       "dates": "{start} – {end}",
       "open": "Find out more"
     },
+    "goal": {
+      "title": "Our progress",
+      "starts_in": "Starts in {n} day | Starts in {n} days",
+      "since": "Since {date}",
+      "today": "today",
+      "signed_up_since": "{n} person has signed up since {date} | {n} people have signed up since {date}"
+    },
     "why": {
       "title": "Why we pray"
+    },
+    "about": {
+      "title": "About this campaign",
+      "title_ramadan": "About Ramadan"
     },
     "stories": {
       "title": "Stories"
     },
     "how": {
       "title": "How it works",
-      "body": "Choose when you want to pray and we will send you a reminder by email at that time, with a link to the day's prayer guide. Pray for as long as you can: every prayer counts. You can change your prayer times or stop at any time."
+      "step1": "Sign up to pray",
+      "step2": "Receive reminders",
+      "step3": "Spend time in prayer",
+      "step4": "Encounter God as you pray"
     },
     "signup": {
       "title": "Sign up to pray",
@@ -73,7 +91,8 @@
       "button": "Choose my prayer time"
     },
     "today": {
-      "title": "Today's prayer"
+      "title": "Today's prayer",
+      "latest": "Latest prayer"
     },
     "share": {
       "title": "Invite others to pray",
@@ -95,8 +114,8 @@
     "qr_caption": "Scan with your phone to open this campaign in the app."
   },
   "progress": {
-    "people": "{n} person praying | {n} people praying",
-    "people_target": "{n} of {target} people praying",
+    "people": "{n} person committed to pray | {n} people committed to pray",
+    "people_target": "{n} of {target} people committed to pray",
     "people_upcoming": "{n} person signed up | {n} people signed up",
     "people_target_upcoming": "{n} of {target} people signed up",
     "people_ended": "{n} person prayed | {n} people prayed",
@@ -112,6 +131,13 @@
     "week_of": "Week {n} of {total}",
     "month_of": "Month {n} of {total}",
     "praying_now": "{n} person praying now | {n} people praying now",
+    "timer_start": "Start the prayer timer",
+    "timer_pause": "Pause the prayer timer",
+    "timer_restart": "Start the prayer timer again",
+    "timer_length": "Choose how long to pray",
+    "timer_done": "Done",
+    "timer_min": "{n} min",
+    "timer_sound": "Sound when time is up",
     "no_content": "The prayer guide for this day is not available yet.",
     "amen": "Amen — I prayed",
     "amen_thanks": "Thank you for praying!",
@@ -151,7 +177,6 @@
     "button": "Share",
     "copy": "Copy link",
     "copied": "Link copied",
-    "invite": "Invite others to pray with you",
     "default_message": "I'm praying with {site}. Will you join me?",
     "prompt_title": "Invite others to pray with you",
     "prompt_body": "Know someone who would pray too? Send them the link."
@@ -214,11 +239,12 @@
   },
   "stats": {
     "title": "Prayer so far",
-    "people": "People signed up",
+    "people": "People committed to pray",
+    "signed_up_total": "Signed up since the start",
     "commitments": "Prayer times",
     "prayers": "Prayers",
     "minutes": "Time in prayer",
-    "share_signups": "Joined through a friend",
+    "time_committed": "Time committed",
     "group_prayers": "Prayed in groups",
     "praying_now": "Praying now"
   },
@@ -249,9 +275,16 @@
     "open_on": "{time}: still open on {open} of {total} days",
     "all_covered": "{time}: someone is already praying on every coming day"
   },
+  "about": {
+    "together_title": "Why we pray together",
+    "prayertools_title": "Why Prayer.Tools",
+    "prayertools_body": "Prayer.Tools exists for discipleship through prayer. Prayer changes the people and places we pray for, and it changes us as we pray. We built prayer campaigns so that anyone who carries a people, a place or an event on their heart can gather others to pray, and help them pray in ways that are both biblical and strategic.\n\nPrayer.Tools is free for every campaign. It runs on a heavenly economy: people give their time, skills and money so that others can use these tools freely, just as we have freely received (Matthew 10:8). If these tools help you pray, you can be part of that by giving.",
+    "back": "Back to {campaign}"
+  },
   "between": {
     "guide": "Read the prayer guide",
-    "ended": "{campaign} has ended.",
+    "ended_short": "This campaign has ended.",
+    "story_title": "Share a story or feedback",
     "thanks": "Thank you for praying",
     "results": "Final results",
     "cta_default": "Continue",

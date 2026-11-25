@@ -34,12 +34,14 @@ export function editorAccess(event: H3Event, orgId: string): boolean {
 }
 
 // The standard wording of each editable string in a UI language, shown as the
-// editor's placeholder text.
-export function editorDefaults(uiLang: string): Record<string, string> {
+// editor's placeholder text. A template's own about heading
+// (`landing.about.title_<template>`) stands in for the general one.
+export function editorDefaults(uiLang: string, templateKey: string | null): Record<string, string> {
   const messages = LOCALES[uiLang] ?? LOCALES.en
+  const lookup = (key: string) => key.split('.').reduce<unknown>((o, k) => (o as Record<string, unknown> | undefined)?.[k], messages)
   const out: Record<string, string> = {}
   for (const key of EDITABLE_SITE_STRINGS) {
-    const value = key.split('.').reduce<unknown>((o, k) => (o as Record<string, unknown> | undefined)?.[k], messages)
+    const value = (key === 'landing.about.title' && templateKey && lookup(`${key}_${templateKey}`)) || lookup(key)
     if (typeof value === 'string') out[key] = value
   }
   return out
@@ -82,6 +84,7 @@ function parseHero(input: unknown): CampaignBranding | undefined {
     image_credit: typeof b.image_credit === 'string' ? b.image_credit.slice(0, 200) : undefined,
     focal_x: unit(b.focal_x),
     focal_y: unit(b.focal_y),
+    tint: b.tint === false ? false : undefined,
     share_image_url: url(b.share_image_url)
   }
 }
@@ -117,6 +120,7 @@ export function parseLandingDraft(input: unknown): LandingDraft {
     landing: {
       subtitle: parseText(l.subtitle) ?? undefined,
       why: docs(l.why),
+      about: docs(l.about),
       hidden: Array.isArray(l.hidden) ? (l.hidden as unknown[]).filter((s): s is string => typeof s === 'string') : undefined,
       order: Array.isArray(l.order) ? (l.order as unknown[]).filter((s): s is string => typeof s === 'string') : undefined,
       custom,

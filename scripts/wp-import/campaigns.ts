@@ -60,15 +60,16 @@ export function isPluginDefault(url: string): boolean {
   return /\/wp-content\/plugins\/disciple-tools-prayer-campaigns\//.test(url)
 }
 
-// The plugin's preset theme colors by `theme_color` key. Its default theme,
-// `preset`, isn't a champion's choice, so it isn't kept.
-const THEME_COLORS: Record<string, string> = { forestgreen: '#1eb858', green: '#94c523', orange: '#f57d41', purple: '#6b58cd', teal: '#1ab7d8' }
+// The plugin's preset theme colors by `theme_color` key. A campaign without
+// one showed the default theme, `preset`.
+const THEME_COLORS: Record<string, string> = { preset: '#4676fa', forestgreen: '#1eb858', green: '#94c523', orange: '#f57d41', purple: '#6b58cd', teal: '#1ab7d8' }
 
-// A campaign's color as the plugin chose it: its custom color, else its preset theme's.
+// A campaign's color as the plugin showed it: its custom color, else its theme's.
 export function campaignColor(m: Meta | undefined): string | null {
   const custom = first(m, 'custom_theme_color')?.trim()
   if (custom && /^#[0-9a-f]{6}$/i.test(custom)) return custom.toLowerCase()
-  return THEME_COLORS[first(m, 'theme_color') ?? ''] ?? null
+  const theme = first(m, 'theme_color')
+  return theme ? THEME_COLORS[theme] ?? null : THEME_COLORS.preset!
 }
 
 // The site's color: the home campaign's, which WordPress showed at the site's
@@ -143,7 +144,11 @@ export function planCampaigns(posts: WpPost[], meta: Map<number, Meta>, now = ne
     }
     const hero = first(m, 'header_background_url')?.trim() || (domain ? `https://${domain}${STENCIL_PATH}` : null)
     const share = image('promo_image_url')
-    const branding: CampaignBranding = { ...(hero ? { image_url: hero } : {}), ...(share ? { share_image_url: share } : {}) }
+    const branding: CampaignBranding = {
+      ...(hero ? { image_url: hero } : {}),
+      ...(share ? { share_image_url: share } : {}),
+      ...(first(m, 'enable_overlay_blur') === 'no' ? { tint: false as const } : {})
+    }
 
     // Ended campaigns carry ended_at, so the end-date sweep doesn't treat
     // them as ending now and send their thank-you.

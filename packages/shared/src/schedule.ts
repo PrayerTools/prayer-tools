@@ -41,6 +41,20 @@ export function usesWeekdays(rule: { frequency: Frequency | null, day_of_month?:
   return rule.frequency === 'weekly' || (rule.frequency === 'monthly' && !rule.day_of_month)
 }
 
+// How many times a rule falls on the local dates `from` to `to`, counted on
+// dates alone, without the instants `occurrences` computes.
+export function occurrenceCount(rule: CommitmentRule, from: string, to: string): number {
+  if (rule.kind === 'dates') return rule.dates.filter((d) => {
+    const date = localDateOf(new Date(d), rule.timezone)
+    return date >= from && date <= to
+  }).length
+  const first = rule.starts_on > from ? rule.starts_on : from
+  const last = rule.ends_on && rule.ends_on < to ? rule.ends_on : to
+  let n = 0
+  for (let date = first; date <= last; date = addDays(date, 1)) if (matchesDay(rule, date)) n++
+  return n
+}
+
 // Occurrence instants of a rule within [from, to).
 export function occurrences(rule: CommitmentRule, from: Date, to: Date): Date[] {
   if (rule.kind === 'dates') {

@@ -52,6 +52,7 @@ export function ptCampaignBranding(input: unknown): CampaignBranding {
     image_credit: str(b.image_credit, 200),
     focal_x: unit(b.focal_x),
     focal_y: unit(b.focal_y),
+    tint: b.tint === false ? false : undefined,
     share_image_url: url(b.share_image_url)
   })
 }
@@ -73,11 +74,17 @@ export function ptIdentity(input: unknown): SiteEmailIdentity {
 
 export function ptLanding(input: unknown): CampaignLanding {
   const l = (input ?? {}) as Record<string, unknown>
-  const why: Record<string, TiptapDoc> = {}
-  for (const [lang, doc] of Object.entries((l.why ?? {}) as Record<string, unknown>)) {
-    const d = ptDoc(doc)
-    if (d) why[lang] = d
+  const docs = (input: unknown) => {
+    const out: Record<string, TiptapDoc> = {}
+    for (const [lang, doc] of Object.entries((input ?? {}) as Record<string, unknown>)) {
+      const d = ptDoc(doc)
+      if (d) out[lang] = d
+    }
+    return out
   }
+  const why = docs(l.why)
+  const about = docs(l.about)
+  const together = docs(l.together)
   const custom: LandingCustomSection[] = []
   for (const raw of Array.isArray(l.custom) ? (l.custom as Record<string, unknown>[]).slice(0, 12) : []) {
     const heading = parseText(raw.heading)
@@ -100,7 +107,7 @@ export function ptLanding(input: unknown): CampaignLanding {
   }
   const customIds = custom.map(s => s.id)
   const hidden = Array.isArray(l.hidden) ? (l.hidden as unknown[]).filter((s): s is string => typeof s === 'string' && isHideableSection(s, customIds)) : undefined
-  return clean({ subtitle: parseText(l.subtitle) ?? undefined, why, hidden, order: storedLandingOrder(l.order, customIds), custom, stories: typeof l.stories === 'boolean' ? l.stories : undefined, story_ids: parseStoryIds(l.story_ids) })
+  return clean({ subtitle: parseText(l.subtitle) ?? undefined, why, about, together, hidden, order: storedLandingOrder(l.order, customIds), custom, stories: typeof l.stories === 'boolean' ? l.stories : undefined, story_ids: parseStoryIds(l.story_ids) })
 }
 
 export function ptShare(input: unknown): CampaignShare {

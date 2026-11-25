@@ -102,7 +102,7 @@ export function heroView(branding: CampaignBranding, lang: string, def: string):
   if (!branding.image_url) return null
   const known = heroImage(branding.image_url)
   const alt = textIn(branding.image_alt, lang, def) || (known ? heroAlt(known, lang) : '')
-  return { url: branding.image_url, alt, credit: branding.image_credit ?? null, fx: branding.focal_x ?? 0.5, fy: branding.focal_y ?? 0.5 }
+  return { url: branding.image_url, alt, credit: branding.image_credit ?? null, fx: branding.focal_x ?? 0.5, fy: branding.focal_y ?? 0.5, tint: branding.tint !== false }
 }
 
 export async function buildSiteView(tx: Tx, ctx: SiteContext, data: SiteData, lang: string, campaign: CampaignRow | null, path: string): Promise<SiteView> {
@@ -133,7 +133,7 @@ export async function buildSiteView(tx: Tx, ctx: SiteContext, data: SiteData, la
     description: textIn(campaign?.description as TranslatableText | null, lang, def),
     status: site.status,
     preview: ctx.preview,
-    editor: ctx.editor ? { adminOrigin: new URL(cfg.adminUrl).origin, defaults: editorDefaults(uiLanguage(lang)) } : null,
+    editor: ctx.editor ? { adminOrigin: new URL(cfg.adminUrl).origin, defaults: editorDefaults(uiLanguage(lang), campaign?.template_key ?? null) } : null,
     campaign: cv,
     campaignSegment: campaign ? campaignSegment(campaign, data.current?.campaign.id) : null,
     pastCampaigns: data.campaigns

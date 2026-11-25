@@ -24,6 +24,9 @@ const sharePrompt = ref(false)
 const verifyPrompt = ref(false)
 const signupEmail = useState<string | null>('pt-signup-email', () => null)
 const prayingNow = ref(0)
+// How long the person said they would pray, for the timer; the first ping asks for it.
+const personMinutes = ref<number | null>(null)
+let askMinutes = true
 const amened = ref(false)
 const groupOpen = ref(false)
 const groupCount = ref<number | null>(2)
@@ -107,10 +110,12 @@ function saveSession(s: StoredSession) {
 async function ping() {
   if (document.visibilityState === 'hidden' || amened.value || !site.value.campaign) return
   try {
-    const res = await $fetch<{ praying_now: number, position: Position | null }>('/api/pray/ping', {
+    const res = await $fetch<{ praying_now: number, position: Position | null, minutes: number | null }>('/api/pray/ping', {
       method: 'POST',
-      body: { id: sessionId.value, visitor: visitorId(), campaign: site.value.campaign.id, day: props.page.day, language: site.value.lang, source: personal ? 'manage' : 'porch', p: personal }
+      body: { id: sessionId.value, visitor: visitorId(), campaign: site.value.campaign.id, day: props.page.day, language: site.value.lang, source: personal ? 'manage' : 'porch', p: personal, minutes: askMinutes }
     })
+    if (askMinutes) personMinutes.value = res.minutes
+    askMinutes = false
     prayingNow.value = res.praying_now
     if (res.position) position.value = res.position
   } catch {
@@ -198,6 +203,7 @@ async function sendGroup() {
 
 <template>
   <article>
+    <PrayTimer v-if="page.blocks.length" :person-minutes="personMinutes" />
     <div class="border-b border-stone-200 bg-white">
       <div class="max-w-3xl mx-auto px-4 py-8 sm:py-10 space-y-5">
         <UAlert v-if="joined && needsVerify" color="warning" variant="soft" icon="i-lucide-mail" :title="t('pray.check_email_title')" :description="t('pray.check_email_body')" role="status" />
@@ -278,11 +284,7 @@ async function sendGroup() {
             <UButton :to="link('signup')" variant="outline" icon="i-lucide-bell" :label="st(site.campaign?.goal === 'coverage' ? 'landing.signup.button' : 'landing.signup.title')" />
           </div>
         </SectionCard>
-        <SectionCard :title="t('share.invite')" title-id="share-title" :class="!showPersonalSignup && !showReminders && 'sm:col-span-2'">
-          <div class="py-4">
-            <ShareButton size="md" variant="soft" />
-          </div>
-        </SectionCard>
+        <InviteCard :class="!showPersonalSignup && !showReminders && 'sm:col-span-2'" />
       </aside>
     </div>
 

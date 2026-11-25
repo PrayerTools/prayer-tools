@@ -71,6 +71,7 @@ WordPress saves a recurring rule as a rule row plus one row per prayer time (tag
 - Images are stored the way library images are: one WebP of up to 1600 px, named by a hash of the source, so an image used on many subsites, or met again on a re-run, is stored once. Audio and other files are stored as they are, named by a hash.
 - Campaign hero, share images, the site logo and the email logo are copied the same way.
 - A campaign with no header image (`header_background_url`) gets the plugin's stencil header, which WordPress showed in its place. It is stored once and shared; the directory doesn't use it as a site's picture.
+- A campaign that switched off the header overlay (`enable_overlay_blur` = `no`) shows its hero image without the brand-color tint.
 - The report lists referenced files missing from the backup.
 
 ## Landing page and email texts
@@ -80,10 +81,9 @@ WordPress keeps each text on the campaign in the campaign's language, and its ot
 | WordPress | v3 |
 |---|---|
 | `subtitle` | campaign subtitle and description, with translations |
-| `vision` | the campaign's "why" section, per language |
-| `pray_section_*`, `movement_section_*`, `time_section_*` | added to the "why" section as three headings with text, when the campaign changed them |
-| `what_content` | a custom section, headed "About Ramadan" (in each language) on Ramadan sites or by its own first heading |
-| `promo_video_url` | the video on that section |
+| `vision`, `pray_section_*`, `movement_section_*`, `time_section_*` | the campaign's "why" section: the vision as WordPress showed it in each language when the champion changed the vision or a column, and the three columns side by side only when they changed a column's title, text or icon, each the champion's text or the plugin's default (the "with prayer" and "Together" wording on `quantity` campaigns), headed by the champion's `*_section_icon`, else the plugin's icon in neutral grey (`scripts/wp-import/icons/`). No template has a default "why" text. |
+| `promo_video_url` | a video at the end of the "why" section, or the section's only content when the vision is unchanged |
+| `what_content` | the campaign's about section, when the champion wrote it (not lorem ipsum, not the Ramadan default, which is the Ramadan template's standard about text). Outside Ramadan sites its first heading becomes the site string `landing.about.title`. |
 | `footer_content` | a custom section at the end |
 | `vision_title`, `prayer_fuel_title` | site strings `landing.why.title`, `landing.today.title` |
 | `country_name`, `people_name` | place name (when the campaign has no location) and people group |
@@ -91,7 +91,7 @@ WordPress keeps each text on the campaign in the campaign's language, and its ot
 | `reply_to_email`, else `from_email` | site reply-to. v3 sends from the platform mail domain, so `from_email` isn't the sender. |
 | `email_logo`, `logo_url` | site email logo and site logo |
 | `email_signature` | site email signature |
-| `custom_theme_color`, else a preset `theme_color` (forestgreen, green, orange, purple, teal) | site color, from the home campaign (`dt_campaign_selected_campaign`) as WordPress showed it at the site's root, else the most recent campaign with one. The plugin's default theme (`preset`) leaves v3's default color. |
+| `custom_theme_color`, else a preset `theme_color` (forestgreen, green, orange, purple, teal) | site color, from the home campaign (`dt_campaign_selected_campaign`) as WordPress showed it at the site's root, else the most recent campaign with one. The plugin's default theme (`preset`, also used when a campaign set none) is its blue `#4676fa`, as WordPress showed it. |
 | `email_tagline`, `signup_content`, `reminder_content` (and older `campaign_strings`) | the campaign's email text: tagline and note in the welcome email, note in reminders |
 
 - Site-wide values (strings, sender, logos, signature) come from the most recent campaign that set them, main campaigns first.

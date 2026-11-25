@@ -2,11 +2,11 @@ import { brandColor, brandForeground } from '@prayertools/shared/colors'
 
 const PLATFORM_COLOR = '#c45100'
 
-// Primary colour for Prayer.Tools' own pages (home, My prayer), readable on the current light or dark background.
+// Primary colour for Prayer.Tools' own pages (home, My prayer), readable on the light or dark background.
 export function usePlatformTheme() {
-  const mode = useColorMode()
   return computed(() => ({
     '--ui-text-inverted': brandColor(PLATFORM_COLOR).textColor,
-    '--ui-primary': brandForeground(PLATFORM_COLOR, mode.value === 'dark' ? '#202c3a' : '#ffffff')
+    '--pt-primary-light': brandForeground(PLATFORM_COLOR, '#ffffff'),
+    '--pt-primary-dark': brandForeground(PLATFORM_COLOR, '#202c3a')
   }))
 }

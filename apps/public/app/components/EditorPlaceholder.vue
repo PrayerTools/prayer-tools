@@ -5,7 +5,9 @@
 const props = defineProps<{ section: string, title: string, customId?: string }>()
 
 const HINTS: Record<string, string> = {
+  goal: 'The campaign\'s dates, progress and calendar show here once it has a start date.',
   why: 'Nothing written yet. Write why people should pray, or hide this section.',
+  about: 'Nothing written yet. Tell visitors more about what this campaign prays for, or hide this section.',
   custom: 'Nothing to show yet. Give this section a heading, text or a video, or hide it.',
   stories: 'No published stories yet. Once you publish stories from the Stories page they show like the examples below.',
   today: 'Today\'s prayer shows here once the campaign has prayer content for today.',
