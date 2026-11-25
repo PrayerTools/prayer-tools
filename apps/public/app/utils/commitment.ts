@@ -11,7 +11,7 @@ export interface CommitmentInput {
 export function newCommitment(rule: 'required' | 'optional' | 'hidden', defaultDuration: number, cadence: Cadence = 'daily'): CommitmentInput {
   return {
     frequency: cadence,
-    days_of_week: cadence === 'weekly' ? [new Date().getDay()] : [],
+    days_of_week: [],
     day_of_month: cadence === 'monthly' ? 1 : null,
     time: '07:00',
     duration_min: rule === 'hidden' ? null : defaultDuration
