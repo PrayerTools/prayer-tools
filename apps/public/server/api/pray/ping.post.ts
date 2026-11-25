@@ -5,7 +5,7 @@ import { prayingNow } from '@prayertools/shared/stats'
 import { useDb } from '../../utils/db'
 import { limit, readJson } from '../../utils/request'
 import { siteContext } from '../../utils/site-context'
-import { prayingSubscription, recordPing, visitorKey } from '../../utils/prayer'
+import { prayerMinutes, prayingSubscription, recordPing, visitorKey } from '../../utils/prayer'
 import { isUuid } from '../../lib/input'
 import { forwardInBackground } from '../../utils/analytics'
 
@@ -33,7 +33,9 @@ export default defineEventHandler(async (event) => {
       country: getRequestHeader(event, 'cf-ipcountry')?.slice(0, 2) ?? null
     })
     const position = ping.first && ping.subscriptionId ? await openEntry(tx, ping.subscriptionId, campaign, day) : null
-    return { ping, position, now: await prayingNow(tx) }
+    // The prayer timer asks once for how long the person said they would pray.
+    const minutes = body.minutes === true && subscriptionId ? await prayerMinutes(tx, subscriptionId, campaign.id) : null
+    return { ping, position, minutes, now: await prayingNow(tx) }
   })
   if (result.ping.first) {
     forwardInBackground(event, { orgId: ctx.orgId, slug: ctx.slug, host: ctx.host }, {
@@ -43,5 +45,5 @@ export default defineEventHandler(async (event) => {
       metadata: { source, content_day: day, subscription_id: result.ping.subscriptionId ?? undefined }
     })
   }
-  return { ok: true, praying_now: result.now, position: result.position }
+  return { ok: true, praying_now: result.now, position: result.position, minutes: result.minutes }
 })

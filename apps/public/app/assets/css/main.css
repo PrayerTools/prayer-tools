@@ -31,6 +31,15 @@ body {
     .pt-parallax { animation: pt-parallax linear both; animation-timeline: view(block 0px); animation-range: exit; }
   }
 }
+/* The prayer timer's four dots come on one after another and stay lit, then fade together. */
+@keyframes pt-dot-fill-1 { 0% { opacity: 0.25; scale: 0.8; } 15% { opacity: 1; scale: 1.15; } 20%, 85% { opacity: 1; scale: 1; } 95%, 100% { opacity: 0.25; scale: 0.8; } }
+@keyframes pt-dot-fill-2 { 0%, 20% { opacity: 0.25; scale: 0.8; } 35% { opacity: 1; scale: 1.15; } 40%, 85% { opacity: 1; scale: 1; } 95%, 100% { opacity: 0.25; scale: 0.8; } }
+@keyframes pt-dot-fill-3 { 0%, 40% { opacity: 0.25; scale: 0.8; } 55% { opacity: 1; scale: 1.15; } 60%, 85% { opacity: 1; scale: 1; } 95%, 100% { opacity: 0.25; scale: 0.8; } }
+@keyframes pt-dot-fill-4 { 0%, 60% { opacity: 0.25; scale: 0.8; } 75% { opacity: 1; scale: 1.15; } 80%, 85% { opacity: 1; scale: 1; } 95%, 100% { opacity: 0.25; scale: 0.8; } }
+.pt-dot-fill-1 { animation: pt-dot-fill-1 10s ease-in-out infinite; }
+.pt-dot-fill-2 { animation: pt-dot-fill-2 10s ease-in-out infinite; }
+.pt-dot-fill-3 { animation: pt-dot-fill-3 10s ease-in-out infinite; }
+.pt-dot-fill-4 { animation: pt-dot-fill-4 10s ease-in-out infinite; }
 /* The hero's call to action: a white pill with the brand color as its text, the same in both themes. */
 .pt-cta { background: #ffffff; color: var(--brand-primary, var(--brand)); border-radius: 9999px; font-weight: 600; box-shadow: 0 4px 14px rgb(0 0 0 / 0.18); text-shadow: none; transition: transform 0.15s, box-shadow 0.15s; }
 .pt-cta:hover { background: #ffffff; transform: translateY(-1px); box-shadow: 0 6px 20px rgb(0 0 0 / 0.24); }
