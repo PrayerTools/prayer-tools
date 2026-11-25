@@ -7,6 +7,7 @@ import AdminLayout from '#core/app/layouts/default.vue'
     <AdminLayout>
       <slot />
     </AdminLayout>
+    <PtSiteSearch />
   </div>
 </template>
 
